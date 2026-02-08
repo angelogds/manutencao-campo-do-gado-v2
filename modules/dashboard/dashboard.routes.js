@@ -1,0 +1,1 @@
+const r=require('express').Router(); r.get('/',(q,s)=>s.render('dashboard/index')); module.exports=r;

@@ -1,0 +1,4 @@
+
+CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT,email TEXT UNIQUE,password_hash TEXT,role TEXT,created_at TEXT);
+CREATE TABLE IF NOT EXISTS solicitacoes(id INTEGER PRIMARY KEY AUTOINCREMENT,titulo TEXT,descricao TEXT,status TEXT,created_by INTEGER,created_at TEXT);
+CREATE TABLE IF NOT EXISTS os(id INTEGER PRIMARY KEY AUTOINCREMENT,equipamento TEXT,descricao TEXT,tipo TEXT,status TEXT,opened_by INTEGER,opened_at TEXT);

@@ -1,0 +1,1 @@
+const r=require('express').Router(); r.get('/',(q,s)=>s.render('compras/index')); module.exports=r;

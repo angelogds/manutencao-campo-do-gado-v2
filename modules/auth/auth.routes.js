@@ -1,0 +1,1 @@
+const r=require('express').Router();const c=require('./auth.controller');r.get('/login',c.loginForm);r.post('/login',c.login);r.get('/logout',c.logout);module.exports=r;
