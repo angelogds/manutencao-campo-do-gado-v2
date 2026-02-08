@@ -19,6 +19,6 @@
     "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
-    "nodemon": "^3.0.3"
+     "dotenv": "^16.4.5"
   }
 }
