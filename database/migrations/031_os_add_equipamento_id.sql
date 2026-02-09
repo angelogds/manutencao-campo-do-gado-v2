@@ -1,8 +1,7 @@
 PRAGMA foreign_keys = ON;
 
--- Adiciona equipamento_id na OS se ainda não existir
+-- Adiciona vínculo opcional com a tabela equipamentos (sem remover o campo texto "equipamento")
 ALTER TABLE os ADD COLUMN equipamento_id INTEGER;
 
--- Não dá para adicionar FK via ALTER TABLE no SQLite facilmente sem rebuild.
--- Então a gente garante índice, e validação fica no app por enquanto.
+-- Índice para performance nas buscas
 CREATE INDEX IF NOT EXISTS idx_os_equipamento_id ON os(equipamento_id);
