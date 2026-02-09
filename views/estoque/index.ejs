@@ -1,40 +1,58 @@
-<% layout("layout") %>
+<% layout('layout') %>
+
+<style>
+  .grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  .k{ color:#6b7280; font-weight:900; font-size:12px; letter-spacing:.04em; }
+  .v{ font-size:18px; font-weight:900; margin-top:6px; }
+  .btn{ display:inline-block; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; font-weight:800; }
+  .table{ width:100%; border-collapse:collapse; }
+  .table th,.table td{ padding:10px; border-bottom:1px solid #f1f5f9; text-align:left; font-size:14px; }
+  .muted{ color:#6b7280; }
+  .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:10px 0 18px; }
+  @media (max-width: 980px){ .grid{ grid-template-columns:1fr;} }
+</style>
 
 <h1>Estoque</h1>
+<p class="muted" style="margin-top:-6px;">Cadastro de itens e saldo atual.</p>
 
-<p>
-  <a href="/estoque/novo">+ Novo item</a>
-</p>
+<div class="row">
+  <div></div>
+  <div style="display:flex; gap:10px;">
+    <a class="btn" href="/estoque/novo">Novo Item</a>
+  </div>
+</div>
 
-<table border="1" cellpadding="6">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Código</th>
-      <th>Nome</th>
-      <th>Un</th>
-      <th>Saldo</th>
-      <th>Mín</th>
-      <th>Ativo</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <% if (!itens || itens.length === 0) { %>
-      <tr><td colspan="8">Nenhum item cadastrado.</td></tr>
-    <% } else { %>
-      <% itens.forEach(i => { %>
+<div class="card">
+  <div class="k">ITENS</div>
+  <div class="v">Saldo por item</div>
+
+  <div style="margin-top:12px; overflow:auto;">
+    <table class="table">
+      <thead>
         <tr>
-          <td><%= i.id %></td>
-          <td><%= i.codigo || "-" %></td>
-          <td><%= i.nome %></td>
-          <td><%= i.unidade %></td>
-          <td><%= i.saldo %></td>
-          <td><%= i.estoque_min %></td>
-          <td><%= i.ativo ? "Sim" : "Não" %></td>
-          <td><a href="/estoque/<%= i.id %>">ver</a></td>
+          <th>Código</th>
+          <th>Nome</th>
+          <th>Un</th>
+          <th>Saldo</th>
+          <th></th>
         </tr>
-      <% }) %>
-    <% } %>
-  </tbody>
-</table>
+      </thead>
+      <tbody>
+        <% if (!itens || itens.length === 0) { %>
+          <tr><td colspan="5" class="muted">Nenhum item cadastrado.</td></tr>
+        <% } else { %>
+          <% itens.forEach(i => { %>
+            <tr>
+              <td class="muted"><%= i.codigo || '-' %></td>
+              <td><%= i.nome %></td>
+              <td class="muted"><%= i.unidade || 'un' %></td>
+              <td style="font-weight:900;"><%= i.saldo ?? 0 %></td>
+              <td><a class="btn" href="/estoque/<%= i.item_id || i.id %>">Abrir</a></td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
