@@ -1,15 +1,15 @@
-exports.requireLogin = (req, res, next) => {
-  if (!req.session?.user) return res.redirect("/login");
-  next();
+// modules/auth/auth.middleware.js
+exports.requireAuth = (req, res, next) => {
+  if (req.session?.user) return next();
+  req.flash("error", "Faça login para continuar.");
+  return res.redirect("/login");
 };
 
 exports.requireRole = (roles = []) => {
   return (req, res, next) => {
     const role = req.session?.user?.role;
-    if (!role) return res.status(403).send("Acesso negado");
-
-    if (roles.includes(role) || role === "ADMIN") return next();
-
-    return res.status(403).send("Acesso negado");
+    if (role && roles.includes(role)) return next();
+    req.flash("error", "Acesso negado.");
+    return res.redirect("/dashboard");
   };
 };
