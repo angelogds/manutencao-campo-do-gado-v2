@@ -1,0 +1,32 @@
+<% layout("layout") %>
+
+<h1>OS #<%= os.id %></h1>
+
+<p><strong>Equipamento:</strong> <%= os.equipamento %></p>
+<p><strong>Tipo:</strong> <%= os.tipo %></p>
+<p><strong>Status:</strong> <%= os.status %></p>
+<p><strong>Abertura:</strong> <%= os.opened_at || "-" %></p>
+<p><strong>Fechamento:</strong> <%= os.closed_at || "-" %></p>
+
+<hr/>
+
+<p><strong>Descrição:</strong></p>
+<pre style="white-space:pre-wrap;"><%= os.descricao %></pre>
+
+<hr/>
+
+<form method="POST" action="/os/<%= os.id %>/status">
+  <label>Atualizar status:</label>
+  <select name="status">
+    <option value="ABERTA" <%= os.status==='ABERTA'?'selected':'' %>>ABERTA</option>
+    <option value="ANDAMENTO" <%= os.status==='ANDAMENTO'?'selected':'' %>>ANDAMENTO</option>
+    <option value="PAUSADA" <%= os.status==='PAUSADA'?'selected':'' %>>PAUSADA</option>
+    <option value="CONCLUIDA" <%= os.status==='CONCLUIDA'?'selected':'' %>>CONCLUIDA</option>
+    <option value="CANCELADA" <%= os.status==='CANCELADA'?'selected':'' %>>CANCELADA</option>
+  </select>
+  <button type="submit">Salvar</button>
+</form>
+
+<p style="margin-top:14px;">
+  <a href="/os">← voltar</a>
+</p>
