@@ -1,15 +1,14 @@
 const db = require("../../database/db");
-const bcrypt = require("bcryptjs");
 
-function findUserByEmail(email) {
-  return db.prepare("SELECT * FROM users WHERE email = ? LIMIT 1").get(email);
-}
-
-async function verifyPassword(password, passwordHash) {
-  return bcrypt.compare(password, passwordHash);
-}
-
-module.exports = {
-  findUserByEmail,
-  verifyPassword,
+exports.getUserByEmail = (email) => {
+  return db
+    .prepare(
+      `
+    SELECT id, name, email, role, password_hash
+    FROM users
+    WHERE lower(email) = lower(?)
+    LIMIT 1
+  `
+    )
+    .get(email);
 };
