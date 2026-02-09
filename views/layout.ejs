@@ -1,23 +1,63 @@
-<!doctype html>
-<html lang="pt-br">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title><%= title || "Manutenção Campo do Gado" %></title>
-  <link rel="stylesheet" href="/css/app.css" />
+  <meta charset="UTF-8" />
+  <title><%= title || "Campo do Gado" %></title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f4f6f5;
+      color: #333;
+    }
+    header {
+      background: #0a7a3d;
+      color: #fff;
+      padding: 15px 20px;
+    }
+    main {
+      padding: 20px;
+    }
+    a {
+      color: #0a7a3d;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 6px;
+      max-width: 600px;
+      margin: auto;
+      box-shadow: 0 2px 6px rgba(0,0,0,.1);
+    }
+    .error {
+      color: #b00020;
+    }
+    .success {
+      color: #0a7a3d;
+    }
+  </style>
 </head>
 <body>
-  <%- include("partials/header") %>
 
-  <div class="app">
-    <%- include("partials/sidebar") %>
-    <main class="content">
-      <%- include("partials/alerts") %>
-      <%- body %>
-    </main>
-  </div>
+<header>
+  <strong>Campo do Gado – Manutenção</strong>
+</header>
 
-  <%- include("partials/footer") %>
+<main>
+  <% if (flash.error.length) { %>
+    <p class="error"><%= flash.error[0] %></p>
+  <% } %>
+
+  <% if (flash.success.length) { %>
+    <p class="success"><%= flash.success[0] %></p>
+  <% } %>
+
+  <%- body %>
+</main>
+
 </body>
 </html>
-
