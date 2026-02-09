@@ -1,9 +1,38 @@
-<select name="role" required>
-  <option value="admin">Admin</option>
-  <option value="diretoria">Diretoria</option>
-  <option value="rh">RH</option>
-  <option value="compras">Compras</option>
-  <option value="almoxarifado">Almoxarifado</option>
-  <option value="manutencao">Manutenção</option>
-  <option value="producao">Produção</option>
-</select>
+<% layout("layout") %>
+
+<h1>Novo Usuário</h1>
+
+<form method="POST" action="/usuarios">
+  <div>
+    <label>Nome *</label><br/>
+    <input name="name" required />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Email *</label><br/>
+    <input name="email" type="email" required />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Senha *</label><br/>
+    <input name="password" type="password" required />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Perfil *</label><br/>
+    <select name="role" required>
+      <option value="admin">Admin</option>
+      <option value="diretoria">Diretoria</option>
+      <option value="rh">RH</option>
+      <option value="compras">Compras</option>
+      <option value="almoxarifado">Almoxarifado</option>
+      <option value="manutencao">Manutenção</option>
+      <option value="producao">Produção</option>
+    </select>
+  </div>
+
+  <div style="margin-top:14px;">
+    <button type="submit">Salvar</button>
+    <a href="/usuarios" style="margin-left:10px;">Cancelar</a>
+  </div>
+</form>
