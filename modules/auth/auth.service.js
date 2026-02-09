@@ -1,13 +1,15 @@
-const bcrypt = require("bcryptjs");
 const db = require("../../database/db");
+const bcrypt = require("bcryptjs");
 
 function findUserByEmail(email) {
-  return db.prepare("SELECT * FROM users WHERE email = ?").get(email?.toLowerCase());
+  return db.prepare("SELECT * FROM users WHERE email = ? LIMIT 1").get(email);
 }
 
-function verifyPassword(password, password_hash) {
-  if (!password || !password_hash) return false;
-  return bcrypt.compareSync(password, password_hash);
+async function verifyPassword(password, passwordHash) {
+  return bcrypt.compare(password, passwordHash);
 }
 
-module.exports = { findUserByEmail, verifyPassword };
+module.exports = {
+  findUserByEmail,
+  verifyPassword,
+};
