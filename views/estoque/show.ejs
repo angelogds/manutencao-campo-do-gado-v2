@@ -1,0 +1,89 @@
+<% layout("layout") %>
+
+<h1>Item #<%= item.id %> — <%= item.nome %></h1>
+
+<p><strong>Código:</strong> <%= item.codigo || "-" %></p>
+<p><strong>Unidade:</strong> <%= item.unidade %></p>
+<p><strong>Saldo:</strong> <%= item.saldo ?? 0 %></p>
+<p><strong>Mínimo:</strong> <%= item.estoque_min %></p>
+<p><strong>Custo unit:</strong> <%= item.custo_unit %></p>
+
+<hr/>
+
+<h3>Novo movimento</h3>
+<form method="POST" action="/estoque/<%= item.id %>/movimento">
+  <div>
+    <label>Tipo</label><br/>
+    <select name="tipo">
+      <option value="entrada">entrada</option>
+      <option value="saida">saida</option>
+      <option value="ajuste">ajuste</option>
+    </select>
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Quantidade *</label><br/>
+    <input name="quantidade" required />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Custo unit (opcional)</label><br/>
+    <input name="custo_unit" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Origem (compra|os|ajuste|inventario)</label><br/>
+    <input name="origem" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Referência ID (opcional)</label><br/>
+    <input name="referencia_id" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Observação</label><br/>
+    <input name="observacao" style="width:420px;" />
+  </div>
+
+  <div style="margin-top:12px;">
+    <button type="submit">Lançar</button>
+    <a href="/estoque">Voltar</a>
+  </div>
+</form>
+
+<hr/>
+
+<h3>Movimentos</h3>
+<table border="1" cellpadding="6">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Tipo</th>
+      <th>Qtd</th>
+      <th>Custo</th>
+      <th>Origem</th>
+      <th>Ref</th>
+      <th>Obs</th>
+      <th>Data</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if (!item.movimentos || item.movimentos.length === 0) { %>
+      <tr><td colspan="8">Sem movimentos.</td></tr>
+    <% } else { %>
+      <% item.movimentos.forEach(m => { %>
+        <tr>
+          <td><%= m.id %></td>
+          <td><%= m.tipo %></td>
+          <td><%= m.quantidade %></td>
+          <td><%= m.custo_unit ?? "-" %></td>
+          <td><%= m.origem ?? "-" %></td>
+          <td><%= m.referencia_id ?? "-" %></td>
+          <td><%= m.observacao ?? "-" %></td>
+          <td><%= m.created_at ?? "-" %></td>
+        </tr>
+      <% }) %>
+    <% } %>
+  </tbody>
+</table>
