@@ -1,0 +1,24 @@
+<h1>Abrir OS</h1>
+
+<form method="POST" action="/os" class="form">
+  <label>Título</label>
+  <input name="titulo" required />
+
+  <label>Setor</label>
+  <input name="setor" placeholder="Ex: Fabricação Estrutural / Caldeira / Digestores" required />
+
+  <label>Prioridade</label>
+  <select name="prioridade">
+    <option value="NORMAL">NORMAL</option>
+    <option value="ALTA">ALTA</option>
+    <option value="CRITICA">CRÍTICA</option>
+  </select>
+
+  <label>Descrição</label>
+  <textarea name="descricao" rows="6" required></textarea>
+
+  <div style="margin-top:12px;">
+    <button class="btn" type="submit">Salvar</button>
+    <a class="btn btn-ghost" href="/os">Cancelar</a>
+  </div>
+</form>
