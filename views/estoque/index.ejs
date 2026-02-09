@@ -2,20 +2,39 @@
 
 <h1>Estoque</h1>
 
-<a href="/estoque/novo" class="btn">Novo Item</a>
+<p>
+  <a href="/estoque/novo">+ Novo item</a>
+</p>
 
-<table>
-  <tr>
-    <th>ID</th>
-    <th>Item</th>
-    <th>Quantidade</th>
-  </tr>
-
-  <% itens.forEach(i => { %>
+<table border="1" cellpadding="6">
+  <thead>
     <tr>
-      <td><%= i.id %></td>
-      <td><%= i.nome %></td>
-      <td><%= i.quantidade %></td>
+      <th>ID</th>
+      <th>Código</th>
+      <th>Nome</th>
+      <th>Un</th>
+      <th>Saldo</th>
+      <th>Mín</th>
+      <th>Ativo</th>
+      <th></th>
     </tr>
-  <% }) %>
+  </thead>
+  <tbody>
+    <% if (!itens || itens.length === 0) { %>
+      <tr><td colspan="8">Nenhum item cadastrado.</td></tr>
+    <% } else { %>
+      <% itens.forEach(i => { %>
+        <tr>
+          <td><%= i.id %></td>
+          <td><%= i.codigo || "-" %></td>
+          <td><%= i.nome %></td>
+          <td><%= i.unidade %></td>
+          <td><%= i.saldo %></td>
+          <td><%= i.estoque_min %></td>
+          <td><%= i.ativo ? "Sim" : "Não" %></td>
+          <td><a href="/estoque/<%= i.id %>">ver</a></td>
+        </tr>
+      <% }) %>
+    <% } %>
+  </tbody>
 </table>
