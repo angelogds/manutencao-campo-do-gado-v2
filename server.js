@@ -1,8 +1,6 @@
-// ✅ .env só fora de produção (Railway usa Variables)
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
-
 require("./database/migrate");
 
 const express = require("express");
@@ -18,33 +16,28 @@ const authRoutes = require("./modules/auth/auth.routes");
 const comprasRoutes = require("./modules/compras/compras.routes");
 const estoqueRoutes = require("./modules/estoque/estoque.routes");
 const osRoutes = require("./modules/os/os.routes");
-// const usuariosRoutes = require("./modules/usuarios/usuarios.routes"); // habilite quando existir
+const usuariosRoutes = require("./modules/usuarios/usuarios.routes");
 
-// ✅ Session store (remove warning MemoryStore)
+// ✅ session store (remove MemoryStore warning)
 const db = require("./database/db");
 const SqliteStoreFactory = require("better-sqlite3-session-store")(session);
 const sessionStore = new SqliteStoreFactory({
   client: db,
-  expired: { clear: true, intervalMs: 15 * 60 * 1000 }, // 15min
+  expired: { clear: true, intervalMs: 24 * 60 * 60 * 1000 }
 });
 
 const app = express();
-
-// ✅ Railway proxy (necessário se usar cookie secure)
 app.set("trust proxy", 1);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// ✅ EJS + Layout engine
 app.engine("ejs", engine);
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
-// ✅ estáticos (CSS/JS/IMG)
 app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ sessão + flash (ANTES das rotas)
 app.use(
   session({
     name: "cg.sid",
@@ -56,52 +49,42 @@ app.use(
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.SESSION_SECURE_COOKIE === "true",
-      maxAge: 1000 * 60 * 60 * 8, // 8h
-    },
+      maxAge: 1000 * 60 * 60 * 8
+    }
   })
 );
 
 app.use(flash());
 
-// ✅ vars globais p/ views
 app.use((req, res, next) => {
   res.locals.user = req.session?.user || null;
   res.locals.flash = {
     success: req.flash("success"),
-    error: req.flash("error"),
+    error: req.flash("error")
   };
   next();
 });
 
-// ✅ auth primeiro
 app.use(authRoutes);
-
-// ✅ módulos
 app.use(comprasRoutes);
 app.use(estoqueRoutes);
 app.use(osRoutes);
-// app.use(usuariosRoutes);
+app.use(usuariosRoutes);
 
-// ✅ home
 app.get("/", (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
   return res.redirect("/login");
 });
 
-// ✅ dashboard com layout (ejs-mate)
 app.get("/dashboard", requireLogin, (req, res) => {
-  return res.render("dashboard/index", {
-    layout: "layout",
-    title: "Dashboard",
-  });
+  return res.render("dashboard/index", { title: "Dashboard", layout: "layout" });
 });
 
-// ✅ health
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
     app: "manutencao-campo-do-gado-v2",
-    timestamp: new Date().toISOString(),
+    timestamp: new Date().toISOString()
   });
 });
 
