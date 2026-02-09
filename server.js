@@ -11,10 +11,6 @@ const engine = require("ejs-mate");
 // helper global de data BR
 const { fmtBR, TZ } = require("./utils/date");
 
-// seed admin (não quebra se já existir)
-const { ensureAdmin } = require("./database/seed");
-ensureAdmin();
-
 const app = express();
 
 // Railway / Proxy
@@ -30,7 +26,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// Session + Flash (sem dependência extra)
+// Session + Flash
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "dev-secret",
@@ -40,7 +36,8 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: "lax",
-      secure: "auto",
+      // Railway: controle via variável (recomendado)
+      secure: process.env.SESSION_SECURE_COOKIE === "true",
     },
   })
 );
