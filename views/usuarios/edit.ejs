@@ -1,0 +1,32 @@
+<h1>Editar usuário</h1>
+
+<form method="POST" action="/admin/users/<%= user.id %>" class="form">
+  <label>Nome</label>
+  <input name="name" value="<%= user.name %>" required />
+
+  <label>Email</label>
+  <input name="email" type="email" value="<%= user.email %>" required />
+
+  <label>Perfil</label>
+  <select name="role" required>
+    <% ROLES.forEach(r => { %>
+      <option value="<%= r %>" <%= user.role === r ? "selected" : "" %>><%= r %></option>
+    <% }) %>
+  </select>
+
+  <div style="margin-top: 12px;">
+    <button class="btn" type="submit">Salvar</button>
+    <a class="btn btn-ghost" href="/admin/users">Voltar</a>
+  </div>
+</form>
+
+<hr style="margin: 20px 0;" />
+
+<h2>Resetar senha</h2>
+<form method="POST" action="/admin/users/<%= user.id %>/reset-password" class="form">
+  <label>Nova senha</label>
+  <input name="newPassword" type="password" required />
+  <div style="margin-top: 12px;">
+    <button class="btn" type="submit">Resetar</button>
+  </div>
+</form>
