@@ -1,1 +1,23 @@
-<!doctype html><html><body><%- body %></body></html>
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title><%= title || "Manutenção Campo do Gado" %></title>
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body>
+  <%- include("partials/header") %>
+
+  <div class="app">
+    <%- include("partials/sidebar") %>
+    <main class="content">
+      <%- include("partials/alerts") %>
+      <%- body %>
+    </main>
+  </div>
+
+  <%- include("partials/footer") %>
+</body>
+</html>
+
