@@ -1,13 +1,16 @@
-// modules/dashboard/dashboard.controller.js
-const dashboardService = require("./dashboard.service");
+const service = require("./dashboard.service");
 
-function dashboardIndex(req, res) {
-  const counters = dashboardService.getCounters();
+exports.index = (req, res) => {
+  // Se ainda não tiver métricas prontas, devolve zeros
+  const cards = service.getCards?.() || {
+    os_abertas: 0,
+    compras_abertas: 0,
+    itens_estoque: 0,
+    equipamentos: 0,
+  };
 
   return res.render("dashboard/index", {
     title: "Dashboard",
-    counters,
+    cards,
   });
-}
-
-module.exports = { dashboardIndex };
+};
