@@ -1,12 +1,35 @@
-<% layout("layout") %>
+<% layout('layout') %>
+
+<style>
+  .grid{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; }
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  .k{ color:#6b7280; font-weight:900; font-size:12px; letter-spacing:.04em; }
+  .v{ font-size:28px; font-weight:900; margin-top:6px; }
+  @media (max-width: 980px){ .grid{ grid-template-columns:repeat(2,1fr);} }
+  @media (max-width: 560px){ .grid{ grid-template-columns:1fr;} }
+</style>
 
 <h1>Dashboard</h1>
+<p style="color:#6b7280; margin-top:-6px;">Visão geral do sistema.</p>
 
-<ul>
-  <li>OS Abertas: <strong><%= counters.osAbertas %></strong></li>
-  <li>OS Andamento: <strong><%= counters.osAndamento %></strong></li>
-  <li>OS Pausadas: <strong><%= counters.osPausada %></strong></li>
-  <li>OS Concluídas: <strong><%= counters.osConcluida %></strong></li>
-  <li>Compras Pendentes: <strong><%= counters.comprasPendentes %></strong></li>
-  <li>Itens no Estoque: <strong><%= counters.itensEstoque %></strong></li>
-</ul>
+<div class="grid">
+  <div class="card">
+    <div class="k">OS ABERTAS</div>
+    <div class="v"><%= cards?.os_abertas ?? 0 %></div>
+  </div>
+
+  <div class="card">
+    <div class="k">COMPRAS ABERTAS</div>
+    <div class="v"><%= cards?.compras_abertas ?? 0 %></div>
+  </div>
+
+  <div class="card">
+    <div class="k">ITENS NO ESTOQUE</div>
+    <div class="v"><%= cards?.itens_estoque ?? 0 %></div>
+  </div>
+
+  <div class="card">
+    <div class="k">EQUIPAMENTOS</div>
+    <div class="v"><%= cards?.equipamentos ?? 0 %></div>
+  </div>
+</div>
