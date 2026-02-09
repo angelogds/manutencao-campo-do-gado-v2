@@ -1,0 +1,13 @@
+<% layout("layout") %>
+
+<h1>Novo Item de Estoque</h1>
+
+<form method="POST" action="/estoque">
+  <label>Nome</label>
+  <input type="text" name="nome" required>
+
+  <label>Quantidade</label>
+  <input type="number" name="quantidade" required>
+
+  <button type="submit" class="btn">Salvar</button>
+</form>
