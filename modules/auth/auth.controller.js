@@ -1,29 +1,39 @@
-const { authenticate } = require('./auth.service');
+const { findUserByEmail, verifyPassword } = require("./auth.service");
 
-exports.loginForm = (req, res) => {
-  res.render('auth/login');
-};
+function showLogin(req, res) {
+  return res.render("auth/login", { title: "Login" });
+}
 
-exports.login = (req, res) => {
+function doLogin(req, res) {
   const { email, password } = req.body;
-  const user = authenticate(email, password);
 
+  const user = findUserByEmail(email);
   if (!user) {
-    req.flash('error', 'Usuário ou senha inválidos');
-    return res.redirect('/login');
+    req.flash("error", "Email ou senha inválidos.");
+    return res.redirect("/login");
+  }
+
+  const ok = verifyPassword(password, user.password_hash);
+  if (!ok) {
+    req.flash("error", "Email ou senha inválidos.");
+    return res.redirect("/login");
   }
 
   req.session.user = {
     id: user.id,
     name: user.name,
-    role: user.role
+    email: user.email,
+    role: user.role,
   };
 
-  res.redirect('/dashboard');
-};
+  req.flash("success", `Bem-vindo, ${user.name}!`);
+  return res.redirect("/dashboard");
+}
 
-exports.logout = (req, res) => {
+function doLogout(req, res) {
   req.session.destroy(() => {
-    res.redirect('/login');
+    res.redirect("/login");
   });
-};
+}
+
+module.exports = { showLogin, doLogin, doLogout };
