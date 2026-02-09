@@ -1,43 +1,16 @@
-// modules/estoque/estoque.routes.js
 const express = require("express");
 const router = express.Router();
 
-// middleware login (blindado)
-let requireLogin = null;
-try {
-  const authMw = require("../auth/auth.middleware");
-  requireLogin = authMw.requireLogin;
-} catch (e) {
-  console.error("❌ [estoque] Falha ao carregar auth.middleware:", e.message);
-}
+const { requireRole } = require("../auth/auth.middleware");
+const ctrl = require("./estoque.controller");
 
-const safeRequireLogin =
-  typeof requireLogin === "function"
-    ? requireLogin
-    : (_req, res) => res.status(500).send("Erro interno: requireLogin indefinido.");
+// consultar
+router.get("/estoque", requireRole(["almoxarifado","compras","diretoria"]), ctrl.estoqueIndex);
+router.get("/estoque/:id", requireRole(["almoxarifado","compras","diretoria"]), ctrl.estoqueShow);
 
-// controller (blindado)
-let ctrl = {};
-try {
-  ctrl = require("./estoque.controller");
-  console.log("✅ [estoque] controller exports:", Object.keys(ctrl));
-} catch (e) {
-  console.error("❌ [estoque] Falha ao carregar estoque.controller:", e.message);
-}
-
-const safe = (fn, name) =>
-  typeof fn === "function"
-    ? fn
-    : (_req, res) => {
-        console.error(`❌ [estoque] Handler ${name} indefinido (export errado).`);
-        return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
-      };
-
-// Rotas
-router.get("/estoque", safeRequireLogin, safe(ctrl.estoqueIndex, "estoqueIndex"));
-router.get("/estoque/novo", safeRequireLogin, safe(ctrl.estoqueNewForm, "estoqueNewForm"));
-router.post("/estoque", safeRequireLogin, safe(ctrl.estoqueCreate, "estoqueCreate"));
-router.get("/estoque/:id", safeRequireLogin, safe(ctrl.estoqueShow, "estoqueShow"));
-router.post("/estoque/:id/movimento", safeRequireLogin, safe(ctrl.estoqueMovCreate, "estoqueMovCreate"));
+// criar item / movimentar (somente almox/admin)
+router.get("/estoque/novo", requireRole(["almoxarifado"]), ctrl.estoqueNewForm);
+router.post("/estoque", requireRole(["almoxarifado"]), ctrl.estoqueCreate);
+router.post("/estoque/:id/movimento", requireRole(["almoxarifado"]), ctrl.estoqueMovCreate);
 
 module.exports = router;
