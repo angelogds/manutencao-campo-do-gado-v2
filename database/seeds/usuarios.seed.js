@@ -2,6 +2,18 @@ const bcrypt = require("bcryptjs");
 const db = require("../db");
 
 function seedAdminIfMissing() {
+  // ✅ garante que a tabela exista (se por algum motivo migrations não criaram)
+  db.prepare(`
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `).run();
+
   const email = "admin@campodogado.local";
   const exists = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
 
