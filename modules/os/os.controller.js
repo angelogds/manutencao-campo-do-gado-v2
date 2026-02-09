@@ -1,53 +1,36 @@
-const service = require("./os.service");
+const db = require("../../database/db");
 
-exports.list = (req, res) => {
-  const status = req.query.status || "ABERTA";
-  const items = service.listOS({ status });
+// LISTA
+function index(req, res) {
+  const itens = db.prepare("SELECT * FROM os ORDER BY id DESC").all();
+  return res.render("os/index", { title: "Ordens de Serviço", itens });
+}
 
-  return res.render("os/index", {
-    title: "Ordens de Serviço",
-    items,
-    status,
-  });
-};
+// FORM NOVA
+function createForm(req, res) {
+  return res.render("os/create", { title: "Nova OS" });
+}
 
-exports.newForm = (req, res) => {
-  return res.render("os/new", { title: "Abrir OS" });
-};
+// CRIA
+function create(req, res) {
+  const { titulo, descricao } = req.body;
 
-exports.create = (req, res) => {
-  const { titulo, setor, descricao, prioridade } = req.body;
-
-  if (!titulo || !setor || !descricao) {
-    req.flash("error", "Preencha título, setor e descrição.");
-    return res.redirect("/os/new");
+  if (!titulo) {
+    req.flash("error", "Informe o título.");
+    return res.redirect("/os/nova");
   }
 
-  try {
-    const id = service.createOS({
-      titulo,
-      setor,
-      descricao,
-      prioridade: prioridade || "NORMAL",
-      created_by: req.session.user.id,
-    });
+  db.prepare(`
+    INSERT INTO os (titulo, descricao, created_at)
+    VALUES (?, ?, datetime('now'))
+  `).run(titulo, descricao || "");
 
-    req.flash("success", "OS aberta com sucesso.");
-    return res.redirect(`/os/${id}`);
-  } catch (e) {
-    req.flash("error", e.message || "Erro ao abrir OS.");
-    return res.redirect("/os/new");
-  }
-};
+  req.flash("success", "OS criada com sucesso.");
+  return res.redirect("/os");
+}
 
-exports.view = (req, res) => {
-  const id = Number(req.params.id);
-  const os = service.getOSById(id);
-
-  if (!os) {
-    req.flash("error", "OS não encontrada.");
-    return res.redirect("/os");
-  }
-
-  return res.render("os/view", { title: `OS #${os.id}`, os });
+module.exports = {
+  index,
+  createForm,
+  create,
 };
