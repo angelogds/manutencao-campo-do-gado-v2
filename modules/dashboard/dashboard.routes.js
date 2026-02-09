@@ -4,14 +4,16 @@ const router = express.Router();
 
 const { requireLogin } = require("../auth/auth.middleware");
 
-// pega a função diretamente
-const { index } = require("./dashboard.controller");
+// IMPORTA A FUNÇÃO DIRETO (evita controller.index undefined)
+const { dashboardIndex } = require("./dashboard.controller");
 
-// se por algum motivo vier undefined, lança erro claro
-if (typeof index !== "function") {
-  throw new Error("dashboard.controller.index não foi exportado corretamente.");
+// Se não for função, explode com erro claro (melhor que [object Undefined])
+if (typeof dashboardIndex !== "function") {
+  throw new Error(
+    "dashboard.controller não exportou dashboardIndex. Confira exports em dashboard.controller.js"
+  );
 }
 
-router.get("/dashboard", requireLogin, index);
+router.get("/dashboard", requireLogin, dashboardIndex);
 
 module.exports = router;
