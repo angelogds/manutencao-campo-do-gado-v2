@@ -1,0 +1,43 @@
+<% layout("layout") %>
+
+<h1>Novo Item</h1>
+
+<form method="POST" action="/estoque">
+  <div>
+    <label>Código</label><br/>
+    <input name="codigo" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Nome *</label><br/>
+    <input name="nome" required style="width:420px;" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Unidade</label><br/>
+    <input name="unidade" value="un" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Estoque mínimo</label><br/>
+    <input name="estoque_min" value="0" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Custo unitário</label><br/>
+    <input name="custo_unit" value="0" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Ativo</label><br/>
+    <select name="ativo">
+      <option value="1" selected>Sim</option>
+      <option value="0">Não</option>
+    </select>
+  </div>
+
+  <div style="margin-top:12px;">
+    <button type="submit">Salvar</button>
+    <a href="/estoque">Cancelar</a>
+  </div>
+</form>
