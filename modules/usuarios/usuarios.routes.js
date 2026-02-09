@@ -1,5 +1,14 @@
+const express = require("express");
+const router = express.Router();
 
-const r=require('express').Router(); const db=require('../../database/db'); const bcrypt=require('bcryptjs');
-r.get('/',(q,s)=>s.render('admin/users',{rows:db.prepare('SELECT id,name,email,role FROM users').all()}));
-r.post('/novo',(q,s)=>{db.prepare('INSERT INTO users(name,email,password_hash,role,created_at) VALUES(?,?,?,?,datetime(\'now\'))').run(q.body.name,q.body.email,bcrypt.hashSync(q.body.password,10),q.body.role); s.redirect('/admin/users');});
-module.exports=r;
+const { requireLogin, requireRole } = require("../auth/auth.middleware");
+const { ROLES } = require("../../utils/security/permissions");
+
+router.get(
+  "/admin/users",
+  requireLogin,
+  requireRole([ROLES.ADMIN]),
+  (req, res) => res.render("admin/users", { title: "Usuários" })
+);
+
+module.exports = router;
