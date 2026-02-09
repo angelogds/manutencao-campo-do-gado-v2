@@ -1,0 +1,8 @@
+<%
+  const user = locals.user;
+  const role = user ? user.role : null;
+
+  function hasAnyRole(roles) {
+    return !!role && roles.includes(role);
+  }
+%>
