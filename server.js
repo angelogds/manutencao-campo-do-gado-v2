@@ -17,10 +17,10 @@ app.use(express.urlencoded({ extended: false }));
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
-// ✅ arquivos estáticos
+// estáticos
 app.use(express.static(path.join(__dirname, "public")));
 
-// ✅ sessão
+// sessão + flash ANTES das rotas
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "dev-secret",
@@ -32,7 +32,7 @@ app.use(
 
 app.use(flash());
 
-// ✅ vars globais
+// vars globais p/ views
 app.use((req, res, next) => {
   res.locals.user = req.session?.user || null;
   res.locals.flash = {
@@ -42,21 +42,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ auth
+// auth
 app.use(authRoutes);
 
-// ✅ home
+// home
 app.get("/", (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
   return res.redirect("/login");
 });
 
-// ✅ dashboard protegido
+// dashboard
 app.get("/dashboard", requireLogin, (req, res) => {
   return res.render("dashboard/index", { title: "Dashboard" });
 });
 
-// ✅ health
+// health
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
