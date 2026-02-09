@@ -1,0 +1,13 @@
+<% layout("layout") %>
+
+<h1>Nova Ordem de Serviço</h1>
+
+<form method="POST" action="/os">
+  <label>Título</label>
+  <input type="text" name="titulo" required>
+
+  <label>Descrição</label>
+  <textarea name="descricao"></textarea>
+
+  <button type="submit" class="btn">Salvar</button>
+</form>
