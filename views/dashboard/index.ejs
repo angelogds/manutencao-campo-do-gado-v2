@@ -1,26 +1,24 @@
-<% layout('layout') %>
+<% layout("layout") %>
 
-<section class="page">
-  <h1>Dashboard</h1>
-  <p class="muted">Bem-vindo, <strong><%= user.name %></strong>. Perfil: <strong><%= user.role %></strong></p>
+<h1>Dashboard</h1>
+<p>Bem-vindo, <strong><%= user.nome %></strong>. Perfil: <%= user.role %></p>
 
-  <div class="grid">
-    <div class="card">
-      <h3>Ordens de Serviço</h3>
-      <p class="muted">Acompanhe OS abertas, em andamento e concluídas.</p>
-      <a class="btn btn-outline" href="/os">Abrir OS</a>
-    </div>
-
-    <div class="card">
-      <h3>Compras</h3>
-      <p class="muted">Solicitações, cotações e recebimento.</p>
-      <a class="btn btn-outline" href="/compras">Ir para Compras</a>
-    </div>
-
-    <div class="card">
-      <h3>Estoque</h3>
-      <p class="muted">Controle de itens e custos.</p>
-      <a class="btn btn-outline" href="/estoque">Ver Estoque</a>
-    </div>
+<div class="cards">
+  <div class="card">
+    <h3>Ordens de Serviço</h3>
+    <p>Acompanhe OS abertas, em andamento e concluídas.</p>
+    <a href="/os" class="btn">Abrir OS</a>
   </div>
-</section>
+
+  <div class="card">
+    <h3>Compras</h3>
+    <p>Solicitações, cotações e recebimentos.</p>
+    <a href="/compras" class="btn">Ir para Compras</a>
+  </div>
+
+  <div class="card">
+    <h3>Estoque</h3>
+    <p>Controle de itens e custos.</p>
+    <a href="/estoque" class="btn">Ver Estoque</a>
+  </div>
+</div>
