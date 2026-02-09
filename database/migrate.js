@@ -1,40 +1,91 @@
-const fs = require("fs");
+require("dotenv").config();
+require("./database/migrate");
+
+const express = require("express");
 const path = require("path");
-const db = require("./db"); // ✅ PRIMEIRO importa o db
+const session = require("express-session");
+const flash = require("connect-flash");
 
-// ✅ cria a tabela de controle de migrations
-db.prepare(`
-  CREATE TABLE IF NOT EXISTS migrations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    filename TEXT NOT NULL UNIQUE,
-    applied_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )
-`).run();
+const { requireLogin } = require("./modules/auth/auth.middleware");
+const authRoutes = require("./modules/auth/auth.routes");
 
-const migrationsDir = path.join(__dirname, "migrations");
+const app = express();
 
-const applied = db
-  .prepare("SELECT filename FROM migrations")
-  .all()
-  .map((m) => m.filename);
+// ✅ Proxy (Railway) — necessário se você usar secure cookies no futuro
+app.set("trust proxy", 1);
 
-const files = fs
-  .readdirSync(migrationsDir)
-  .filter((f) => f.endsWith(".sql"))
-  .sort();
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-for (const file of files) {
-  if (applied.includes(file)) continue;
+app.set("views", path.join(__dirname, "views"));
+app.set("view engine", "ejs");
 
-  const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
+// ✅ arquivos estáticos
+app.use(express.static(path.join(__dirname, "public")));
 
-  db.exec(sql);
+// ✅ sessão (antes das rotas)
+app.use(
+  session({
+    name: "cg.sid",
+    secret: process.env.SESSION_SECRET || "dev-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      // ✅ em produção (Railway com HTTPS), deixe true usando SESSION_SECURE_COOKIE=true
+      secure: process.env.SESSION_SECURE_COOKIE === "true",
+      maxAge: 1000 * 60 * 60 * 8, // 8h
+    },
+  })
+);
 
-  db.prepare("INSERT INTO migrations (filename) VALUES (?)").run(file);
+// ✅ flash (depois da sessão)
+app.use(flash());
 
-  console.log(`✔ Migration aplicada: ${file}`);
-}
+// ✅ vars globais (para EJS)
+app.use((req, res, next) => {
+  res.locals.user = req.session?.user || null;
+  res.locals.flash = {
+    success: req.flash("success"),
+    error: req.flash("error"),
+  };
+  next();
+});
 
-// ✅ roda seeds DEPOIS das migrations
-const { seedAdminIfMissing } = require("./seeds/usuarios.seed");
-seedAdminIfMissing();
+// ✅ auth routes (/login, /logout, etc.)
+app.use(authRoutes);
+
+// ✅ home
+app.get("/", (req, res) => {
+  if (req.session?.user) return res.redirect("/dashboard");
+  return res.redirect("/login");
+});
+
+// ✅ dashboard protegido
+app.get("/dashboard", requireLogin, (req, res) => {
+  return res.render("dashboard/index", { title: "Dashboard" });
+});
+
+// ✅ health (Railway)
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    app: "manutencao-campo-do-gado-v2",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ✅ 404 (evita “Internal Server Error” por rota faltando)
+app.use((_req, res) => {
+  return res.status(404).render("errors/404", { title: "Não encontrado" });
+});
+
+// ✅ handler de erro (mostra log e não derruba tudo)
+app.use((err, _req, res, _next) => {
+  console.error("Erro na aplicação:", err);
+  return res.status(500).render("errors/500", { title: "Erro interno" });
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log(`Servidor ativo na porta ${port}`));
