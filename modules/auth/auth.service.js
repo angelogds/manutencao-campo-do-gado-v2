@@ -1,3 +1,15 @@
+const db = require('../../database/db');
+const bcrypt = require('bcryptjs');
 
-const db=require('../../database/db'); const bcrypt=require('bcryptjs');
-exports.authenticate=(e,p)=>{const u=db.prepare('SELECT * FROM users WHERE email=?').get(e); if(!u) return null; if(!bcrypt.compareSync(p,u.password_hash)) return null; return u;};
+function authenticate(email, password) {
+  const user = db.prepare(
+    'SELECT * FROM users WHERE email = ?'
+  ).get(email);
+
+  if (!user) return null;
+  if (!bcrypt.compareSync(password, user.password_hash)) return null;
+
+  return user;
+}
+
+module.exports = { authenticate };
