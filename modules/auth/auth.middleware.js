@@ -1,23 +1,15 @@
-const { hasAnyRole } = require("../../utils/security/permissions");
+exports.requireLogin = (req, res, next) => {
+  if (!req.session?.user) return res.redirect("/login");
+  next();
+};
 
-function requireLogin(req, res, next) {
-  if (req.session?.user) return next();
-  req.flash("error", "Faça login para continuar.");
-  return res.redirect("/login");
-}
-
-function requireRole(allowedRoles = []) {
+exports.requireRole = (roles = []) => {
   return (req, res, next) => {
-    const user = req.session?.user;
-    if (!user) {
-      req.flash("error", "Faça login para continuar.");
-      return res.redirect("/login");
-    }
-    if (hasAnyRole(user, allowedRoles)) return next();
+    const role = req.session?.user?.role;
+    if (!role) return res.status(403).send("Acesso negado");
 
-    req.flash("error", "Você não tem permissão para acessar esta área.");
-    return res.redirect("/dashboard");
+    if (roles.includes(role) || role === "ADMIN") return next();
+
+    return res.status(403).send("Acesso negado");
   };
-}
-
-module.exports = { requireLogin, requireRole };
+};
