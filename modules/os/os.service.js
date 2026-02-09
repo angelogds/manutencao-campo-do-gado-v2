@@ -1,8 +1,8 @@
 const db = require("../../database/db");
 
-// Lista OS (com filtro opcional por status)
+// Lista OS (status opcional)
 exports.listOS = ({ status } = {}) => {
-  if (status) {
+  if (status && status !== "TODAS") {
     return db.prepare(`
       SELECT
         id, equipamento, tipo, status, custo_total, opened_by, opened_at, closed_at
@@ -21,7 +21,7 @@ exports.listOS = ({ status } = {}) => {
 };
 
 // Cria OS
-exports.createOS = ({ equipamento, descricao, tipo, opened_by }) => {
+exports.createOS = ({ equipamento, descricao, tipo = "CORRETIVA", opened_by }) => {
   const res = db.prepare(`
     INSERT INTO os (equipamento, descricao, tipo, status, custo_total, opened_by, opened_at)
     VALUES (?, ?, ?, 'ABERTA', 0, ?, datetime('now'))
@@ -30,21 +30,31 @@ exports.createOS = ({ equipamento, descricao, tipo, opened_by }) => {
   return res.lastInsertRowid;
 };
 
-// Busca OS por id
+// Busca por id
 exports.getOSById = (id) => {
   return db.prepare(`
     SELECT
-      id, equipamento, descricao, tipo, status, custo_total, opened_by, closed_by, opened_at, closed_at
+      id, equipamento, descricao, tipo, status, custo_total,
+      opened_by, closed_by, opened_at, closed_at
     FROM os
     WHERE id = ?
   `).get(id);
 };
 
-// Fechar OS (opcional — já deixo pronto pq você vai precisar)
+// Atualiza status (ANDAMENTO / PAUSADA / CONCLUIDA / CANCELADA)
+exports.updateStatus = ({ id, status }) => {
+  return db.prepare(`
+    UPDATE os
+    SET status = ?
+    WHERE id = ?
+  `).run(status, id);
+};
+
+// Fecha OS (marca como CONCLUIDA e fecha data)
 exports.closeOS = ({ id, closed_by, custo_total = 0 }) => {
   return db.prepare(`
     UPDATE os
-    SET status = 'FECHADA',
+    SET status = 'CONCLUIDA',
         closed_by = ?,
         custo_total = ?,
         closed_at = datetime('now')
