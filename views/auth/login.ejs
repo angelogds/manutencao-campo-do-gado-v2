@@ -1,24 +1,20 @@
-<div class="box">
-  <h2>Login</h2>
-  <p>Sistema de Manutenção – Campo do Gado</p>
+<section class="auth">
+  <div class="card auth-card">
+    <h1>Entrar</h1>
+    <p class="muted">Acesse o sistema de manutenção.</p>
 
-  <form method="POST" action="/login">
-    <div>
-      <label>Email</label><br />
-      <input type="email" name="email" required style="width:100%;padding:8px;" />
-    </div>
+    <form method="POST" action="/login" class="form">
+      <label class="label">Email</label>
+      <input class="input" type="email" name="email" required placeholder="admin@campodogado.local" />
 
-    <br />
+      <label class="label">Senha</label>
+      <input class="input" type="password" name="password" required placeholder="••••••••" />
 
-    <div>
-      <label>Senha</label><br />
-      <input type="password" name="password" required style="width:100%;padding:8px;" />
-    </div>
+      <button class="btn btn-primary" type="submit">Entrar</button>
 
-    <br />
-
-    <button style="padding:10px 20px;background:#0a7a3d;color:#fff;border:none;border-radius:4px;">
-      Entrar
-    </button>
-  </form>
-</div>
+      <div class="hint">
+        <strong>Admin padrão:</strong> admin@campodogado.local / admin123
+      </div>
+    </form>
+  </div>
+</section>
