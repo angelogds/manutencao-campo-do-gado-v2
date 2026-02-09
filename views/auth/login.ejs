@@ -1,20 +1,21 @@
+<% layout('layout') %>
+
 <section class="auth">
   <div class="card auth-card">
-    <h1>Entrar</h1>
-    <p class="muted">Acesse o sistema de manutenção.</p>
+    <h2>Entrar</h2>
 
-    <form method="POST" action="/login" class="form">
-      <label class="label">Email</label>
-      <input class="input" type="email" name="email" required placeholder="admin@campodogado.local" />
+    <% if (flash.error.length) { %>
+      <div class="alert alert-error"><%= flash.error[0] %></div>
+    <% } %>
 
-      <label class="label">Senha</label>
-      <input class="input" type="password" name="password" required placeholder="••••••••" />
+    <form action="/login" method="POST">
+      <label>Email</label>
+      <input type="email" name="email" required />
 
-      <button class="btn btn-primary" type="submit">Entrar</button>
+      <label>Senha</label>
+      <input type="password" name="password" required />
 
-      <div class="hint">
-        <strong>Admin padrão:</strong> admin@campodogado.local / admin123
-      </div>
+      <button type="submit">Entrar</button>
     </form>
   </div>
 </section>
