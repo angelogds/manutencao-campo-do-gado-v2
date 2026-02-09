@@ -1,0 +1,53 @@
+<% layout("layout") %>
+
+<h1>Compra #<%= compra.id %></h1>
+
+<p><strong>Solicitação vinculada:</strong> <%= compra.solicitacao_id || "-" %></p>
+<p><strong>Fornecedor:</strong> <%= compra.fornecedor || "-" %></p>
+<p><strong>Status:</strong> <%= compra.status %></p>
+<p><strong>Data compra:</strong> <%= compra.data_compra || "-" %></p>
+<p><strong>Data recebimento:</strong> <%= compra.data_recebimento || "-" %></p>
+<p><strong>Criada em:</strong> <%= compra.created_at || "-" %></p>
+<p><strong>Observação:</strong> <%= compra.observacao || "-" %></p>
+
+<form method="POST" action="/compras/<%= compra.id %>/status" style="margin:12px 0;">
+  <label>Atualizar status:</label>
+  <select name="status">
+    <option value="em_andamento" <%= compra.status==='em_andamento'?'selected':'' %>>em_andamento</option>
+    <option value="recebida" <%= compra.status==='recebida'?'selected':'' %>>recebida</option>
+    <option value="cancelada" <%= compra.status==='cancelada'?'selected':'' %>>cancelada</option>
+  </select>
+  <button type="submit">Salvar</button>
+</form>
+
+<h3>Itens comprados</h3>
+<table border="1" cellpadding="6">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Descrição</th>
+      <th>Qtd</th>
+      <th>Un</th>
+      <th>Custo Unit</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if (!compra.itens || compra.itens.length === 0) { %>
+      <tr><td colspan="5">Sem itens (vamos implementar depois).</td></tr>
+    <% } else { %>
+      <% compra.itens.forEach(i => { %>
+        <tr>
+          <td><%= i.id %></td>
+          <td><%= i.descricao %></td>
+          <td><%= i.quantidade %></td>
+          <td><%= i.unidade %></td>
+          <td><%= i.custo_unit %></td>
+        </tr>
+      <% }) %>
+    <% } %>
+  </tbody>
+</table>
+
+<p style="margin-top:14px;">
+  <a href="/compras">← voltar</a>
+</p>
