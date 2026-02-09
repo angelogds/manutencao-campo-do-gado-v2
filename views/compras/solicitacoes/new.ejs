@@ -1,0 +1,41 @@
+<% layout('layout') %>
+
+<style>
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; max-width:900px; }
+  .muted{ color:#6b7280; }
+  .row{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  input,select,textarea{ padding:10px 12px; border:1px solid #e5e7eb; border-radius:12px; font-size:14px; }
+  textarea{ min-height:110px; }
+  .btn{ display:inline-block; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; font-weight:800; cursor:pointer; }
+  .actions{ display:flex; gap:10px; margin-top:12px; }
+  @media (max-width: 760px){ .row{ grid-template-columns:1fr; } }
+</style>
+
+<h1>Nova Solicitação</h1>
+<p class="muted" style="margin-top:-6px;">Crie uma solicitação de compra (itens serão adicionados em seguida).</p>
+
+<div class="card">
+  <form method="post" action="/solicitacoes">
+    <div class="row">
+      <div class="field">
+        <label>Solicitante</label>
+        <input name="solicitante" placeholder="Ex: Manutenção" />
+      </div>
+      <div class="field">
+        <label>Setor</label>
+        <input name="setor" placeholder="Ex: Caldeiras / Prensas / Digestores" />
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:12px;">
+      <label>Observação</label>
+      <textarea name="observacao" placeholder="Descreva o motivo ou contexto..."></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="btn" type="submit">Salvar</button>
+      <a class="btn" href="/compras">Voltar</a>
+    </div>
+  </form>
+</div>
