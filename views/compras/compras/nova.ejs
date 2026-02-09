@@ -1,0 +1,44 @@
+<% layout("layout") %>
+
+<h1>Nova Compra</h1>
+
+<form method="POST" action="/compras">
+  <div>
+    <label>Vincular a Solicitação (opcional)</label><br/>
+    <select name="solicitacao_id">
+      <option value="">-- sem vínculo --</option>
+      <% (solicitacoes || []).forEach(s => { %>
+        <option value="<%= s.id %>">#<%= s.id %> - <%= s.status %> - <%= s.setor || "-" %></option>
+      <% }) %>
+    </select>
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Fornecedor</label><br/>
+    <input name="fornecedor" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Status</label><br/>
+    <select name="status">
+      <option value="em_andamento" selected>em_andamento</option>
+      <option value="recebida">recebida</option>
+      <option value="cancelada">cancelada</option>
+    </select>
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Data da compra</label><br/>
+    <input name="data_compra" placeholder="YYYY-MM-DD" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Observação</label><br/>
+    <textarea name="observacao" rows="3" cols="60"></textarea>
+  </div>
+
+  <div style="margin-top:12px;">
+    <button type="submit">Salvar</button>
+    <a href="/compras">Cancelar</a>
+  </div>
+</form>
