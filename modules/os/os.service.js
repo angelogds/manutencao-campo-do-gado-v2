@@ -1,52 +1,73 @@
+// modules/os/os.service.js
 const db = require("../../database/db");
 
-exports.listOS = ({ status }) => {
+function list() {
   return db
     .prepare(
-      `
-    SELECT
-      id, equipamento, tipo, status, opened_at
-    FROM os
-    WHERE status = ?
-    ORDER BY id DESC
-  `
+      `SELECT
+         id,
+         equipamento,
+         descricao,
+         tipo,
+         status,
+         custo_total,
+         opened_by,
+         closed_by,
+         opened_at,
+         closed_at
+       FROM os
+       ORDER BY id DESC
+       LIMIT 200`
     )
-    .all(status);
-};
+    .all();
+}
 
-exports.createOS = ({ equipamento, descricao, tipo, opened_by }) => {
-  const res = db
-    .prepare(
-      `
-    INSERT INTO os (equipamento, descricao, tipo, status, opened_by, opened_at)
-    VALUES (?, ?, ?, 'ABERTA', ?, datetime('now'))
-  `
-    )
-    .run(equipamento, descricao, tipo || "CORRETIVA", opened_by);
-
-  return res.lastInsertRowid;
-};
-
-exports.getOSById = (id) => {
+function getById(id) {
   return db
     .prepare(
-      `
-    SELECT
-      id, equipamento, descricao, tipo, status, opened_by, opened_at, closed_by, closed_at, custo_total
-    FROM os
-    WHERE id = ?
-  `
+      `SELECT
+         id,
+         equipamento,
+         descricao,
+         tipo,
+         status,
+         custo_total,
+         opened_by,
+         closed_by,
+         opened_at,
+         closed_at
+       FROM os
+       WHERE id = ?`
     )
     .get(id);
-};
+}
 
-exports.updateStatus = ({ id, status, closed_by }) => {
-  // Se concluir/cancelar -> fecha
-  if (["CONCLUIDA", "CANCELADA"].includes(status)) {
+function create({ equipamento, descricao, tipo, opened_by }) {
+  const stmt = db.prepare(
+    `INSERT INTO os (equipamento, descricao, tipo, opened_by)
+     VALUES (?, ?, ?, ?)`
+  );
+  const info = stmt.run(equipamento, descricao, tipo || "CORRETIVA", opened_by);
+  return info.lastInsertRowid;
+}
+
+function updateStatus(id, status, closed_by) {
+  const st = String(status).toUpperCase();
+
+  // Se status final, fecha
+  const isFinal = st === "CONCLUIDA" || st === "CANCELADA";
+
+  if (isFinal) {
     db.prepare(
-      `UPDATE os SET status=?, closed_by=?, closed_at=datetime('now') WHERE id=?`
-    ).run(status, closed_by, id);
+      `UPDATE os
+       SET status = ?,
+           closed_by = ?,
+           closed_at = datetime('now')
+       WHERE id = ?`
+    ).run(st, closed_by, id);
   } else {
-    db.prepare(`UPDATE os SET status=? WHERE id=?`).run(status, id);
+    db.prepare(`UPDATE os SET status = ? WHERE id = ?`).run(st, id);
   }
-};
+}
+
+module.exports = { list, getById, create, updateStatus };
