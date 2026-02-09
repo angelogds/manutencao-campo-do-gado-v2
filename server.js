@@ -1,64 +1,56 @@
-// Carrega .env só fora de produção (no Railway, use Variables)
-if (process.env.NODE_ENV !== "production") {
-  require("dotenv").config();
-}
+require("dotenv").config();
+require("./database/migrate");
 
 const express = require("express");
-const session = require("express-session");
-const flash = require("connect-flash");
 const path = require("path");
-
-const { requireLogin } = require("./modules/auth/auth.middleware");
-
-// ✅ DB (better-sqlite3) do seu projeto (ajuste o caminho se necessário)
-const db = require("./database/db");
-
-// ✅ Store de sessão em SQLite (não usa MemoryStore)
-const SqliteStoreFactory = require("better-sqlite3-session-store")(session);
-const sessionStore = new SqliteStoreFactory({
-  client: db,
-  expired: {
-    clear: true,
-    intervalMs: 15 * 60 * 1000, // 15 min
-  },
-});
+const session = require("express-session"); // ✅ IMPORT
+const flash = require("connect-flash");     // ✅ IMPORT
 
 const app = express();
-app.set("trust proxy", 1);
 
-app.set("view engine", "ejs");
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
 app.set("views", path.join(__dirname, "views"));
-app.use(express.urlencoded({ extended: true }));
-app.use("/public", express.static(path.join(__dirname, "public")));
+app.set("view engine", "ejs");
 
+// ✅ Sessão e flash precisam vir ANTES das rotas
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || "dev",
+    secret: process.env.SESSION_SECRET || "dev-secret",
     resave: false,
     saveUninitialized: false,
-    store: sessionStore,
-    cookie: {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
-    },
   })
 );
 
 app.use(flash());
+
+// ✅ Variáveis globais para as views (EJS)
 app.use((req, res, next) => {
-  res.locals.user = req.session.user || null;
-  res.locals.messages = req.flash();
+  res.locals.user = req.session?.user || null;
+  res.locals.flash = {
+    success: req.flash("success"),
+    error: req.flash("error"),
+  };
   next();
 });
 
-app.use("/", require("./modules/auth/auth.routes"));
-app.use("/dashboard", requireLogin, require("./modules/dashboard/dashboard.routes"));
-app.use("/solicitacoes", requireLogin, require("./modules/compras/solicitacoes.routes"));
-app.use("/compras", requireLogin, require("./modules/compras/compras.routes"));
-app.use("/os", requireLogin, require("./modules/os/os.routes"));
-app.use("/admin/users", requireLogin, require("./modules/usuarios/usuarios.routes"));
+// ✅ Rota principal do sistema
+app.get("/", (req, res) => {
+  if (req.session?.user) return res.redirect("/dashboard");
+  return res.redirect("/login");
+});
 
-app.get("/", (req, res) => res.redirect("/dashboard"));
-app.listen(process.env.PORT || 3000, () => console.log("Running"));
+// ✅ Health check (se quiser testar no Railway)
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    app: "manutencao-campo-do-gado-v2",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Servidor ativo na porta ${port}`);
+});
