@@ -1,23 +1,33 @@
 <% layout("layout") %>
 
 <h1>Ordens de Serviço</h1>
+<p><a href="/os/nova">+ Abrir OS</a></p>
 
-<a href="/os/nova" class="btn">Nova OS</a>
-
-<table>
-  <tr>
-    <th>ID</th>
-    <th>Título</th>
-    <th>Status</th>
-    <th>Data</th>
-  </tr>
-
-  <% itens.forEach(os => { %>
+<table border="1" cellpadding="6">
+  <thead>
     <tr>
-      <td><%= os.id %></td>
-      <td><%= os.titulo %></td>
-      <td><%= os.status || "Aberta" %></td>
-      <td><%= os.created_at %></td>
+      <th>ID</th>
+      <th>Equipamento</th>
+      <th>Tipo</th>
+      <th>Status</th>
+      <th>Abertura</th>
+      <th></th>
     </tr>
-  <% }) %>
+  </thead>
+  <tbody>
+    <% if (!lista || lista.length === 0) { %>
+      <tr><td colspan="6">Nenhuma OS cadastrada.</td></tr>
+    <% } else { %>
+      <% lista.forEach(o => { %>
+        <tr>
+          <td><%= o.id %></td>
+          <td><%= o.equipamento %></td>
+          <td><%= o.tipo %></td>
+          <td><%= o.status %></td>
+          <td><%= o.opened_at || "-" %></td>
+          <td><a href="/os/<%= o.id %>">ver</a></td>
+        </tr>
+      <% }) %>
+    <% } %>
+  </tbody>
 </table>
