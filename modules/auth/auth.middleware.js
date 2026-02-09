@@ -1,3 +1,5 @@
+const { hasAnyRole } = require("../../utils/security/permissions");
+
 function requireLogin(req, res, next) {
   if (req.session?.user) return next();
   req.flash("error", "Faça login para continuar.");
@@ -11,7 +13,8 @@ function requireRole(allowedRoles = []) {
       req.flash("error", "Faça login para continuar.");
       return res.redirect("/login");
     }
-    if (allowedRoles.includes(user.role)) return next();
+    if (hasAnyRole(user, allowedRoles)) return next();
+
     req.flash("error", "Você não tem permissão para acessar esta área.");
     return res.redirect("/dashboard");
   };
