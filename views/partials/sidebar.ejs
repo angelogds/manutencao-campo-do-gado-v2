@@ -1,0 +1,10 @@
+<aside class="sidebar">
+  <% if (!user) { %>
+    <div class="side-title">Acesso</div>
+    <a class="nav" href="/login">Login</a>
+  <% } else { %>
+    <div class="side-title">Menu</div>
+    <a class="nav" href="/dashboard">Dashboard</a>
+    <a class="nav" href="/logout">Sair</a>
+  <% } %>
+</aside>
