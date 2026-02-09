@@ -1,10 +1,33 @@
+<%- include("./permissions") %>
+
 <aside class="sidebar">
-  <% if (!user) { %>
-    <div class="side-title">Acesso</div>
-    <a class="nav" href="/login">Login</a>
-  <% } else { %>
-    <div class="side-title">Menu</div>
-    <a class="nav" href="/dashboard">Dashboard</a>
-    <a class="nav" href="/logout">Sair</a>
-  <% } %>
+  <div class="sidebar__brand">
+    <div class="logo">Campo do Gado</div>
+    <div class="role"><%= user ? user.role : "" %></div>
+  </div>
+
+  <nav class="sidebar__nav">
+    <a href="/dashboard">Dashboard</a>
+
+    <% if (hasAnyRole(["ADMIN","MANUTENCAO","RH"])) { %>
+      <a href="/os">Ordens de Serviço</a>
+    <% } %>
+
+    <% if (hasAnyRole(["ADMIN","MANUTENCAO"])) { %>
+      <a href="/solicitacoes">Solicitações</a>
+    <% } %>
+
+    <% if (hasAnyRole(["ADMIN","COMPRAS"])) { %>
+      <a href="/compras">Compras</a>
+      <a href="/estoque">Estoque</a>
+    <% } %>
+
+    <% if (hasAnyRole(["ADMIN","DIRECAO"])) { %>
+      <a href="/dashboard/custos">Custos</a>
+    <% } %>
+
+    <% if (hasAnyRole(["ADMIN"])) { %>
+      <a href="/admin/users">Usuários</a>
+    <% } %>
+  </nav>
 </aside>
