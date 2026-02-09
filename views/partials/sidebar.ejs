@@ -1,33 +1,47 @@
-<%- include("./permissions") %>
-
 <aside class="sidebar">
-  <div class="sidebar__brand">
-    <div class="logo">Campo do Gado</div>
-    <div class="role"><%= user ? user.role : "" %></div>
+  <div class="sidebar-head">
+    <div class="logo">
+      <span class="logo-mark">CG</span>
+      <span class="logo-text">Campo do Gado</span>
+    </div>
   </div>
 
-  <nav class="sidebar__nav">
-    <a href="/dashboard">Dashboard</a>
+  <nav class="menu">
+    <% if (user) { %>
+      <a class="menu-item" href="/dashboard">Dashboard</a>
 
-    <% if (hasAnyRole(["ADMIN","MANUTENCAO","RH"])) { %>
-      <a href="/os">Ordens de Serviço</a>
-    <% } %>
+      <% if (["ADMIN","MANUTENCAO","RH"].includes(user.role)) { %>
+        <a class="menu-item" href="/os">Ordens de Serviço</a>
+      <% } %>
 
-    <% if (hasAnyRole(["ADMIN","MANUTENCAO"])) { %>
-      <a href="/solicitacoes">Solicitações</a>
-    <% } %>
+      <% if (["ADMIN","MANUTENCAO"].includes(user.role)) { %>
+        <a class="menu-item" href="/compras/solicitacoes">Solicitações de Compra</a>
+      <% } %>
 
-    <% if (hasAnyRole(["ADMIN","COMPRAS"])) { %>
-      <a href="/compras">Compras</a>
-      <a href="/estoque">Estoque</a>
-    <% } %>
+      <% if (["ADMIN","COMPRAS"].includes(user.role)) { %>
+        <a class="menu-item" href="/compras">Compras (Inbox)</a>
+        <a class="menu-item" href="/estoque">Estoque</a>
+      <% } %>
 
-    <% if (hasAnyRole(["ADMIN","DIRECAO"])) { %>
-      <a href="/dashboard/custos">Custos</a>
-    <% } %>
+      <% if (["ADMIN","DIRECAO"].includes(user.role)) { %>
+        <a class="menu-item" href="/dashboard/custos">Custos (Leitura)</a>
+      <% } %>
 
-    <% if (hasAnyRole(["ADMIN"])) { %>
-      <a href="/admin/users">Usuários</a>
+      <% if (["ADMIN","RH"].includes(user.role)) { %>
+        <a class="menu-item" href="/nao-conformidades">NC / NR12</a>
+      <% } %>
+
+      <% if (["ADMIN"].includes(user.role)) { %>
+        <div class="menu-sep"></div>
+        <div class="menu-title">Admin</div>
+        <a class="menu-item" href="/admin/users">Usuários</a>
+      <% } %>
+    <% } else { %>
+      <a class="menu-item" href="/login">Login</a>
     <% } %>
   </nav>
+
+  <div class="sidebar-foot">
+    <small>© <%= new Date().getFullYear() %> Campo do Gado</small>
+  </div>
 </aside>
