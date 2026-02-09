@@ -1,14 +1,13 @@
 const express = require("express");
 const router = express.Router();
 
-const { requireLogin, requireRole } = require("../auth/auth.middleware");
-const { ROLES } = require("../../utils/security/permissions");
+const { requireLogin } = require("../auth/auth.middleware");
+const controller = require("./os.controller");
 
-router.get(
-  "/os",
-  requireLogin,
-  requireRole([ROLES.ADMIN, ROLES.MANUTENCAO, ROLES.RH]),
-  (req, res) => res.render("os/index", { title: "Ordens de Serviço" })
-);
+// prefixo /os
+router.get("/os", requireLogin, controller.list);
+router.get("/os/new", requireLogin, controller.newForm);
+router.post("/os", requireLogin, controller.create);
+router.get("/os/:id", requireLogin, controller.view);
 
 module.exports = router;
