@@ -4,17 +4,15 @@ function requireLogin(req, res, next) {
   return res.redirect("/login");
 }
 
-function requireRole(roles = []) {
+function requireRole(allowedRoles = []) {
   return (req, res, next) => {
     const user = req.session?.user;
     if (!user) {
       req.flash("error", "Faça login para continuar.");
       return res.redirect("/login");
     }
-    if (roles.length === 0) return next();
-    if (roles.includes(user.role)) return next();
-
-    req.flash("error", "Você não tem permissão para acessar essa área.");
+    if (allowedRoles.includes(user.role)) return next();
+    req.flash("error", "Você não tem permissão para acessar esta área.");
     return res.redirect("/dashboard");
   };
 }
