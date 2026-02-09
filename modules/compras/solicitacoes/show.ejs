@@ -1,0 +1,53 @@
+<% layout("layout") %>
+
+<h1>Solicitação #<%= solicitacao.id %></h1>
+
+<p><strong>Solicitante:</strong> <%= solicitacao.solicitante || "-" %></p>
+<p><strong>Setor:</strong> <%= solicitacao.setor || "-" %></p>
+<p><strong>Status:</strong> <%= solicitacao.status %></p>
+<p><strong>Criada em:</strong> <%= solicitacao.created_at || "-" %></p>
+<p><strong>Observação:</strong> <%= solicitacao.observacao || "-" %></p>
+
+<form method="POST" action="/solicitacoes/<%= solicitacao.id %>/status" style="margin:12px 0;">
+  <label>Atualizar status:</label>
+  <select name="status">
+    <option value="aberta" <%= solicitacao.status==='aberta'?'selected':'' %>>aberta</option>
+    <option value="cotacao" <%= solicitacao.status==='cotacao'?'selected':'' %>>cotacao</option>
+    <option value="aprovada" <%= solicitacao.status==='aprovada'?'selected':'' %>>aprovada</option>
+    <option value="comprada" <%= solicitacao.status==='comprada'?'selected':'' %>>comprada</option>
+    <option value="recebida" <%= solicitacao.status==='recebida'?'selected':'' %>>recebida</option>
+    <option value="cancelada" <%= solicitacao.status==='cancelada'?'selected':'' %>>cancelada</option>
+  </select>
+  <button type="submit">Salvar</button>
+</form>
+
+<h3>Itens</h3>
+<table border="1" cellpadding="6">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Descrição</th>
+      <th>Qtd</th>
+      <th>Un</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if (!solicitacao.itens || solicitacao.itens.length === 0) { %>
+      <tr><td colspan="4">Sem itens.</td></tr>
+    <% } else { %>
+      <% solicitacao.itens.forEach(i => { %>
+        <tr>
+          <td><%= i.id %></td>
+          <td><%= i.descricao %></td>
+          <td><%= i.quantidade %></td>
+          <td><%= i.unidade %></td>
+        </tr>
+      <% }) %>
+    <% } %>
+  </tbody>
+</table>
+
+<p style="margin-top:14px;">
+  <a href="/solicitacoes">← voltar</a> |
+  <a href="/compras/nova">Criar compra</a>
+</p>
