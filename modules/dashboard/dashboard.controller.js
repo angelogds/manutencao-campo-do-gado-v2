@@ -1,11 +1,13 @@
 // modules/dashboard/dashboard.controller.js
-const service = require("./dashboard.service");
+const dashboardService = require("./dashboard.service");
 
-exports.index = (req, res) => {
-  const counters = service.getCounters();
+function dashboardIndex(req, res) {
+  const counters = dashboardService.getCounters();
 
   return res.render("dashboard/index", {
     title: "Dashboard",
     counters,
   });
-};
+}
+
+module.exports = { dashboardIndex };
