@@ -2,34 +2,11 @@
 
 <h1>Dashboard</h1>
 
-<div class="cards">
-  <div class="card">
-    <h3>OS Abertas</h3>
-    <p><strong><%= counters.osAbertas %></strong></p>
-  </div>
-
-  <div class="card">
-    <h3>OS Andamento</h3>
-    <p><strong><%= counters.osAndamento %></strong></p>
-  </div>
-
-  <div class="card">
-    <h3>OS Pausadas</h3>
-    <p><strong><%= counters.osPausada %></strong></p>
-  </div>
-
-  <div class="card">
-    <h3>OS Concluídas</h3>
-    <p><strong><%= counters.osConcluida %></strong></p>
-  </div>
-
-  <div class="card">
-    <h3>Compras Pendentes</h3>
-    <p><strong><%= counters.comprasPendentes %></strong></p>
-  </div>
-
-  <div class="card">
-    <h3>Itens em Estoque</h3>
-    <p><strong><%= counters.itensEstoque %></strong></p>
-  </div>
-</div>
+<ul>
+  <li>OS Abertas: <strong><%= counters.osAbertas %></strong></li>
+  <li>OS Andamento: <strong><%= counters.osAndamento %></strong></li>
+  <li>OS Pausadas: <strong><%= counters.osPausada %></strong></li>
+  <li>OS Concluídas: <strong><%= counters.osConcluida %></strong></li>
+  <li>Compras Pendentes: <strong><%= counters.comprasPendentes %></strong></li>
+  <li>Itens no Estoque: <strong><%= counters.itensEstoque %></strong></li>
+</ul>
