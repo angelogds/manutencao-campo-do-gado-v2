@@ -1,13 +1,9 @@
-const express = require("express");
+vconst express = require("express");
 const router = express.Router();
 
+const { requireLogin } = require("../auth/auth.middleware");
 const ctrl = require("./dashboard.controller");
-const { requireAuth } = require("../auth/auth.middleware");
 
-// Dashboard (página)
-router.get("/dashboard", requireAuth, ctrl.index);
-
-// (Opcional) página inicial redireciona
-router.get("/home", requireAuth, (_req, res) => res.redirect("/dashboard"));
+router.get("/dashboard", requireLogin, ctrl.dashboardIndex);
 
 module.exports = router;
