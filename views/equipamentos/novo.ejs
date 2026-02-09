@@ -1,0 +1,47 @@
+<% layout("layout") %>
+
+<h1>Novo Equipamento</h1>
+
+<form method="POST" action="/equipamentos">
+  <div>
+    <label>Código</label><br/>
+    <input name="codigo" placeholder="EX: DIG-LAR" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Nome *</label><br/>
+    <input name="nome" required style="width:420px;" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Setor</label><br/>
+    <input name="setor" placeholder="Digestores/Caldeiras/Prensas..." />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Tipo</label><br/>
+    <input name="tipo" placeholder="digestor/caldeira/prensa..." />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Criticidade</label><br/>
+    <select name="criticidade">
+      <option value="baixa">baixa</option>
+      <option value="media" selected>media</option>
+      <option value="alta">alta</option>
+    </select>
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Ativo</label><br/>
+    <select name="ativo">
+      <option value="1" selected>Sim</option>
+      <option value="0">Não</option>
+    </select>
+  </div>
+
+  <div style="margin-top:12px;">
+    <button type="submit">Salvar</button>
+    <a href="/equipamentos">Cancelar</a>
+  </div>
+</form>
