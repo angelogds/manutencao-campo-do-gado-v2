@@ -2,18 +2,43 @@
 const express = require("express");
 const router = express.Router();
 
-const { requireLogin } = require("../auth/auth.middleware");
-
-// IMPORTA A FUNÇÃO DIRETO (evita controller.index undefined)
-const { dashboardIndex } = require("./dashboard.controller");
-
-// Se não for função, explode com erro claro (melhor que [object Undefined])
-if (typeof dashboardIndex !== "function") {
-  throw new Error(
-    "dashboard.controller não exportou dashboardIndex. Confira exports em dashboard.controller.js"
-  );
+// --- middleware requireLogin (blindado)
+let requireLogin = null;
+try {
+  const authMw = require("../auth/auth.middleware");
+  requireLogin = authMw.requireLogin;
+} catch (e) {
+  console.error("❌ Falha ao carregar auth.middleware:", e.message);
 }
 
-router.get("/dashboard", requireLogin, dashboardIndex);
+// --- controller (blindado)
+let dashboardIndex = null;
+try {
+  const ctrl = require("./dashboard.controller");
+  dashboardIndex = ctrl.dashboardIndex;
+  console.log("✅ dashboard.controller exports:", Object.keys(ctrl));
+} catch (e) {
+  console.error("❌ Falha ao carregar dashboard.controller:", e.message);
+}
+
+// --- fallback: NUNCA deixe undefined chegar no router.get
+const safeRequireLogin =
+  typeof requireLogin === "function"
+    ? requireLogin
+    : (req, res, next) => {
+        console.error("❌ requireLogin está indefinido (auth.middleware export errado).");
+        return res.status(500).send("Erro interno: requireLogin indefinido.");
+      };
+
+const safeDashboardIndex =
+  typeof dashboardIndex === "function"
+    ? dashboardIndex
+    : (req, res) => {
+        console.error("❌ dashboardIndex está indefinido (dashboard.controller export errado).");
+        return res.status(500).send("Erro interno: dashboardIndex indefinido.");
+      };
+
+// Rota dashboard
+router.get("/dashboard", safeRequireLogin, safeDashboardIndex);
 
 module.exports = router;
