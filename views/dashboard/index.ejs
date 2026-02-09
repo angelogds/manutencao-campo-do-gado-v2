@@ -1,24 +1,35 @@
 <% layout("layout") %>
 
 <h1>Dashboard</h1>
-<p>Bem-vindo, <strong><%= user.nome %></strong>. Perfil: <%= user.role %></p>
 
 <div class="cards">
   <div class="card">
-    <h3>Ordens de Serviço</h3>
-    <p>Acompanhe OS abertas, em andamento e concluídas.</p>
-    <a href="/os" class="btn">Abrir OS</a>
+    <h3>OS Abertas</h3>
+    <p><strong><%= counters.osAbertas %></strong></p>
   </div>
 
   <div class="card">
-    <h3>Compras</h3>
-    <p>Solicitações, cotações e recebimentos.</p>
-    <a href="/compras" class="btn">Ir para Compras</a>
+    <h3>OS Andamento</h3>
+    <p><strong><%= counters.osAndamento %></strong></p>
   </div>
 
   <div class="card">
-    <h3>Estoque</h3>
-    <p>Controle de itens e custos.</p>
-    <a href="/estoque" class="btn">Ver Estoque</a>
+    <h3>OS Pausadas</h3>
+    <p><strong><%= counters.osPausada %></strong></p>
+  </div>
+
+  <div class="card">
+    <h3>OS Concluídas</h3>
+    <p><strong><%= counters.osConcluida %></strong></p>
+  </div>
+
+  <div class="card">
+    <h3>Compras Pendentes</h3>
+    <p><strong><%= counters.comprasPendentes %></strong></p>
+  </div>
+
+  <div class="card">
+    <h3>Itens em Estoque</h3>
+    <p><strong><%= counters.itensEstoque %></strong></p>
   </div>
 </div>
