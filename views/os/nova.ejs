@@ -1,1 +1,30 @@
-<form method=post><input name=equipamento><textarea name=descricao></textarea><input name=tipo><button>Abrir</button></form>
+<% layout("layout") %>
+
+<h1>Abrir OS</h1>
+
+<form method="POST" action="/os">
+  <div>
+    <label>Equipamento *</label><br/>
+    <input name="equipamento" required style="width:420px;" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Tipo</label><br/>
+    <select name="tipo">
+      <option value="CORRETIVA" selected>CORRETIVA</option>
+      <option value="PREVENTIVA">PREVENTIVA</option>
+      <option value="NR12">NR12</option>
+      <option value="OUTRA">OUTRA</option>
+    </select>
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Descrição *</label><br/>
+    <textarea name="descricao" required rows="5" cols="70"></textarea>
+  </div>
+
+  <div style="margin-top:12px;">
+    <button type="submit">Salvar</button>
+    <a href="/os">Cancelar</a>
+  </div>
+</form>
