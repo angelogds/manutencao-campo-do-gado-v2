@@ -1,14 +1,23 @@
 <header class="topbar">
-  <div class="brand">
-    <span class="dot"></span>
-    <strong>Campo do Gado</strong>
-    <small>Manutenção V2</small>
+  <div class="topbar-left">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <div>
+        <div class="brand-title">Manutenção Campo do Gado</div>
+        <div class="brand-subtitle">V2 • Gestão Industrial</div>
+      </div>
+    </div>
   </div>
 
-  <div class="top-actions">
+  <div class="topbar-right">
     <% if (user) { %>
-      <span class="user-pill"><%= user.name %> • <%= user.role %></span>
-      <a class="btn" href="/logout">Sair</a>
+      <div class="user-pill">
+        <span class="user-name"><%= user.name %></span>
+        <span class="user-role"><%= user.role %></span>
+      </div>
+      <a class="btn btn-outline" href="/logout">Sair</a>
+    <% } else { %>
+      <a class="btn btn-outline" href="/login">Entrar</a>
     <% } %>
   </div>
 </header>
