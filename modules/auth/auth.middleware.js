@@ -1,3 +1,4 @@
+// modules/auth/auth.middleware.js
 const { hasAnyRole } = require("../../utils/security/permissions");
 
 function requireLogin(req, res, next) {
@@ -7,7 +8,7 @@ function requireLogin(req, res, next) {
 }
 
 /**
- * Exige pelo menos 1 dos perfis permitidos.
+ * Permite qualquer um dos roles informados.
  * admin sempre passa.
  */
 function requireRole(allowedRoles = []) {
@@ -26,9 +27,7 @@ function requireRole(allowedRoles = []) {
   };
 }
 
-/**
- * Alias para deixar mais claro no código
- */
+// alias (mesma função)
 const requireAnyRole = requireRole;
 
 module.exports = { requireLogin, requireRole, requireAnyRole };
