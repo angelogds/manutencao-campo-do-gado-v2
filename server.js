@@ -3,7 +3,6 @@ if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
 
-// roda migrations ao subir
 require("./database/migrate");
 
 const express = require("express");
@@ -20,17 +19,17 @@ const estoqueRoutes = require("./modules/estoque/estoque.routes");
 const osRoutes = require("./modules/os/os.routes");
 const usuariosRoutes = require("./modules/usuarios/usuarios.routes");
 
-// ✅ session store em SQLite (remove MemoryStore warning)
+// ✅ session store em SQLite (remove warning do MemoryStore)
 const db = require("./database/db");
 const SqliteStoreFactory = require("better-sqlite3-session-store")(session);
 const sessionStore = new SqliteStoreFactory({
   client: db,
-  expired: { clear: true, intervalMs: 15 * 60 * 1000 }, // 15 min
+  expired: { clear: true, intervalMs: 15 * 60 * 1000 }, // 15min
 });
 
 const app = express();
 
-// ✅ Railway / HTTPS reverse proxy
+// ✅ Railway/Proxy: necessário para cookie secure funcionar corretamente
 app.set("trust proxy", 1);
 
 app.use(express.json());
@@ -49,11 +48,11 @@ app.use(
     secret: process.env.SESSION_SECRET || "dev-secret",
     resave: false,
     saveUninitialized: false,
-    store: sessionStore, // ✅ remove o warning MemoryStore
+    store: sessionStore,
     cookie: {
       httpOnly: true,
       sameSite: "lax",
-      // deixe controlado por variável pra não ter logout surpresa
+      // controle por variável (mais seguro que depender de NODE_ENV)
       secure: process.env.SESSION_SECURE_COOKIE === "true",
       maxAge: 1000 * 60 * 60 * 8, // 8h
     },
