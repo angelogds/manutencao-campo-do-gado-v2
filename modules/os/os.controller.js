@@ -1,33 +1,59 @@
-const db = require("../../database/db");
+const service = require("./os.service");
 
-function index(req, res) {
-  const itens = db.prepare("SELECT * FROM os ORDER BY id DESC").all();
-  return res.render("os/index", { title: "Ordens de Serviço", itens });
-}
+exports.list = (req, res) => {
+  const status = req.query.status || "ABERTA";
 
-function createForm(req, res) {
-  return res.render("os/create", { title: "Nova OS" });
-}
+  const items = service.listOS({ status });
 
-function create(req, res) {
-  const { titulo, descricao } = req.body;
+  return res.render("os/index", {
+    title: "Ordens de Serviço",
+    items,
+    status,
+  });
+};
 
-  if (!titulo) {
-    req.flash("error", "Informe o título.");
-    return res.redirect("/os/nova");
+exports.newForm = (req, res) => {
+  return res.render("os/new", {
+    title: "Abrir Ordem de Serviço",
+  });
+};
+
+exports.create = (req, res) => {
+  const { equipamento, descricao, tipo } = req.body;
+
+  if (!equipamento || !descricao) {
+    req.flash("error", "Informe o equipamento e a descrição.");
+    return res.redirect("/os/new");
   }
 
-  db.prepare(`
-    INSERT INTO os (titulo, descricao, created_at)
-    VALUES (?, ?, datetime('now'))
-  `).run(titulo, descricao || "");
+  try {
+    const id = service.createOS({
+      equipamento,
+      descricao,
+      tipo: tipo || "CORRETIVA",
+      opened_by: req.session.user.id,
+    });
 
-  req.flash("success", "OS criada com sucesso.");
-  return res.redirect("/os");
-}
+    req.flash("success", "Ordem de serviço aberta com sucesso.");
+    return res.redirect(`/os/${id}`);
+  } catch (err) {
+    console.error(err);
+    req.flash("error", "Erro ao abrir ordem de serviço.");
+    return res.redirect("/os/new");
+  }
+};
 
-module.exports = {
-  index,
-  createForm,
-  create,
+exports.view = (req, res) => {
+  const id = Number(req.params.id);
+  const os = service.getOSById(id);
+
+  if (!os) {
+    req.flash("error", "Ordem de serviço não encontrada.");
+    return res.redirect("/os");
+  }
+
+  return res.render("os/view", {
+    title: `OS #${os.id}`,
+    os,
+  });
 };
