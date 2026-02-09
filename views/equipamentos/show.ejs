@@ -1,0 +1,17 @@
+<% layout("layout") %>
+
+<h1>Equipamento #<%= equipamento.id %></h1>
+
+<p><strong>Código:</strong> <%= equipamento.codigo || "-" %></p>
+<p><strong>Nome:</strong> <%= equipamento.nome %></p>
+<p><strong>Setor:</strong> <%= equipamento.setor || "-" %></p>
+<p><strong>Tipo:</strong> <%= equipamento.tipo || "-" %></p>
+<p><strong>Criticidade:</strong> <%= equipamento.criticidade || "media" %></p>
+<p><strong>Ativo:</strong> <%= equipamento.ativo ? "Sim" : "Não" %></p>
+<p><strong>Criado em:</strong> <%= equipamento.created_at || "-" %></p>
+<p><strong>Atualizado em:</strong> <%= equipamento.updated_at || "-" %></p>
+
+<p style="margin-top:14px;">
+  <a href="/equipamentos">← voltar</a> |
+  <a href="/equipamentos/<%= equipamento.id %>/editar">Editar</a>
+</p>
