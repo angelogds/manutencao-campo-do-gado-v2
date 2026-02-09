@@ -1,0 +1,32 @@
+<h1>Usuários</h1>
+
+<div style="margin: 12px 0;">
+  <a class="btn" href="/admin/users/new">+ Novo Usuário</a>
+</div>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Nome</th>
+      <th>Email</th>
+      <th>Perfil</th>
+      <th>Criado em</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% users.forEach(u => { %>
+      <tr>
+        <td><%= u.id %></td>
+        <td><%= u.name %></td>
+        <td><%= u.email %></td>
+        <td><span class="badge"><%= u.role %></span></td>
+        <td><%= u.created_at %></td>
+        <td>
+          <a class="btn btn-small" href="/admin/users/<%= u.id %>/edit">Editar</a>
+        </td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
