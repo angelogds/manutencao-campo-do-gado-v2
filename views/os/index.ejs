@@ -1,41 +1,23 @@
+<% layout("layout") %>
+
 <h1>Ordens de Serviço</h1>
 
-<div style="display:flex; gap:10px; align-items:center; margin:12px 0;">
-  <a class="btn" href="/os/new">+ Abrir OS</a>
+<a href="/os/nova" class="btn">Nova OS</a>
 
-  <form method="GET" action="/os" style="display:flex; gap:8px;">
-    <select name="status">
-      <option value="ABERTA" <%= status==="ABERTA"?"selected":"" %>>Abertas</option>
-      <option value="ANDAMENTO" <%= status==="ANDAMENTO"?"selected":"" %>>Em andamento</option>
-      <option value="CONCLUIDA" <%= status==="CONCLUIDA"?"selected":"" %>>Concluídas</option>
-    </select>
-    <button class="btn btn-ghost" type="submit">Filtrar</button>
-  </form>
-</div>
+<table>
+  <tr>
+    <th>ID</th>
+    <th>Título</th>
+    <th>Status</th>
+    <th>Data</th>
+  </tr>
 
-<table class="table">
-  <thead>
+  <% itens.forEach(os => { %>
     <tr>
-      <th>#</th>
-      <th>Título</th>
-      <th>Setor</th>
-      <th>Prioridade</th>
-      <th>Status</th>
-      <th>Data</th>
-      <th></th>
+      <td><%= os.id %></td>
+      <td><%= os.titulo %></td>
+      <td><%= os.status || "Aberta" %></td>
+      <td><%= os.created_at %></td>
     </tr>
-  </thead>
-  <tbody>
-    <% items.forEach(o => { %>
-      <tr>
-        <td><%= o.id %></td>
-        <td><%= o.titulo %></td>
-        <td><%= o.setor %></td>
-        <td><span class="badge"><%= o.prioridade %></span></td>
-        <td><span class="badge"><%= o.status %></span></td>
-        <td><%= o.created_at %></td>
-        <td><a class="btn btn-small" href="/os/<%= o.id %>">Ver</a></td>
-      </tr>
-    <% }) %>
-  </tbody>
+  <% }) %>
 </table>
