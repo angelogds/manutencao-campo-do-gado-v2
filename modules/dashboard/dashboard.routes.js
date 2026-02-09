@@ -2,24 +2,12 @@
 const express = require("express");
 const router = express.Router();
 
-// middleware
-let requireLogin = null;
-try {
-  requireLogin = require("../auth/auth.middleware").requireLogin;
-} catch (e) {
-  console.error("❌ [dashboard] Falha ao carregar auth.middleware:", e.message);
-}
+const { requireLogin } = require("../auth/auth.middleware");
 
-const safeRequireLogin =
-  typeof requireLogin === "function"
-    ? requireLogin
-    : (_req, res) => res.status(500).send("Erro interno: requireLogin indefinido.");
-
-// controller
-let ctrl = {};
+let controller = {};
 try {
-  ctrl = require("./dashboard.controller");
-  console.log("✅ [dashboard] controller exports:", Object.keys(ctrl));
+  controller = require("./dashboard.controller");
+  console.log("✅ [dashboard] controller exports:", Object.keys(controller));
 } catch (e) {
   console.error("❌ [dashboard] Falha ao carregar dashboard.controller:", e.message);
 }
@@ -32,7 +20,7 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// rota
-router.get("/dashboard", safeRequireLogin, safe(ctrl.dashboardIndex, "dashboardIndex"));
+// ✅ aqui fica padronizado com dashboardIndex
+router.get("/dashboard", requireLogin, safe(controller.dashboardIndex, "dashboardIndex"));
 
 module.exports = router;
