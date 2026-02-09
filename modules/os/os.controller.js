@@ -1,59 +1,78 @@
+// modules/os/os.controller.js
 const service = require("./os.service");
 
-exports.list = (req, res) => {
-  const status = req.query.status || "ABERTA";
-
-  const items = service.listOS({ status });
-
+function osIndex(req, res) {
+  const lista = service.list();
   return res.render("os/index", {
-    title: "Ordens de Serviço",
-    items,
-    status,
+    title: "Ordem de Serviço (OS)",
+    lista,
   });
-};
+}
 
-exports.newForm = (req, res) => {
-  return res.render("os/new", {
-    title: "Abrir Ordem de Serviço",
+function osNewForm(req, res) {
+  return res.render("os/nova", {
+    title: "Abrir OS",
   });
-};
+}
 
-exports.create = (req, res) => {
+function osCreate(req, res) {
   const { equipamento, descricao, tipo } = req.body;
 
-  if (!equipamento || !descricao) {
-    req.flash("error", "Informe o equipamento e a descrição.");
-    return res.redirect("/os/new");
+  if (!equipamento || !equipamento.trim()) {
+    req.flash("error", "Informe o equipamento.");
+    return res.redirect("/os/nova");
+  }
+  if (!descricao || !descricao.trim()) {
+    req.flash("error", "Informe a descrição do serviço.");
+    return res.redirect("/os/nova");
   }
 
-  try {
-    const id = service.createOS({
-      equipamento,
-      descricao,
-      tipo: tipo || "CORRETIVA",
-      opened_by: req.session.user.id,
-    });
+  const id = service.create({
+    equipamento: equipamento.trim(),
+    descricao: descricao.trim(),
+    tipo: (tipo || "CORRETIVA").trim(),
+    opened_by: req.session?.user?.id || null,
+  });
 
-    req.flash("success", "Ordem de serviço aberta com sucesso.");
-    return res.redirect(`/os/${id}`);
-  } catch (err) {
-    console.error(err);
-    req.flash("error", "Erro ao abrir ordem de serviço.");
-    return res.redirect("/os/new");
-  }
-};
+  req.flash("success", "OS aberta com sucesso.");
+  return res.redirect(`/os/${id}`);
+}
 
-exports.view = (req, res) => {
+function osShow(req, res) {
   const id = Number(req.params.id);
-  const os = service.getOSById(id);
+  const os = service.getById(id);
 
   if (!os) {
-    req.flash("error", "Ordem de serviço não encontrada.");
-    return res.redirect("/os");
+    return res.status(404).render("errors/404", { title: "Não encontrado" });
   }
 
-  return res.render("os/view", {
+  return res.render("os/show", {
     title: `OS #${os.id}`,
     os,
   });
+}
+
+function osUpdateStatus(req, res) {
+  const id = Number(req.params.id);
+  const { status } = req.body;
+
+  if (!status || !String(status).trim()) {
+    req.flash("error", "Status inválido.");
+    return res.redirect(`/os/${id}`);
+  }
+
+  // Se concluiu/cancelou, marca closed_at e closed_by
+  const userId = req.session?.user?.id || null;
+  service.updateStatus(id, String(status).trim(), userId);
+
+  req.flash("success", "Status atualizado.");
+  return res.redirect(`/os/${id}`);
+}
+
+module.exports = {
+  osIndex,
+  osNewForm,
+  osCreate,
+  osShow,
+  osUpdateStatus,
 };
