@@ -1,23 +1,18 @@
-<!doctype html>
-<html lang="pt-br">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title><%= title ? `${title} | Campo do Gado` : "Campo do Gado" %></title>
-  <link rel="stylesheet" href="/css/app.css" />
-</head>
-<body>
-  <div class="app">
-    <%- include("./partials/sidebar") %>
+<% layout('layout') %>
 
-    <main class="main">
-      <%- include("./partials/header") %>
-      <div class="container">
-        <%- include("./partials/alerts") %>
-        <%- body %>
-      </div>
-      <%- include("./partials/footer") %>
-    </main>
+<section class="auth">
+  <div class="card auth-card">
+    <h1>Entrar</h1>
+    <p class="muted">Acesse o sistema de manutenção.</p>
+
+    <form method="POST" action="/login" class="form">
+      <label class="label">Email</label>
+      <input class="input" type="email" name="email" required />
+
+      <label class="label">Senha</label>
+      <input class="input" type="password" name="password" required />
+
+      <button class="btn btn-primary" type="submit">Entrar</button>
+    </form>
   </div>
-</body>
-</html>
+</section>
