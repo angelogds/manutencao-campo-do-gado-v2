@@ -1,3 +1,4 @@
+// modules/dashboard/dashboard.controller.js
 const service = require("./dashboard.service");
 
 exports.index = (req, res) => {
