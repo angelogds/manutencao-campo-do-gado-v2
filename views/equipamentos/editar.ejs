@@ -1,0 +1,47 @@
+<% layout("layout") %>
+
+<h1>Editar Equipamento #<%= equipamento.id %></h1>
+
+<form method="POST" action="/equipamentos/<%= equipamento.id %>">
+  <div>
+    <label>Código</label><br/>
+    <input name="codigo" value="<%= equipamento.codigo || '' %>" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Nome *</label><br/>
+    <input name="nome" required style="width:420px;" value="<%= equipamento.nome %>" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Setor</label><br/>
+    <input name="setor" value="<%= equipamento.setor || '' %>" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Tipo</label><br/>
+    <input name="tipo" value="<%= equipamento.tipo || '' %>" />
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Criticidade</label><br/>
+    <select name="criticidade">
+      <option value="baixa" <%= equipamento.criticidade==='baixa'?'selected':'' %>>baixa</option>
+      <option value="media" <%= equipamento.criticidade==='media'?'selected':'' %>>media</option>
+      <option value="alta" <%= equipamento.criticidade==='alta'?'selected':'' %>>alta</option>
+    </select>
+  </div>
+
+  <div style="margin-top:10px;">
+    <label>Ativo</label><br/>
+    <select name="ativo">
+      <option value="1" <%= equipamento.ativo ? 'selected':'' %>>Sim</option>
+      <option value="0" <%= !equipamento.ativo ? 'selected':'' %>>Não</option>
+    </select>
+  </div>
+
+  <div style="margin-top:12px;">
+    <button type="submit">Salvar</button>
+    <a href="/equipamentos/<%= equipamento.id %>">Cancelar</a>
+  </div>
+</form>
