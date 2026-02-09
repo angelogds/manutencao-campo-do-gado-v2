@@ -1,0 +1,21 @@
+<% layout("layout") %>
+
+<h1>Estoque</h1>
+
+<a href="/estoque/novo" class="btn">Novo Item</a>
+
+<table>
+  <tr>
+    <th>ID</th>
+    <th>Item</th>
+    <th>Quantidade</th>
+  </tr>
+
+  <% itens.forEach(i => { %>
+    <tr>
+      <td><%= i.id %></td>
+      <td><%= i.nome %></td>
+      <td><%= i.quantidade %></td>
+    </tr>
+  <% }) %>
+</table>
