@@ -1,0 +1,14 @@
+<header class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <strong>Campo do Gado</strong>
+    <small>Manutenção V2</small>
+  </div>
+
+  <div class="top-actions">
+    <% if (user) { %>
+      <span class="user-pill"><%= user.name %> • <%= user.role %></span>
+      <a class="btn" href="/logout">Sair</a>
+    <% } %>
+  </div>
+</header>
