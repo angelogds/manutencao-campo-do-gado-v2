@@ -1,20 +1,24 @@
-<div class="box">
-  <h2>Dashboard</h2>
+<section class="page">
+  <h1>Dashboard</h1>
+  <p class="muted">Bem-vindo, <strong><%= user.name %></strong>. Perfil: <strong><%= user.role %></strong></p>
 
-  <p>Bem-vindo, <strong><%= user.name %></strong></p>
-  <p>Perfil: <strong><%= user.role %></strong></p>
+  <div class="grid">
+    <div class="card">
+      <h3>Ordens de Serviço</h3>
+      <p class="muted">Acompanhe OS abertas, em andamento e concluídas.</p>
+      <a class="btn btn-outline" href="/os">Abrir OS</a>
+    </div>
 
-  <hr />
+    <div class="card">
+      <h3>Compras</h3>
+      <p class="muted">Solicitações, cotações e recebimento.</p>
+      <a class="btn btn-outline" href="/compras">Ir para Compras</a>
+    </div>
 
-  <ul>
-    <li><a href="#">Ordens de Serviço</a></li>
-    <li><a href="#">Preventivas</a></li>
-    <li><a href="#">Planejamento</a></li>
-    <li><a href="#">Estoque</a></li>
-    <li><a href="#">Compras</a></li>
-  </ul>
-
-  <br />
-
-  <a href="/logout">Sair</a>
-</div>
+    <div class="card">
+      <h3>Estoque</h3>
+      <p class="muted">Controle de itens e custos.</p>
+      <a class="btn btn-outline" href="/estoque">Ver Estoque</a>
+    </div>
+  </div>
+</section>
