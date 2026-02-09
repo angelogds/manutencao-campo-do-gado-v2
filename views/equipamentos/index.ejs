@@ -1,0 +1,46 @@
+<% layout('layout') %>
+
+<style>
+  .toolbar{display:flex;justify-content:flex-end;margin:10px 0 14px;}
+  .btn{height:40px;border-radius:12px;border:1px solid #e5e7eb;padding:0 12px;background:#fff;font-weight:900;text-decoration:none;display:inline-flex;align-items:center;gap:8px;color:#111827}
+  .btn.primary{background:#0b6b3a;border-color:#0b6b3a;color:#fff;}
+  .table{width:100%;border-collapse:separate;border-spacing:0;background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;}
+  .table th,.table td{padding:12px 14px;border-bottom:1px solid #f3f4f6;font-size:14px;}
+  .table th{text-align:left;font-size:12px;color:#6b7280;letter-spacing:.06em;}
+  .muted{color:#6b7280;}
+</style>
+
+<h1>Equipamentos</h1>
+<p class="muted" style="margin-top:-6px;">Cadastre os equipamentos para aparecer na abertura da OS.</p>
+
+<div class="toolbar">
+  <a class="btn primary" href="/equipamentos/new">+ Novo Equipamento</a>
+</div>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th style="width:90px;">ID</th>
+      <th>NOME</th>
+      <th style="width:220px;">SETOR</th>
+      <th style="width:160px;">CÓDIGO</th>
+      <th style="width:180px;">CADASTRO</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% if (!itens || itens.length === 0) { %>
+      <tr><td colspan="5" class="muted">Nenhum equipamento cadastrado.</td></tr>
+    <% } else { %>
+      <% itens.forEach((e) => { %>
+        <tr>
+          <td>#<%= e.id %></td>
+          <td><strong><%= e.nome %></strong></td>
+          <td><%= e.setor %></td>
+          <td class="muted"><%= e.codigo || "-" %></td>
+          <td class="muted"><%= fmtBR ? fmtBR(e.created_at) : e.created_at %></td>
+        </tr>
+      <% }) %>
+    <% } %>
+  </tbody>
+</table>
