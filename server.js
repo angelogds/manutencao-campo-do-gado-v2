@@ -1,3 +1,4 @@
+// server.js
 require("dotenv").config();
 require("./database/migrate");
 
@@ -7,43 +8,31 @@ const session = require("express-session");
 const flash = require("connect-flash");
 const engine = require("ejs-mate");
 
-const { requireLogin } = require("./modules/auth/auth.middleware");
+// helper global de data BR
+const { fmtBR, TZ } = require("./utils/date");
 
-// Rotas
-const authRoutes = require("./modules/auth/auth.routes");
-const comprasRoutes = require("./modules/compras/compras.routes");
-const estoqueRoutes = require("./modules/estoque/estoque.routes");
-const osRoutes = require("./modules/os/os.routes");
-const usuariosRoutes = require("./modules/usuarios/usuarios.routes");
+// seed admin (não quebra se já existir)
+const { ensureAdmin } = require("./database/seed");
+ensureAdmin();
 
 const app = express();
 
-/* =======================
-   CONFIG BÁSICA
-======================= */
-app.set("trust proxy", 1); // ✅ OBRIGATÓRIO no Railway
+// Railway / Proxy
+app.set("trust proxy", 1);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-
-/* =======================
-   EJS + LAYOUT
-======================= */
+// View engine
 app.engine("ejs", engine);
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
-/* =======================
-   ARQUIVOS ESTÁTICOS
-======================= */
+// Middlewares base
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
 
-/* =======================
-   SESSÃO (RAILWAY SAFE)
-======================= */
+// Session + Flash (sem dependência extra)
 app.use(
   session({
-    name: "cg.sid",
     secret: process.env.SESSION_SECRET || "dev-secret",
     resave: false,
     saveUninitialized: false,
@@ -51,61 +40,67 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: "lax",
-      secure: "auto", // ✅ resolve HTTPS do Railway
-      maxAge: 1000 * 60 * 60 * 12, // 12h
+      secure: "auto",
     },
   })
 );
 
 app.use(flash());
 
-/* =======================
-   VARIÁVEIS GLOBAIS (EJS)
-======================= */
+// Globals p/ EJS
+app.locals.TZ = TZ;
 app.use((req, res, next) => {
-  res.locals.user = req.session.user || null;
+  res.locals.user = req.session?.user || null;
   res.locals.flash = {
     success: req.flash("success"),
     error: req.flash("error"),
   };
+  res.locals.fmtBR = fmtBR;
+  res.locals.TZ = TZ;
   next();
 });
 
-/* =======================
-   ROTAS
-======================= */
+// Rotas
+const authRoutes = require("./modules/auth/auth.routes");
+const dashboardRoutes = require("./modules/dashboard/dashboard.routes");
+const equipamentosRoutes = require("./modules/equipamentos/equipamentos.routes");
+const osRoutes = require("./modules/os/os.routes");
+const comprasRoutes = require("./modules/compras/compras.routes");
+const estoqueRoutes = require("./modules/estoque/estoque.routes");
+const usuariosRoutes = require("./modules/usuarios/usuarios.routes");
+
 app.use(authRoutes);
+app.use(dashboardRoutes);
+app.use(equipamentosRoutes);
+app.use(osRoutes);
 app.use(comprasRoutes);
 app.use(estoqueRoutes);
-app.use(osRoutes);
 app.use(usuariosRoutes);
 
-/* =======================
-   HOME
-======================= */
+// Home
 app.get("/", (req, res) => {
-  if (req.session.user) return res.redirect("/dashboard");
+  if (req.session?.user) return res.redirect("/dashboard");
   return res.redirect("/login");
 });
 
-/* =======================
-   DASHBOARD
-======================= */
-app.get("/dashboard", requireLogin, (req, res) => {
-  res.render("dashboard/index", { title: "Dashboard" });
+// Health
+app.get("/health", (_req, res) => {
+  res.json({
+    status: "ok",
+    app: "manutencao-campo-do-gado-v2",
+    timezone: TZ,
+    utc: new Date().toISOString(),
+  });
 });
 
-/* =======================
-   DEBUG (TEMPORÁRIO)
-======================= */
-app.get("/debug/session", (req, res) => {
-  res.json({ session: req.session });
+// 404
+app.use((_req, res) => res.status(404).send("404 - Página não encontrada"));
+
+// Error handler
+app.use((err, _req, res, _next) => {
+  console.error("❌ ERRO:", err);
+  res.status(500).send("500 - Erro interno");
 });
 
-/* =======================
-   START
-======================= */
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Servidor ativo na porta ${port}`);
-});
+const port = process.env.PORT || 8080;
+app.listen(port, () => console.log(`Servidor ativo na porta ${port}`));
