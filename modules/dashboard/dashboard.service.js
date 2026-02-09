@@ -2,7 +2,7 @@
 const db = require("../../database/db");
 
 function getCounters() {
-  // OS (status em MAIÚSCULO conforme 030_os.sql)
+  // OS (status MAIÚSCULO conforme 030_os.sql)
   const osAbertas = db
     .prepare(`SELECT COUNT(*) AS n FROM os WHERE status = 'ABERTA'`)
     .get().n;
@@ -19,7 +19,7 @@ function getCounters() {
     .prepare(`SELECT COUNT(*) AS n FROM os WHERE status = 'CONCLUIDA'`)
     .get().n;
 
-  // Compras pendentes (são SOLICITAÇÕES que têm aberta/cotacao/aprovada)
+  // Compras pendentes (da solicitacao)
   const comprasPendentes = db
     .prepare(
       `SELECT COUNT(*) AS n
@@ -28,7 +28,6 @@ function getCounters() {
     )
     .get().n;
 
-  // Itens em estoque
   const itensEstoque = db
     .prepare(`SELECT COUNT(*) AS n FROM estoque_itens`)
     .get().n;
