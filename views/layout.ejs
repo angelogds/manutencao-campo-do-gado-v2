@@ -1,18 +1,24 @@
-<% layout('layout') %>
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title><%= (typeof title !== "undefined" ? title : "Manutenção Campo do Gado") %></title>
 
-<section class="auth">
-  <div class="card auth-card">
-    <h1>Entrar</h1>
-    <p class="muted">Acesse o sistema de manutenção.</p>
+  <link rel="stylesheet" href="/css/app.css" />
+</head>
+<body class="app">
 
-    <form method="POST" action="/login" class="form">
-      <label class="label">Email</label>
-      <input class="input" type="email" name="email" required />
+  <%- include("partials/header") %>
 
-      <label class="label">Senha</label>
-      <input class="input" type="password" name="password" required />
+  <main class="container">
+    <%- include("partials/alerts") %>
 
-      <button class="btn btn-primary" type="submit">Entrar</button>
-    </form>
-  </div>
-</section>
+    <!-- Aqui entra o conteúdo da página (login, dashboard, etc.) -->
+    <%- body %>
+  </main>
+
+  <%- include("partials/footer") %>
+
+</body>
+</html>
