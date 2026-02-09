@@ -1,1 +1,17 @@
-<h1>Dashboard</h1>
+<% layout("layout") %>
+
+<section class="card">
+  <h1>Dashboard</h1>
+  <p class="muted">Bem-vindo(a), <strong><%= user.name %></strong>.</p>
+
+  <div class="grid">
+    <div class="kpi">
+      <div class="kpi-title">Perfil</div>
+      <div class="kpi-value"><%= user.role %></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-title">Status</div>
+      <div class="kpi-value">Online</div>
+    </div>
+  </div>
+</section>
