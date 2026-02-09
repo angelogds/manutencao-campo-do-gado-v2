@@ -1,89 +1,85 @@
-<% layout("layout") %>
+<% layout('layout') %>
 
-<h1>Item #<%= item.id %> — <%= item.nome %></h1>
+<style>
+  .grid{ display:grid; grid-template-columns:2fr 1fr; gap:12px; }
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  .k{ color:#6b7280; font-weight:900; font-size:12px; letter-spacing:.04em; }
+  .v{ font-size:18px; font-weight:900; margin-top:6px; }
+  .muted{ color:#6b7280; }
+  .btn{ display:inline-block; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; font-weight:800; cursor:pointer; }
+  .table{ width:100%; border-collapse:collapse; }
+  .table th,.table td{ padding:10px; border-bottom:1px solid #f1f5f9; text-align:left; font-size:14px; }
+  input,select{ padding:10px 12px; border:1px solid #e5e7eb; border-radius:12px; font-size:14px; width:100%; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width: 980px){ .grid{ grid-template-columns:1fr;} }
+</style>
 
-<p><strong>Código:</strong> <%= item.codigo || "-" %></p>
-<p><strong>Unidade:</strong> <%= item.unidade %></p>
-<p><strong>Saldo:</strong> <%= item.saldo ?? 0 %></p>
-<p><strong>Mínimo:</strong> <%= item.estoque_min %></p>
-<p><strong>Custo unit:</strong> <%= item.custo_unit %></p>
+<h1>Item: <%= item.nome %></h1>
+<p class="muted" style="margin-top:-6px;">Saldo atual: <b><%= saldo ?? 0 %></b> (<%= item.unidade || "un" %>)</p>
 
-<hr/>
+<div class="grid">
+  <div class="card">
+    <div class="k">MOVIMENTAÇÕES</div>
+    <div class="v">Histórico</div>
 
-<h3>Novo movimento</h3>
-<form method="POST" action="/estoque/<%= item.id %>/movimento">
-  <div>
-    <label>Tipo</label><br/>
-    <select name="tipo">
-      <option value="entrada">entrada</option>
-      <option value="saida">saida</option>
-      <option value="ajuste">ajuste</option>
-    </select>
+    <div style="margin-top:12px; overflow:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Tipo</th>
+            <th>Qtd</th>
+            <th>Obs</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!movs || movs.length === 0) { %>
+            <tr><td colspan="4" class="muted">Sem movimentos ainda.</td></tr>
+          <% } else { %>
+            <% movs.forEach(m => { %>
+              <tr>
+                <td class="muted"><%= m.created_at || "-" %></td>
+                <td><%= m.tipo %></td>
+                <td class="muted"><%= m.quantidade %></td>
+                <td class="muted"><%= m.observacao || "-" %></td>
+              </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <div style="margin-top:10px;">
-    <label>Quantidade *</label><br/>
-    <input name="quantidade" required />
+  <div class="card">
+    <div class="k">LANÇAR MOVIMENTO</div>
+    <div class="v">Entrada / Saída</div>
+
+    <form method="post" action="/estoque/<%= item.id %>/mov" style="margin-top:12px;">
+      <div class="row2">
+        <div>
+          <label class="muted">Tipo</label>
+          <select name="tipo">
+            <option value="entrada">entrada</option>
+            <option value="saida">saida</option>
+            <option value="ajuste">ajuste</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="muted">Quantidade</label>
+          <input name="quantidade" type="number" step="0.01" value="1" required />
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <label class="muted">Observação</label>
+        <input name="observacao" placeholder="Ex: Almoxarifado / OS #12 / Inventário" />
+      </div>
+
+      <div style="margin-top:10px; display:flex; gap:10px;">
+        <button class="btn" type="submit">Lançar</button>
+        <a class="btn" href="/estoque">Voltar</a>
+      </div>
+    </form>
   </div>
-
-  <div style="margin-top:10px;">
-    <label>Custo unit (opcional)</label><br/>
-    <input name="custo_unit" />
-  </div>
-
-  <div style="margin-top:10px;">
-    <label>Origem (compra|os|ajuste|inventario)</label><br/>
-    <input name="origem" />
-  </div>
-
-  <div style="margin-top:10px;">
-    <label>Referência ID (opcional)</label><br/>
-    <input name="referencia_id" />
-  </div>
-
-  <div style="margin-top:10px;">
-    <label>Observação</label><br/>
-    <input name="observacao" style="width:420px;" />
-  </div>
-
-  <div style="margin-top:12px;">
-    <button type="submit">Lançar</button>
-    <a href="/estoque">Voltar</a>
-  </div>
-</form>
-
-<hr/>
-
-<h3>Movimentos</h3>
-<table border="1" cellpadding="6">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Tipo</th>
-      <th>Qtd</th>
-      <th>Custo</th>
-      <th>Origem</th>
-      <th>Ref</th>
-      <th>Obs</th>
-      <th>Data</th>
-    </tr>
-  </thead>
-  <tbody>
-    <% if (!item.movimentos || item.movimentos.length === 0) { %>
-      <tr><td colspan="8">Sem movimentos.</td></tr>
-    <% } else { %>
-      <% item.movimentos.forEach(m => { %>
-        <tr>
-          <td><%= m.id %></td>
-          <td><%= m.tipo %></td>
-          <td><%= m.quantidade %></td>
-          <td><%= m.custo_unit ?? "-" %></td>
-          <td><%= m.origem ?? "-" %></td>
-          <td><%= m.referencia_id ?? "-" %></td>
-          <td><%= m.observacao ?? "-" %></td>
-          <td><%= m.created_at ?? "-" %></td>
-        </tr>
-      <% }) %>
-    <% } %>
-  </tbody>
-</table>
+</div>
