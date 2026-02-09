@@ -8,25 +8,25 @@ const session = require("express-session");
 const flash = require("connect-flash");
 const engine = require("ejs-mate");
 
-// helper global de data BR
+// ✅ helper global de data/hora BR
 const { fmtBR, TZ } = require("./utils/date");
 
 const app = express();
 
-// Railway / Proxy
+// ✅ Railway/Proxy (resolve login que “não segura” sessão em HTTPS)
 app.set("trust proxy", 1);
 
-// View engine
+// ===== View engine =====
 app.engine("ejs", engine);
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
-// Middlewares base
+// ===== Middlewares base =====
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// Session + Flash
+// ===== Session + Flash (ANTES das rotas) =====
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "dev-secret",
@@ -36,68 +36,99 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: "lax",
-      // Railway: controle via variável (recomendado)
-      secure: process.env.SESSION_SECURE_COOKIE === "true",
+      secure: "auto",
     },
   })
 );
 
 app.use(flash());
 
-// Globals p/ EJS
+// ===== Globals (disponível em todas as views) =====
 app.locals.TZ = TZ;
+
 app.use((req, res, next) => {
   res.locals.user = req.session?.user || null;
   res.locals.flash = {
     success: req.flash("success"),
     error: req.flash("error"),
   };
+
+  // ✅ Disponível em TODO EJS: <%= fmtBR(data) %>
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
+
   next();
 });
 
-// Rotas
+// ✅ Seed (não derruba o servidor se o arquivo não existir)
+try {
+  // precisa existir: /database/seed.js
+  const { ensureAdmin } = require("./database/seed");
+  if (typeof ensureAdmin === "function") {
+    ensureAdmin();
+  } else {
+    console.warn("⚠️ ensureAdmin não é função em ./database/seed");
+  }
+} catch (err) {
+  console.warn("⚠️ Seed não carregado (./database/seed). Motivo:", err.message);
+  console.warn("👉 Crie o arquivo: database/seed.js para ativar o seed do admin.");
+}
+
+// ===== Rotas (IMPORTA DEPOIS DO app criado) =====
 const authRoutes = require("./modules/auth/auth.routes");
 const dashboardRoutes = require("./modules/dashboard/dashboard.routes");
-const equipamentosRoutes = require("./modules/equipamentos/equipamentos.routes");
-const osRoutes = require("./modules/os/os.routes");
 const comprasRoutes = require("./modules/compras/compras.routes");
 const estoqueRoutes = require("./modules/estoque/estoque.routes");
+const osRoutes = require("./modules/os/os.routes");
 const usuariosRoutes = require("./modules/usuarios/usuarios.routes");
+const equipamentosRoutes = require("./modules/equipamentos/equipamentos.routes");
 
-app.use(authRoutes);
-app.use(dashboardRoutes);
-app.use(equipamentosRoutes);
-app.use(osRoutes);
-app.use(comprasRoutes);
-app.use(estoqueRoutes);
-app.use(usuariosRoutes);
+// ===== Guard de rotas =====
+function safeUse(name, mw) {
+  if (typeof mw !== "function") {
+    console.error(`❌ ROTA/MIDDLEWARE inválido: ${name}`, typeof mw, mw);
+    throw new Error(`Middleware inválido: ${name}`);
+  }
+  app.use(mw);
+}
 
-// Home
+// ✅ ordem: auth primeiro
+safeUse("authRoutes", authRoutes);
+safeUse("dashboardRoutes", dashboardRoutes);
+safeUse("comprasRoutes", comprasRoutes);
+safeUse("estoqueRoutes", estoqueRoutes);
+safeUse("osRoutes", osRoutes);
+safeUse("usuariosRoutes", usuariosRoutes);
+safeUse("equipamentosRoutes", equipamentosRoutes);
+
+// ===== Home =====
 app.get("/", (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
   return res.redirect("/login");
 });
 
-// Health
-app.get("/health", (_req, res) => {
+// ===== Debug (remova depois) =====
+app.get("/debug-session", (req, res) => {
   res.json({
-    status: "ok",
-    app: "manutencao-campo-do-gado-v2",
-    timezone: TZ,
-    utc: new Date().toISOString(),
+    hasSession: !!req.session,
+    user: req.session?.user || null,
+    cookieHeader: req.headers.cookie || null,
+    secure: req.secure,
+    xForwardedProto: req.headers["x-forwarded-proto"] || null,
+    tz: TZ,
+    nowBR: fmtBR(new Date()),
   });
 });
 
-// 404
-app.use((_req, res) => res.status(404).send("404 - Página não encontrada"));
-
-// Error handler
-app.use((err, _req, res, _next) => {
-  console.error("❌ ERRO:", err);
-  res.status(500).send("500 - Erro interno");
+// ===== Health =====
+app.get("/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    app: "manutencao-campo-do-gado-v2",
+    timezone: TZ,
+    timestamp_utc: new Date().toISOString(),
+  });
 });
 
-const port = process.env.PORT || 8080;
+const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`Servidor ativo na porta ${port}`));
