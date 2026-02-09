@@ -1,38 +1,97 @@
-<% layout("layout") %>
+<% layout('layout') %>
+
+<style>
+  .grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  .k{ color:#6b7280; font-weight:900; font-size:12px; letter-spacing:.04em; }
+  .v{ font-size:18px; font-weight:900; margin-top:6px; }
+  .btn{ display:inline-block; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; font-weight:800; }
+  .btn:hover{ filter:brightness(.98); }
+  .table{ width:100%; border-collapse:collapse; }
+  .table th,.table td{ padding:10px; border-bottom:1px solid #f1f5f9; text-align:left; font-size:14px; }
+  .muted{ color:#6b7280; }
+  .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:10px 0 18px; }
+  .tag{ display:inline-block; padding:4px 10px; border:1px solid #e5e7eb; border-radius:999px; font-size:12px; font-weight:900; color:#374151; background:#f9fafb; }
+  @media (max-width: 980px){ .grid{ grid-template-columns:1fr;} }
+</style>
 
 <h1>Compras</h1>
-<p>
-  <a href="/compras/nova">+ Nova compra</a> |
-  <a href="/solicitacoes">Ir para Solicitações</a>
-</p>
+<p class="muted" style="margin-top:-6px;">Solicitações, cotações e recebimento.</p>
 
-<table border="1" cellpadding="6">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Solicitação</th>
-      <th>Fornecedor</th>
-      <th>Status</th>
-      <th>Data compra</th>
-      <th>Data receb.</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <% if (!lista || lista.length === 0) { %>
-      <tr><td colspan="7">Nenhuma compra registrada.</td></tr>
-    <% } else { %>
-      <% lista.forEach(c => { %>
-        <tr>
-          <td><%= c.id %></td>
-          <td><%= c.solicitacao_id || "-" %></td>
-          <td><%= c.fornecedor || "-" %></td>
-          <td><%= c.status %></td>
-          <td><%= c.data_compra || "-" %></td>
-          <td><%= c.data_recebimento || "-" %></td>
-          <td><a href="/compras/<%= c.id %>">ver</a></td>
-        </tr>
-      <% }) %>
-    <% } %>
-  </tbody>
-</table>
+<div class="row">
+  <div></div>
+  <div style="display:flex; gap:10px;">
+    <a class="btn" href="/solicitacoes/nova">Nova Solicitação</a>
+    <a class="btn" href="/compras/nova">Nova Compra</a>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="k">SOLICITAÇÕES</div>
+    <div class="v">Abertas e em andamento</div>
+
+    <div style="margin-top:12px; overflow:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Status</th>
+            <th>Setor</th>
+            <th>Criado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!solicitacoes || solicitacoes.length === 0) { %>
+            <tr><td colspan="5" class="muted">Nenhuma solicitação encontrada.</td></tr>
+          <% } else { %>
+            <% solicitacoes.forEach(s => { %>
+              <tr>
+                <td>#<%= s.id %></td>
+                <td><span class="tag"><%= s.status %></span></td>
+                <td class="muted"><%= s.setor || '-' %></td>
+                <td class="muted"><%= s.created_at || '-' %></td>
+                <td><a class="btn" href="/solicitacoes/<%= s.id %>">Abrir</a></td>
+              </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="k">COMPRAS</div>
+    <div class="v">Registros e recebimento</div>
+
+    <div style="margin-top:12px; overflow:auto;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Status</th>
+            <th>Fornecedor</th>
+            <th>Compra</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!compras || compras.length === 0) { %>
+            <tr><td colspan="5" class="muted">Nenhuma compra encontrada.</td></tr>
+          <% } else { %>
+            <% compras.forEach(c => { %>
+              <tr>
+                <td>#<%= c.id %></td>
+                <td><span class="tag"><%= c.status %></span></td>
+                <td class="muted"><%= c.fornecedor || '-' %></td>
+                <td class="muted"><%= c.data_compra || '-' %></td>
+                <td><a class="btn" href="/compras/<%= c.id %>">Abrir</a></td>
+              </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
