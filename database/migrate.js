@@ -4,50 +4,51 @@ const db = require("./db");
 
 db.pragma("foreign_keys = ON");
 
-// Tabela que registra quais migrations já foram aplicadas
+// Controle de migrations
 db.exec(`
   CREATE TABLE IF NOT EXISTS migrations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    filename TEXT NOT NULL UNIQUE,
+    filename TEXT PRIMARY KEY,
     applied_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `);
 
 const migrationsDir = path.join(__dirname, "migrations");
-
-// Se a pasta não existir, não quebra o servidor
 if (!fs.existsSync(migrationsDir)) {
-  console.log("[migrate] Pasta database/migrations não encontrada. Pulando migrations.");
+  console.log("[migrate] Pasta database/migrations não encontrada. Pulando.");
   module.exports = {};
   return;
 }
 
+// Ordem garantida (001..., 005..., 010..., 060...)
 const files = fs.readdirSync(migrationsDir)
-  .filter((f) => f.endsWith(".sql"))
-  .sort();
+  .filter((f) => /^\d+_.*\.sql$/.test(f))
+  .sort((a, b) => {
+    const na = parseInt(a.split("_")[0], 10);
+    const nb = parseInt(b.split("_")[0], 10);
+    return na - nb;
+  });
 
-const applied = new Set(
-  db.prepare("SELECT filename FROM migrations").all().map((r) => r.filename)
+const already = new Set(
+  db.prepare("SELECT filename FROM migrations").all().map(r => r.filename)
 );
 
-const markApplied = db.prepare("INSERT INTO migrations (filename) VALUES (?)");
+const mark = db.prepare("INSERT INTO migrations (filename) VALUES (?)");
 
-const runOne = db.transaction((filename, sql) => {
+const tx = db.transaction((filename, sql) => {
   db.exec(sql);
-  markApplied.run(filename);
+  mark.run(filename);
 });
 
-let appliedNow = 0;
-
+let ran = 0;
 for (const file of files) {
-  if (applied.has(file)) continue;
+  if (already.has(file)) continue;
 
-  const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
   console.log(`[migrate] Aplicando ${file}...`);
-  runOne(file, sql);
-  appliedNow++;
+  const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
+  tx(file, sql);
+  ran++;
 }
 
-console.log(`[migrate] OK. Novas migrations aplicadas: ${appliedNow}.`);
+console.log(`[migrate] OK. Novas migrations aplicadas: ${ran}.`);
 
 module.exports = {};
