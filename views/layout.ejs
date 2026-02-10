@@ -1,20 +1,101 @@
-<!DOCTYPE html>
-<html lang="pt-br">
+<!doctype html>
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title><%= title || "Manutenção Campo do Gado" %></title>
-  <link rel="stylesheet" href="/css/app.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title><%= (title ? title + " • " : "") %>Manutenção Campo do Gado</title>
+
+  <link rel="stylesheet" href="/css/app.css" />
+
+  <style>
+    :root{
+      --cg:#0b6b3a;
+      --cg2:#07502c;
+      --bg:#f4faf6;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+    }
+    body{ margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--text); }
+    .app-shell{ display:flex; min-height:100vh; }
+    .content{ flex:1; display:flex; flex-direction:column; }
+
+    .topbar{
+      height:64px; background:#fff; border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between; padding:0 16px;
+    }
+    .brand{ display:flex; align-items:center; gap:10px; font-weight:900; }
+    .dot{ width:10px; height:10px; border-radius:999px; background:var(--cg); box-shadow:0 0 0 4px rgba(11,107,58,.12); }
+    .sub{ font-weight:600; color:var(--muted); font-size:12px; }
+
+    .main{ padding:18px; }
+
+    .flash{
+      margin:12px 18px 0; padding:12px 14px; border-radius:12px;
+      border:1px solid var(--border); background:#fff; font-weight:800;
+    }
+    .flash.success{ border-color:rgba(11,107,58,.30); background:rgba(11,107,58,.06); }
+    .flash.error{ border-color:rgba(220,38,38,.30); background:rgba(220,38,38,.06); }
+
+    .footerbar{
+      margin-top:auto; height:44px; display:flex; align-items:center; justify-content:space-between;
+      padding:0 16px; border-top:1px solid var(--border); background:#fff; color:var(--muted); font-size:12px;
+    }
+  </style>
 </head>
+
 <body>
+<div class="app-shell">
 
-  <%- include("partials/header") %>
+  <% if (user) { %>
+    <%- include("partials/sidebar") %>
+  <% } %>
 
-  <main class="container">
-    <%- include("partials/alerts") %>
-    <%- body %>
-  </main>
+  <div class="content">
+    <div class="topbar">
+      <div class="brand">
+        <span class="dot"></span>
+        <div>
+          <div>Manutenção Campo do Gado</div>
+          <div class="sub">V2 • Gestão Industrial</div>
+        </div>
+      </div>
 
-  <%- include("partials/footer") %>
+      <div>
+        <% if (user) { %>
+          <strong><%= user.name %></strong>
+          <span style="margin-left:8px; padding:4px 10px; border:1px solid var(--border); border-radius:999px; font-size:12px; font-weight:900;">
+            <%= user.role %>
+          </span>
+          <a href="/logout" style="margin-left:10px; padding:8px 12px; border:1px solid var(--border); border-radius:12px; text-decoration:none; color:var(--text); font-weight:800;">
+            Sair
+          </a>
+        <% } else { %>
+          <a href="/login" style="padding:8px 12px; border:1px solid var(--border); border-radius:12px; text-decoration:none; color:var(--text); font-weight:800;">
+            Entrar
+          </a>
+        <% } %>
+      </div>
+    </div>
 
+    <% if (flash?.success?.length) { %>
+      <div class="flash success"><%= flash.success[0] %></div>
+    <% } %>
+    <% if (flash?.error?.length) { %>
+      <div class="flash error"><%= flash.error[0] %></div>
+    <% } %>
+
+    <main class="main">
+      <%- body %>
+    </main>
+
+    <div class="footerbar">
+      <div>Manutenção Industrial • Campo do Gado</div>
+      <div>© 2026 • Sistema V2</div>
+    </div>
+  </div>
+
+</div>
 </body>
 </html>
