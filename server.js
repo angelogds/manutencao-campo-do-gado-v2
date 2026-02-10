@@ -36,7 +36,7 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: "lax",
-      secure: "auto",
+      secure: "auto", // express-session v1.17+ suporta "auto"
     },
   })
 );
@@ -74,16 +74,7 @@ try {
   console.warn("👉 Crie o arquivo: database/seed.js para ativar o seed do admin.");
 }
 
-// ===== Rotas (IMPORTA DEPOIS DO app criado) =====
-const authRoutes = require("./modules/auth/auth.routes");
-const dashboardRoutes = require("./modules/dashboard/dashboard.routes");
-const comprasRoutes = require("./modules/compras/compras.routes");
-const estoqueRoutes = require("./modules/estoque/estoque.routes");
-const osRoutes = require("./modules/os/os.routes");
-const usuariosRoutes = require("./modules/usuarios/usuarios.routes");
-const equipamentosRoutes = require("./modules/equipamentos/equipamentos.routes");
-
-// ===== Guard de rotas =====
+// ===== Helpers de carga segura =====
 function safeUse(name, mw) {
   if (typeof mw !== "function") {
     console.error(`❌ ROTA/MIDDLEWARE inválido: ${name}`, typeof mw, mw);
@@ -92,14 +83,41 @@ function safeUse(name, mw) {
   app.use(mw);
 }
 
-// ✅ ordem: auth primeiro
-safeUse("authRoutes", authRoutes);
-safeUse("dashboardRoutes", dashboardRoutes);
-safeUse("comprasRoutes", comprasRoutes);
-safeUse("estoqueRoutes", estoqueRoutes);
-safeUse("osRoutes", osRoutes);
-safeUse("usuariosRoutes", usuariosRoutes);
-safeUse("equipamentosRoutes", equipamentosRoutes);
+function safeModule(name, modulePath) {
+  try {
+    const mod = require(modulePath);
+    if (typeof mod !== "function") {
+      console.error(`❌ [${name}] export inválido (precisa exportar router function). Tipo:`, typeof mod);
+      return { ok: false, err: `export inválido (${typeof mod})` };
+    }
+    safeUse(name, mod);
+    console.log(`✅ Módulo carregado: ${name}`);
+    return { ok: true };
+  } catch (e) {
+    console.warn(`⚠️ Módulo NÃO carregado: ${name} -> ${e.message}`);
+    console.warn(`👉 Verifique o arquivo: ${modulePath}`);
+    return { ok: false, err: e.message };
+  }
+}
+
+// ===== Rotas principais (auth primeiro) =====
+safeModule("authRoutes", "./modules/auth/auth.routes");
+safeModule("dashboardRoutes", "./modules/dashboard/dashboard.routes");
+safeModule("comprasRoutes", "./modules/compras/compras.routes");
+safeModule("estoqueRoutes", "./modules/estoque/estoque.routes");
+safeModule("osRoutes", "./modules/os/os.routes");
+safeModule("usuariosRoutes", "./modules/usuarios/usuarios.routes");
+safeModule("equipamentosRoutes", "./modules/equipamentos/equipamentos.routes");
+
+// ===== ✅ PREPARO: Preventivas (pode entrar agora sem quebrar) =====
+// Assim que você colar o módulo preventivas, ele já sobe.
+// Rota base esperada: /preventivas
+safeModule("preventivasRoutes", "./modules/preventivas/preventivas.routes");
+
+// ===== ✅ PREPARO: Escala (módulo futuro, já “plugável”) =====
+// Quando iniciarmos Escala, basta criar modules/escala/escala.routes.js
+// Rota base esperada: /escala
+safeModule("escalaRoutes", "./modules/escala/escala.routes");
 
 // ===== Home =====
 app.get("/", (req, res) => {
@@ -130,5 +148,14 @@ app.get("/health", (_req, res) => {
   });
 });
 
-const port = process.env.PORT || 3000;
+// ===== 404 =====
+app.use((_req, res) => res.status(404).send("404 - Página não encontrada"));
+
+// ===== Error handler =====
+app.use((err, _req, res, _next) => {
+  console.error("❌ ERRO:", err);
+  res.status(500).send("500 - Erro interno");
+});
+
+const port = process.env.PORT || 8080;
 app.listen(port, () => console.log(`Servidor ativo na porta ${port}`));
