@@ -1,0 +1,62 @@
+<% layout('layout') %>
+
+<style>
+  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:12px 0; }
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  .btn-mini{
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:8px 10px; border-radius:12px; border:1px solid #e5e7eb;
+    background:#fff; font-weight:900; font-size:13px; color:#111827;
+    text-decoration:none; transition: all .15s ease;
+  }
+  .btn-mini:hover{ background:#0f7a3a; border-color:#0f7a3a; color:#fff; transform: translateY(-1px); }
+  table{ width:100%; border-collapse:collapse; }
+  th,td{ padding:10px; border-bottom:1px solid #e5e7eb; text-align:left; font-size:14px; }
+  th{ color:#6b7280; font-size:12px; letter-spacing:.04em; text-transform:uppercase; }
+  .pill{ font-size:12px; font-weight:900; padding:4px 10px; border-radius:999px; background:#f3f4f6; border:1px solid #e5e7eb; }
+</style>
+
+<h1>Preventivas</h1>
+<p style="color:#6b7280; margin-top:-6px;">Planos e execuções preventivas.</p>
+
+<div class="row">
+  <a class="btn-mini" href="/preventivas/planos/new">Novo plano</a>
+  <a class="btn-mini" href="/preventivas?ativo=1">Ativos</a>
+  <a class="btn-mini" href="/preventivas?ativo=0">Inativos</a>
+  <a class="btn-mini" href="/preventivas">Todos</a>
+
+  <% if (ativo) { %>
+    <span class="pill">Filtro ativo: <%= ativo %></span>
+  <% } %>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Título</th>
+        <th>Equipamento</th>
+        <th>Frequência</th>
+        <th>Ativo</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!lista || lista.length === 0) { %>
+        <tr><td colspan="6" style="color:#6b7280;">Nenhum plano encontrado.</td></tr>
+      <% } %>
+
+      <% (lista || []).forEach(p => { %>
+        <tr>
+          <td>#<%= p.id %></td>
+          <td><%= p.titulo %></td>
+          <td><%= (p.equipamento_codigo ? p.equipamento_codigo + " • " : "") + (p.equipamento_nome || "-") %></td>
+          <td><span class="pill"><%= p.frequencia_tipo %> x<%= p.frequencia_valor %></span></td>
+          <td><span class="pill"><%= p.ativo ? "SIM" : "NÃO" %></span></td>
+          <td><a class="btn-mini" href="/preventivas/planos/<%= p.id %>">Abrir</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
