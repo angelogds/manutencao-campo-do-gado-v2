@@ -2,7 +2,13 @@
 const express = require("express");
 const router = express.Router();
 
-// middleware (RBAC)
+// ===== activeMenu no layout =====
+router.use((req, res, next) => {
+  res.locals.activeMenu = "equipamentos";
+  next();
+});
+
+// ===== RBAC =====
 let requireRole = null;
 try {
   requireRole = require("../auth/auth.middleware").requireRole;
@@ -32,15 +38,15 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// Permissões Equipamentos
-const EQ_VIEW = ["manutencao", "rh", "diretoria"]; // admin passa automaticamente
-const EQ_EDIT = ["manutencao"]; // admin passa automaticamente
+// ✅ Quem pode acessar Equipamentos?
+// admin sempre passa (seu requireRole já trata isso), aqui liberamos mecânico e produção também.
+const EQUIP_ACCESS = ["mecanico", "producao", "encarregado", "compras", "almoxarifado", "rh", "diretoria"];
 
-router.get("/equipamentos", safeRequireRole(EQ_VIEW), safe(ctrl.equipIndex, "equipIndex"));
-router.get("/equipamentos/novo", safeRequireRole(EQ_EDIT), safe(ctrl.equipNewForm, "equipNewForm"));
-router.post("/equipamentos", safeRequireRole(EQ_EDIT), safe(ctrl.equipCreate, "equipCreate"));
-router.get("/equipamentos/:id", safeRequireRole(EQ_VIEW), safe(ctrl.equipShow, "equipShow"));
-router.get("/equipamentos/:id/editar", safeRequireRole(EQ_EDIT), safe(ctrl.equipEditForm, "equipEditForm"));
-router.post("/equipamentos/:id", safeRequireRole(EQ_EDIT), safe(ctrl.equipUpdate, "equipUpdate"));
+router.get("/equipamentos", safeRequireRole(EQUIP_ACCESS), safe(ctrl.equipIndex, "equipIndex"));
+router.get("/equipamentos/novo", safeRequireRole(EQUIP_ACCESS), safe(ctrl.equipNewForm, "equipNewForm"));
+router.post("/equipamentos", safeRequireRole(EQUIP_ACCESS), safe(ctrl.equipCreate, "equipCreate"));
+router.get("/equipamentos/:id", safeRequireRole(EQUIP_ACCESS), safe(ctrl.equipShow, "equipShow"));
+router.get("/equipamentos/:id/editar", safeRequireRole(EQUIP_ACCESS), safe(ctrl.equipEditForm, "equipEditForm"));
+router.post("/equipamentos/:id", safeRequireRole(EQUIP_ACCESS), safe(ctrl.equipUpdate, "equipUpdate"));
 
 module.exports = router;
