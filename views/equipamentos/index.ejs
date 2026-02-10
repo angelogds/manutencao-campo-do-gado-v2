@@ -1,37 +1,68 @@
-<% layout("layout") %>
+<% layout('layout') %>
+
+<style>
+  .toolbar{ display:flex; gap:10px; margin:14px 0; flex-wrap:wrap; }
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  table{ width:100%; border-collapse:collapse; }
+  thead th{ text-align:left; padding:10px; border-bottom:1px solid #e5e7eb; font-size:12px; letter-spacing:.04em; color:#6b7280; }
+  tbody td{ padding:10px; border-bottom:1px solid #f3f4f6; }
+  .badge{ display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:900; background:#f3f4f6; }
+  .badge-on{ background:#ecfdf5; color:#065f46; }
+  .btn-mini{ padding:6px 10px; border-radius:10px; border:1px solid #e5e7eb; background:#fff; cursor:pointer; font-weight:800; }
+  .btn-mini:hover{ border-color:#16a34a; color:#16a34a; }
+</style>
 
 <h1>Equipamentos</h1>
-<p><a href="/equipamentos/novo">+ Novo equipamento</a></p>
+<p style="color:#6b7280; margin-top:-6px;">Cadastro e consulta de equipamentos.</p>
 
-<table border="1" cellpadding="6">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Código</th>
-      <th>Nome</th>
-      <th>Setor</th>
-      <th>Tipo</th>
-      <th>Criticidade</th>
-      <th>Ativo</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <% if (!lista || lista.length === 0) { %>
-      <tr><td colspan="8">Nenhum equipamento cadastrado.</td></tr>
-    <% } else { %>
-      <% lista.forEach(e => { %>
+<div class="toolbar">
+  <a class="btn btn-mini" href="/equipamentos/novo" style="text-decoration:none;">+ Novo Equipamento</a>
+</div>
+
+<div class="card">
+  <div style="overflow:auto;">
+    <table>
+      <thead>
         <tr>
-          <td><%= e.id %></td>
-          <td><%= e.codigo || "-" %></td>
-          <td><%= e.nome %></td>
-          <td><%= e.setor || "-" %></td>
-          <td><%= e.tipo || "-" %></td>
-          <td><%= e.criticidade || "media" %></td>
-          <td><%= e.ativo ? "Sim" : "Não" %></td>
-          <td><a href="/equipamentos/<%= e.id %>">ver</a></td>
+          <th>#</th>
+          <th>Código</th>
+          <th>Nome</th>
+          <th>Setor</th>
+          <th>Tipo</th>
+          <th>Criticidade</th>
+          <th>Ativo</th>
+          <th>Ações</th>
         </tr>
-      <% }) %>
-    <% } %>
-  </tbody>
-</table>
+      </thead>
+      <tbody>
+        <% if (!lista || !lista.length) { %>
+          <tr>
+            <td colspan="8" style="padding:14px; color:#6b7280;">Nenhum equipamento cadastrado.</td>
+          </tr>
+        <% } else { %>
+          <% lista.forEach(e => { %>
+            <tr>
+              <td><%= e.id %></td>
+              <td><%= e.codigo || "-" %></td>
+              <td style="font-weight:900;"><%= e.nome %></td>
+              <td><%= e.setor || "-" %></td>
+              <td><%= e.tipo || "-" %></td>
+              <td><span class="badge"><%= (e.criticidade || "media").toUpperCase() %></span></td>
+              <td>
+                <% if (e.ativo) { %>
+                  <span class="badge badge-on">SIM</span>
+                <% } else { %>
+                  <span class="badge">NÃO</span>
+                <% } %>
+              </td>
+              <td style="white-space:nowrap;">
+                <a class="btn-mini" href="/equipamentos/<%= e.id %>" style="text-decoration:none;">Ver</a>
+                <a class="btn-mini" href="/equipamentos/<%= e.id %>/editar" style="text-decoration:none;">Editar</a>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
