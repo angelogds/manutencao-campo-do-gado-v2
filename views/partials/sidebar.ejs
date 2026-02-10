@@ -1,86 +1,30 @@
-<style>
-  .sidebar{
-    width:260px;
-    background:linear-gradient(180deg, var(--cg) 0%, #0a5d33 100%);
-    color:#fff;
-    padding:16px 12px;
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-  }
-
-  .sb-brand{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    padding:8px 10px;
-    font-weight:900;
-  }
-
-  .sb-logo{
-    width:34px;
-    height:34px;
-    border-radius:12px;
-    background:rgba(255,255,255,.12);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-weight:900;
-  }
-
-  .sb-nav{ display:flex; flex-direction:column; gap:10px; margin-top:6px; }
-
-  .sb-item{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    padding:12px 12px;
-    border-radius:14px;
-    text-decoration:none;
-    color:#fff;
-    font-weight:900;
-    background:rgba(255,255,255,.08);
-    border:1px solid rgba(255,255,255,.10);
-    transition:.15s;
-  }
-  .sb-item:hover{ background:rgba(255,255,255,.14); }
-
-  .sb-section{
-    margin-top:14px;
-    padding:0 10px;
-    font-size:12px;
-    font-weight:900;
-    letter-spacing:.08em;
-    opacity:.85;
-  }
-
-  .sb-footer{
-    margin-top:auto;
-    padding:12px 10px;
-    font-size:12px;
-    opacity:.85;
-  }
-</style>
-
-<aside class="sidebar">
-  <div class="sb-brand">
-    <div class="sb-logo">CG</div>
-    <div>Campo do Gado</div>
+<aside style="
+  width:260px; background:linear-gradient(180deg, #0b6b3a, #07502c);
+  color:#fff; padding:16px; border-right:1px solid rgba(255,255,255,.08);
+  position:relative;
+">
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+    <div style="width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,.14); display:flex; align-items:center; justify-content:center; font-weight:900;">
+      CG
+    </div>
+    <div style="font-weight:900;">Campo do Gado</div>
   </div>
 
-  <nav class="sb-nav">
-    <a class="sb-item" href="/dashboard">Dashboard</a>
+  <nav style="display:flex; flex-direction:column; gap:10px;">
+    <a href="/dashboard" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.10); font-weight:800;">Dashboard</a>
+    <a href="/equipamentos" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Equipamentos</a>
+    <a href="/os" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Ordens de Serviço</a>
+    <a href="/compras" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Compras (Inbox)</a>
+    <a href="/estoque" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Estoque</a>
+    <a href="/usuarios" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Usuários</a>
 
-    <!-- ✅ NOVO: Equipamentos -->
-    <a class="sb-item" href="/equipamentos">Equipamentos</a>
-
-    <a class="sb-item" href="/os">Ordens de Serviço</a>
-    <a class="sb-item" href="/compras">Compras (Inbox)</a>
-    <a class="sb-item" href="/estoque">Estoque</a>
-
-    <div class="sb-section">ADMIN</div>
-    <a class="sb-item" href="/usuarios">Usuários</a>
+    <% if ((user?.role || "").toUpperCase() === "ADMIN") { %>
+      <div style="margin-top:10px; opacity:.9; font-weight:900; font-size:12px;">ADMIN</div>
+      <a href="/usuarios" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Gerenciar Usuários</a>
+    <% } %>
   </nav>
 
-  <div class="sb-footer">© <%= new Date().getFullYear() %> Campo do Gado</div>
+  <div style="position:absolute; left:16px; bottom:16px; opacity:.9; font-size:12px;">
+    © 2026 Campo do Gado
+  </div>
 </aside>
