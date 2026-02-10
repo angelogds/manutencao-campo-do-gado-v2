@@ -6,6 +6,36 @@
   <title><%= title || "Manutenção Campo do Gado" %></title>
 
   <link rel="stylesheet" href="/css/app.css" />
+
+  <!-- Ajuste visual do menu (verde bonito) -->
+  <style>
+    :root{
+      --cg-green: #1f7a4f;        /* verde principal */
+      --cg-green-dark: #166543;  /* hover */
+      --cg-green-soft: #e6f4ee;  /* fundo ativo */
+    }
+
+    .nav-item{
+      transition: all .2s ease;
+    }
+
+    .nav-item:hover{
+      background: var(--cg-green-soft);
+      color: var(--cg-green);
+      font-weight: 600;
+    }
+
+    .nav-item.active{
+      background: var(--cg-green);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .nav-item.active:hover{
+      background: var(--cg-green-dark);
+      color: #fff;
+    }
+  </style>
 </head>
 
 <body>
@@ -21,42 +51,42 @@
       </div>
 
       <nav class="nav">
-        <a class="nav-item <%= (activeMenu === 'dashboard') ? 'active' : '' %>" href="/dashboard">
-          Dashboard
+        <a class="nav-item <%= activeMenu === 'dashboard' ? 'active' : '' %>" href="/dashboard">
+          Painel
         </a>
 
-        <a class="nav-item <%= (activeMenu === 'equipamentos') ? 'active' : '' %>" href="/equipamentos">
+        <a class="nav-item <%= activeMenu === 'equipamentos' ? 'active' : '' %>" href="/equipamentos">
           Equipamentos
         </a>
 
-        <a class="nav-item <%= (activeMenu === 'os') ? 'active' : '' %>" href="/os">
+        <a class="nav-item <%= activeMenu === 'os' ? 'active' : '' %>" href="/os">
           Ordens de Serviço
         </a>
 
-        <a class="nav-item <%= (activeMenu === 'preventivas') ? 'active' : '' %>" href="/preventivas">
+        <a class="nav-item <%= activeMenu === 'preventivas' ? 'active' : '' %>" href="/preventivas">
           Preventivas
         </a>
 
-        <a class="nav-item <%= (activeMenu === 'compras') ? 'active' : '' %>" href="/solicitacoes">
-          Compras (Inbox)
+        <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/solicitacoes">
+          Compras
         </a>
 
-        <a class="nav-item <%= (activeMenu === 'estoque') ? 'active' : '' %>" href="/estoque">
+        <a class="nav-item <%= activeMenu === 'estoque' ? 'active' : '' %>" href="/estoque">
           Estoque
         </a>
 
-        <a class="nav-item <%= (activeMenu === 'escala') ? 'active' : '' %>" href="/escala">
+        <a class="nav-item <%= activeMenu === 'escala' ? 'active' : '' %>" href="/escala">
           Escala
         </a>
 
-        <a class="nav-item <%= (activeMenu === 'usuarios') ? 'active' : '' %>" href="/usuarios">
+        <a class="nav-item <%= activeMenu === 'usuarios' ? 'active' : '' %>" href="/usuarios">
           Usuários
         </a>
 
         <div class="nav-divider"></div>
 
         <div class="nav-section">ADMIN</div>
-        <a class="nav-item <%= (activeMenu === 'usuarios') ? 'active' : '' %>" href="/usuarios">
+        <a class="nav-item <%= activeMenu === 'usuarios' ? 'active' : '' %>" href="/usuarios">
           Gerenciar Usuários
         </a>
       </nav>
