@@ -1,0 +1,64 @@
+<% layout('layout') %>
+
+<style>
+  .row{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-top:14px; }
+  .box{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  .box h3{ margin:0; font-size:14px; font-weight:900; }
+  .muted{ color:#64748b; font-size:12px; margin-top:4px; }
+  .list{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+  .item{ border:1px solid #e5e7eb; border-radius:12px; padding:10px; font-weight:900; }
+  @media (max-width: 980px){ .row{ grid-template-columns:1fr; } }
+</style>
+
+<h1>Escala (Hoje)</h1>
+<p class="muted">
+  Data: <b><%= hoje?.data %></b>
+  <% if (hoje?.semana) { %>
+    • Semana: <b><%= hoje.semana.semana_numero %></b> (<%= hoje.semana.data_inicio %> até <%= hoje.semana.data_fim %>)
+  <% } %>
+</p>
+
+<% if (hoje?.aviso) { %>
+  <div class="alert alert-error"><%= hoje.aviso %></div>
+<% } %>
+
+<div class="row">
+  <div class="box">
+    <h3>Mecânicos • Noturno</h3>
+    <div class="muted">Quem está de noite hoje</div>
+    <div class="list">
+      <% (hoje?.noturno || []).forEach(p => { %>
+        <div class="item"><%= p.nome %> <span style="color:#64748b; font-weight:800;">(<%= p.horario_inicio || '19:00' %>–<%= p.horario_fim || '05:00' %>)</span></div>
+      <% }) %>
+      <% if (!hoje?.noturno?.length) { %>
+        <div class="muted">Sem registros.</div>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Mecânicos • Diurno</h3>
+    <div class="muted">Quem está de dia hoje</div>
+    <div class="list">
+      <% (hoje?.diurno || []).forEach(p => { %>
+        <div class="item"><%= p.nome %> <span style="color:#64748b; font-weight:800;">(<%= p.horario_inicio || '07:00' %>–<%= p.horario_fim || '17:00' %>)</span></div>
+      <% }) %>
+      <% if (!hoje?.diurno?.length) { %>
+        <div class="muted">Sem registros.</div>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>Apoio Operacional</h3>
+    <div class="muted">Disponível durante o dia</div>
+    <div class="list">
+      <% (hoje?.apoio || []).forEach(p => { %>
+        <div class="item"><%= p.nome %> <span style="color:#64748b; font-weight:800;">(<%= p.horario_inicio || '07:00' %>–<%= p.horario_fim || '17:00' %>)</span></div>
+      <% }) %>
+      <% if (!hoje?.apoio?.length) { %>
+        <div class="muted">Sem registros.</div>
+      <% } %>
+    </div>
+  </div>
+</div>
