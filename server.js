@@ -82,6 +82,7 @@ const estoqueRoutes = require("./modules/estoque/estoque.routes");
 const osRoutes = require("./modules/os/os.routes");
 const usuariosRoutes = require("./modules/usuarios/usuarios.routes");
 const equipamentosRoutes = require("./modules/equipamentos/equipamentos.routes");
+const preventivasRoutes = require("./modules/preventivas/preventivas.routes");
 
 // ===== Guard de rotas =====
 function safeUse(name, mw) {
@@ -100,7 +101,7 @@ safeUse("estoqueRoutes", estoqueRoutes);
 safeUse("osRoutes", osRoutes);
 safeUse("usuariosRoutes", usuariosRoutes);
 safeUse("equipamentosRoutes", equipamentosRoutes);
-
+safeUse("preventivasRoutes", preventivasRoutes); 
 // ===== Home =====
 app.get("/", (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
