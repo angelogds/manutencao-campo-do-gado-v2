@@ -1,13 +1,13 @@
-// modules/dashboard/dashboard.routes.js
 const express = require("express");
 const router = express.Router();
 
 const { requireLogin } = require("../auth/auth.middleware");
 
-let controller = {};
+// controller
+let ctrl = {};
 try {
-  controller = require("./dashboard.controller");
-  console.log("✅ [dashboard] controller exports:", Object.keys(controller));
+  ctrl = require("./dashboard.controller");
+  console.log("✅ [dashboard] controller exports:", Object.keys(ctrl));
 } catch (e) {
   console.error("❌ [dashboard] Falha ao carregar dashboard.controller:", e.message);
 }
@@ -20,7 +20,6 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// ✅ aqui fica padronizado com dashboardIndex
-router.get("/dashboard", requireLogin, safe(controller.dashboardIndex, "dashboardIndex"));
+router.get("/dashboard", requireLogin, safe(ctrl.index, "index"));
 
 module.exports = router;
