@@ -7,7 +7,47 @@ function hasTable(table) {
       .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?")
       .get(table);
     return !!r;
-  } catch {
+  } catch {const db = require("../../database/db");
+
+function getScalar(sql) {
+  try {
+    const row = db.prepare(sql).get();
+    const key = row ? Object.keys(row)[0] : null;
+    return key ? Number(row[key] || 0) : 0;
+  } catch (_e) {
+    return 0;
+  }
+}
+
+function getCards() {
+  // views criadas em 070_dashboard_views.sql (se faltar, retorna 0)
+  const os_abertas = getScalar("SELECT total FROM vw_dashboard_os_abertas");
+  const compras_abertas = getScalar("SELECT total FROM vw_dashboard_compras_abertas");
+  const itens_abaixo_minimo = getScalar("SELECT total FROM vw_dashboard_itens_abaixo_minimo");
+
+  const equipamentos = getScalar("SELECT COUNT(*) AS total FROM equipamentos");
+  const itens_estoque = getScalar("SELECT COUNT(*) AS total FROM estoque_itens");
+
+  return { os_abertas, compras_abertas, itens_abaixo_minimo, equipamentos, itens_estoque };
+}
+
+function getBlocks() {
+  // OS
+  const os_abertas = getScalar("SELECT COUNT(*) AS total FROM os WHERE status IN ('ABERTA','ANDAMENTO','PAUSADA')");
+  const os_finalizadas = getScalar("SELECT COUNT(*) AS total FROM os WHERE status IN ('CONCLUIDA','CANCELADA')");
+
+  // Compras/Solicitações
+  const sol_feitas = getScalar("SELECT COUNT(*) AS total FROM solicitacoes_compra");
+  const sol_aprovadas = getScalar("SELECT COUNT(*) AS total FROM solicitacoes_compra WHERE status='aprovada'");
+
+  return {
+    os: { abertas: os_abertas, finalizadas: os_finalizadas },
+    compras: { feitas: sol_feitas, aprovadas: sol_aprovadas },
+  };
+}
+
+module.exports = { getCards, getBlocks };
+
     return false;
   }
 }
