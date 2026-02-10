@@ -1,17 +1,37 @@
-<% layout("layout") %>
+<% layout('layout') %>
 
-<h1>Equipamento #<%= equipamento.id %></h1>
+<h1>Equipamento #<%= equip.id %></h1>
+<p style="color:#6b7280; margin-top:-6px;">Detalhes do equipamento.</p>
 
-<p><strong>Código:</strong> <%= equipamento.codigo || "-" %></p>
-<p><strong>Nome:</strong> <%= equipamento.nome %></p>
-<p><strong>Setor:</strong> <%= equipamento.setor || "-" %></p>
-<p><strong>Tipo:</strong> <%= equipamento.tipo || "-" %></p>
-<p><strong>Criticidade:</strong> <%= equipamento.criticidade || "media" %></p>
-<p><strong>Ativo:</strong> <%= equipamento.ativo ? "Sim" : "Não" %></p>
-<p><strong>Criado em:</strong> <%= equipamento.created_at || "-" %></p>
-<p><strong>Atualizado em:</strong> <%= equipamento.updated_at || "-" %></p>
+<div style="background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; max-width:900px;">
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+    <div>
+      <div style="color:#6b7280; font-weight:900; font-size:12px;">NOME</div>
+      <div style="font-weight:900; font-size:20px; margin-top:4px;"><%= equip.nome %></div>
+    </div>
+    <div>
+      <div style="color:#6b7280; font-weight:900; font-size:12px;">CÓDIGO</div>
+      <div style="font-weight:900; font-size:20px; margin-top:4px;"><%= equip.codigo || "-" %></div>
+    </div>
+  </div>
 
-<p style="margin-top:14px;">
-  <a href="/equipamentos">← voltar</a> |
-  <a href="/equipamentos/<%= equipamento.id %>/editar">Editar</a>
-</p>
+  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px;">
+    <div>
+      <div style="color:#6b7280; font-weight:900; font-size:12px;">SETOR</div>
+      <div style="font-weight:900; margin-top:4px;"><%= equip.setor || "-" %></div>
+    </div>
+    <div>
+      <div style="color:#6b7280; font-weight:900; font-size:12px;">TIPO</div>
+      <div style="font-weight:900; margin-top:4px;"><%= equip.tipo || "-" %></div>
+    </div>
+    <div>
+      <div style="color:#6b7280; font-weight:900; font-size:12px;">CRITICIDADE</div>
+      <div style="font-weight:900; margin-top:4px;"><%= (equip.criticidade || "media").toUpperCase() %></div>
+    </div>
+  </div>
+
+  <div style="display:flex; gap:10px; margin-top:14px;">
+    <a class="btn btn-ghost" href="/equipamentos" style="text-decoration:none;">Voltar</a>
+    <a class="btn" href="/equipamentos/<%= equip.id %>/editar" style="text-decoration:none;">Editar</a>
+  </div>
+</div>
