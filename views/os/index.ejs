@@ -1,33 +1,114 @@
-<% layout("layout") %>
+<% layout('layout') %>
 
-<h1>Ordens de Serviço</h1>
-<p><a href="/os/nova">+ Abrir OS</a></p>
+<style>
+  .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .spacer{ flex:1; }
+  .grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  .k{ color:#6b7280; font-weight:900; font-size:12px; letter-spacing:.04em; }
+  .v{ font-size:24px; font-weight:900; margin-top:6px; }
+  .muted{ color:#6b7280; }
+  .btn-sm{ padding:8px 10px; border-radius:12px; font-weight:900; border:1px solid #e5e7eb; background:#fff; cursor:pointer; text-decoration:none; display:inline-block; }
+  .btn-sm:hover{ border-color:#10b981; color:#065f46; background:#ecfdf5; }
+  .pill{ display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:900; font-size:12px; }
+  table{ width:100%; border-collapse:separate; border-spacing:0; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; }
+  th,td{ padding:10px 12px; border-bottom:1px solid #eef2f7; vertical-align:top; }
+  th{ text-align:left; font-size:12px; color:#6b7280; letter-spacing:.04em; }
+  tr:last-child td{ border-bottom:none; }
+  .tag{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:900; border:1px solid #e5e7eb; background:#f9fafb; }
+  .tag.ABERTA{ background:#eff6ff; border-color:#dbeafe; color:#1d4ed8; }
+  .tag.ANDAMENTO{ background:#fff7ed; border-color:#fed7aa; color:#9a3412; }
+  .tag.PAUSADA{ background:#fefce8; border-color:#fde68a; color:#854d0e; }
+  .tag.CONCLUIDA{ background:#ecfdf5; border-color:#a7f3d0; color:#065f46; }
+  .tag.CANCELADA{ background:#fef2f2; border-color:#fecaca; color:#991b1b; }
+  @media (max-width: 980px){ .grid{ grid-template-columns:1fr; } }
+</style>
 
-<table border="1" cellpadding="6">
+<div class="row">
+  <div>
+    <h1>Ordens de Serviço</h1>
+    <div class="muted">Abrir, acompanhar e finalizar OS.</div>
+  </div>
+  <div class="spacer"></div>
+
+  <a class="btn-sm" href="/os/nova">+ Nova OS</a>
+
+  <% if (statusFilter) { %>
+    <a class="btn-sm" href="/os">Limpar filtro</a>
+  <% } %>
+</div>
+
+<div style="height:10px"></div>
+
+<div class="grid">
+  <div class="card">
+    <div class="k">ABERTAS</div>
+    <div class="v"><%= blocks?.os?.abertas ?? 0 %></div>
+    <div style="margin-top:8px;">
+      <a class="btn-sm" href="/os?status=ABERTA">Ver ABERTAS</a>
+      <a class="btn-sm" href="/os?status=ANDAMENTO">ANDAMENTO</a>
+      <a class="btn-sm" href="/os?status=PAUSADA">PAUSADAS</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="k">ACOMPANHAR</div>
+    <div class="v"><%= blocks?.os?.acompanhar ?? 0 %></div>
+    <div class="muted" style="margin-top:6px;">Andamento + Pausadas</div>
+    <div style="margin-top:8px;">
+      <a class="btn-sm" href="/os?status=ANDAMENTO">Em andamento</a>
+      <a class="btn-sm" href="/os?status=PAUSADA">Pausadas</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="k">FINALIZADAS</div>
+    <div class="v"><%= blocks?.os?.finalizadas ?? 0 %></div>
+    <div class="muted" style="margin-top:6px;">Concluídas + Canceladas</div>
+    <div style="margin-top:8px;">
+      <a class="btn-sm" href="/os?status=CONCLUIDA">Concluídas</a>
+      <a class="btn-sm" href="/os?status=CANCELADA">Canceladas</a>
+    </div>
+  </div>
+</div>
+
+<div style="height:12px"></div>
+
+<div class="row">
+  <div class="pill">
+    Filtro: <%= statusFilter ? statusFilter : 'TODAS' %>
+  </div>
+</div>
+
+<div style="height:12px"></div>
+
+<table>
   <thead>
     <tr>
-      <th>ID</th>
+      <th style="width:90px;">#</th>
+      <th style="width:150px;">Status</th>
       <th>Equipamento</th>
-      <th>Tipo</th>
-      <th>Status</th>
-      <th>Abertura</th>
-      <th></th>
+      <th>Descrição</th>
+      <th style="width:160px;">Aberta em</th>
+      <th style="width:120px;"></th>
     </tr>
   </thead>
   <tbody>
-    <% if (!lista || lista.length === 0) { %>
-      <tr><td colspan="6">Nenhuma OS cadastrada.</td></tr>
-    <% } else { %>
-      <% lista.forEach(o => { %>
-        <tr>
-          <td><%= o.id %></td>
-          <td><%= o.equipamento %></td>
-          <td><%= o.tipo %></td>
-          <td><%= o.status %></td>
-          <td><%= o.opened_at || "-" %></td>
-          <td><a href="/os/<%= o.id %>">ver</a></td>
-        </tr>
-      <% }) %>
+    <% if (!lista || !lista.length) { %>
+      <tr><td colspan="6" class="muted">Nenhuma OS encontrada.</td></tr>
     <% } %>
+
+    <% (lista || []).forEach(o => { %>
+      <tr>
+        <td><strong>#<%= o.id %></strong></td>
+        <td><span class="tag <%= o.status %>"><%= o.status %></span></td>
+        <td><%= o.equipamento %></td>
+        <td><%= o.descricao %></td>
+        <td><%= o.opened_at ? fmtBR(o.opened_at) : '-' %></td>
+        <td style="text-align:right;">
+          <a class="btn-sm" href="/os/<%= o.id %>">Abrir</a>
+        </td>
+      </tr>
+    <% }) %>
   </tbody>
 </table>
