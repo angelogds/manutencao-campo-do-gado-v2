@@ -1,47 +1,57 @@
-<% layout("layout") %>
+<% layout('layout') %>
 
-<h1>Editar Equipamento #<%= equipamento.id %></h1>
+<h1>Editar Equipamento #<%= equip.id %></h1>
+<p style="color:#6b7280; margin-top:-6px;">Atualize os dados do equipamento.</p>
 
-<form method="POST" action="/equipamentos/<%= equipamento.id %>">
-  <div>
-    <label>Código</label><br/>
-    <input name="codigo" value="<%= equipamento.codigo || '' %>" />
-  </div>
+<div style="background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; max-width:900px;">
+  <form action="/equipamentos/<%= equip.id %>" method="POST">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div>
+        <label style="font-weight:900;">Código</label>
+        <input name="codigo" value="<%= equip.codigo || '' %>"
+          style="width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:10px;" />
+      </div>
 
-  <div style="margin-top:10px;">
-    <label>Nome *</label><br/>
-    <input name="nome" required style="width:420px;" value="<%= equipamento.nome %>" />
-  </div>
+      <div>
+        <label style="font-weight:900;">Ativo</label>
+        <select name="ativo" style="width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:10px;">
+          <option value="1" <%= equip.ativo ? "selected" : "" %>>SIM</option>
+          <option value="0" <%= !equip.ativo ? "selected" : "" %>>NÃO</option>
+        </select>
+      </div>
+    </div>
 
-  <div style="margin-top:10px;">
-    <label>Setor</label><br/>
-    <input name="setor" value="<%= equipamento.setor || '' %>" />
-  </div>
+    <div style="margin-top:12px;">
+      <label style="font-weight:900;">Nome *</label>
+      <input name="nome" required value="<%= equip.nome %>"
+        style="width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:10px;" />
+    </div>
 
-  <div style="margin-top:10px;">
-    <label>Tipo</label><br/>
-    <input name="tipo" value="<%= equipamento.tipo || '' %>" />
-  </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+      <div>
+        <label style="font-weight:900;">Setor</label>
+        <input name="setor" value="<%= equip.setor || '' %>"
+          style="width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:10px;" />
+      </div>
+      <div>
+        <label style="font-weight:900;">Tipo</label>
+        <input name="tipo" value="<%= equip.tipo || '' %>"
+          style="width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:10px;" />
+      </div>
+    </div>
 
-  <div style="margin-top:10px;">
-    <label>Criticidade</label><br/>
-    <select name="criticidade">
-      <option value="baixa" <%= equipamento.criticidade==='baixa'?'selected':'' %>>baixa</option>
-      <option value="media" <%= equipamento.criticidade==='media'?'selected':'' %>>media</option>
-      <option value="alta" <%= equipamento.criticidade==='alta'?'selected':'' %>>alta</option>
-    </select>
-  </div>
+    <div style="margin-top:12px;">
+      <label style="font-weight:900;">Criticidade</label>
+      <select name="criticidade" style="width:100%; padding:10px; border:1px solid #e5e7eb; border-radius:10px;">
+        <option value="baixa" <%= equip.criticidade === "baixa" ? "selected" : "" %>>baixa</option>
+        <option value="media" <%= (equip.criticidade || "media") === "media" ? "selected" : "" %>>média</option>
+        <option value="alta" <%= equip.criticidade === "alta" ? "selected" : "" %>>alta</option>
+      </select>
+    </div>
 
-  <div style="margin-top:10px;">
-    <label>Ativo</label><br/>
-    <select name="ativo">
-      <option value="1" <%= equipamento.ativo ? 'selected':'' %>>Sim</option>
-      <option value="0" <%= !equipamento.ativo ? 'selected':'' %>>Não</option>
-    </select>
-  </div>
-
-  <div style="margin-top:12px;">
-    <button type="submit">Salvar</button>
-    <a href="/equipamentos/<%= equipamento.id %>">Cancelar</a>
-  </div>
-</form>
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button class="btn" type="submit">Salvar</button>
+      <a class="btn btn-ghost" href="/equipamentos/<%= equip.id %>" style="text-decoration:none;">Cancelar</a>
+    </div>
+  </form>
+</div>
