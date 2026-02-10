@@ -1,58 +1,117 @@
 <% layout('layout') %>
 
 <style>
-  .grid{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px; }
+  .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .spacer{ flex:1; }
+  .grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
   .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
   .k{ color:#6b7280; font-weight:900; font-size:12px; letter-spacing:.04em; }
-  .v{ font-size:18px; font-weight:900; margin-top:6px; }
-  .btn{ display:inline-block; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; font-weight:800; }
-  .table{ width:100%; border-collapse:collapse; }
-  .table th,.table td{ padding:10px; border-bottom:1px solid #f1f5f9; text-align:left; font-size:14px; }
+  .v{ font-size:24px; font-weight:900; margin-top:6px; }
   .muted{ color:#6b7280; }
-  .row{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:10px 0 18px; }
-  @media (max-width: 980px){ .grid{ grid-template-columns:1fr;} }
+  .btn-sm{ padding:8px 10px; border-radius:12px; font-weight:900; border:1px solid #e5e7eb; background:#fff; cursor:pointer; text-decoration:none; display:inline-block; }
+  .btn-sm:hover{ border-color:#10b981; color:#065f46; background:#ecfdf5; }
+  .pill{ display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:900; font-size:12px; }
+  input{
+    padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; outline:none; min-width:260px;
+  }
+  input:focus{ border-color:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.15); }
+  table{ width:100%; border-collapse:separate; border-spacing:0; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; }
+  th,td{ padding:10px 12px; border-bottom:1px solid #eef2f7; vertical-align:top; }
+  th{ text-align:left; font-size:12px; color:#6b7280; letter-spacing:.04em; }
+  tr:last-child td{ border-bottom:none; }
+  .tag{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:900; border:1px solid #e5e7eb; background:#f9fafb; }
+  .tag.low{ background:#ecfdf5; border-color:#a7f3d0; color:#065f46; }
+  .tag.bad{ background:#fef2f2; border-color:#fecaca; color:#991b1b; }
+  @media (max-width: 980px){ .grid{ grid-template-columns:1fr; } input{ min-width:180px;} }
 </style>
 
-<h1>Estoque</h1>
-<p class="muted" style="margin-top:-6px;">Cadastro de itens e saldo atual.</p>
-
 <div class="row">
-  <div></div>
-  <div style="display:flex; gap:10px;">
-    <a class="btn" href="/estoque/novo">Novo Item</a>
+  <div>
+    <h1>Estoque</h1>
+    <div class="muted">Controle de itens e movimentações (entrada/saída).</div>
+  </div>
+  <div class="spacer"></div>
+
+  <a class="btn-sm" href="/estoque/novo">+ Novo item</a>
+</div>
+
+<div style="height:10px"></div>
+
+<div class="grid">
+  <div class="card">
+    <div class="k">ITENS CADASTRADOS</div>
+    <div class="v"><%= cards?.itens_estoque ?? 0 %></div>
+  </div>
+
+  <div class="card">
+    <div class="k">ABAIXO DO MÍNIMO</div>
+    <div class="v"><%= cards?.abaixo_minimo ?? 0 %></div>
+    <div style="margin-top:8px;">
+      <a class="btn-sm" href="/estoque?below=1">Ver abaixo do mínimo</a>
+      <% if (onlyBelow) { %>
+        <a class="btn-sm" href="/estoque">Limpar</a>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="k">SALDO TOTAL (SOMA)</div>
+    <div class="v"><%= Number(cards?.saldo_total ?? 0).toFixed(0) %></div>
+    <div class="muted" style="margin-top:6px;">Indicador geral (não financeiro).</div>
   </div>
 </div>
 
-<div class="card">
-  <div class="k">ITENS</div>
-  <div class="v">Saldo por item</div>
+<div style="height:12px"></div>
 
-  <div style="margin-top:12px; overflow:auto;">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Código</th>
-          <th>Nome</th>
-          <th>Un</th>
-          <th>Saldo</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <% if (!itens || itens.length === 0) { %>
-          <tr><td colspan="5" class="muted">Nenhum item cadastrado.</td></tr>
-        <% } else { %>
-          <% itens.forEach(i => { %>
-            <tr>
-              <td class="muted"><%= i.codigo || '-' %></td>
-              <td><%= i.nome %></td>
-              <td class="muted"><%= i.unidade || 'un' %></td>
-              <td style="font-weight:900;"><%= i.saldo ?? 0 %></td>
-              <td><a class="btn" href="/estoque/<%= i.item_id || i.id %>">Abrir</a></td>
-            </tr>
-          <% }) %>
-        <% } %>
-      </tbody>
-    </table>
-  </div>
-</div>
+<form class="row" method="GET" action="/estoque">
+  <input name="q" value="<%= q || '' %>" placeholder="Buscar por nome ou código..." />
+  <% if (onlyBelow) { %>
+    <input type="hidden" name="below" value="1" />
+  <% } %>
+  <button class="btn-sm" type="submit">Buscar</button>
+  <% if (q) { %>
+    <a class="btn-sm" href="/estoque<%= onlyBelow ? '?below=1' : '' %>">Limpar</a>
+  <% } %>
+</form>
+
+<div style="height:12px"></div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:90px;">#</th>
+      <th style="width:140px;">Código</th>
+      <th>Item</th>
+      <th style="width:110px;">Unid.</th>
+      <th style="width:130px;">Mínimo</th>
+      <th style="width:130px;">Saldo</th>
+      <th style="width:110px;"></th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <% if (!lista || !lista.length) { %>
+      <tr><td colspan="7" class="muted">Nenhum item encontrado.</td></tr>
+    <% } %>
+
+    <% (lista || []).forEach(i => { 
+         const below = Number(i.saldo) < Number(i.estoque_min || 0);
+    %>
+      <tr>
+        <td><strong>#<%= i.id %></strong></td>
+        <td><%= i.codigo || '-' %></td>
+        <td><%= i.nome %></td>
+        <td><%= i.unidade || 'un' %></td>
+        <td><%= Number(i.estoque_min || 0) %></td>
+        <td>
+          <span class="tag <%= below ? 'bad' : 'low' %>">
+            <%= Number(i.saldo || 0) %>
+          </span>
+        </td>
+        <td style="text-align:right;">
+          <a class="btn-sm" href="/estoque/<%= i.id %>">Abrir</a>
+        </td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
