@@ -1,59 +1,56 @@
 <% layout('layout') %>
 
 <style>
-  .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:12px 0; }
-  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
-  .btn-mini{
-    display:inline-flex; align-items:center; justify-content:center;
-    padding:8px 10px; border-radius:12px; border:1px solid #e5e7eb;
-    background:#fff; font-weight:900; font-size:13px; color:#111827;
-    text-decoration:none; transition: all .15s ease;
-  }
-  .btn-mini:hover{ background:#0f7a3a; border-color:#0f7a3a; color:#fff; transform: translateY(-1px); }
-  table{ width:100%; border-collapse:collapse; }
-  th,td{ padding:10px; border-bottom:1px solid #e5e7eb; text-align:left; font-size:14px; }
-  th{ color:#6b7280; font-size:12px; letter-spacing:.04em; text-transform:uppercase; }
-  .pill{ font-size:12px; font-weight:900; padding:4px 10px; border-radius:999px; background:#f3f4f6; border:1px solid #e5e7eb; }
+  .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .spacer{ flex:1; }
+  .muted{ color:#6b7280; }
+  .btn-sm{ padding:8px 10px; border-radius:12px; font-weight:900; border:1px solid #e5e7eb; background:#fff; cursor:pointer; }
+  .btn-sm:hover{ border-color:#10b981; color:#065f46; background:#ecfdf5; }
+  table{ width:100%; border-collapse:separate; border-spacing:0; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; }
+  th,td{ padding:10px 12px; border-bottom:1px solid #eef2f7; }
+  th{ text-align:left; font-size:12px; color:#6b7280; letter-spacing:.04em; }
+  tr:last-child td{ border-bottom:none; }
 </style>
 
-<h1>Compras</h1>
-<p style="color:#6b7280; margin-top:-6px;">Registro de compras / recebimentos.</p>
-
 <div class="row">
-  <a class="btn-mini" href="/compras/new">Nova compra</a>
-  <a class="btn-mini" href="/compras?status=em_andamento">Em andamento</a>
-  <a class="btn-mini" href="/compras?status=recebida">Recebidas</a>
-  <a class="btn-mini" href="/compras">Todas</a>
-  <% if (status) { %>
-    <span class="pill">Filtro: <%= status %></span>
-  <% } %>
+  <div>
+    <h1>Compras</h1>
+    <div class="muted">Recebimento e acompanhamento.</div>
+  </div>
+  <div class="spacer"></div>
+  <a class="btn-sm" href="/compras/nova">+ Nova Compra</a>
+  <a class="btn-sm" href="/solicitacoes">Ir para Solicitações</a>
 </div>
 
-<div class="card">
-  <table>
-    <thead>
+<div style="height:12px"></div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:90px;">#</th>
+      <th style="width:160px;">Status</th>
+      <th>Fornecedor</th>
+      <th style="width:180px;">Data compra</th>
+      <th style="width:180px;">Criada em</th>
+      <th style="width:120px;"></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if (!lista || !lista.length) { %>
+      <tr><td colspan="6" class="muted">Nenhuma compra cadastrada.</td></tr>
+    <% } %>
+
+    <% (lista || []).forEach(c => { %>
       <tr>
-        <th>ID</th>
-        <th>Fornecedor</th>
-        <th>Status</th>
-        <th>Data compra</th>
-        <th></th>
+        <td><strong>#<%= c.id %></strong></td>
+        <td><%= c.status %></td>
+        <td><%= c.fornecedor || '-' %></td>
+        <td><%= c.data_compra || '-' %></td>
+        <td><%= c.created_at ? fmtBR(c.created_at) : '-' %></td>
+        <td style="text-align:right;">
+          <a class="btn-sm" href="/compras/<%= c.id %>">Abrir</a>
+        </td>
       </tr>
-    </thead>
-    <tbody>
-      <% if (!lista || lista.length === 0) { %>
-        <tr><td colspan="5" style="color:#6b7280;">Nenhuma compra encontrada.</td></tr>
-      <% } %>
-
-      <% (lista || []).forEach(c => { %>
-        <tr>
-          <td>#<%= c.id %></td>
-          <td><%= c.fornecedor || "-" %></td>
-          <td><span class="pill"><%= c.status %></span></td>
-          <td><%= c.data_compra || "-" %></td>
-          <td><a class="btn-mini" href="/compras/<%= c.id %>">Abrir</a></td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
-</div>
+    <% }) %>
+  </tbody>
+</table>
