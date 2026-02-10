@@ -1,9 +1,9 @@
+// modules/dashboard/dashboard.routes.js
 const express = require("express");
 const router = express.Router();
 
 const { requireLogin } = require("../auth/auth.middleware");
 
-// controller
 let ctrl = {};
 try {
   ctrl = require("./dashboard.controller");
@@ -16,7 +16,7 @@ const safe = (fn, name) =>
   typeof fn === "function"
     ? fn
     : (_req, res) => {
-        console.error(`❌ [dashboard] Handler ${name} indefinido.`);
+        console.error(`❌ [dashboard] Handler ${name} indefinido (export errado).`);
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
