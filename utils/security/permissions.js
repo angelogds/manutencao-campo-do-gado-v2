@@ -1,45 +1,38 @@
 // utils/security/permissions.js
 
-// Roles oficiais do sistema (não precisa exportar todos, mas ajuda)
-const ROLES = Object.freeze({
-  ADMIN: "admin",
-  DIRETORIA: "diretoria",
-  RH: "rh",
-  COMPRAS: "compras",
-  ALMOX: "almoxarifado",
-  MANUTENCAO: "manutencao",
-  PRODUCAO: "producao",
-});
-
-/**
- * Retorna role do usuário (string) com fallback seguro
- */
-function getUserRole(user) {
-  return user?.role ? String(user.role).trim() : "";
+function normalizeRole(role) {
+  return String(role || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_");
 }
 
-/**
- * true se user.role estiver em allowedRoles
- */
+function getUserRoles(user) {
+  const roles = new Set();
+
+  // role único (legacy)
+  if (user?.role) roles.add(normalizeRole(user.role));
+
+  // array de roles
+  if (Array.isArray(user?.roles)) {
+    for (const r of user.roles) roles.add(normalizeRole(r));
+  }
+
+  // perfil (caso você use user.perfil)
+  if (user?.perfil) roles.add(normalizeRole(user.perfil));
+
+  return roles;
+}
+
 function hasAnyRole(user, allowedRoles = []) {
-  const role = getUserRole(user);
-  if (!role) return false;
+  if (!allowedRoles || allowedRoles.length === 0) return true; // se não exigir, libera
+  const userRoles = getUserRoles(user);
+  const allowed = new Set(allowedRoles.map(normalizeRole));
 
-  // admin sempre pode tudo
-  if (role === ROLES.ADMIN) return true;
-
-  const allowed = (allowedRoles || []).map((r) => String(r).trim());
-  return allowed.includes(role);
+  for (const r of userRoles) {
+    if (allowed.has(r)) return true;
+  }
+  return false;
 }
 
-/**
- * true se user.role for exatamente roleName
- */
-function hasRole(user, roleName) {
-  const role = getUserRole(user);
-  if (!role) return false;
-  if (role === ROLES.ADMIN) return true;
-  return role === String(roleName).trim();
-}
-
-module.exports = { ROLES, getUserRole, hasAnyRole, hasRole };
+module.exports = { hasAnyRole, normalizeRole, getUserRoles };
