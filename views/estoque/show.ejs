@@ -1,85 +1,137 @@
 <% layout('layout') %>
 
 <style>
-  .grid{ display:grid; grid-template-columns:2fr 1fr; gap:12px; }
+  .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .spacer{ flex:1; }
   .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
-  .k{ color:#6b7280; font-weight:900; font-size:12px; letter-spacing:.04em; }
-  .v{ font-size:18px; font-weight:900; margin-top:6px; }
   .muted{ color:#6b7280; }
-  .btn{ display:inline-block; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; background:#fff; font-weight:800; cursor:pointer; }
-  .table{ width:100%; border-collapse:collapse; }
-  .table th,.table td{ padding:10px; border-bottom:1px solid #f1f5f9; text-align:left; font-size:14px; }
-  input,select{ padding:10px 12px; border:1px solid #e5e7eb; border-radius:12px; font-size:14px; width:100%; }
-  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  @media (max-width: 980px){ .grid{ grid-template-columns:1fr;} }
+  .btn-sm{ padding:8px 10px; border-radius:12px; font-weight:900; border:1px solid #e5e7eb; background:#fff; cursor:pointer; text-decoration:none; display:inline-block; }
+  .btn-sm:hover{ border-color:#10b981; color:#065f46; background:#ecfdf5; }
+  label{ font-weight:900; font-size:12px; color:#6b7280; letter-spacing:.04em; display:block; margin-bottom:6px; }
+  input, select{
+    width:100%; padding:10px 12px; border-radius:12px;
+    border:1px solid #e5e7eb; outline:none;
+  }
+  input:focus, select:focus{ border-color:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.15); }
+  table{ width:100%; border-collapse:separate; border-spacing:0; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; }
+  th,td{ padding:10px 12px; border-bottom:1px solid #eef2f7; vertical-align:top; }
+  th{ text-align:left; font-size:12px; color:#6b7280; letter-spacing:.04em; }
+  tr:last-child td{ border-bottom:none; }
+  .tag{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:900; border:1px solid #e5e7eb; background:#f9fafb; }
+  .tag.entrada{ background:#ecfdf5; border-color:#a7f3d0; color:#065f46; }
+  .tag.saida{ background:#fef2f2; border-color:#fecaca; color:#991b1b; }
+  .tag.ajuste{ background:#eff6ff; border-color:#dbeafe; color:#1d4ed8; }
 </style>
 
-<h1>Item: <%= item.nome %></h1>
-<p class="muted" style="margin-top:-6px;">Saldo atual: <b><%= saldo ?? 0 %></b> (<%= item.unidade || "un" %>)</p>
-
-<div class="grid">
-  <div class="card">
-    <div class="k">MOVIMENTAÇÕES</div>
-    <div class="v">Histórico</div>
-
-    <div style="margin-top:12px; overflow:auto;">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Tipo</th>
-            <th>Qtd</th>
-            <th>Obs</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% if (!movs || movs.length === 0) { %>
-            <tr><td colspan="4" class="muted">Sem movimentos ainda.</td></tr>
-          <% } else { %>
-            <% movs.forEach(m => { %>
-              <tr>
-                <td class="muted"><%= m.created_at || "-" %></td>
-                <td><%= m.tipo %></td>
-                <td class="muted"><%= m.quantidade %></td>
-                <td class="muted"><%= m.observacao || "-" %></td>
-              </tr>
-            <% }) %>
-          <% } %>
-        </tbody>
-      </table>
+<div class="row">
+  <div>
+    <h1><%= item.nome %></h1>
+    <div class="muted">
+      Código: <strong><%= item.codigo || '-' %></strong> • Unidade: <strong><%= item.unidade || 'un' %></strong>
     </div>
   </div>
+  <div class="spacer"></div>
 
-  <div class="card">
-    <div class="k">LANÇAR MOVIMENTO</div>
-    <div class="v">Entrada / Saída</div>
+  <div class="tag">Saldo: <strong><%= Number(item.saldo || 0) %></strong></div>
+  <a class="btn-sm" href="/estoque">Voltar</a>
+</div>
 
-    <form method="post" action="/estoque/<%= item.id %>/mov" style="margin-top:12px;">
-      <div class="row2">
-        <div>
-          <label class="muted">Tipo</label>
-          <select name="tipo">
-            <option value="entrada">entrada</option>
-            <option value="saida">saida</option>
-            <option value="ajuste">ajuste</option>
-          </select>
-        </div>
+<div style="height:12px"></div>
 
-        <div>
-          <label class="muted">Quantidade</label>
-          <input name="quantidade" type="number" step="0.01" value="1" required />
-        </div>
-      </div>
-
-      <div style="margin-top:10px;">
-        <label class="muted">Observação</label>
-        <input name="observacao" placeholder="Ex: Almoxarifado / OS #12 / Inventário" />
-      </div>
-
-      <div style="margin-top:10px; display:flex; gap:10px;">
-        <button class="btn" type="submit">Lançar</button>
-        <a class="btn" href="/estoque">Voltar</a>
-      </div>
-    </form>
+<div class="card">
+  <div class="row">
+    <div style="flex:1; min-width:200px;">
+      <div class="muted">Mínimo</div>
+      <div style="font-weight:900;"><%= Number(item.estoque_min || 0) %></div>
+    </div>
+    <div style="flex:1; min-width:200px;">
+      <div class="muted">Custo unit.</div>
+      <div style="font-weight:900;">R$ <%= Number(item.custo_unit || 0).toFixed(2) %></div>
+    </div>
+    <div style="flex:1; min-width:240px;">
+      <div class="muted">Criado em</div>
+      <div style="font-weight:900;"><%= item.created_at ? fmtBR(item.created_at) : '-' %></div>
+    </div>
   </div>
 </div>
+
+<div style="height:12px"></div>
+
+<div class="card">
+  <h2 style="margin:0 0 8px 0;">Movimentar estoque</h2>
+
+  <form action="/estoque/<%= item.id %>/mov" method="POST">
+    <div class="row">
+      <div style="flex:1; min-width:180px;">
+        <label>Tipo</label>
+        <select name="tipo">
+          <option value="entrada">entrada</option>
+          <option value="saida">saida</option>
+          <option value="ajuste">ajuste</option>
+        </select>
+      </div>
+
+      <div style="flex:1; min-width:180px;">
+        <label>Quantidade</label>
+        <input name="quantidade" type="number" step="0.01" required placeholder="0" />
+      </div>
+
+      <div style="flex:1; min-width:180px;">
+        <label>Custo unit. (opcional)</label>
+        <input name="custo_unit" type="number" step="0.01" placeholder="0" />
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+
+    <div class="row">
+      <div style="flex:1; min-width:220px;">
+        <label>Origem (opcional)</label>
+        <input name="origem" placeholder="compra | os | ajuste | inventario" />
+      </div>
+
+      <div style="flex:2; min-width:260px;">
+        <label>Observação (opcional)</label>
+        <input name="observacao" placeholder="Ex.: Entrada nota fiscal / Baixa manutenção..." />
+      </div>
+    </div>
+
+    <div style="height:12px"></div>
+
+    <button class="btn-sm" type="submit">Registrar</button>
+  </form>
+</div>
+
+<div style="height:12px"></div>
+
+<h2 style="margin:0 0 8px 0;">Últimas movimentações</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width:120px;">Tipo</th>
+      <th style="width:140px;">Quantidade</th>
+      <th style="width:160px;">Custo unit.</th>
+      <th>Origem/Obs</th>
+      <th style="width:180px;">Data</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if (!movimentos || !movimentos.length) { %>
+      <tr><td colspan="5" class="muted">Sem movimentações ainda.</td></tr>
+    <% } %>
+
+    <% (movimentos || []).forEach(m => { %>
+      <tr>
+        <td><span class="tag <%= m.tipo %>"><%= m.tipo %></span></td>
+        <td><strong><%= Number(m.quantidade || 0) %></strong></td>
+        <td>R$ <%= (m.custo_unit == null ? '-' : Number(m.custo_unit).toFixed(2)) %></td>
+        <td>
+          <div><strong><%= m.origem || '-' %></strong></div>
+          <div class="muted"><%= m.observacao || '' %></div>
+        </td>
+        <td><%= m.created_at ? fmtBR(m.created_at) : '-' %></td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
