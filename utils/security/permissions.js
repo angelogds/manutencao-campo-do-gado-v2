@@ -1,38 +1,40 @@
 // utils/security/permissions.js
 
-function normalizeRole(role) {
-  return String(role || "")
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "_");
+// Permissões por role (o que cada perfil pode acessar)
+const ROLE_PERMS = {
+  admin: ["*"],
+
+  diretoria: ["dashboard", "equipamentos", "os", "compras", "estoque", "usuarios", "preventivas", "escala"],
+  rh: ["dashboard", "os", "equipamentos", "usuarios"],
+
+  compras: ["dashboard", "compras", "estoque"],
+  almoxarifado: ["dashboard", "estoque", "compras"],
+
+  producao: ["dashboard", "os", "equipamentos"],
+  mecanico: ["dashboard", "os", "equipamentos", "preventivas", "escala"],
+};
+
+// Retorna true se user tem role
+function getRole(user) {
+  return String(user?.role || "").toLowerCase().trim();
 }
 
-function getUserRoles(user) {
-  const roles = new Set();
+function canAccess(user, feature) {
+  const role = getRole(user);
+  if (!role) return false;
 
-  // role único (legacy)
-  if (user?.role) roles.add(normalizeRole(user.role));
+  const perms = ROLE_PERMS[role] || [];
+  if (perms.includes("*")) return true;
 
-  // array de roles
-  if (Array.isArray(user?.roles)) {
-    for (const r of user.roles) roles.add(normalizeRole(r));
-  }
-
-  // perfil (caso você use user.perfil)
-  if (user?.perfil) roles.add(normalizeRole(user.perfil));
-
-  return roles;
+  return perms.includes(feature);
 }
 
-function hasAnyRole(user, allowedRoles = []) {
-  if (!allowedRoles || allowedRoles.length === 0) return true; // se não exigir, libera
-  const userRoles = getUserRoles(user);
-  const allowed = new Set(allowedRoles.map(normalizeRole));
-
-  for (const r of userRoles) {
-    if (allowed.has(r)) return true;
-  }
-  return false;
+function canAny(user, features = []) {
+  return features.some((f) => canAccess(user, f));
 }
 
-module.exports = { hasAnyRole, normalizeRole, getUserRoles };
+module.exports = {
+  ROLE_PERMS,
+  canAccess,
+  canAny,
+};
