@@ -1,5 +1,5 @@
 // modules/auth/auth.middleware.js
-const { hasAnyRole } = require("../../utils/security/permissions");
+const { canAccess } = require("../../utils/security/permissions");
 
 function requireLogin(req, res, next) {
   if (req.session?.user) return next();
@@ -7,7 +7,8 @@ function requireLogin(req, res, next) {
   return res.redirect("/login");
 }
 
-function requireRole(allowedRoles = []) {
+// feature = "compras" | "estoque" | "os" etc
+function requireFeature(feature) {
   return (req, res, next) => {
     const user = req.session?.user;
 
@@ -16,15 +17,11 @@ function requireRole(allowedRoles = []) {
       return res.redirect("/login");
     }
 
-    // ✅ ADMIN entra em tudo (mesmo se allowedRoles não tiver ADMIN)
-    const role = String(user.role || "").toUpperCase();
-    if (role === "ADMIN") return next();
-
-    if (hasAnyRole(user, allowedRoles)) return next();
+    if (canAccess(user, feature)) return next();
 
     req.flash("error", "Você não tem permissão para acessar esta área.");
     return res.redirect("/dashboard");
   };
 }
 
-module.exports = { requireLogin, requireRole };
+module.exports = { requireLogin, requireFeature };
