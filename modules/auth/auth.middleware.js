@@ -1,21 +1,16 @@
-exports.requireAuth = (req, res, next) => {
-  if (!req.session.user) {
-    req.flash("error", "Faça login para continuar.");
-    return res.redirect("/login");
-  }
+
+exports.requireLogin = (req, res, next) => {
+  if (!req.session?.user) return res.redirect("/login");
   next();
 };
 
-exports.requireAdmin = (req, res, next) => {
-  if (!req.session.user) {
-    req.flash("error", "Faça login para continuar.");
-    return res.redirect("/login");
-  }
+exports.requireRole = (roles = []) => {
+  return (req, res, next) => {
+    const role = req.session?.user?.role;
+    if (!role) return res.status(403).send("Acesso negado");
 
-  if (req.session.user.role !== "ADMIN") {
-    req.flash("error", "Você não tem permissão para acessar esta área.");
-    return res.redirect("/dashboard");
-  }
+    if (roles.includes(role) || role === "ADMIN") return next();
 
-  next();
+    return res.status(403).send("Acesso negado");
+  };
 };
