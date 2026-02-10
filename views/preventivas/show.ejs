@@ -1,0 +1,15 @@
+<% layout('layout') %>
+
+<h1>Preventiva #<%= plano.id %></h1>
+<p style="color:#64748b; margin-top:-6px;">Detalhes do plano.</p>
+
+<div class="card" style="border-radius:16px; padding:14px; max-width:820px;">
+  <p><b>Título:</b> <%= plano.titulo %></p>
+  <p><b>Equipamento:</b> <%= plano.equipamento_nome || '-' %></p>
+  <p><b>Frequência:</b> <%= (plano.frequencia_tipo || '').toUpperCase() %> / <%= plano.frequencia_valor %></p>
+  <p><b>Observação:</b> <%= plano.observacao || '-' %></p>
+
+  <div style="margin-top:12px;">
+    <a class="btn btn-ghost" href="/preventivas">Voltar</a>
+  </div>
+</div>
