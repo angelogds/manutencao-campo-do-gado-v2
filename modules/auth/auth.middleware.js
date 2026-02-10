@@ -1,16 +1,30 @@
+// modules/auth/auth.middleware.js
+const { hasAnyRole } = require("../../utils/security/permissions");
 
-exports.requireLogin = (req, res, next) => {
-  if (!req.session?.user) return res.redirect("/login");
-  next();
-};
+function requireLogin(req, res, next) {
+  if (req.session?.user) return next();
+  req.flash("error", "Faça login para continuar.");
+  return res.redirect("/login");
+}
 
-exports.requireRole = (roles = []) => {
+function requireRole(allowedRoles = []) {
   return (req, res, next) => {
-    const role = req.session?.user?.role;
-    if (!role) return res.status(403).send("Acesso negado");
+    const user = req.session?.user;
 
-    if (roles.includes(role) || role === "ADMIN") return next();
+    if (!user) {
+      req.flash("error", "Faça login para continuar.");
+      return res.redirect("/login");
+    }
 
-    return res.status(403).send("Acesso negado");
+    // ✅ ADMIN entra em tudo (mesmo se allowedRoles não tiver ADMIN)
+    const role = String(user.role || "").toUpperCase();
+    if (role === "ADMIN") return next();
+
+    if (hasAnyRole(user, allowedRoles)) return next();
+
+    req.flash("error", "Você não tem permissão para acessar esta área.");
+    return res.redirect("/dashboard");
   };
-};
+}
+
+module.exports = { requireLogin, requireRole };
