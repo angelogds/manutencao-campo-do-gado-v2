@@ -1,15 +1,46 @@
 <% layout('layout') %>
 
-<h1>Preventiva #<%= plano.id %></h1>
-<p style="color:#64748b; margin-top:-6px;">Detalhes do plano.</p>
+<h1>Preventiva #<%= p.id %></h1>
+<p style="color:#6b7280; margin-top:-6px;">Detalhes do plano preventivo.</p>
 
-<div class="card" style="border-radius:16px; padding:14px; max-width:820px;">
-  <p><b>Título:</b> <%= plano.titulo %></p>
-  <p><b>Equipamento:</b> <%= plano.equipamento_nome || '-' %></p>
-  <p><b>Frequência:</b> <%= (plano.frequencia_tipo || '').toUpperCase() %> / <%= plano.frequencia_valor %></p>
-  <p><b>Observação:</b> <%= plano.observacao || '-' %></p>
+<div class="card" style="background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; max-width:900px;">
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+    <div>
+      <div style="color:#6b7280; font-weight:800; font-size:12px;">EQUIPAMENTO</div>
+      <div style="font-weight:900; font-size:18px; margin-top:4px;"><%= p.equipamento_nome || "-" %></div>
+    </div>
 
-  <div style="margin-top:12px;">
-    <a class="btn btn-ghost" href="/preventivas">Voltar</a>
+    <div>
+      <div style="color:#6b7280; font-weight:800; font-size:12px;">ATIVO</div>
+      <div style="font-weight:900; font-size:18px; margin-top:4px;"><%= p.ativo ? "SIM" : "NÃO" %></div>
+    </div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <div style="color:#6b7280; font-weight:800; font-size:12px;">TÍTULO</div>
+    <div style="font-weight:900; font-size:18px; margin-top:4px;"><%= p.titulo %></div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
+    <div>
+      <div style="color:#6b7280; font-weight:800; font-size:12px;">FREQUÊNCIA</div>
+      <div style="font-weight:900; font-size:18px; margin-top:4px;"><%= p.frequencia_tipo %> / <%= p.frequencia_valor %></div>
+    </div>
+
+    <div>
+      <div style="color:#6b7280; font-weight:800; font-size:12px;">CRIADO EM</div>
+      <div style="font-weight:900; font-size:18px; margin-top:4px;"><%= fmtBR(p.created_at) %></div>
+    </div>
+  </div>
+
+  <% if (p.observacao) { %>
+    <div style="margin-top:14px;">
+      <div style="color:#6b7280; font-weight:800; font-size:12px;">OBSERVAÇÃO</div>
+      <div style="margin-top:6px;"><%= p.observacao %></div>
+    </div>
+  <% } %>
+
+  <div style="display:flex; gap:10px; margin-top:14px;">
+    <a class="btn btn-ghost" href="/preventivas" style="text-decoration:none;">Voltar</a>
   </div>
 </div>
