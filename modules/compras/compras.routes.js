@@ -2,27 +2,13 @@
 const express = require("express");
 const router = express.Router();
 
-// middleware (RBAC)
-let requireRole = null;
-try {
-  requireRole = require("../auth/auth.middleware").requireRole;
-} catch (e) {
-  console.error("❌ [compras] Falha ao carregar auth.middleware:", e.message);
-}
+const ctrl = require("./compras.controller");
 
-const safeRequireRole =
-  typeof requireRole === "function"
-    ? requireRole
-    : () => (_req, res) => res.status(500).send("Erro interno: requireRole indefinido.");
+// middleware
+const { requireLogin, requireRole } = require("../auth/auth.middleware");
 
-// controller
-let ctrl = {};
-try {
-  ctrl = require("./compras.controller");
-  console.log("✅ [compras] controller exports:", Object.keys(ctrl));
-} catch (e) {
-  console.error("❌ [compras] Falha ao carregar compras.controller:", e.message);
-}
+// Permissões Compras (admin passa automaticamente)
+const COMPRAS_ACCESS = ["compras", "diretoria"];
 
 const safe = (fn, name) =>
   typeof fn === "function"
@@ -32,12 +18,76 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// Permissões Compras
-const COMPRAS_ACCESS = ["compras", "diretoria"]; // admin passa automaticamente
+// ===== SOLICITAÇÕES (Inbox) =====
+router.get(
+  "/solicitacoes",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.solicitacoesIndex, "solicitacoesIndex")
+);
 
-router.get("/compras", safeRequireRole(COMPRAS_ACCESS), safe(ctrl.comprasIndex, "comprasIndex"));
-router.get("/compras/nova", safeRequireRole(COMPRAS_ACCESS), safe(ctrl.comprasNewForm, "comprasNewForm"));
-router.post("/compras", safeRequireRole(COMPRAS_ACCESS), safe(ctrl.comprasCreate, "comprasCreate"));
-router.get("/compras/:id", safeRequireRole(COMPRAS_ACCESS), safe(ctrl.comprasShow, "comprasShow"));
+router.get(
+  "/solicitacoes/nova",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.solicitacoesNewForm, "solicitacoesNewForm")
+);
+
+router.post(
+  "/solicitacoes",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.solicitacoesCreate, "solicitacoesCreate")
+);
+
+router.get(
+  "/solicitacoes/:id",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.solicitacoesShow, "solicitacoesShow")
+);
+
+router.post(
+  "/solicitacoes/:id/status",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.solicitacoesUpdateStatus, "solicitacoesUpdateStatus")
+);
+
+// ===== COMPRAS (recebimento) =====
+router.get(
+  "/compras",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.comprasIndex, "comprasIndex")
+);
+
+router.get(
+  "/compras/nova",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.comprasNewForm, "comprasNewForm")
+);
+
+router.post(
+  "/compras",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.comprasCreate, "comprasCreate")
+);
+
+router.get(
+  "/compras/:id",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.comprasShow, "comprasShow")
+);
+
+router.post(
+  "/compras/:id/status",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.comprasUpdateStatus, "comprasUpdateStatus")
+);
 
 module.exports = router;
