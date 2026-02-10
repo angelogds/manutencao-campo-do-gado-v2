@@ -57,6 +57,9 @@ app.use((req, res, next) => {
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
 
+  // ✅ BLINDAGEM: impede crash no layout.ejs quando activeMenu não é setado pela rota
+  res.locals.activeMenu = res.locals.activeMenu || "dashboard";
+
   next();
 });
 
@@ -87,7 +90,10 @@ function safeModule(name, modulePath) {
   try {
     const mod = require(modulePath);
     if (typeof mod !== "function") {
-      console.error(`❌ [${name}] export inválido (precisa exportar router function). Tipo:`, typeof mod);
+      console.error(
+        `❌ [${name}] export inválido (precisa exportar router function). Tipo:`,
+        typeof mod
+      );
       return { ok: false, err: `export inválido (${typeof mod})` };
     }
     safeUse(name, mod);
@@ -110,13 +116,9 @@ safeModule("usuariosRoutes", "./modules/usuarios/usuarios.routes");
 safeModule("equipamentosRoutes", "./modules/equipamentos/equipamentos.routes");
 
 // ===== ✅ PREPARO: Preventivas (pode entrar agora sem quebrar) =====
-// Assim que você colar o módulo preventivas, ele já sobe.
-// Rota base esperada: /preventivas
 safeModule("preventivasRoutes", "./modules/preventivas/preventivas.routes");
 
 // ===== ✅ PREPARO: Escala (módulo futuro, já “plugável”) =====
-// Quando iniciarmos Escala, basta criar modules/escala/escala.routes.js
-// Rota base esperada: /escala
 safeModule("escalaRoutes", "./modules/escala/escala.routes");
 
 // ===== Home =====
