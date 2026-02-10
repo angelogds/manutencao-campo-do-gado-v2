@@ -1,109 +1,98 @@
 <% layout('layout') %>
 
 <style>
-  .dash-wrap { max-width: 1100px; }
-  .subtitle { color:#6b7280; margin-top:-6px; }
-
-  .grid-3 { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; margin-top:14px; }
-  @media (max-width: 980px){ .grid-3{ grid-template-columns:1fr; } }
-
-  .card {
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:16px;
-    padding:14px;
-    box-shadow: 0 10px 30px rgba(0,0,0,.03);
+  .grid{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:12px; }
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  .k{ color:#6b7280; font-weight:900; font-size:12px; letter-spacing:.04em; }
+  .v{ font-size:28px; font-weight:900; margin-top:6px; }
+  .row{ display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-top:14px; }
+  .box{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  .box h3{ margin:0; font-size:14px; font-weight:900; }
+  .mini{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .btnMini{
+    display:inline-flex; align-items:center; gap:8px;
+    border:1px solid #e5e7eb; background:#fff;
+    padding:8px 10px; border-radius:12px;
+    font-weight:900; font-size:12px; cursor:pointer;
+    text-decoration:none; color:#0f172a;
+    transition:.15s;
   }
-  .card h3{ margin:0; font-size:14px; letter-spacing:.04em; color:#6b7280; text-transform:uppercase; }
-  .card .row { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .btnMini:hover{ background:#e7f5ee; border-color: rgba(17,128,85,.35); transform: translateY(-1px); }
+  .pill{ font-weight:900; padding:4px 10px; border-radius:999px; background:#f1f5f9; }
+  .muted{ color:#64748b; font-size:12px; margin-top:4px; }
 
-  .btn-mini{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:8px 10px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    font-weight:800;
-    font-size:13px;
-    color:#111827;
-    text-decoration:none;
-    transition: all .15s ease;
-  }
-  .btn-mini:hover{
-    background:#0f7a3a;   /* verde */
-    border-color:#0f7a3a;
-    color:#fff;
-    transform: translateY(-1px);
-  }
-
-  .pill{
-    font-size:12px;
-    font-weight:900;
-    padding:6px 10px;
-    border-radius:999px;
-    border:1px solid #e5e7eb;
-    background:#f9fafb;
-    color:#111827;
-  }
-
-  .line{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    margin-top:10px;
-  }
-
-  .muted{ color:#6b7280; font-size:13px; }
+  @media (max-width: 980px){ .grid{ grid-template-columns:repeat(2,1fr);} .row{ grid-template-columns:1fr; } }
+  @media (max-width: 560px){ .grid{ grid-template-columns:1fr;} }
 </style>
 
-<div class="dash-wrap">
-  <h1>Painel Principal</h1>
-  <p class="subtitle">Visão geral do sistema (V2).</p>
+<h1>Painel Principal</h1>
+<p class="muted">Visão geral do sistema.</p>
 
-  <div class="grid-3">
-    <!-- OS -->
-    <div class="card">
-      <div class="line">
-        <h3>Ordens de Serviço</h3>
-        <span class="pill"><%= cards?.os_abertas ?? 0 %> abertas</span>
-      </div>
-      <div class="muted">Abrir / acompanhar / finalizar OS.</div>
-      <div class="row">
-        <a class="btn-mini" href="/os?status=ABERTA">Abertas</a>
-        <a class="btn-mini" href="/os?status=ANDAMENTO">Acompanhar</a>
-        <a class="btn-mini" href="/os?status=CONCLUIDA">Finalizadas</a>
-        <a class="btn-mini" href="/os/new">Abrir OS</a>
-      </div>
+<div class="grid">
+  <div class="card">
+    <div class="k">OS ABERTAS</div>
+    <div class="v"><%= cards?.os_abertas ?? 0 %></div>
+  </div>
+
+  <div class="card">
+    <div class="k">COMPRAS ABERTAS</div>
+    <div class="v"><%= cards?.compras_abertas ?? 0 %></div>
+  </div>
+
+  <div class="card">
+    <div class="k">ITENS ABAIXO DO MÍNIMO</div>
+    <div class="v"><%= cards?.itens_abaixo_minimo ?? 0 %></div>
+  </div>
+
+  <div class="card">
+    <div class="k">EQUIPAMENTOS</div>
+    <div class="v"><%= cards?.equipamentos ?? 0 %></div>
+  </div>
+</div>
+
+<div class="row">
+  <!-- OS -->
+  <div class="box">
+    <h3>Ordens de Serviço</h3>
+    <div class="muted">Abertas, acompanhar e finalizadas</div>
+    <div class="mini">
+      <span class="pill">Abertas: <%= blocks?.os?.abertas ?? 0 %></span>
+      <span class="pill">Finalizadas: <%= blocks?.os?.finalizadas ?? 0 %></span>
     </div>
-
-    <!-- COMPRAS -->
-    <div class="card">
-      <div class="line">
-        <h3>Compras (Inbox)</h3>
-        <span class="pill"><%= cards?.compras_abertas ?? 0 %> em aberto</span>
-      </div>
-      <div class="muted">Solicitações: criar / feitas / aprovadas.</div>
-      <div class="row">
-        <a class="btn-mini" href="/compras/solicitacoes/new">Fazer solicitação</a>
-        <a class="btn-mini" href="/compras/solicitacoes?status=aberta">Feitas</a>
-        <a class="btn-mini" href="/compras/solicitacoes?status=aprovada">Aprovadas</a>
-      </div>
+    <div class="mini">
+      <a class="btnMini" href="/os">📌 Abertas</a>
+      <a class="btnMini" href="/os">👀 Acompanhar</a>
+      <a class="btnMini" href="/os">✅ Finalizadas</a>
+      <a class="btnMini" href="/os/nova">➕ Abrir OS</a>
     </div>
+  </div>
 
-    <!-- ESTOQUE -->
-    <div class="card">
-      <div class="line">
-        <h3>Estoque</h3>
-        <span class="pill"><%= cards?.itens_estoque ?? 0 %> itens</span>
-      </div>
-      <div class="muted">Controle e consulta do almoxarifado.</div>
-      <div class="row">
-        <a class="btn-mini" href="/estoque">Controle</a>
-        <a class="btn-mini" href="/estoque?view=itens">Itens</a>
-      </div>
+  <!-- COMPRAS -->
+  <div class="box">
+    <h3>Compras</h3>
+    <div class="muted">Solicitações feitas e aprovadas</div>
+    <div class="mini">
+      <span class="pill">Feitas: <%= blocks?.compras?.feitas ?? 0 %></span>
+      <span class="pill">Aprovadas: <%= blocks?.compras?.aprovadas ?? 0 %></span>
+    </div>
+    <div class="mini">
+      <a class="btnMini" href="/solicitacoes/nova">➕ Fazer solicitação</a>
+      <a class="btnMini" href="/solicitacoes">📄 Solicitações feitas</a>
+      <a class="btnMini" href="/solicitacoes">✅ Solicitações aprovadas</a>
+      <a class="btnMini" href="/compras">🧾 Compras</a>
+    </div>
+  </div>
+
+  <!-- ESTOQUE -->
+  <div class="box">
+    <h3>Estoque</h3>
+    <div class="muted">Controle de itens disponíveis no almoxarifado</div>
+    <div class="mini">
+      <span class="pill">Itens cadastrados: <%= cards?.itens_estoque ?? 0 %></span>
+    </div>
+    <div class="mini">
+      <a class="btnMini" href="/estoque">📦 Controle</a>
+      <a class="btnMini" href="/estoque/novo">➕ Cadastrar item</a>
     </div>
   </div>
 </div>
