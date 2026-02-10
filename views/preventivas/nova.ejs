@@ -1,0 +1,47 @@
+<% layout('layout') %>
+
+<h1>Nova Preventiva</h1>
+<p style="color:#64748b; margin-top:-6px;">Cadastre um plano preventivo.</p>
+
+<form method="POST" action="/preventivas" class="card" style="border-radius:16px; padding:14px; max-width:820px;">
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+    <div>
+      <label style="font-weight:900;">Equipamento</label><br/>
+      <select name="equipamento_id" class="input" style="width:100%; padding:10px; border-radius:12px; border:1px solid #e5e7eb;">
+        <option value="">(Opcional)</option>
+        <% (equipamentos || []).forEach(e => { %>
+          <option value="<%= e.id %>"><%= e.nome %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div>
+      <label style="font-weight:900;">Frequência</label><br/>
+      <div style="display:flex; gap:10px;">
+        <select name="frequencia_tipo" style="flex:1; padding:10px; border-radius:12px; border:1px solid #e5e7eb;">
+          <option value="diario">Diário</option>
+          <option value="semanal">Semanal</option>
+          <option value="mensal" selected>Mensal</option>
+          <option value="anual">Anual</option>
+          <option value="horimetro">Horímetro</option>
+        </select>
+        <input name="frequencia_valor" value="1" style="width:120px; padding:10px; border-radius:12px; border:1px solid #e5e7eb;" />
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;">
+    <label style="font-weight:900;">Título</label><br/>
+    <input name="titulo" placeholder="Ex.: Lubrificar rolamentos do redutor" style="width:100%; padding:10px; border-radius:12px; border:1px solid #e5e7eb;" />
+  </div>
+
+  <div style="margin-top:12px;">
+    <label style="font-weight:900;">Observação</label><br/>
+    <textarea name="observacao" rows="4" style="width:100%; padding:10px; border-radius:12px; border:1px solid #e5e7eb;"></textarea>
+  </div>
+
+  <div style="margin-top:14px; display:flex; gap:10px;">
+    <button class="btn btn-green" type="submit">Salvar</button>
+    <a class="btn btn-ghost" href="/preventivas">Cancelar</a>
+  </div>
+</form>
