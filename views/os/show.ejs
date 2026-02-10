@@ -1,32 +1,69 @@
-<% layout("layout") %>
+<% layout('layout') %>
 
-<h1>OS #<%= os.id %></h1>
+<style>
+  .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .spacer{ flex:1; }
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
+  .muted{ color:#6b7280; }
+  .btn-sm{ padding:8px 10px; border-radius:12px; font-weight:900; border:1px solid #e5e7eb; background:#fff; cursor:pointer; text-decoration:none; display:inline-block; }
+  .btn-sm:hover{ border-color:#10b981; color:#065f46; background:#ecfdf5; }
+  .tag{ display:inline-block; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:900; border:1px solid #e5e7eb; background:#f9fafb; }
+  select{ padding:8px 10px; border-radius:12px; border:1px solid #e5e7eb; }
+  select:focus{ border-color:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.15); outline:none; }
+</style>
 
-<p><strong>Equipamento:</strong> <%= os.equipamento %></p>
-<p><strong>Tipo:</strong> <%= os.tipo %></p>
-<p><strong>Status:</strong> <%= os.status %></p>
-<p><strong>Abertura:</strong> <%= os.opened_at || "-" %></p>
-<p><strong>Fechamento:</strong> <%= os.closed_at || "-" %></p>
+<div class="row">
+  <div>
+    <h1>OS #<%= os.id %></h1>
+    <div class="muted">Aberta em: <%= os.opened_at ? fmtBR(os.opened_at) : '-' %></div>
+  </div>
 
-<hr/>
+  <div class="spacer"></div>
 
-<p><strong>Descrição:</strong></p>
-<pre style="white-space:pre-wrap;"><%= os.descricao %></pre>
+  <span class="tag"><%= os.status %></span>
+  <a class="btn-sm" href="/os">Voltar</a>
+</div>
 
-<hr/>
+<div style="height:12px"></div>
 
-<form method="POST" action="/os/<%= os.id %>/status">
-  <label>Atualizar status:</label>
-  <select name="status">
-    <option value="ABERTA" <%= os.status==='ABERTA'?'selected':'' %>>ABERTA</option>
-    <option value="ANDAMENTO" <%= os.status==='ANDAMENTO'?'selected':'' %>>ANDAMENTO</option>
-    <option value="PAUSADA" <%= os.status==='PAUSADA'?'selected':'' %>>PAUSADA</option>
-    <option value="CONCLUIDA" <%= os.status==='CONCLUIDA'?'selected':'' %>>CONCLUIDA</option>
-    <option value="CANCELADA" <%= os.status==='CANCELADA'?'selected':'' %>>CANCELADA</option>
-  </select>
-  <button type="submit">Salvar</button>
-</form>
+<div class="card">
+  <div class="row">
+    <div style="flex:1; min-width:220px;">
+      <div class="muted">Equipamento</div>
+      <div style="font-weight:900;"><%= os.equipamento %></div>
+    </div>
+    <div style="flex:1; min-width:220px;">
+      <div class="muted">Tipo</div>
+      <div style="font-weight:900;"><%= os.tipo %></div>
+    </div>
+    <div style="flex:1; min-width:220px;">
+      <div class="muted">Custo total</div>
+      <div style="font-weight:900;">R$ <%= Number(os.custo_total || 0).toFixed(2) %></div>
+    </div>
+  </div>
 
-<p style="margin-top:14px;">
-  <a href="/os">← voltar</a>
-</p>
+  <div style="height:10px"></div>
+
+  <div class="muted" style="font-weight:900; font-size:12px;">Descrição</div>
+  <div style="font-weight:700; margin-top:6px;"><%= os.descricao %></div>
+
+  <div style="height:14px"></div>
+
+  <form action="/os/<%= os.id %>/status" method="POST" class="row">
+    <div>
+      <div class="muted" style="font-weight:900; font-size:12px;">Atualizar status</div>
+      <select name="status">
+        <% const st = String(os.status||'ABERTA').toUpperCase(); %>
+        <option value="ABERTA" <%= st==='ABERTA'?'selected':'' %>>ABERTA</option>
+        <option value="ANDAMENTO" <%= st==='ANDAMENTO'?'selected':'' %>>ANDAMENTO</option>
+        <option value="PAUSADA" <%= st==='PAUSADA'?'selected':'' %>>PAUSADA</option>
+        <option value="CONCLUIDA" <%= st==='CONCLUIDA'?'selected':'' %>>CONCLUIDA</option>
+        <option value="CANCELADA" <%= st==='CANCELADA'?'selected':'' %>>CANCELADA</option>
+      </select>
+    </div>
+
+    <div style="align-self:flex-end;">
+      <button class="btn-sm" type="submit">Salvar</button>
+    </div>
+  </form>
+</div>
