@@ -1,44 +1,42 @@
 <% layout('layout') %>
 
-<div class="page-head">
+<div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
   <div>
-    <h1>Equipamento #<%= equip.id %></h1>
-    <div class="muted"><%= equip.nome %></div>
+    <h1>OS #<%= os.id %></h1>
+    <div class="muted">Equipamento: <strong><%= os.equipamento_nome || os.equipamento %></strong></div>
+    <div class="muted">Aberta em: <%= os.opened_at ? fmtBR(os.opened_at) : '-' %></div>
   </div>
 
-  <div style="display:flex; gap:10px; align-items:center;">
-    <a class="btn" href="/equipamentos">Voltar</a>
-    <a class="btn-primary" href="/equipamentos/<%= equip.id %>/editar">Editar</a>
-  </div>
+  <a class="btn btn-ghost" href="/os">Voltar</a>
 </div>
 
-<div class="card">
-  <div class="kv">
-    <div class="k">Código</div>
-    <div class="v"><span class="mono"><%= equip.codigo || '-' %></span></div>
+<div class="card" style="margin-top:14px;">
+  <div class="muted">Descrição</div>
+  <div style="margin-top:6px;"><%= os.descricao %></div>
+</div>
 
-    <div class="k">Nome</div>
-    <div class="v"><%= equip.nome %></div>
+<div class="card" style="margin-top:14px;">
+  <form method="POST" action="/os/<%= os.id %>/status">
+    <div class="grid2">
+      <div>
+        <label class="label">Status</label>
+        <select class="input" name="status">
+          <option value="ABERTA" <%= os.status==='ABERTA'?'selected':'' %>>ABERTA</option>
+          <option value="ANDAMENTO" <%= os.status==='ANDAMENTO'?'selected':'' %>>ANDAMENTO</option>
+          <option value="PAUSADA" <%= os.status==='PAUSADA'?'selected':'' %>>PAUSADA</option>
+          <option value="CONCLUIDA" <%= os.status==='CONCLUIDA'?'selected':'' %>>CONCLUIDA</option>
+          <option value="CANCELADA" <%= os.status==='CANCELADA'?'selected':'' %>>CANCELADA</option>
+        </select>
+      </div>
 
-    <div class="k">Setor</div>
-    <div class="v"><%= equip.setor || '-' %></div>
-
-    <div class="k">Tipo</div>
-    <div class="v"><%= equip.tipo || '-' %></div>
-
-    <div class="k">Criticidade</div>
-    <div class="v"><span class="tag"><%= (equip.criticidade || 'media') %></span></div>
-
-    <div class="k">Ativo</div>
-    <div class="v">
-      <% if (Number(equip.ativo) === 1) { %>
-        <span class="tag tag-ok">SIM</span>
-      <% } else { %>
-        <span class="tag tag-no">NÃO</span>
-      <% } %>
+      <div style="display:flex; align-items:flex-end; gap:10px;">
+        <button class="btn" type="submit">Atualizar</button>
+      </div>
     </div>
-
-    <div class="k">Observação</div>
-    <div class="v" style="color:#475569;"><%= equip.observacao || '-' %></div>
-  </div>
+  </form>
 </div>
+
+<style>
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+</style>
