@@ -2,18 +2,7 @@
 const express = require("express");
 const router = express.Router();
 
-// middleware (RBAC)
-let requireRole = null;
-try {
-  requireRole = require("../auth/auth.middleware").requireRole;
-} catch (e) {
-  console.error("❌ [usuarios] Falha ao carregar auth.middleware:", e.message);
-}
-
-const safeRequireRole =
-  typeof requireRole === "function"
-    ? requireRole
-    : () => (_req, res) => res.status(500).send("Erro interno: requireRole indefinido.");
+const { requireLogin, requireRole } = require("../auth/auth.middleware");
 
 // controller
 let ctrl = {};
@@ -32,11 +21,17 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// Permissões Usuários (somente admin; se quiser RH depois, adicione "rh")
-const USERS_ADMIN = ["admin"];
+// Perfis que podem gerenciar usuários
+const USERS_ACCESS = ["admin", "diretoria", "rh"];
 
-router.get("/usuarios", safeRequireRole(USERS_ADMIN), safe(ctrl.userIndex, "userIndex"));
-router.get("/usuarios/novo", safeRequireRole(USERS_ADMIN), safe(ctrl.userNewForm, "userNewForm"));
-router.post("/usuarios", safeRequireRole(USERS_ADMIN), safe(ctrl.userCreate, "userCreate"));
+// Base
+router.get("/usuarios", requireLogin, requireRole(USERS_ACCESS), safe(ctrl.list, "list"));
+router.get("/usuarios/novo", requireLogin, requireRole(USERS_ACCESS), safe(ctrl.newForm, "newForm"));
+router.post("/usuarios", requireLogin, requireRole(USERS_ACCESS), safe(ctrl.create, "create"));
+
+router.get("/usuarios/:id/editar", requireLogin, requireRole(USERS_ACCESS), safe(ctrl.editForm, "editForm"));
+router.post("/usuarios/:id", requireLogin, requireRole(USERS_ACCESS), safe(ctrl.update, "update"));
+
+router.post("/usuarios/:id/reset-senha", requireLogin, requireRole(USERS_ACCESS), safe(ctrl.resetPassword, "resetPassword"));
 
 module.exports = router;
