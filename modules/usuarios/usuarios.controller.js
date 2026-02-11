@@ -6,7 +6,10 @@ const ROLES = [
   { key: "DIRECAO", label: "Direção" },
   { key: "RH", label: "RH" },
   { key: "COMPRAS", label: "Compras" },
-  { key: "MANUTENCAO", label: "Manutenção" },
+  { key: "PRODUCAO", label: "Produção" },
+  { key: "ALMOXARIFADO", label: "Almoxarifado" },
+  { key: "MECANICO", label: "Mecânico" },
+  { key: "MANUTENCAO", label: "Manutenção (Supervisor)" },
 ];
 
 function list(req, res) {
