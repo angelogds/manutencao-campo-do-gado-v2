@@ -1,54 +1,29 @@
-// modules/escala/escala.routes.js
 const express = require("express");
 const router = express.Router();
 
-// middleware (RBAC) - blindado
-let requireLogin = null;
-let requireRole = null;
-
+let requireRole;
 try {
-  const mw = require("../auth/auth.middleware");
-  requireLogin = mw.requireLogin;
-  requireRole = mw.requireRole;
-} catch (e) {
-  console.error("❌ [escala] Falha ao carregar auth.middleware:", e.message);
+  requireRole = require("../auth/auth.middleware").requireRole;
+} catch {
+  requireRole = () => (_req, res) =>
+    res.status(500).send("Erro interno: auth.middleware ausente");
 }
 
-const safeRequireLogin =
-  typeof requireLogin === "function"
-    ? requireLogin
-    : (_req, res, _next) => res.status(500).send("Erro interno: requireLogin indefinido.");
+const ctrl = require("./escala.controller");
 
-const safeRequireRole =
-  typeof requireRole === "function"
-    ? requireRole
-    : () => (_req, res) => res.status(500).send("Erro interno: requireRole indefinido.");
-
-// controller - blindado
-let ctrl = {};
-try {
-  ctrl = require("./escala.controller");
-  console.log("✅ [escala] controller exports:", Object.keys(ctrl));
-} catch (e) {
-  console.error("❌ [escala] Falha ao carregar escala.controller:", e.message);
-}
+// perfis que podem ver escala
+const ESCALA_ACCESS = ["admin", "producao", "mecanico", "almoxarifado"];
 
 const safe = (fn, name) =>
   typeof fn === "function"
     ? fn
-    : (_req, res) => {
-        console.error(`❌ [escala] Handler ${name} indefinido (export errado).`);
-        return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
-      };
+    : (_req, res) =>
+        res.status(500).send(`Handler ${name} indefinido`);
 
-// Acesso para VISUALIZAR escala (quase todos os perfis)
-const ESCALA_VIEW = ["compras", "producao", "almoxarifado", "mecanico", "rh", "diretoria"]; // admin passa automático
-
-// Acesso para EDITAR/CRIAR escala
-const ESCALA_EDIT = ["rh"]; // admin passa automático
-
-router.get("/escala", safeRequireLogin, safeRequireRole(ESCALA_VIEW), safe(ctrl.index, "index"));
-router.get("/escala/nova", safeRequireLogin, safeRequireRole(ESCALA_EDIT), safe(ctrl.newForm, "newForm"));
-router.post("/escala", safeRequireLogin, safeRequireRole(ESCALA_EDIT), safe(ctrl.create, "create"));
+router.get(
+  "/escala",
+  requireRole(ESCALA_ACCESS),
+  safe(ctrl.index, "index")
+);
 
 module.exports = router;
