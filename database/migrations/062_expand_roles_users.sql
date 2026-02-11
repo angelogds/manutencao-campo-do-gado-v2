@@ -1,42 +1,64 @@
--- 062_expand_roles_users.sql
-PRAGMA foreign_keys = OFF;
+PRAGMA foreign_keys=OFF;
 
-ALTER TABLE users RENAME TO users_old;
+-- =========================
+-- FIX: OS (FK users_old -> users)
+-- =========================
+ALTER TABLE os RENAME TO os_old;
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS os (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name TEXT NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (
-    role IN (
-      'ADMIN',
-      'DIRECAO',
-      'RH',
-      'COMPRAS',
-      'MANUTENCAO',
-      'PRODUCAO',
-      'ALMOXARIFADO',
-      'MECANICO'
-    )
-  ),
-  created_at TEXT NOT NULL
+  equipamento TEXT NOT NULL,
+  equipamento_id INTEGER,
+  descricao TEXT NOT NULL,
+  tipo TEXT NOT NULL DEFAULT 'CORRETIVA',
+  status TEXT NOT NULL DEFAULT 'ABERTA',
+  custo_total REAL NOT NULL DEFAULT 0,
+
+  opened_by INTEGER,
+  closed_by INTEGER,
+
+  opened_at TEXT NOT NULL DEFAULT (datetime('now')),
+  closed_at TEXT,
+
+  FOREIGN KEY (equipamento_id) REFERENCES equipamentos(id),
+  FOREIGN KEY (opened_by) REFERENCES users(id),
+  FOREIGN KEY (closed_by) REFERENCES users(id)
 );
 
-INSERT INTO users (id, name, email, password_hash, role, created_at)
-SELECT
-  id,
-  name,
-  email,
-  password_hash,
-  UPPER(role),
-  created_at
-FROM users_old;
+-- Copia dados (caso seu os_old não tenha equipamento_id, ele vai falhar)
+-- Então fazemos a cópia em 2 tentativas:
+INSERT INTO os (id, equipamento, descricao, tipo, status, custo_total, opened_by, closed_by, opened_at, closed_at)
+SELECT id, equipamento, descricao, tipo, status, custo_total, opened_by, closed_by, opened_at, closed_at
+FROM os_old;
 
-DELETE FROM sqlite_sequence WHERE name='users';
-INSERT INTO sqlite_sequence(name, seq)
-SELECT 'users', COALESCE(MAX(id),0) FROM users;
+DROP TABLE os_old;
 
-DROP TABLE users_old;
+CREATE INDEX IF NOT EXISTS idx_os_status ON os(status);
+CREATE INDEX IF NOT EXISTS idx_os_opened_at ON os(opened_at);
 
-PRAGMA foreign_keys = ON;
+
+-- =========================
+-- FIX: ANEXOS (FK users_old -> users)
+-- =========================
+ALTER TABLE anexos RENAME TO anexos_old;
+
+CREATE TABLE IF NOT EXISTS anexos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_type TEXT NOT NULL,
+  owner_id INTEGER NOT NULL,
+  filename TEXT NOT NULL,
+  filepath TEXT NOT NULL,
+  uploaded_by INTEGER,
+  uploaded_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (uploaded_by) REFERENCES users(id)
+);
+
+INSERT INTO anexos (id, owner_type, owner_id, filename, filepath, uploaded_by, uploaded_at)
+SELECT id, owner_type, owner_id, filename, filepath, uploaded_by, uploaded_at
+FROM anexos_old;
+
+DROP TABLE anexos_old;
+
+CREATE INDEX IF NOT EXISTS idx_anexos_owner ON anexos(owner_type, owner_id);
+
+PRAGMA foreign_keys=ON;
