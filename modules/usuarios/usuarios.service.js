@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const db = require("../../database/db");
 
 // compatível com seu CHECK do SQLite
-const VALID_ROLES = new Set(["ADMIN", "DIRECAO", "RH", "COMPRAS", "MANUTENCAO"]);
+const VALID_ROLES = new Set(["ADMIN", "DIRECAO", "RH", "COMPRAS", "MANUTENCAO", "PRODUCAO", "ALMOXARIFADO", "MECANICO",]);
 
 function list({ q = "", role = "" } = {}) {
   const where = [];
