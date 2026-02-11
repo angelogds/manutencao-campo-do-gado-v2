@@ -1,34 +1,40 @@
-// modules/dashboard/dashboard.service.js
 const db = require("../../database/db");
-
-function getOne(sql) {
-  try {
-    return db.prepare(sql).get();
-  } catch (e) {
-    // se view/tabela não existe ainda, não derruba dashboard
-    return { total: 0 };
-  }
-}
+const escalaService = require("../escala/escala.service");
 
 function getCards() {
-  // views criadas na 070_dashboard_views.sql
-  const os = getOne("SELECT total FROM vw_dashboard_os_abertas");
-  const compras = getOne("SELECT total FROM vw_dashboard_compras_abertas");
-  const itensMin = getOne("SELECT total FROM vw_dashboard_itens_abaixo_minimo");
+  // OS abertas
+  const os = db.prepare(`
+    SELECT COUNT(*) AS total
+    FROM os
+    WHERE status IN ('ABERTA','ANDAMENTO','PAUSADA')
+  `).get()?.total || 0;
 
-  // extras: estoque_itens e equipamentos (pode não existir em alguns bancos)
-  const itens = getOne("SELECT COUNT(*) as total FROM estoque_itens");
-  const equips = getOne("SELECT COUNT(*) as total FROM equipamentos");
+  // Compras abertas (status do seu 050 é minúsculo)
+  const compras = db.prepare(`
+    SELECT COUNT(*) AS total
+    FROM solicitacoes_compra
+    WHERE status IN ('aberta','cotacao','aprovada')
+  `).get()?.total || 0;
 
-  return {
-    os_abertas: Number(os?.total || 0),
-    compras_abertas: Number(compras?.total || 0),
-    itens_abaixo_minimo: Number(itensMin?.total || 0),
-    itens_estoque: Number(itens?.total || 0),
-    equipamentos: Number(equips?.total || 0),
-  };
+  // itens estoque
+  const itens = db.prepare(`
+    SELECT COUNT(*) AS total
+    FROM estoque_itens
+    WHERE ativo = 1
+  `).get()?.total || 0;
+
+  // equipamentos
+  const equip = db.prepare(`
+    SELECT COUNT(*) AS total
+    FROM equipamentos
+    WHERE ativo = 1
+  `).get()?.total || 0;
+
+  return { os_abertas: os, compras_abertas: compras, itens_estoque: itens, equipamentos: equip };
 }
 
-module.exports = {
-  getCards,
-};
+function getPlantaoAgora() {
+  return escalaService.getPlantaoAgora();
+}
+
+module.exports = { getCards, getPlantaoAgora };
