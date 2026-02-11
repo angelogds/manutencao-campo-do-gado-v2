@@ -1,51 +1,60 @@
 <% layout('layout') %>
 
-<style>
-  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; max-width:900px; }
-  .row{ display:flex; gap:12px; flex-wrap:wrap; }
-  label{ font-weight:900; font-size:12px; color:#6b7280; letter-spacing:.04em; display:block; margin-bottom:6px; }
-  input, textarea, select{
-    width:100%; padding:10px 12px; border-radius:12px;
-    border:1px solid #e5e7eb; outline:none;
-  }
-  input:focus, textarea:focus, select:focus{ border-color:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.15); }
-  .btn-sm{ padding:10px 12px; border-radius:12px; font-weight:900; border:1px solid #e5e7eb; background:#fff; cursor:pointer; text-decoration:none; display:inline-block; }
-  .btn-sm:hover{ border-color:#10b981; color:#065f46; background:#ecfdf5; }
-  .muted{ color:#6b7280; }
-</style>
-
 <h1>Nova OS</h1>
-<p class="muted" style="margin-top:-6px;">Abra uma ordem de serviço para manutenção/adequação.</p>
+<p class="muted">Selecione um equipamento cadastrado para evitar digitação.</p>
 
 <div class="card">
-  <form action="/os" method="POST">
-    <div class="row">
-      <div style="flex:1; min-width:240px;">
-        <label>Equipamento</label>
-        <input name="equipamento" required placeholder="Ex.: Caldeira 1 / Digestor Laranja" />
+  <form method="POST" action="/os">
+    <div class="grid2">
+      <div>
+        <label class="label">Equipamento (cadastro)</label>
+        <select name="equipamento_id" class="input">
+          <option value="">Selecione...</option>
+          <% (equipamentos || []).forEach(e => { %>
+            <option value="<%= e.id %>">
+              <%= (e.codigo ? e.codigo + " • " : "") + e.nome %>
+              <%= e.setor ? " • " + e.setor : "" %>
+            </option>
+          <% }) %>
+        </select>
+        <div class="muted" style="margin-top:6px;">
+          Se não achar, informe no campo abaixo.
+        </div>
       </div>
 
-      <div style="flex:1; min-width:240px;">
-        <label>Tipo</label>
-        <select name="tipo">
+      <div>
+        <label class="label">Equipamento (texto)</label>
+        <input class="input" name="equipamento_texto" placeholder="Ex: Digestor Laranja" />
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div>
+        <label class="label">Tipo</label>
+        <select name="tipo" class="input">
           <option value="CORRETIVA">CORRETIVA</option>
           <option value="PREVENTIVA">PREVENTIVA</option>
           <option value="NR12">NR12</option>
           <option value="OUTRA">OUTRA</option>
         </select>
       </div>
+
+      <div></div>
     </div>
 
-    <div style="height:10px"></div>
+    <div style="margin-top:12px;">
+      <label class="label">Descrição do serviço</label>
+      <textarea class="input" name="descricao" rows="4" placeholder="Descreva o serviço..."></textarea>
+    </div>
 
-    <label>Descrição</label>
-    <textarea name="descricao" rows="5" required placeholder="Descreva o serviço..."></textarea>
-
-    <div style="height:14px"></div>
-
-    <div class="row">
-      <button class="btn-sm" type="submit">Salvar OS</button>
-      <a class="btn-sm" href="/os">Cancelar</a>
+    <div style="display:flex; gap:10px; margin-top:14px;">
+      <button class="btn" type="submit">Salvar OS</button>
+      <a class="btn btn-ghost" href="/os">Cancelar</a>
     </div>
   </form>
 </div>
+
+<style>
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+</style>
