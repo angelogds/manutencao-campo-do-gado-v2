@@ -1,78 +1,116 @@
+// modules/usuarios/usuarios.controller.js
 const service = require("./usuarios.service");
 
-const ROLES = ["ADMIN", "DIRECAO", "RH", "COMPRAS", "MANUTENCAO"];
+const ROLES = [
+  { key: "admin", label: "Admin" },
+  { key: "diretoria", label: "Diretoria" },
+  { key: "rh", label: "RH" },
+  { key: "compras", label: "Compras" },
+  { key: "producao", label: "Produção" },
+  { key: "mecanico", label: "Mecânico" },
+  { key: "almoxarifado", label: "Almoxarifado" },
+];
 
-exports.list = (req, res) => {
-  const users = service.listUsers();
-  return res.render("usuarios/index", { title: "Usuários", users, ROLES });
-};
+function list(req, res) {
+  res.locals.activeMenu = "usuarios";
+  const q = (req.query.q || "").trim();
+  const role = (req.query.role || "").trim();
 
-exports.newForm = (req, res) => {
-  return res.render("usuarios/new", { title: "Novo usuário", ROLES });
-};
+  const lista = service.list({ q, role });
 
-exports.create = (req, res) => {
-  const { name, email, role, password } = req.body;
+  return res.render("usuarios/index", {
+    title: "Usuários",
+    layout: "layout",
+    lista,
+    q,
+    role,
+    ROLES,
+  });
+}
+
+function newForm(req, res) {
+  res.locals.activeMenu = "usuarios";
+  return res.render("usuarios/novo", {
+    title: "Novo Usuário",
+    layout: "layout",
+    ROLES,
+  });
+}
+
+function create(req, res) {
+  const name = (req.body.name || "").trim();
+  const email = (req.body.email || "").trim().toLowerCase();
+  const role = (req.body.role || "").trim();
+  const password = (req.body.password || "").trim();
 
   if (!name || !email || !role || !password) {
-    req.flash("error", "Preencha nome, email, perfil e senha.");
-    return res.redirect("/admin/users/new");
+    req.flash("error", "Preencha nome, e-mail, perfil e senha.");
+    return res.redirect("/usuarios/novo");
   }
 
   try {
-    service.createUser({ name, email, role, password });
+    service.create({ name, email, role, password });
     req.flash("success", "Usuário criado com sucesso.");
-    return res.redirect("/admin/users");
+    return res.redirect("/usuarios");
   } catch (e) {
     req.flash("error", e.message || "Erro ao criar usuário.");
-    return res.redirect("/admin/users/new");
+    return res.redirect("/usuarios/novo");
   }
-};
+}
 
-exports.editForm = (req, res) => {
+function editForm(req, res) {
+  res.locals.activeMenu = "usuarios";
   const id = Number(req.params.id);
-  const user = service.getUserById(id);
-  if (!user) {
-    req.flash("error", "Usuário não encontrado.");
-    return res.redirect("/admin/users");
-  }
-  return res.render("usuarios/edit", { title: "Editar usuário", user, ROLES });
-};
+  const user = service.getById(id);
 
-exports.update = (req, res) => {
+  if (!user) return res.status(404).render("errors/404", { title: "Não encontrado" });
+
+  return res.render("usuarios/editar", {
+    title: `Editar Usuário #${id}`,
+    layout: "layout",
+    user,
+    ROLES,
+  });
+}
+
+function update(req, res) {
   const id = Number(req.params.id);
-  const { name, email, role } = req.body;
+  const name = (req.body.name || "").trim();
+  const email = (req.body.email || "").trim().toLowerCase();
+  const role = (req.body.role || "").trim();
 
   if (!name || !email || !role) {
-    req.flash("error", "Preencha nome, email e perfil.");
-    return res.redirect(`/admin/users/${id}/edit`);
+    req.flash("error", "Preencha nome, e-mail e perfil.");
+    return res.redirect(`/usuarios/${id}/editar`);
   }
 
   try {
-    service.updateUser({ id, name, email, role });
-    req.flash("success", "Usuário atualizado.");
-    return res.redirect("/admin/users");
+    service.update(id, { name, email, role });
+    req.flash("success", "Usuário atualizado com sucesso.");
+    return res.redirect("/usuarios");
   } catch (e) {
     req.flash("error", e.message || "Erro ao atualizar usuário.");
-    return res.redirect(`/admin/users/${id}/edit`);
+    return res.redirect(`/usuarios/${id}/editar`);
   }
-};
+}
 
-exports.resetPassword = (req, res) => {
+function resetPassword(req, res) {
   const id = Number(req.params.id);
-  const { newPassword } = req.body;
+  const password = (req.body.password || "").trim();
 
-  if (!newPassword) {
+  if (!password) {
     req.flash("error", "Informe a nova senha.");
-    return res.redirect(`/admin/users/${id}/edit`);
+    return res.redirect(`/usuarios/${id}/editar`);
   }
 
   try {
-    service.resetPassword({ id, newPassword });
+    service.resetPassword(id, password);
     req.flash("success", "Senha resetada com sucesso.");
-    return res.redirect(`/admin/users/${id}/edit`);
+    return res.redirect(`/usuarios/${id}/editar`);
   } catch (e) {
     req.flash("error", e.message || "Erro ao resetar senha.");
-    return res.redirect(`/admin/users/${id}/edit`);
+    return res.redirect(`/usuarios/${id}/editar`);
   }
-};
+}
+
+module.exports = { list, newForm, create, editForm, update, resetPassword };
