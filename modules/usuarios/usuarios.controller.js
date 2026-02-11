@@ -2,25 +2,23 @@
 const service = require("./usuarios.service");
 
 const ROLES = [
-  { key: "admin", label: "Admin" },
-  { key: "diretoria", label: "Diretoria" },
-  { key: "rh", label: "RH" },
-  { key: "compras", label: "Compras" },
-  { key: "producao", label: "Produção" },
-  { key: "mecanico", label: "Mecânico" },
-  { key: "almoxarifado", label: "Almoxarifado" },
+  { key: "ADMIN", label: "Admin" },
+  { key: "DIRECAO", label: "Direção" },
+  { key: "RH", label: "RH" },
+  { key: "COMPRAS", label: "Compras" },
+  { key: "MANUTENCAO", label: "Manutenção" },
 ];
 
 function list(req, res) {
   res.locals.activeMenu = "usuarios";
+
   const q = (req.query.q || "").trim();
-  const role = (req.query.role || "").trim();
+  const role = (req.query.role || "").trim().toUpperCase();
 
   const lista = service.list({ q, role });
 
   return res.render("usuarios/index", {
     title: "Usuários",
-    layout: "layout",
     lista,
     q,
     role,
@@ -30,9 +28,9 @@ function list(req, res) {
 
 function newForm(req, res) {
   res.locals.activeMenu = "usuarios";
+
   return res.render("usuarios/novo", {
     title: "Novo Usuário",
-    layout: "layout",
     ROLES,
   });
 }
@@ -40,7 +38,7 @@ function newForm(req, res) {
 function create(req, res) {
   const name = (req.body.name || "").trim();
   const email = (req.body.email || "").trim().toLowerCase();
-  const role = (req.body.role || "").trim();
+  const role = String(req.body.role || "").trim().toUpperCase();
   const password = (req.body.password || "").trim();
 
   if (!name || !email || !role || !password) {
@@ -60,14 +58,13 @@ function create(req, res) {
 
 function editForm(req, res) {
   res.locals.activeMenu = "usuarios";
+
   const id = Number(req.params.id);
   const user = service.getById(id);
-
   if (!user) return res.status(404).render("errors/404", { title: "Não encontrado" });
 
   return res.render("usuarios/editar", {
     title: `Editar Usuário #${id}`,
-    layout: "layout",
     user,
     ROLES,
   });
@@ -77,7 +74,7 @@ function update(req, res) {
   const id = Number(req.params.id);
   const name = (req.body.name || "").trim();
   const email = (req.body.email || "").trim().toLowerCase();
-  const role = (req.body.role || "").trim();
+  const role = String(req.body.role || "").trim().toUpperCase();
 
   if (!name || !email || !role) {
     req.flash("error", "Preencha nome, e-mail e perfil.");
