@@ -1,60 +1,135 @@
 <% layout('layout') %>
 
-<h1>Nova OS</h1>
-<p class="muted">Selecione um equipamento cadastrado para evitar digitação.</p>
+<style>
+  .card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group label {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    padding: 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+
+  .form-group textarea {
+    min-height: 110px;
+    resize: vertical;
+  }
+
+  .form-full {
+    grid-column: span 2;
+  }
+
+  .form-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-primary {
+    background: #16a34a;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn-primary:hover {
+    background: #15803d;
+  }
+
+  .btn-cancel {
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    padding: 10px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: #374151;
+    font-weight: 600;
+  }
+
+  .muted {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 12px;
+  }
+</style>
 
 <div class="card">
+  <h1>Nova Ordem de Serviço</h1>
+  <div class="muted">
+    Selecione um equipamento cadastrado ou informe manualmente.
+  </div>
+
   <form method="POST" action="/os">
-    <div class="grid2">
-      <div>
-        <label class="label">Equipamento (cadastro)</label>
-        <select name="equipamento_id" class="input">
+    <div class="form-grid">
+
+      <!-- Equipamento select -->
+      <div class="form-group">
+        <label>Equipamento (cadastro)</label>
+        <select name="equipamento_id">
           <option value="">Selecione...</option>
-          <% (equipamentos || []).forEach(e => { %>
+          <% equipamentos.forEach(e => { %>
             <option value="<%= e.id %>">
-              <%= (e.codigo ? e.codigo + " • " : "") + e.nome %>
-              <%= e.setor ? " • " + e.setor : "" %>
+              <%= e.codigo ? e.codigo + ' - ' : '' %><%= e.nome %>
             </option>
           <% }) %>
         </select>
-        <div class="muted" style="margin-top:6px;">
-          Se não achar, informe no campo abaixo.
-        </div>
       </div>
 
-      <div>
-        <label class="label">Equipamento (texto)</label>
-        <input class="input" name="equipamento_texto" placeholder="Ex: Digestor Laranja" />
+      <!-- Equipamento texto -->
+      <div class="form-group">
+        <label>Equipamento (manual)</label>
+        <input type="text" name="equipamento_texto" placeholder="Ex: Digestor Laranja" />
       </div>
-    </div>
 
-    <div class="grid2">
-      <div>
-        <label class="label">Tipo</label>
-        <select name="tipo" class="input">
-          <option value="CORRETIVA">CORRETIVA</option>
-          <option value="PREVENTIVA">PREVENTIVA</option>
+      <!-- Tipo -->
+      <div class="form-group">
+        <label>Tipo</label>
+        <select name="tipo">
+          <option value="CORRETIVA">Corretiva</option>
+          <option value="PREVENTIVA">Preventiva</option>
           <option value="NR12">NR12</option>
-          <option value="OUTRA">OUTRA</option>
+          <option value="OUTRA">Outra</option>
         </select>
       </div>
 
-      <div></div>
+      <!-- Descrição -->
+      <div class="form-group form-full">
+        <label>Descrição do serviço</label>
+        <textarea name="descricao" placeholder="Descreva o serviço realizado..."></textarea>
+      </div>
+
     </div>
 
-    <div style="margin-top:12px;">
-      <label class="label">Descrição do serviço</label>
-      <textarea class="input" name="descricao" rows="4" placeholder="Descreva o serviço..."></textarea>
-    </div>
-
-    <div style="display:flex; gap:10px; margin-top:14px;">
-      <button class="btn" type="submit">Salvar OS</button>
-      <a class="btn btn-ghost" href="/os">Cancelar</a>
+    <div class="form-actions">
+      <button type="submit" class="btn-primary">Salvar OS</button>
+      <a href="/os" class="btn-cancel">Cancelar</a>
     </div>
   </form>
 </div>
-
-<style>
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
-</style>
