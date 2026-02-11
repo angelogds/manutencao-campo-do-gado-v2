@@ -1,123 +1,66 @@
-<% layout('layout') %>
+<% layout("layout") %>
 
 <style>
-  .muted{ color:#6b7280; }
-  .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-  .spacer{ flex:1; }
-
-  .grid{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:12px; }
-  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; min-height:110px; }
-  .k{ color:#6b7280; font-weight:900; font-size:12px; letter-spacing:.04em; }
-  .v{ font-size:16px; font-weight:900; margin-top:8px; display:flex; flex-direction:column; gap:6px; }
-
-  .btn-sm{
-    padding:8px 10px; border-radius:12px; font-weight:900;
-    border:1px solid #e5e7eb; background:#fff; cursor:pointer; text-decoration:none; display:inline-block;
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
   }
-  .btn-sm:hover{ border-color:#10b981; color:#065f46; background:#ecfdf5; }
-
-  .pill{ display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:900; font-size:12px; }
-
-  table{ width:100%; border-collapse:separate; border-spacing:0; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; }
-  th,td{ padding:10px 12px; border-bottom:1px solid #eef2f7; vertical-align:top; }
-  th{ text-align:left; font-size:12px; color:#6b7280; letter-spacing:.04em; }
-  tr:last-child td{ border-bottom:none; }
-
-  .tag{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:900; border:1px solid #e5e7eb; background:#f9fafb; }
-  .tag.dia{ background:#ecfdf5; border-color:#a7f3d0; color:#065f46; }
-  .tag.noite{ background:#eff6ff; border-color:#dbeafe; color:#1d4ed8; }
-
-  @media (max-width: 980px){ .grid{ grid-template-columns:1fr; } }
+  .card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 16px;
+  }
+  .card h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: #065f46;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+  .pill {
+    display: inline-block;
+    background: #ecfdf5;
+    color: #065f46;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-weight: 700;
+    margin: 4px 4px 0 0;
+    font-size: 13px;
+  }
 </style>
 
-<div class="row">
-  <div>
-    <h1>Escala</h1>
-    <div class="muted">Quem está no <strong>dia</strong>, <strong>noite</strong> e <strong>apoio operacional</strong>.</div>
-  </div>
-  <div class="spacer"></div>
-
-  <span class="pill">Data: <%= baseDate %></span>
-  <a class="btn-sm" href="/escala/nova">+ Lançar escala</a>
-</div>
-
-<div style="height:12px"></div>
+<h1>Escala de Trabalho</h1>
+<p class="muted">Organização semanal da manutenção</p>
 
 <div class="grid">
+  <!-- NOTURNO -->
   <div class="card">
-    <div class="k">MECÂNICOS (DIA)</div>
-    <div class="v">
-      <% if (!hoje?.mecanico_dia?.length) { %>
-        <span class="muted">Sem lançamento.</span>
-      <% } %>
-      <% (hoje?.mecanico_dia || []).forEach(p => { %>
-        <span>• <strong><%= p.nome %></strong> <span class="tag dia">dia</span></span>
-      <% }) %>
-    </div>
+    <h3>Turno Noturno</h3>
+    <div class="muted"><%= escala.horarios.noturno %></div>
+
+    <% escala.noturno.forEach(n => { %>
+      <span class="pill"><%= n %></span>
+    <% }) %>
   </div>
 
+  <!-- DIURNO -->
   <div class="card">
-    <div class="k">MECÂNICOS (NOITE)</div>
-    <div class="v">
-      <% if (!hoje?.mecanico_noite?.length) { %>
-        <span class="muted">Sem lançamento.</span>
-      <% } %>
-      <% (hoje?.mecanico_noite || []).forEach(p => { %>
-        <span>• <strong><%= p.nome %></strong> <span class="tag noite">noite</span></span>
-      <% }) %>
-    </div>
+    <h3>Turno Diurno</h3>
+    <div class="muted"><%= escala.horarios.diurno %></div>
+
+    <% escala.diurno.forEach(d => { %>
+      <span class="pill"><%= d %></span>
+    <% }) %>
   </div>
 
+  <!-- APOIO -->
   <div class="card">
-    <div class="k">APOIO OPERACIONAL (DIA)</div>
-    <div class="v">
-      <% if (!hoje?.apoio_dia?.length) { %>
-        <span class="muted">Sem lançamento.</span>
-      <% } %>
-      <% (hoje?.apoio_dia || []).forEach(p => { %>
-        <span>• <strong><%= p.nome %></strong> <span class="tag dia">dia</span></span>
-      <% }) %>
-    </div>
+    <h3>Apoio Operacional</h3>
+
+    <% escala.apoio.forEach(a => { %>
+      <span class="pill"><%= a %></span>
+    <% }) %>
   </div>
 </div>
-
-<div style="height:14px"></div>
-
-<h2 style="margin:0 0 8px 0;">Próximos 7 dias</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th style="width:140px;">Data</th>
-      <th>Equipe</th>
-    </tr>
-  </thead>
-  <tbody>
-    <% (proximos || []).forEach(d => { %>
-      <tr>
-        <td>
-          <strong><%= d.data %></strong>
-          <div style="margin-top:6px;">
-            <a class="btn-sm" href="/escala?data=<%= d.data %>">Abrir</a>
-          </div>
-        </td>
-        <td>
-          <% if (!d.itens.length) { %>
-            <span class="muted">Sem lançamentos.</span>
-          <% } %>
-
-          <% d.itens.forEach(it => { %>
-            <div style="margin-bottom:6px;">
-              <span class="tag <%= it.turno %>"><%= it.turno %></span>
-              <strong><%= it.categoria === 'mecanico' ? 'Mecânico' : 'Apoio' %>:</strong>
-              <%= it.nome %>
-              <% if (it.observacao) { %>
-                <span class="muted">— <%= it.observacao %></span>
-              <% } %>
-            </div>
-          <% }) %>
-        </td>
-      </tr>
-    <% }) %>
-  </tbody>
-</table>
