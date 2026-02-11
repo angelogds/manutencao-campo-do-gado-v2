@@ -6,7 +6,8 @@
     <p class="muted">Abertas, em andamento e finalizadas.</p>
   </div>
 
-  <a class="btn btn-green" href="/os/nova">+ Nova OS</a>
+  <!-- ✅ Agora usa o MESMO verde do Equipamentos -->
+  <a class="btn-primary" href="/os/nova">+ Nova OS</a>
 </div>
 
 <div class="card">
@@ -20,7 +21,7 @@
           <th style="width:140px;">Tipo</th>
           <th style="width:140px;">Status</th>
           <th style="width:170px;">Aberta em</th>
-          <th style="width:110px;"></th>
+          <th style="width:110px; text-align:right;">Ações</th>
         </tr>
       </thead>
 
@@ -34,12 +35,16 @@
         <% } else { %>
           <% lista.forEach(o => { %>
             <tr>
-              <td><strong><%= o.id %></strong></td>
+              <td><%= o.id %></td>
               <td><%= o.equipamento || "-" %></td>
-              <td class="td-clip" title="<%= o.descricao %>"><%= o.descricao %></td>
+              <td class="td-clip" title="<%= o.descricao %>">
+                <%= o.descricao %>
+              </td>
 
               <td>
-                <span class="pill-tag pill-blue"><%= (o.tipo || "").toUpperCase() %></span>
+                <span class="pill-tag pill-blue">
+                  <%= (o.tipo || "").toUpperCase() %>
+                </span>
               </td>
 
               <td>
@@ -57,10 +62,14 @@
                 <% } %>
               </td>
 
-              <td><%= o.opened_at ? fmtBR(o.opened_at) : "-" %></td>
+              <td>
+                <%= o.opened_at ? fmtBR(o.opened_at) : "-" %>
+              </td>
 
               <td style="text-align:right;">
-                <a class="btn btn-ghost btn-sm" href="/os/<%= o.id %>">Abrir</a>
+                <a class="btn-sm btn-ghost" href="/os/<%= o.id %>">
+                  Abrir
+                </a>
               </td>
             </tr>
           <% }) %>
