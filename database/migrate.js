@@ -13,86 +13,47 @@ function ensureMigrationsTable() {
   `);
 }
 
-function getApplied() {
-  return new Set(
-    db.prepare("SELECT filename FROM migrations").all().map((r) => r.filename)
-  );
+function isApplied(filename) {
+  const row = db.prepare("SELECT 1 FROM migrations WHERE filename = ?").get(filename);
+  return !!row;
 }
 
-function hasManualTransaction(sql) {
-  // detecta BEGIN/COMMIT/ROLLBACK (qualquer variação simples)
-  const s = String(sql || "").toUpperCase();
-  return (
-    s.includes("BEGIN TRANSACTION") ||
-    s.includes("BEGIN;") ||
-    s.includes("COMMIT") ||
-    s.includes("ROLLBACK")
-  );
+function markApplied(filename) {
+  db.prepare("INSERT INTO migrations (filename) VALUES (?)").run(filename);
 }
 
-function applyOneMigration(file, sql) {
-  const insert = db.prepare("INSERT INTO migrations (filename) VALUES (?)");
+function applyOne(filename) {
+  const full = path.join(__dirname, "migrations", filename);
+  const sql = fs.readFileSync(full, "utf8");
 
-  // ✅ Se o .sql tiver BEGIN/COMMIT, não podemos rodar dentro de db.transaction()
-  // porque vai dar: "cannot start a transaction within a transaction"
-  if (hasManualTransaction(sql)) {
-    console.warn(
-      `⚠️ Migration ${file} contém BEGIN/COMMIT/ROLLBACK. ` +
-        `Rodando SEM tx do JS (recomendado remover BEGIN/COMMIT do .sql).`
-    );
-    db.exec(sql);
-    insert.run(file);
-    console.log(`✔ Migration aplicada (sem tx JS): ${file}`);
-    return;
-  }
-
-  // ✅ Caso normal: 1 migration = 1 transação
+  // ✅ Uma transação por arquivo, SEM começar outra dentro
   const tx = db.transaction(() => {
     db.exec(sql);
-    insert.run(file);
+    markApplied(filename);
   });
 
   tx();
-  console.log(`✔ Migration aplicada: ${file}`);
+  console.log(`✔ Migration aplicada: ${filename}`);
 }
 
 function applyMigrations() {
   ensureMigrationsTable();
 
-  const migrationsDir = path.join(__dirname, "migrations");
-  if (!fs.existsSync(migrationsDir)) return;
+  const dir = path.join(__dirname, "migrations");
+  if (!fs.existsSync(dir)) return;
 
   const files = fs
-    .readdirSync(migrationsDir)
+    .readdirSync(dir)
     .filter((f) => f.endsWith(".sql"))
-    .sort(); // ordem
+    .sort((a, b) => a.localeCompare(b));
 
-  const applied = getApplied();
-
-  for (const file of files) {
-    if (applied.has(file)) continue;
-
-    const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
-
-    try {
-      applyOneMigration(file, sql);
-    } catch (err) {
-      console.error(`❌ Falha na migration ${file}:`, err.message);
-      throw err; // derruba para você ver no log e corrigir
-    }
+  for (const f of files) {
+    if (isApplied(f)) continue;
+    applyOne(f);
   }
 }
 
-function runSeeds() {
-  try {
-    // opcional: se existir, roda seed
-    require("./seeds/usuarios.seed");
-  } catch (e) {
-    console.log("⚠️ Seed não executada:", e.message);
-  }
-}
-
+// roda imediatamente
 applyMigrations();
-runSeeds();
 
 module.exports = { applyMigrations };
