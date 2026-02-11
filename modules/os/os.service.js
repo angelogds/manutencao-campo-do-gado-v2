@@ -1,111 +1,76 @@
 // modules/os/os.service.js
 const db = require("../../database/db");
 
-function listOS({ status = null } = {}) {
-  if (status) {
-    return db
-      .prepare(
-        `SELECT id, equipamento, descricao, tipo, status, custo_total, opened_at, closed_at
-         FROM os
-         WHERE status = ?
-         ORDER BY id DESC`
-      )
-      .all(status);
-  }
-
-  return db
-    .prepare(
-      `SELECT id, equipamento, descricao, tipo, status, custo_total, opened_at, closed_at
-       FROM os
-       ORDER BY id DESC`
-    )
-    .all();
-}
-
-function getBlocks() {
-  const abertas = db
-    .prepare(
-      `SELECT COUNT(*) AS total
-       FROM os
-       WHERE status IN ('ABERTA','ANDAMENTO','PAUSADA')`
-    )
-    .get()?.total || 0;
-
-  const acompanhar = db
-    .prepare(
-      `SELECT COUNT(*) AS total
-       FROM os
-       WHERE status IN ('ANDAMENTO','PAUSADA')`
-    )
-    .get()?.total || 0;
-
-  const finalizadas = db
-    .prepare(
-      `SELECT COUNT(*) AS total
-       FROM os
-       WHERE status IN ('CONCLUIDA','CANCELADA')`
-    )
-    .get()?.total || 0;
-
-  return {
-    os: { abertas, acompanhar, finalizadas },
-  };
-}
-
-function createOS({ equipamento, descricao, tipo, opened_by }) {
-  const stmt = db.prepare(
-    `INSERT INTO os (equipamento, descricao, tipo, status, opened_by)
-     VALUES (?, ?, ?, 'ABERTA', ?)`
-  );
-  const info = stmt.run(equipamento, descricao, tipo, opened_by);
-  return info.lastInsertRowid;
+function listOS() {
+  const stmt = db.prepare(`
+    SELECT
+      o.id,
+      o.descricao,
+      o.tipo,
+      o.status,
+      o.custo_total,
+      o.opened_at,
+      o.closed_at,
+      o.opened_by,
+      o.closed_by,
+      o.equipamento_id,
+      COALESCE(e.nome, o.equipamento) AS equipamento
+    FROM os o
+    LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+    ORDER BY o.id DESC
+  `);
+  return stmt.all();
 }
 
 function getOSById(id) {
-  const os = db
-    .prepare(
-      `SELECT id, equipamento, descricao, tipo, status, custo_total, opened_by, closed_by, opened_at, closed_at
-       FROM os
-       WHERE id = ?`
-    )
-    .get(id);
-
-  return os || null;
+  const stmt = db.prepare(`
+    SELECT
+      o.*,
+      COALESCE(e.nome, o.equipamento) AS equipamento_nome
+    FROM os o
+    LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+    WHERE o.id = ?
+  `);
+  return stmt.get(id);
 }
 
-function updateOSStatus(id, status, { userId } = {}) {
-  // status válidos
-  const allowed = new Set(["ABERTA", "ANDAMENTO", "PAUSADA", "CONCLUIDA", "CANCELADA"]);
-  if (!allowed.has(status)) return false;
+function createOS({ equipamento_id, equipamento_texto, descricao, tipo, opened_by }) {
+  const insert = db.prepare(`
+    INSERT INTO os (equipamento_id, equipamento, descricao, tipo, status, opened_by)
+    VALUES (@equipamento_id, @equipamento, @descricao, @tipo, 'ABERTA', @opened_by)
+  `);
 
-  // Se concluir/cancelar, seta closed_at e closed_by
-  if (status === "CONCLUIDA" || status === "CANCELADA") {
-    const info = db
-      .prepare(
-        `UPDATE os
-         SET status = ?, closed_at = datetime('now'), closed_by = ?
-         WHERE id = ?`
-      )
-      .run(status, userId || null, id);
-    return info.changes > 0;
+  const info = insert.run({
+    equipamento_id: equipamento_id || null,
+    equipamento: (equipamento_texto || "").trim() || "(não informado)",
+    descricao: (descricao || "").trim(),
+    tipo: (tipo || "CORRETIVA").trim().toUpperCase(),
+    opened_by: opened_by || null,
+  });
+
+  return info.lastInsertRowid;
+}
+
+function updateStatus(id, status, closed_by = null) {
+  const st = String(status || "").trim().toUpperCase();
+
+  if (st === "CONCLUIDA" || st === "CANCELADA") {
+    const stmt = db.prepare(`
+      UPDATE os
+      SET status = ?, closed_at = datetime('now'), closed_by = ?
+      WHERE id = ?
+    `);
+    stmt.run(st, closed_by, id);
+    return;
   }
 
-  // Reabrir / andamento / pausada
-  const info = db
-    .prepare(
-      `UPDATE os
-       SET status = ?, closed_at = NULL, closed_by = NULL
-       WHERE id = ?`
-    )
-    .run(status, id);
-
-  return info.changes > 0;
+  const stmt = db.prepare(`UPDATE os SET status = ? WHERE id = ?`);
+  stmt.run(st, id);
 }
 
 module.exports = {
   listOS,
-  getBlocks,
-  createOS,
   getOSById,
-  updateOSStatus,
+  createOS,
+  updateStatus,
 };
