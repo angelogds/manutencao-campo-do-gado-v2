@@ -1,45 +1,56 @@
-<% layout('layout') %>
+<% layout("layout") %>
+
+<style>
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px}
+  .muted{color:#6b7280}
+  .btn{display:inline-block;padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;font-weight:800;cursor:pointer;text-decoration:none}
+  .btn:hover{border-color:#16a34a;color:#16a34a}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left;font-size:14px}
+  th{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#f3f4f6;font-weight:800;font-size:12px}
+</style>
 
 <h1>Preventivas</h1>
-<p style="color:#6b7280; margin-top:-6px;">Planos e execuções de manutenção preventiva.</p>
+<p class="muted" style="margin-top:-6px;">Planos de manutenção preventiva</p>
 
-<div style="display:flex; gap:10px; margin:14px 0;">
-  <a class="btn" href="/preventivas/nova" style="text-decoration:none;">+ Nova Preventiva</a>
+<div class="row" style="margin:10px 0 14px;">
+  <a class="btn" href="/preventivas/nova">+ Nova Preventiva</a>
 </div>
 
-<div class="card" style="background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px;">
-  <div style="overflow:auto;">
-    <table style="width:100%; border-collapse:collapse;">
-      <thead>
-        <tr style="text-align:left; border-bottom:1px solid #e5e7eb;">
-          <th style="padding:10px;">#</th>
-          <th style="padding:10px;">Equipamento</th>
-          <th style="padding:10px;">Título</th>
-          <th style="padding:10px;">Frequência</th>
-          <th style="padding:10px;">Ativo</th>
-          <th style="padding:10px;">Ações</th>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Título</th>
+        <th>Equipamento</th>
+        <th>Frequência</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!lista?.length) { %>
+        <tr><td colspan="5" class="muted">Nenhuma preventiva cadastrada.</td></tr>
+      <% } %>
+
+      <% lista.forEach(p => { %>
+        <tr>
+          <td><a href="/preventivas/<%= p.id %>">#<%= p.id %></a></td>
+          <td><strong><%= p.titulo %></strong></td>
+          <td class="muted">
+            <%= p.equipamento_nome ? (p.equipamento_codigo ? (p.equipamento_codigo + " • " + p.equipamento_nome) : p.equipamento_nome) : "-" %>
+          </td>
+          <td>
+            <span class="pill"><%= (p.frequencia_tipo || "").toUpperCase() %></span>
+            <span class="muted">x<%= p.frequencia_valor || 1 %></span>
+          </td>
+          <td>
+            <span class="pill"><%= (p.ativo ? "ATIVA" : "INATIVA") %></span>
+          </td>
         </tr>
-      </thead>
-      <tbody>
-        <% if (!lista || !lista.length) { %>
-          <tr>
-            <td colspan="6" style="padding:14px; color:#6b7280;">Nenhuma preventiva cadastrada ainda.</td>
-          </tr>
-        <% } else { %>
-          <% lista.forEach(p => { %>
-            <tr style="border-bottom:1px solid #f3f4f6;">
-              <td style="padding:10px;"><%= p.id %></td>
-              <td style="padding:10px;"><%= p.equipamento_nome || "-" %></td>
-              <td style="padding:10px; font-weight:700;"><%= p.titulo %></td>
-              <td style="padding:10px;"><%= (p.frequencia_tipo || 'mensal') %> / <%= p.frequencia_valor || 1 %></td>
-              <td style="padding:10px;"><%= p.ativo ? "SIM" : "NÃO" %></td>
-              <td style="padding:10px;">
-                <a class="btn btn-ghost" href="/preventivas/<%= p.id %>" style="text-decoration:none;">Ver</a>
-              </td>
-            </tr>
-          <% }) %>
-        <% } %>
-      </tbody>
-    </table>
-  </div>
+      <% }) %>
+    </tbody>
+  </table>
 </div>
