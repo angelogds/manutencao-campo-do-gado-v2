@@ -1,45 +1,71 @@
-<% layout('layout') %>
+<%- layout("layout") %>
 
-<h1>Ordens de Serviço</h1>
-<p class="muted">Abertas, em andamento e finalizadas.</p>
+<div class="page-head">
+  <div>
+    <h1>Ordens de Serviço</h1>
+    <p class="muted">Abertas, em andamento e finalizadas.</p>
+  </div>
 
-<div style="display:flex; gap:10px; margin:14px 0;">
-  <a class="btn" href="/os/nova">Nova OS</a>
+  <a class="btn btn-primary" href="/os/nova">+ Nova OS</a>
 </div>
 
-<div class="card" style="padding:0;">
-  <table class="table">
-    <thead>
-      <tr>
-        <th style="width:80px;">#</th>
-        <th>Equipamento</th>
-        <th>Descrição</th>
-        <th style="width:140px;">Tipo</th>
-        <th style="width:140px;">Status</th>
-        <th style="width:170px;">Aberta em</th>
-        <th style="width:120px;"></th>
-      </tr>
-    </thead>
-    <tbody>
-      <% if (!lista || lista.length === 0) { %>
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
         <tr>
-          <td colspan="7" class="muted" style="padding:14px;">Nenhuma OS cadastrada.</td>
+          <th style="width:70px;">#</th>
+          <th>Equipamento</th>
+          <th>Descrição</th>
+          <th style="width:140px;">Tipo</th>
+          <th style="width:140px;">Status</th>
+          <th style="width:170px;">Aberta em</th>
+          <th style="width:110px;"></th>
         </tr>
-      <% } %>
+      </thead>
 
-      <% (lista || []).forEach(o => { %>
-        <tr>
-          <td><strong><%= o.id %></strong></td>
-          <td><%= o.equipamento %></td>
-          <td class="muted"><%= o.descricao %></td>
-          <td><%= o.tipo %></td>
-          <td><span class="pill"><%= o.status %></span></td>
-          <td><%= o.opened_at ? fmtBR(o.opened_at) : '-' %></td>
-          <td style="text-align:right;">
-            <a class="btn-sm" href="/os/<%= o.id %>">Abrir</a>
-          </td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
+      <tbody>
+        <% if (!lista || lista.length === 0) { %>
+          <tr>
+            <td colspan="7" class="muted" style="text-align:center; padding:22px;">
+              Nenhuma OS cadastrada.
+            </td>
+          </tr>
+        <% } else { %>
+          <% lista.forEach(o => { %>
+            <tr>
+              <td><strong><%= o.id %></strong></td>
+              <td><%= o.equipamento || "-" %></td>
+              <td class="td-clip" title="<%= o.descricao %>"><%= o.descricao %></td>
+
+              <td>
+                <span class="pill pill-blue"><%= (o.tipo || "").toUpperCase() %></span>
+              </td>
+
+              <td>
+                <% const st = (o.status || "").toUpperCase(); %>
+                <% if (st === "ABERTA") { %>
+                  <span class="pill pill-amber">ABERTA</span>
+                <% } else if (st === "ANDAMENTO") { %>
+                  <span class="pill pill-sky">ANDAMENTO</span>
+                <% } else if (st === "PAUSADA") { %>
+                  <span class="pill pill-gray">PAUSADA</span>
+                <% } else if (st === "CONCLUIDA" || st === "FINALIZADA") { %>
+                  <span class="pill pill-green">FINALIZADA</span>
+                <% } else { %>
+                  <span class="pill pill-gray"><%= st || "-" %></span>
+                <% } %>
+              </td>
+
+              <td><%= o.opened_at ? fmtBR(o.opened_at) : "-" %></td>
+
+              <td style="text-align:right;">
+                <a class="btn btn-sm" href="/os/<%= o.id %>">Abrir</a>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
 </div>
