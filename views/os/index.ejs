@@ -6,7 +6,7 @@
     <p class="muted">Abertas, em andamento e finalizadas.</p>
   </div>
 
-  <a class="btn btn-primary" href="/os/nova">+ Nova OS</a>
+  <a class="btn btn-green" href="/os/nova">+ Nova OS</a>
 </div>
 
 <div class="card">
@@ -60,7 +60,7 @@
               <td><%= o.opened_at ? fmtBR(o.opened_at) : "-" %></td>
 
               <td style="text-align:right;">
-                <a class="btn btn-sm" href="/os/<%= o.id %>">Abrir</a>
+                <a class="btn btn-ghost btn-sm" href="/os/<%= o.id %>">Abrir</a>
               </td>
             </tr>
           <% }) %>
