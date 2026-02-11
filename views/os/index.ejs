@@ -20,7 +20,7 @@
           <th style="width:140px;">Tipo</th>
           <th style="width:140px;">Status</th>
           <th style="width:170px;">Aberta em</th>
-          <th style="width:110px;"></th>
+          <th style="width:120px; text-align:right;">Ações</th>
         </tr>
       </thead>
 
@@ -32,18 +32,30 @@
             </td>
           </tr>
         <% } else { %>
+
           <% lista.forEach(o => { %>
             <tr>
-              <td><strong><%= o.id %></strong></td>
-              <td><%= o.equipamento || "-" %></td>
-              <td class="td-clip" title="<%= o.descricao %>"><%= o.descricao %></td>
+              <td><%= o.id %></td>
 
               <td>
-                <span class="pill pill-blue"><%= (o.tipo || "").toUpperCase() %></span>
+                <a class="link" href="/os/<%= o.id %>">
+                  <%= o.equipamento || "-" %>
+                </a>
+              </td>
+
+              <td class="td-clip" title="<%= o.descricao %>">
+                <%= o.descricao %>
+              </td>
+
+              <td>
+                <span class="pill pill-blue">
+                  <%= (o.tipo || "").toUpperCase() %>
+                </span>
               </td>
 
               <td>
                 <% const st = (o.status || "").toUpperCase(); %>
+
                 <% if (st === "ABERTA") { %>
                   <span class="pill pill-amber">ABERTA</span>
                 <% } else if (st === "ANDAMENTO") { %>
@@ -57,13 +69,18 @@
                 <% } %>
               </td>
 
-              <td><%= o.opened_at ? fmtBR(o.opened_at) : "-" %></td>
+              <td>
+                <%= o.opened_at ? fmtBR(o.opened_at) : "-" %>
+              </td>
 
               <td style="text-align:right;">
-                <a class="btn btn-ghost btn-sm" href="/os/<%= o.id %>">Abrir</a>
+                <a class="btn btn-ghost btn-sm" href="/os/<%= o.id %>">
+                  Abrir
+                </a>
               </td>
             </tr>
           <% }) %>
+
         <% } %>
       </tbody>
     </table>
