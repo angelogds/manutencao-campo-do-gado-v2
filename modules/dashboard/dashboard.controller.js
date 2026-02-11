@@ -1,13 +1,15 @@
-// modules/dashboard/dashboard.controller.js
 const service = require("./dashboard.service");
 
 function index(req, res) {
   const cards = service.getCards();
+  const plantao = service.getPlantaoAgora();
 
   return res.render("dashboard/index", {
-    title: "Dashboard",
+    layout: "layout",
+    title: "Painel Principal",
     activeMenu: "dashboard",
     cards,
+    plantao,
   });
 }
 
