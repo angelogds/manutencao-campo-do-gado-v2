@@ -1,42 +1,75 @@
-<% layout('layout') %>
+<%- layout("layout") %>
 
-<div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+<div class="page-head">
   <div>
     <h1>OS #<%= os.id %></h1>
-    <div class="muted">Equipamento: <strong><%= os.equipamento_nome || os.equipamento %></strong></div>
-    <div class="muted">Aberta em: <%= os.opened_at ? fmtBR(os.opened_at) : '-' %></div>
+    <p class="muted">Acompanhe e atualize o status da ordem de serviço.</p>
   </div>
 
   <a class="btn btn-ghost" href="/os">Voltar</a>
 </div>
 
-<div class="card" style="margin-top:14px;">
-  <div class="muted">Descrição</div>
-  <div style="margin-top:6px;"><%= os.descricao %></div>
-</div>
+<div class="card">
+  <div class="grid-2">
+    <div class="field">
+      <div class="label">Equipamento</div>
+      <div class="value"><strong><%= os.equipamento %></strong></div>
+    </div>
 
-<div class="card" style="margin-top:14px;">
-  <form method="POST" action="/os/<%= os.id %>/status">
-    <div class="grid2">
-      <div>
-        <label class="label">Status</label>
-        <select class="input" name="status">
-          <option value="ABERTA" <%= os.status==='ABERTA'?'selected':'' %>>ABERTA</option>
-          <option value="ANDAMENTO" <%= os.status==='ANDAMENTO'?'selected':'' %>>ANDAMENTO</option>
-          <option value="PAUSADA" <%= os.status==='PAUSADA'?'selected':'' %>>PAUSADA</option>
-          <option value="CONCLUIDA" <%= os.status==='CONCLUIDA'?'selected':'' %>>CONCLUIDA</option>
-          <option value="CANCELADA" <%= os.status==='CANCELADA'?'selected':'' %>>CANCELADA</option>
-        </select>
-      </div>
-
-      <div style="display:flex; align-items:flex-end; gap:10px;">
-        <button class="btn" type="submit">Atualizar</button>
+    <div class="field">
+      <div class="label">Tipo</div>
+      <div class="value">
+        <span class="pill pill-blue"><%= (os.tipo || "").toUpperCase() %></span>
       </div>
     </div>
+
+    <div class="field">
+      <div class="label">Aberta em</div>
+      <div class="value"><%= os.opened_at ? fmtBR(os.opened_at) : "-" %></div>
+    </div>
+
+    <div class="field">
+      <div class="label">Status atual</div>
+      <div class="value">
+        <% const st = (os.status || "").toUpperCase(); %>
+        <% if (st === "ABERTA") { %>
+          <span class="pill pill-amber">ABERTA</span>
+        <% } else if (st === "ANDAMENTO") { %>
+          <span class="pill pill-sky">ANDAMENTO</span>
+        <% } else if (st === "PAUSADA") { %>
+          <span class="pill pill-gray">PAUSADA</span>
+        <% } else if (st === "CONCLUIDA" || st === "FINALIZADA") { %>
+          <span class="pill pill-green">FINALIZADA</span>
+        <% } else { %>
+          <span class="pill pill-gray"><%= st || "-" %></span>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="field">
+    <div class="label">Descrição</div>
+    <div class="note"><%= os.descricao %></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <form class="row" method="POST" action="/os/<%= os.id %>/status">
+    <div class="field" style="min-width:260px;">
+      <div class="label">Alterar status</div>
+      <select class="input" name="status">
+        <option value="ABERTA" <%= (os.status||"").toUpperCase()==="ABERTA" ? "selected" : "" %>>ABERTA</option>
+        <option value="ANDAMENTO" <%= (os.status||"").toUpperCase()==="ANDAMENTO" ? "selected" : "" %>>ANDAMENTO</option>
+        <option value="PAUSADA" <%= (os.status||"").toUpperCase()==="PAUSADA" ? "selected" : "" %>>PAUSADA</option>
+        <option value="CONCLUIDA" <%= (os.status||"").toUpperCase()==="CONCLUIDA" ? "selected" : "" %>>FINALIZADA</option>
+        <option value="CANCELADA" <%= (os.status||"").toUpperCase()==="CANCELADA" ? "selected" : "" %>>CANCELADA</option>
+      </select>
+    </div>
+
+    <div style="flex:1;"></div>
+
+    <button class="btn btn-primary" type="submit">Atualizar</button>
   </form>
 </div>
-
-<style>
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
-</style>
