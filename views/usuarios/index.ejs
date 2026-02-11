@@ -1,32 +1,68 @@
-<h1>Usuários</h1>
+<% layout('layout') %>
 
-<div style="margin: 12px 0;">
-  <a class="btn" href="/admin/users/new">+ Novo Usuário</a>
+<style>
+  .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .card{background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px;}
+  .table{width:100%; border-collapse:collapse;}
+  .table th,.table td{padding:10px; border-bottom:1px solid #eee; text-align:left;}
+  .btn-sm{padding:8px 10px; border-radius:10px; border:1px solid #e5e7eb; background:#fff; text-decoration:none; display:inline-block;}
+  .btn-sm:hover{border-color:#16a34a; color:#16a34a;}
+  .input{padding:10px; border-radius:12px; border:1px solid #e5e7eb;}
+  .muted{color:#6b7280;}
+</style>
+
+<div class="row" style="justify-content:space-between;">
+  <div>
+    <h1>Usuários</h1>
+    <div class="muted">Gerencie perfis e acessos do sistema.</div>
+  </div>
+
+  <a class="btn-sm" href="/usuarios/novo">+ Novo Usuário</a>
 </div>
 
-<table class="table">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Nome</th>
-      <th>Email</th>
-      <th>Perfil</th>
-      <th>Criado em</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <% users.forEach(u => { %>
+<div class="card" style="margin-top:12px;">
+  <form class="row" method="GET" action="/usuarios">
+    <input class="input" name="q" value="<%= q || '' %>" placeholder="Buscar por nome ou e-mail" />
+    <select class="input" name="role">
+      <option value="">Todos os perfis</option>
+      <% ROLES.forEach(r => { %>
+        <option value="<%= r.key %>" <%= (role === r.key) ? "selected" : "" %>><%= r.label %></option>
+      <% }) %>
+    </select>
+    <button class="btn-sm" type="submit">Filtrar</button>
+    <a class="btn-sm" href="/usuarios">Limpar</a>
+  </form>
+</div>
+
+<div class="card" style="margin-top:12px;">
+  <table class="table">
+    <thead>
       <tr>
-        <td><%= u.id %></td>
-        <td><%= u.name %></td>
-        <td><%= u.email %></td>
-        <td><span class="badge"><%= u.role %></span></td>
-        <td><%= u.created_at %></td>
-        <td>
-          <a class="btn btn-small" href="/admin/users/<%= u.id %>/edit">Editar</a>
-        </td>
+        <th>#</th>
+        <th>Nome</th>
+        <th>E-mail</th>
+        <th>Perfil</th>
+        <th>Criado</th>
+        <th style="text-align:right;">Ações</th>
       </tr>
-    <% }) %>
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      <% if (!lista || !lista.length) { %>
+        <tr><td colspan="6" class="muted">Nenhum usuário encontrado.</td></tr>
+      <% } %>
+
+      <% (lista || []).forEach(u => { %>
+        <tr>
+          <td><%= u.id %></td>
+          <td><%= u.name %></td>
+          <td><%= u.email %></td>
+          <td><%= (u.role || '').toUpperCase() %></td>
+          <td><%= u.created_at ? fmtBR(u.created_at) : '-' %></td>
+          <td style="text-align:right;">
+            <a class="btn-sm" href="/usuarios/<%= u.id %>/editar">Editar</a>
+          </td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
