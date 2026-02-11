@@ -19,6 +19,43 @@ function getApplied() {
   );
 }
 
+function hasManualTransaction(sql) {
+  // detecta BEGIN/COMMIT/ROLLBACK (qualquer variação simples)
+  const s = String(sql || "").toUpperCase();
+  return (
+    s.includes("BEGIN TRANSACTION") ||
+    s.includes("BEGIN;") ||
+    s.includes("COMMIT") ||
+    s.includes("ROLLBACK")
+  );
+}
+
+function applyOneMigration(file, sql) {
+  const insert = db.prepare("INSERT INTO migrations (filename) VALUES (?)");
+
+  // ✅ Se o .sql tiver BEGIN/COMMIT, não podemos rodar dentro de db.transaction()
+  // porque vai dar: "cannot start a transaction within a transaction"
+  if (hasManualTransaction(sql)) {
+    console.warn(
+      `⚠️ Migration ${file} contém BEGIN/COMMIT/ROLLBACK. ` +
+        `Rodando SEM tx do JS (recomendado remover BEGIN/COMMIT do .sql).`
+    );
+    db.exec(sql);
+    insert.run(file);
+    console.log(`✔ Migration aplicada (sem tx JS): ${file}`);
+    return;
+  }
+
+  // ✅ Caso normal: 1 migration = 1 transação
+  const tx = db.transaction(() => {
+    db.exec(sql);
+    insert.run(file);
+  });
+
+  tx();
+  console.log(`✔ Migration aplicada: ${file}`);
+}
+
 function applyMigrations() {
   ensureMigrationsTable();
 
@@ -28,39 +65,30 @@ function applyMigrations() {
   const files = fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))
-    .sort();
+    .sort(); // ordem
 
   const applied = getApplied();
-  const insert = db.prepare("INSERT INTO migrations (filename) VALUES (?)");
 
-  const tx = db.transaction(() => {
-    for (const file of files) {
-      if (applied.has(file)) continue;
+  for (const file of files) {
+    if (applied.has(file)) continue;
 
-      const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
-      db.exec(sql);
-      insert.run(file);
-      console.log(`✔ Migration aplicada: ${file}`);
+    const sql = fs.readFileSync(path.join(migrationsDir, file), "utf8");
+
+    try {
+      applyOneMigration(file, sql);
+    } catch (err) {
+      console.error(`❌ Falha na migration ${file}:`, err.message);
+      throw err; // derruba para você ver no log e corrigir
     }
-  });
-
-  tx();
+  }
 }
 
 function runSeeds() {
-  // 1) admin
   try {
+    // opcional: se existir, roda seed
     require("./seeds/usuarios.seed");
   } catch (e) {
-    console.log("⚠️ Seed usuarios não executada:", e.message);
-  }
-
-  // 2) colaboradores (escala)
-  try {
-    const { ensureColaboradoresFromUsers } = require("./seeds/escala.seed");
-    if (typeof ensureColaboradoresFromUsers === "function") ensureColaboradoresFromUsers();
-  } catch (e) {
-    console.log("⚠️ Seed escala não executada:", e.message);
+    console.log("⚠️ Seed não executada:", e.message);
   }
 }
 
