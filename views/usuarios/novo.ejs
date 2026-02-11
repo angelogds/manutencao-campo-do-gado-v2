@@ -1,25 +1,26 @@
 <% layout('layout') %>
 
 <style>
-  .card{background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px;}
-  .row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
-  .input{padding:10px; border-radius:12px; border:1px solid #e5e7eb; width:100%;}
-  .btn{padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; background:#fff;}
-  .btn:hover{border-color:#16a34a; color:#16a34a;}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .input{padding:10px;border-radius:12px;border:1px solid #e5e7eb;width:100%;}
+  .btn{padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;}
+  .btn:hover{border-color:#16a34a;color:#16a34a;}
   .muted{color:#6b7280;}
-  @media(max-width:800px){.row{grid-template-columns:1fr;}}
+  @media(max-width:900px){.grid{grid-template-columns:1fr;}}
 </style>
 
 <h1>Novo Usuário</h1>
-<p class="muted">Crie um novo acesso ao sistema.</p>
+<p class="muted">Use o e-mail pessoal/corporativo do colaborador.</p>
 
 <div class="card">
   <form method="POST" action="/usuarios">
-    <div class="row">
+    <div class="grid">
       <div>
         <label>Nome</label>
         <input class="input" name="name" required />
       </div>
+
       <div>
         <label>E-mail</label>
         <input class="input" name="email" type="email" required />
@@ -41,7 +42,7 @@
       </div>
     </div>
 
-    <div style="margin-top:12px; display:flex; gap:10px;">
+    <div style="margin-top:12px;display:flex;gap:10px;">
       <button class="btn" type="submit">Salvar</button>
       <a class="btn" href="/usuarios">Cancelar</a>
     </div>
