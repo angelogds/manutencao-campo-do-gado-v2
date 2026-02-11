@@ -1,75 +1,44 @@
-<%- layout("layout") %>
+<% layout('layout') %>
 
 <div class="page-head">
   <div>
-    <h1>OS #<%= os.id %></h1>
-    <p class="muted">Acompanhe e atualize o status da ordem de serviço.</p>
+    <h1>Equipamento #<%= equip.id %></h1>
+    <div class="muted"><%= equip.nome %></div>
   </div>
 
-  <a class="btn btn-ghost" href="/os">Voltar</a>
+  <div style="display:flex; gap:10px; align-items:center;">
+    <a class="btn" href="/equipamentos">Voltar</a>
+    <a class="btn-primary" href="/equipamentos/<%= equip.id %>/editar">Editar</a>
+  </div>
 </div>
 
 <div class="card">
-  <div class="grid-2">
-    <div class="field">
-      <div class="label">Equipamento</div>
-      <div class="value"><strong><%= os.equipamento %></strong></div>
+  <div class="kv">
+    <div class="k">Código</div>
+    <div class="v"><span class="mono"><%= equip.codigo || '-' %></span></div>
+
+    <div class="k">Nome</div>
+    <div class="v"><%= equip.nome %></div>
+
+    <div class="k">Setor</div>
+    <div class="v"><%= equip.setor || '-' %></div>
+
+    <div class="k">Tipo</div>
+    <div class="v"><%= equip.tipo || '-' %></div>
+
+    <div class="k">Criticidade</div>
+    <div class="v"><span class="tag"><%= (equip.criticidade || 'media') %></span></div>
+
+    <div class="k">Ativo</div>
+    <div class="v">
+      <% if (Number(equip.ativo) === 1) { %>
+        <span class="tag tag-ok">SIM</span>
+      <% } else { %>
+        <span class="tag tag-no">NÃO</span>
+      <% } %>
     </div>
 
-    <div class="field">
-      <div class="label">Tipo</div>
-      <div class="value">
-        <span class="pill pill-blue"><%= (os.tipo || "").toUpperCase() %></span>
-      </div>
-    </div>
-
-    <div class="field">
-      <div class="label">Aberta em</div>
-      <div class="value"><%= os.opened_at ? fmtBR(os.opened_at) : "-" %></div>
-    </div>
-
-    <div class="field">
-      <div class="label">Status atual</div>
-      <div class="value">
-        <% const st = (os.status || "").toUpperCase(); %>
-        <% if (st === "ABERTA") { %>
-          <span class="pill pill-amber">ABERTA</span>
-        <% } else if (st === "ANDAMENTO") { %>
-          <span class="pill pill-sky">ANDAMENTO</span>
-        <% } else if (st === "PAUSADA") { %>
-          <span class="pill pill-gray">PAUSADA</span>
-        <% } else if (st === "CONCLUIDA" || st === "FINALIZADA") { %>
-          <span class="pill pill-green">FINALIZADA</span>
-        <% } else { %>
-          <span class="pill pill-gray"><%= st || "-" %></span>
-        <% } %>
-      </div>
-    </div>
+    <div class="k">Observação</div>
+    <div class="v" style="color:#475569;"><%= equip.observacao || '-' %></div>
   </div>
-
-  <div class="divider"></div>
-
-  <div class="field">
-    <div class="label">Descrição</div>
-    <div class="note"><%= os.descricao %></div>
-  </div>
-
-  <div class="divider"></div>
-
-  <form class="row" method="POST" action="/os/<%= os.id %>/status">
-    <div class="field" style="min-width:260px;">
-      <div class="label">Alterar status</div>
-      <select class="input" name="status">
-        <option value="ABERTA" <%= (os.status||"").toUpperCase()==="ABERTA" ? "selected" : "" %>>ABERTA</option>
-        <option value="ANDAMENTO" <%= (os.status||"").toUpperCase()==="ANDAMENTO" ? "selected" : "" %>>ANDAMENTO</option>
-        <option value="PAUSADA" <%= (os.status||"").toUpperCase()==="PAUSADA" ? "selected" : "" %>>PAUSADA</option>
-        <option value="CONCLUIDA" <%= (os.status||"").toUpperCase()==="CONCLUIDA" ? "selected" : "" %>>FINALIZADA</option>
-        <option value="CANCELADA" <%= (os.status||"").toUpperCase()==="CANCELADA" ? "selected" : "" %>>CANCELADA</option>
-      </select>
-    </div>
-
-    <div style="flex:1;"></div>
-
-    <button class="btn btn-primary" type="submit">Atualizar</button>
-  </form>
 </div>
