@@ -1,10 +1,14 @@
 /* public/css/app.css */
 :root{
-  /* ✅ Verde mais bonito e “premium” (ajuste fino) */
+  /* Verde do tema (sidebar / identidade) */
   --green-900:#0a5a3f;
   --green-800:#0e6a45;
   --green-700:#138a5f;
   --green-100:#e7f5ee;
+
+  /* ✅ Verde de AÇÃO (botões como "+ Novo Equipamento") */
+  --action-600:#16a34a;  /* verde principal */
+  --action-700:#15803d;  /* hover */
 
   --bg:#f3faf6;
   --card:#ffffff;
@@ -176,7 +180,7 @@ a{ color:inherit; }
   background:rgba(255,255,255,.45);
 }
 
-/* BUTTONS */
+/* BUTTONS (base) */
 .btn{
   display:inline-flex;
   align-items:center;
@@ -197,18 +201,24 @@ a{ color:inherit; }
   transform: translateY(-1px);
 }
 
+/* ✅ Botão verde padronizado (mesmo do "+ Novo Equipamento") */
+.btn-primary,
 .btn-green{
-  background:var(--green-900);
-  border-color:var(--green-900);
+  background: var(--action-600);
+  border-color: var(--action-600);
   color:#fff;
+  text-decoration:none;
 }
+.btn-primary:hover,
 .btn-green:hover{
-  background:var(--green-800);
-  border-color:var(--green-800);
+  background: var(--action-700);
+  border-color: var(--action-700);
 }
 
+/* Botão secundário */
 .btn-ghost{
   background:#fff;
+  text-decoration:none;
 }
 .btn-ghost:hover{
   background:var(--green-100);
@@ -269,20 +279,14 @@ a{ color:inherit; }
   text-overflow:ellipsis;
 }
 
-/* ✅ btn-sm = só tamanho (não muda tema sozinho) */
+/* btn-sm = só tamanho */
 .btn-sm{
   padding:7px 10px;
   border-radius:12px;
   font-weight:900;
 }
 
-/* ✅ Se quiser pequeno VERDE, use: btn btn-green btn-sm */
-.btn.btn-green.btn-sm:hover{
-  background: var(--green-800);
-  border-color: var(--green-800);
-}
-
-/* Pílulas de status (dentro da tabela) */
+/* Pílulas de status (tabela) */
 .pill-tag{
   display:inline-flex;
   align-items:center;
@@ -340,7 +344,7 @@ textarea{ min-height:110px; resize:vertical; }
   margin:16px 0;
 }
 
-/* bloco de texto estilo “caixa” */
+/* bloco de texto */
 .note{
   background:#f8fafc;
   border:1px solid var(--border);
