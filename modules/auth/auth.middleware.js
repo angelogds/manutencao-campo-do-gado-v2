@@ -1,27 +1,36 @@
 // modules/auth/auth.middleware.js
 
 function requireLogin(req, res, next) {
-  if (req.session?.user) return next();
+  if (req.session && req.session.user) return next();
   req.flash("error", "Faça login para continuar.");
   return res.redirect("/login");
 }
 
-// rolesAllowed pode ser: ["ADMIN","RH"] etc
-function requireRole(rolesAllowed = []) {
-  const allowed = (rolesAllowed || []).map((r) => String(r || "").toUpperCase());
+/**
+ * requireRole(["COMPRAS","DIRECAO"...])
+ * - ADMIN sempre passa
+ * - Se allowedRoles vazio -> só exige login
+ */
+function requireRole(allowedRoles = []) {
+  const allowed = (allowedRoles || []).map((r) => String(r).toUpperCase());
 
   return (req, res, next) => {
-    const role = String(req.session?.user?.role || "").toUpperCase();
+    if (!req.session || !req.session.user) {
+      req.flash("error", "Faça login para continuar.");
+      return res.redirect("/login");
+    }
 
-    // Admin sempre passa
+    const role = String(req.session.user.role || "").toUpperCase();
     if (role === "ADMIN") return next();
 
-    if (!allowed.length) return next(); // se não definir roles, deixa passar
+    if (allowed.length === 0) return next();
 
-    if (allowed.includes(role)) return next();
+    if (!allowed.includes(role)) {
+      req.flash("error", "Você não tem permissão para acessar esta área.");
+      return res.redirect("/dashboard");
+    }
 
-    req.flash("error", "Você não tem permissão para acessar esta área.");
-    return res.redirect("/dashboard");
+    return next();
   };
 }
 
