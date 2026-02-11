@@ -16,6 +16,8 @@
 *{ box-sizing:border-box; }
 html,body{ margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; color:var(--text); background:var(--bg); }
 
+a{ color:inherit; }
+
 .app{
   display:grid;
   grid-template-columns: 280px 1fr;
@@ -166,13 +168,18 @@ html,body{ margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Rob
 
 /* BUTTONS */
 .btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
   border:1px solid var(--border);
   background:#fff;
   padding:10px 12px;
   border-radius:14px;
   font-weight:900;
   cursor:pointer;
-  transition: background .15s ease, transform .08s ease, border-color .15s ease;
+  transition: background .15s ease, transform .08s ease, border-color .15s ease, filter .15s ease;
+  text-decoration:none;
 }
 
 .btn:hover{
@@ -196,6 +203,148 @@ html,body{ margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Rob
 .btn-ghost:hover{
   background: var(--green-100);
   border-color: rgba(17,128,85,.35);
+}
+
+/* ===== EXTRAS (PADRÃO TABELAS / CARDS / PÁGINAS) ===== */
+
+/* Cabeçalho da página (título + ações) */
+.page-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  margin:8px 0 16px;
+}
+.page-head h1{ margin:0; font-size:34px; letter-spacing:-.02em; }
+.page-head .muted{ margin:6px 0 0; }
+
+/* Card padrão */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px;
+}
+
+/* Tabela padrão */
+.table-wrap{ width:100%; overflow:auto; border-radius:14px; }
+.table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  font-size:14px;
+}
+.table thead th{
+  background:#f8fafc;
+  color:var(--text);
+  font-weight:900;
+  text-align:left;
+  padding:12px;
+  border-bottom:1px solid var(--border);
+}
+.table tbody td{
+  padding:12px;
+  border-bottom:1px solid #eef2f7;
+  vertical-align:top;
+}
+.table tbody tr:hover td{
+  background:#fbfdff;
+}
+
+/* Texto cortado em coluna */
+.td-clip{
+  max-width:420px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Mini botões (Abrir / Editar etc) */
+.btn-sm{
+  padding:7px 10px;
+  border-radius:12px;
+  font-weight:900;
+}
+
+/* hover verde no btn-sm */
+.btn-sm:hover{
+  background:var(--green-900);
+  border-color:var(--green-900);
+  color:#fff;
+}
+
+/* Pílulas de status (dentro da tabela) */
+.pill-tag{
+  display:inline-flex;
+  align-items:center;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:900;
+  border:1px solid transparent;
+}
+.pill-amber{ background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
+.pill-green{ background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+.pill-blue{  background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+.pill-sky{   background:#ecfeff; color:#155e75; border-color:#a5f3fc; }
+.pill-gray{  background:#f1f5f9; color:#334155; border-color:#e2e8f0; }
+
+/* Forms padrão */
+.input, select, textarea{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  outline:none;
+  font:inherit;
+  background:#fff;
+}
+textarea{ min-height:110px; resize:vertical; }
+
+.input:focus, select:focus, textarea:focus{
+  border-color: rgba(17,128,85,.55);
+  box-shadow:0 0 0 3px rgba(17,128,85,.12);
+}
+
+.label{
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+
+.grid-2{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+@media (max-width: 920px){
+  .grid-2{ grid-template-columns:1fr; }
+}
+
+/* divisória */
+.divider{
+  height:1px;
+  background:#eef2f7;
+  margin:16px 0;
+}
+
+/* bloco de texto estilo “caixa” */
+.note{
+  background:#f8fafc;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  white-space:pre-wrap;
+}
+
+/* layout de linha em forms */
+.row{
+  display:flex;
+  align-items:end;
+  gap:12px;
 }
 
 /* RESPONSIVO */
