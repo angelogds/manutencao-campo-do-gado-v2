@@ -28,10 +28,9 @@ function applyMigrations() {
   const files = fs
     .readdirSync(migrationsDir)
     .filter((f) => f.endsWith(".sql"))
-    .sort(); // IMPORTANTÍSSIMO: ordem
+    .sort();
 
   const applied = getApplied();
-
   const insert = db.prepare("INSERT INTO migrations (filename) VALUES (?)");
 
   const tx = db.transaction(() => {
@@ -49,10 +48,19 @@ function applyMigrations() {
 }
 
 function runSeeds() {
+  // 1) admin
   try {
-    require("./seeds/usuarios.seed"); // deve criar admin se faltar
+    require("./seeds/usuarios.seed");
   } catch (e) {
-    console.log("⚠️ Seed não executada:", e.message);
+    console.log("⚠️ Seed usuarios não executada:", e.message);
+  }
+
+  // 2) colaboradores (escala)
+  try {
+    const { ensureColaboradoresFromUsers } = require("./seeds/escala.seed");
+    if (typeof ensureColaboradoresFromUsers === "function") ensureColaboradoresFromUsers();
+  } catch (e) {
+    console.log("⚠️ Seed escala não executada:", e.message);
   }
 }
 
