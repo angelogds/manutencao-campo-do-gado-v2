@@ -1,40 +1,24 @@
-// utils/security/permissions.js
-
-// Permissões por role (o que cada perfil pode acessar)
-const ROLE_PERMS = {
-  admin: ["*"],
-
-  diretoria: ["dashboard", "equipamentos", "os", "compras", "estoque", "usuarios", "preventivas", "escala"],
-  rh: ["dashboard", "os", "equipamentos", "usuarios"],
-
-  compras: ["dashboard", "compras", "estoque"],
-  almoxarifado: ["dashboard", "estoque", "compras"],
-
-  producao: ["dashboard", "os", "equipamentos"],
-  mecanico: ["dashboard", "os", "equipamentos", "preventivas", "escala"],
-};
-
-// Retorna true se user tem role
-function getRole(user) {
-  return String(user?.role || "").toLowerCase().trim();
+function normRole(r) {
+  return String(r || "").trim().toUpperCase();
 }
 
-function canAccess(user, feature) {
-  const role = getRole(user);
-  if (!role) return false;
-
-  const perms = ROLE_PERMS[role] || [];
-  if (perms.includes("*")) return true;
-
-  return perms.includes(feature);
+// ADMIN sempre passa
+function isAdmin(user) {
+  return normRole(user?.role) === "ADMIN";
 }
 
-function canAny(user, features = []) {
-  return features.some((f) => canAccess(user, f));
+// allowedRoles pode vir ["compras"] ou ["COMPRAS"] que funciona
+function hasAnyRole(user, allowedRoles = []) {
+  if (!user) return false;
+  if (isAdmin(user)) return true;
+
+  const userRole = normRole(user.role);
+  const allowed = new Set((allowedRoles || []).map(normRole));
+  return allowed.has(userRole);
 }
 
-module.exports = {
-  ROLE_PERMS,
-  canAccess,
-  canAny,
-};
+function canAccess(user, allowedRoles = []) {
+  return hasAnyRole(user, allowedRoles);
+}
+
+module.exports = { hasAnyRole, canAccess, isAdmin, normRole };
