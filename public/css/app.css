@@ -1,7 +1,9 @@
+/* public/css/app.css */
 :root{
-  --green-900:#0b5b3b;
+  /* ✅ Verde mais bonito e “premium” (ajuste fino) */
+  --green-900:#0a5a3f;
   --green-800:#0e6a45;
-  --green-700:#118055;
+  --green-700:#138a5f;
   --green-100:#e7f5ee;
 
   --bg:#f3faf6;
@@ -14,10 +16,16 @@
 }
 
 *{ box-sizing:border-box; }
-html,body{ margin:0; padding:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; color:var(--text); background:var(--bg); }
+html,body{
+  margin:0; padding:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  color:var(--text);
+  background:var(--bg);
+}
 
 a{ color:inherit; }
 
+/* APP LAYOUT */
 .app{
   display:grid;
   grid-template-columns: 280px 1fr;
@@ -45,7 +53,9 @@ a{ color:inherit; }
   width:40px;height:40px;
   border-radius:14px;
   background:rgba(255,255,255,.15);
-  display:flex; align-items:center; justify-content:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
   font-weight:900;
   letter-spacing:.02em;
 }
@@ -73,7 +83,7 @@ a{ color:inherit; }
 
 .nav-item.active{
   background:rgba(255,255,255,.18);
-  outline: 1px solid rgba(255,255,255,.18);
+  outline:1px solid rgba(255,255,255,.18);
 }
 
 .nav-divider{
@@ -109,7 +119,7 @@ a{ color:inherit; }
   align-items:center;
   padding:16px 22px;
   border-bottom:1px solid var(--border);
-  background: rgba(255,255,255,.55);
+  background:rgba(255,255,255,.55);
   backdrop-filter: blur(8px);
 }
 
@@ -138,8 +148,8 @@ a{ color:inherit; }
   font-weight:900;
   padding:4px 8px;
   border-radius:999px;
-  background: var(--green-100);
-  color: var(--green-900);
+  background:var(--green-100);
+  color:var(--green-900);
 }
 
 /* FLASH */
@@ -163,7 +173,7 @@ a{ color:inherit; }
   color:var(--muted);
   display:flex;
   justify-content:space-between;
-  background: rgba(255,255,255,.45);
+  background:rgba(255,255,255,.45);
 }
 
 /* BUTTONS */
@@ -183,29 +193,29 @@ a{ color:inherit; }
 }
 
 .btn:hover{
-  border-color: rgba(17,128,85,.35);
+  border-color: rgba(19,138,95,.35);
   transform: translateY(-1px);
 }
 
 .btn-green{
-  background: var(--green-900);
-  border-color: var(--green-900);
+  background:var(--green-900);
+  border-color:var(--green-900);
   color:#fff;
 }
 .btn-green:hover{
-  background: var(--green-800);
-  border-color: var(--green-800);
+  background:var(--green-800);
+  border-color:var(--green-800);
 }
 
 .btn-ghost{
   background:#fff;
 }
 .btn-ghost:hover{
-  background: var(--green-100);
-  border-color: rgba(17,128,85,.35);
+  background:var(--green-100);
+  border-color: rgba(19,138,95,.35);
 }
 
-/* ===== EXTRAS (PADRÃO TABELAS / CARDS / PÁGINAS) ===== */
+/* ===== PADRÃO TABELAS / CARDS / PÁGINAS ===== */
 
 /* Cabeçalho da página (título + ações) */
 .page-head{
@@ -259,18 +269,17 @@ a{ color:inherit; }
   text-overflow:ellipsis;
 }
 
-/* Mini botões (Abrir / Editar etc) */
+/* ✅ btn-sm = só tamanho (não muda tema sozinho) */
 .btn-sm{
   padding:7px 10px;
   border-radius:12px;
   font-weight:900;
 }
 
-/* hover verde no btn-sm */
-.btn-sm:hover{
-  background:var(--green-900);
-  border-color:var(--green-900);
-  color:#fff;
+/* ✅ Se quiser pequeno VERDE, use: btn btn-green btn-sm */
+.btn.btn-green.btn-sm:hover{
+  background: var(--green-800);
+  border-color: var(--green-800);
 }
 
 /* Pílulas de status (dentro da tabela) */
@@ -302,8 +311,8 @@ a{ color:inherit; }
 textarea{ min-height:110px; resize:vertical; }
 
 .input:focus, select:focus, textarea:focus{
-  border-color: rgba(17,128,85,.55);
-  box-shadow:0 0 0 3px rgba(17,128,85,.12);
+  border-color: rgba(19,138,95,.55);
+  box-shadow:0 0 0 3px rgba(19,138,95,.12);
 }
 
 .label{
