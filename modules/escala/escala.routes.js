@@ -1,29 +1,39 @@
 const express = require("express");
 const router = express.Router();
 
-let requireRole;
+let requireRole = null;
 try {
   requireRole = require("../auth/auth.middleware").requireRole;
-} catch {
-  requireRole = () => (_req, res) =>
-    res.status(500).send("Erro interno: auth.middleware ausente");
+} catch (e) {
+  console.error("❌ [escala] Falha ao carregar auth.middleware:", e.message);
 }
 
-const ctrl = require("./escala.controller");
+const safeRequireRole =
+  typeof requireRole === "function"
+    ? requireRole
+    : () => (_req, res) => res.status(500).send("Erro interno: requireRole indefinido.");
 
-// perfis que podem ver escala
-const ESCALA_ACCESS = ["admin", "producao", "mecanico", "almoxarifado"];
+let ctrl = {};
+try {
+  ctrl = require("./escala.controller");
+  console.log("✅ [escala] controller exports:", Object.keys(ctrl));
+} catch (e) {
+  console.error("❌ [escala] Falha ao carregar escala.controller:", e.message);
+}
 
 const safe = (fn, name) =>
   typeof fn === "function"
     ? fn
-    : (_req, res) =>
-        res.status(500).send(`Handler ${name} indefinido`);
+    : (_req, res) => {
+        console.error(`❌ [escala] Handler ${name} indefinido (export errado).`);
+        return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
+      };
 
-router.get(
-  "/escala",
-  requireRole(ESCALA_ACCESS),
-  safe(ctrl.index, "index")
-);
+// Quem pode ver escala
+const ESCALA_ACCESS = ["ADMIN", "MECANICO", "PRODUCAO", "ALMOXARIFADO", "COMPRAS", "DIRETORIA", "RH"];
+
+router.get("/escala", safeRequireRole(ESCALA_ACCESS), safe(ctrl.index, "index"));
+router.post("/escala", safeRequireRole(["ADMIN"]), safe(ctrl.create, "create")); // só admin edita por enquanto
+router.get("/escala/pdf", safeRequireRole(ESCALA_ACCESS), safe(ctrl.pdfSemana, "pdfSemana"));
 
 module.exports = router;
