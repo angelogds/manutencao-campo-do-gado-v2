@@ -1,80 +1,31 @@
 <%- layout("layout") %>
 
+<style>
+  .btn-primary{
+    background:#16a34a;
+    color:#fff;
+    border:none;
+    padding:10px 16px;
+    border-radius:10px;
+    font-weight:700;
+    cursor:pointer;
+    text-decoration:none;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .btn-primary:hover{
+    background:#15803d;
+  }
+</style>
+
 <div class="page-head">
   <div>
     <h1>Ordens de Serviço</h1>
     <p class="muted">Abertas, em andamento e finalizadas.</p>
   </div>
 
-  <!-- Botão no mesmo verde do Equipamentos -->
+  <!-- 🔥 AGORA É IDÊNTICO AO EQUIPAMENTOS -->
   <a class="btn-primary" href="/os/nova">+ Nova OS</a>
-</div>
-
-<div class="card">
-  <div class="table-wrap">
-    <table class="table">
-      <thead>
-        <tr>
-          <th style="width:70px;">#</th>
-          <th>Equipamento</th>
-          <th>Descrição</th>
-          <th style="width:140px;">Tipo</th>
-          <th style="width:140px;">Status</th>
-          <th style="width:170px;">Aberta em</th>
-          <th style="width:110px; text-align:right;">Ações</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        <% if (!lista || lista.length === 0) { %>
-          <tr>
-            <td colspan="7" class="muted" style="text-align:center; padding:22px;">
-              Nenhuma OS cadastrada.
-            </td>
-          </tr>
-        <% } else { %>
-          <% lista.forEach(o => { %>
-            <tr>
-              <td><%= o.id %></td>
-              <td><%= o.equipamento || "-" %></td>
-              <td class="td-clip" title="<%= o.descricao %>">
-                <%= o.descricao %>
-              </td>
-
-              <td>
-                <span class="pill-tag pill-blue">
-                  <%= (o.tipo || "").toUpperCase() %>
-                </span>
-              </td>
-
-              <td>
-                <% const st = (o.status || "").toUpperCase(); %>
-                <% if (st === "ABERTA") { %>
-                  <span class="pill-tag pill-amber">ABERTA</span>
-                <% } else if (st === "ANDAMENTO") { %>
-                  <span class="pill-tag pill-sky">ANDAMENTO</span>
-                <% } else if (st === "PAUSADA") { %>
-                  <span class="pill-tag pill-gray">PAUSADA</span>
-                <% } else if (st === "CONCLUIDA" || st === "FINALIZADA") { %>
-                  <span class="pill-tag pill-green">FINALIZADA</span>
-                <% } else { %>
-                  <span class="pill-tag pill-gray"><%= st || "-" %></span>
-                <% } %>
-              </td>
-
-              <td>
-                <%= o.opened_at ? fmtBR(o.opened_at) : "-" %>
-              </td>
-
-              <td style="text-align:right;">
-                <a class="btn btn-ghost btn-sm" href="/os/<%= o.id %>">
-                  Abrir
-                </a>
-              </td>
-            </tr>
-          <% }) %>
-        <% } %>
-      </tbody>
-    </table>
-  </div>
 </div>
