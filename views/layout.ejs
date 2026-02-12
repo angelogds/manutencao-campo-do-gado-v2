@@ -10,7 +10,7 @@
 
   <style>
     :root{
-      --action-600: #16a34a;
+      --action-600: #16a34a; /* mesmo verde do "+ Novo Equipamento" */
       --action-700: #15803d;
       --border: #e5e7eb;
       --text: #0f172a;
@@ -32,10 +32,7 @@
       padding:24px;
     }
 
-    .login-wrap{
-      width:100%;
-      max-width:520px;
-    }
+    .login-wrap{ width:100%; max-width:520px; }
 
     .panel{
       background: rgba(255,255,255,.92);
@@ -92,9 +89,7 @@
     .alert-success{ border-color:#bbf7d0; background:#f0fdf4; color:#14532d; }
     .alert small{ display:block; margin-top:6px; font-weight:700; opacity:.9; }
 
-    .field{
-      margin-top:12px;
-    }
+    .field{ margin-top:12px; }
     .label{
       font-size:12px;
       font-weight:900;
@@ -196,6 +191,14 @@
 </head>
 
 <body>
+  <%
+    // ✅ BLINDAGEM: nunca quebra se não vierem variáveis
+    const _flash = (typeof flash !== 'undefined' && flash) ? flash : { error: [], success: [] };
+    const _lockout = (typeof lockout !== 'undefined') ? lockout : null;
+    const _attemptsLeft = (typeof attemptsLeft !== 'undefined') ? attemptsLeft : null;
+    const _rememberedEmail = (typeof rememberedEmail !== 'undefined' && rememberedEmail) ? rememberedEmail : "";
+  %>
+
   <div class="login-wrap">
     <div class="panel">
       <div class="brand">
@@ -206,19 +209,19 @@
         </div>
       </div>
 
-      <!-- ALERTAS (opcionais) -->
-      <% if (flash?.error?.length) { %>
-        <div class="alert alert-error"><%= flash.error[0] %></div>
+      <!-- ALERTAS -->
+      <% if (_flash?.error?.length) { %>
+        <div class="alert alert-error"><%= _flash.error[0] %></div>
       <% } %>
 
-      <% if (lockout) { %>
+      <% if (_lockout) { %>
         <div class="alert alert-warn">
           Conta temporariamente bloqueada.
-          <small>Tente novamente em <%= lockout.remainingSeconds %>s.</small>
+          <small>Tente novamente em <%= _lockout.remainingSeconds %>s.</small>
         </div>
-      <% } else if (attemptsLeft !== undefined && attemptsLeft !== null && attemptsLeft <= 2) { %>
+      <% } else if (_attemptsLeft !== null && _attemptsLeft !== undefined && Number(_attemptsLeft) <= 2) { %>
         <div class="alert alert-warn">
-          Atenção: restam <%= attemptsLeft %> tentativa(s).
+          Atenção: restam <%= _attemptsLeft %> tentativa(s).
           <small>Por segurança, o sistema bloqueia após exceder o limite.</small>
         </div>
       <% } %>
@@ -226,22 +229,39 @@
       <form id="loginForm" method="POST" action="/login" autocomplete="on">
         <div class="field">
           <div class="label">E-mail</div>
-          <input class="input" name="email" type="email" autocomplete="username" required
-                 placeholder="seuemail@empresa.com"
-                 value="<%= (rememberedEmail || '') %>" />
+          <input
+            id="email"
+            class="input"
+            name="email"
+            type="email"
+            autocomplete="username"
+            required
+            placeholder="seuemail@empresa.com"
+            value="<%= _rememberedEmail %>"
+          />
         </div>
 
         <div class="field">
           <div class="label">Senha</div>
 
           <div class="pass-row">
-            <input id="password" class="input" name="password" type="password" autocomplete="current-password" required
-                   placeholder="••••••••" />
+            <input
+              id="password"
+              class="input"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              placeholder="••••••••"
+            />
             <button id="togglePass" class="icon-btn" type="button" aria-label="Mostrar/ocultar senha" title="Mostrar/ocultar senha">
               👁️
             </button>
           </div>
         </div>
+
+        <!-- ✅ manda flag pro backend também -->
+        <input type="hidden" name="remember_me" id="remember_me" value="0" />
 
         <div class="row">
           <label class="check">
@@ -275,23 +295,29 @@
       });
     })();
 
-    // "Lembrar de mim" (client-side): salva email no localStorage
+    // "Lembrar de mim" (salva email no localStorage)
     (function(){
-      const emailInput = document.querySelector('input[name="email"]');
+      const emailInput = document.getElementById('email');
       const remember = document.getElementById('rememberMe');
-      if(!emailInput || !remember) return;
+      const rememberHidden = document.getElementById('remember_me');
+      const form = document.getElementById('loginForm');
+      if(!emailInput || !remember || !rememberHidden || !form) return;
 
       const saved = localStorage.getItem('cg_remember_email');
-      if(saved){
-        emailInput.value = emailInput.value || saved;
+      if(saved && !emailInput.value){
+        emailInput.value = saved;
+        remember.checked = true;
+      } else if(saved){
         remember.checked = true;
       }
 
-      document.getElementById('loginForm')?.addEventListener('submit', () => {
+      form.addEventListener('submit', () => {
         if(remember.checked){
           localStorage.setItem('cg_remember_email', emailInput.value || '');
+          rememberHidden.value = '1';
         } else {
           localStorage.removeItem('cg_remember_email');
+          rememberHidden.value = '0';
         }
       });
     })();
