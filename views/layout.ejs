@@ -17,7 +17,6 @@
       --muted:#64748b;
     }
 
-    /* fundo premium com imagem + overlay */
     body{
       min-height:100vh;
       background:
@@ -192,7 +191,6 @@
 
 <body>
   <%
-    // ✅ BLINDAGEM: nunca quebra se não vierem variáveis
     const _flash = (typeof flash !== 'undefined' && flash) ? flash : { error: [], success: [] };
     const _lockout = (typeof lockout !== 'undefined') ? lockout : null;
     const _attemptsLeft = (typeof attemptsLeft !== 'undefined') ? attemptsLeft : null;
@@ -209,7 +207,6 @@
         </div>
       </div>
 
-      <!-- ALERTAS -->
       <% if (_flash?.error?.length) { %>
         <div class="alert alert-error"><%= _flash.error[0] %></div>
       <% } %>
@@ -260,7 +257,6 @@
           </div>
         </div>
 
-        <!-- ✅ manda flag pro backend também -->
         <input type="hidden" name="remember_me" id="remember_me" value="0" />
 
         <div class="row">
@@ -282,7 +278,6 @@
   </div>
 
   <script>
-    // Mostrar/ocultar senha
     (function(){
       const pass = document.getElementById('password');
       const btn = document.getElementById('togglePass');
@@ -295,7 +290,6 @@
       });
     })();
 
-    // "Lembrar de mim" (salva email no localStorage)
     (function(){
       const emailInput = document.getElementById('email');
       const remember = document.getElementById('rememberMe');
