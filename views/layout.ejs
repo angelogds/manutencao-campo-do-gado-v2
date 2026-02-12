@@ -1,73 +1,101 @@
+<!-- views/login.ejs -->
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Login • Manutenção Campo do Gado</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title><%= title || "Login • Campo do Gado" %></title>
 
-  <link rel="stylesheet" href="/css/app.css"/>
+  <link rel="stylesheet" href="/css/app.css" />
 
   <style>
+    :root{
+      --action-600: #16a34a;
+      --action-700: #15803d;
+      --border: #e5e7eb;
+      --text: #0f172a;
+      --muted:#64748b;
+    }
+
+    /* fundo premium com imagem + overlay */
     body{
+      min-height:100vh;
+      background:
+        linear-gradient(180deg, rgba(10,90,63,.78), rgba(10,90,63,.72)),
+        url("/img/login-bg.webp");
+      background-size:cover;
+      background-position:center;
+      background-attachment:fixed;
       display:flex;
       align-items:center;
       justify-content:center;
-      min-height:100vh;
-      background:linear-gradient(135deg,#f3faf6 0%, #e7f5ee 100%);
+      padding:24px;
     }
 
-    .login-wrapper{
+    .login-wrap{
       width:100%;
-      max-width:420px;
-      padding:20px;
+      max-width:520px;
     }
 
-    .login-card{
-      background:#fff;
-      border-radius:20px;
-      padding:28px;
-      box-shadow:0 20px 40px rgba(0,0,0,.08);
-      border:1px solid #e5e7eb;
+    .panel{
+      background: rgba(255,255,255,.92);
+      border:1px solid rgba(229,231,235,.9);
+      border-radius:22px;
+      padding:22px;
+      box-shadow: 0 24px 60px rgba(0,0,0,.22);
+      backdrop-filter: blur(10px);
     }
 
-    .logo{
-      text-align:center;
-      margin-bottom:20px;
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      margin-bottom:14px;
     }
-
-    .logo-badge{
-      width:60px;
-      height:60px;
-      border-radius:18px;
-      background:linear-gradient(135deg,var(--green-900),var(--green-700));
+    .brand-badge{
+      width:44px;height:44px;
+      border-radius:16px;
+      background: linear-gradient(180deg, #0a5a3f, #0e6a45);
       display:flex;
       align-items:center;
       justify-content:center;
       color:#fff;
       font-weight:900;
-      font-size:22px;
-      margin:0 auto 12px;
+      letter-spacing:.02em;
+      box-shadow: 0 10px 20px rgba(10,90,63,.25);
+      flex:0 0 auto;
     }
-
-    .title{
-      text-align:center;
-      font-size:22px;
+    .brand-title{
       font-weight:900;
+      font-size:20px;
+      margin:0;
+      color:var(--text);
+      line-height:1.1;
     }
-
-    .subtitle{
-      text-align:center;
+    .brand-sub{
+      margin:4px 0 0;
       color:var(--muted);
+      font-weight:700;
       font-size:13px;
-      margin-top:6px;
     }
 
-    .form-group{
-      margin-top:18px;
+    .alert{
+      border-radius:16px;
+      padding:12px 14px;
+      border:1px solid var(--border);
+      background:#fff;
+      font-weight:800;
+      margin:12px 0 14px;
     }
+    .alert-error{ border-color:#fecaca; background:#fff5f5; color:#7f1d1d; }
+    .alert-warn{ border-color:#fed7aa; background:#fff7ed; color:#9a3412; }
+    .alert-success{ border-color:#bbf7d0; background:#f0fdf4; color:#14532d; }
+    .alert small{ display:block; margin-top:6px; font-weight:700; opacity:.9; }
 
-    .form-group label{
-      display:block;
+    .field{
+      margin-top:12px;
+    }
+    .label{
       font-size:12px;
       font-weight:900;
       letter-spacing:.06em;
@@ -75,100 +103,198 @@
       color:var(--muted);
       margin-bottom:6px;
     }
-
-    .form-group input{
+    .input{
       width:100%;
-      padding:12px;
-      border-radius:14px;
+      padding:12px 12px;
       border:1px solid var(--border);
+      border-radius:14px;
       outline:none;
       font:inherit;
+      background:#fff;
+    }
+    .input:focus{
+      border-color: rgba(22,163,74,.55);
+      box-shadow:0 0 0 3px rgba(22,163,74,.12);
     }
 
-    .form-group input:focus{
-      border-color:var(--green-700);
-      box-shadow:0 0 0 3px rgba(19,138,95,.15);
+    .pass-row{
+      display:flex;
+      gap:10px;
+      align-items:center;
     }
+    .pass-row .input{ flex:1; }
 
-    .btn-login{
-      width:100%;
-      margin-top:22px;
-      padding:12px;
+    .icon-btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:46px; height:46px;
       border-radius:14px;
-      border:none;
-      background:var(--action-600);
+      border:1px solid var(--border);
+      background:#fff;
+      cursor:pointer;
+      transition:.15s ease;
+    }
+    .icon-btn:hover{
+      border-color: rgba(22,163,74,.35);
+      background:#ecfdf5;
+    }
+
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-top:12px;
+      flex-wrap:wrap;
+    }
+
+    .check{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-weight:800;
+      color:#334155;
+      user-select:none;
+    }
+    .check input{ width:18px; height:18px; }
+
+    .hint{
+      color:var(--muted);
+      font-weight:700;
+      font-size:12px;
+    }
+
+    .btn-primary{
+      width:100%;
+      margin-top:14px;
+      background: var(--action-600);
+      border:1px solid var(--action-600);
       color:#fff;
+      padding:12px 14px;
+      border-radius:14px;
       font-weight:900;
       cursor:pointer;
-      transition:.2s ease;
+      transition:.15s ease;
+      font-size:15px;
+    }
+    .btn-primary:hover{
+      background: var(--action-700);
+      border-color: var(--action-700);
+      transform: translateY(-1px);
     }
 
-    .btn-login:hover{
-      background:var(--action-700);
-    }
-
-    .footer-text{
+    .footer{
+      margin-top:12px;
       text-align:center;
-      margin-top:18px;
+      color: rgba(255,255,255,.85);
+      font-weight:800;
       font-size:12px;
-      color:var(--muted);
-    }
-
-    .alert{
-      margin-top:14px;
-      border-radius:14px;
-      padding:10px 12px;
-      font-weight:700;
-      font-size:13px;
-    }
-
-    .alert-error{
-      background:#fff5f5;
-      border:1px solid #fecaca;
-      color:#7f1d1d;
+      text-shadow: 0 2px 12px rgba(0,0,0,.35);
     }
   </style>
 </head>
 
 <body>
-
-  <div class="login-wrapper">
-    <div class="login-card">
-
-      <div class="logo">
-        <div class="logo-badge">CG</div>
-        <div class="title">Campo do Gado</div>
-        <div class="subtitle">Manutenção Industrial • Sistema V2</div>
+  <div class="login-wrap">
+    <div class="panel">
+      <div class="brand">
+        <div class="brand-badge">CG</div>
+        <div>
+          <p class="brand-title">Campo do Gado</p>
+          <p class="brand-sub">Manutenção Industrial • Sistema V2</p>
+        </div>
       </div>
 
+      <!-- ALERTAS (opcionais) -->
       <% if (flash?.error?.length) { %>
-        <div class="alert alert-error">
-          <%= flash.error[0] %>
+        <div class="alert alert-error"><%= flash.error[0] %></div>
+      <% } %>
+
+      <% if (lockout) { %>
+        <div class="alert alert-warn">
+          Conta temporariamente bloqueada.
+          <small>Tente novamente em <%= lockout.remainingSeconds %>s.</small>
+        </div>
+      <% } else if (attemptsLeft !== undefined && attemptsLeft !== null && attemptsLeft <= 2) { %>
+        <div class="alert alert-warn">
+          Atenção: restam <%= attemptsLeft %> tentativa(s).
+          <small>Por segurança, o sistema bloqueia após exceder o limite.</small>
         </div>
       <% } %>
 
-      <form method="POST" action="/login">
-        <div class="form-group">
-          <label>E-mail</label>
-          <input type="email" name="email" required />
+      <form id="loginForm" method="POST" action="/login" autocomplete="on">
+        <div class="field">
+          <div class="label">E-mail</div>
+          <input class="input" name="email" type="email" autocomplete="username" required
+                 placeholder="seuemail@empresa.com"
+                 value="<%= (rememberedEmail || '') %>" />
         </div>
 
-        <div class="form-group">
-          <label>Senha</label>
-          <input type="password" name="password" required />
+        <div class="field">
+          <div class="label">Senha</div>
+
+          <div class="pass-row">
+            <input id="password" class="input" name="password" type="password" autocomplete="current-password" required
+                   placeholder="••••••••" />
+            <button id="togglePass" class="icon-btn" type="button" aria-label="Mostrar/ocultar senha" title="Mostrar/ocultar senha">
+              👁️
+            </button>
+          </div>
         </div>
 
-        <button class="btn-login" type="submit">
-          Entrar no Sistema
-        </button>
+        <div class="row">
+          <label class="check">
+            <input id="rememberMe" type="checkbox" />
+            Lembrar de mim
+          </label>
+
+          <div class="hint">
+            <span>Proteção anti-tentativas ativada</span>
+          </div>
+        </div>
+
+        <button class="btn-primary" type="submit">Entrar no Sistema</button>
       </form>
-
-      <div class="footer-text">
-        © <%= new Date().getFullYear() %> Campo do Gado
-      </div>
-
     </div>
+
+    <div class="footer">© <%= new Date().getFullYear() %> Campo do Gado</div>
   </div>
 
+  <script>
+    // Mostrar/ocultar senha
+    (function(){
+      const pass = document.getElementById('password');
+      const btn = document.getElementById('togglePass');
+      if(!pass || !btn) return;
+
+      btn.addEventListener('click', () => {
+        const isPass = pass.type === 'password';
+        pass.type = isPass ? 'text' : 'password';
+        btn.textContent = isPass ? '🙈' : '👁️';
+      });
+    })();
+
+    // "Lembrar de mim" (client-side): salva email no localStorage
+    (function(){
+      const emailInput = document.querySelector('input[name="email"]');
+      const remember = document.getElementById('rememberMe');
+      if(!emailInput || !remember) return;
+
+      const saved = localStorage.getItem('cg_remember_email');
+      if(saved){
+        emailInput.value = emailInput.value || saved;
+        remember.checked = true;
+      }
+
+      document.getElementById('loginForm')?.addEventListener('submit', () => {
+        if(remember.checked){
+          localStorage.setItem('cg_remember_email', emailInput.value || '');
+        } else {
+          localStorage.removeItem('cg_remember_email');
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
