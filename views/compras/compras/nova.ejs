@@ -1,44 +1,64 @@
 <% layout("layout") %>
 
-<h1>Nova Compra</h1>
-
-<form method="POST" action="/compras">
+<div class="page-head">
   <div>
-    <label>Vincular a Solicitação (opcional)</label><br/>
-    <select name="solicitacao_id">
-      <option value="">-- sem vínculo --</option>
-      <% (solicitacoes || []).forEach(s => { %>
-        <option value="<%= s.id %>">#<%= s.id %> - <%= s.status %> - <%= s.setor || "-" %></option>
-      <% }) %>
-    </select>
+    <h1>Nova Compra</h1>
+    <p class="muted">Cadastro de nova compra no sistema.</p>
   </div>
+</div>
 
-  <div style="margin-top:10px;">
-    <label>Fornecedor</label><br/>
-    <input name="fornecedor" />
-  </div>
+<div class="card">
+  <form method="POST" action="/compras">
 
-  <div style="margin-top:10px;">
-    <label>Status</label><br/>
-    <select name="status">
-      <option value="em_andamento" selected>em_andamento</option>
-      <option value="recebida">recebida</option>
-      <option value="cancelada">cancelada</option>
-    </select>
-  </div>
+    <div class="grid-2">
 
-  <div style="margin-top:10px;">
-    <label>Data da compra</label><br/>
-    <input name="data_compra" placeholder="YYYY-MM-DD" />
-  </div>
+      <div>
+        <div class="label">Vincular à Solicitação (opcional)</div>
+        <select name="solicitacao_id" class="input">
+          <option value="">-- sem vínculo --</option>
+          <% (solicitacoes || []).forEach(s => { %>
+            <option value="<%= s.id %>">
+              #<%= s.id %> • <%= s.status %> • <%= s.setor || "-" %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
 
-  <div style="margin-top:10px;">
-    <label>Observação</label><br/>
-    <textarea name="observacao" rows="3" cols="60"></textarea>
-  </div>
+      <div>
+        <div class="label">Fornecedor</div>
+        <input name="fornecedor" class="input" />
+      </div>
 
-  <div style="margin-top:12px;">
-    <button type="submit">Salvar</button>
-    <a href="/compras">Cancelar</a>
-  </div>
-</form>
+      <div>
+        <div class="label">Status</div>
+        <select name="status" class="input">
+          <option value="em_andamento" selected>EM ANDAMENTO</option>
+          <option value="recebida">RECEBIDA</option>
+          <option value="cancelada">CANCELADA</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="label">Data da Compra</div>
+        <input type="date" name="data_compra" class="input" />
+      </div>
+
+    </div>
+
+    <div style="margin-top:14px;">
+      <div class="label">Observação</div>
+      <textarea name="observacao" class="input"></textarea>
+    </div>
+
+    <div style="margin-top:18px; display:flex; gap:10px;">
+      <button type="submit" class="btn btn-green">
+        Salvar Compra
+      </button>
+
+      <a href="/compras" class="btn btn-ghost">
+        Cancelar
+      </a>
+    </div>
+
+  </form>
+</div>
