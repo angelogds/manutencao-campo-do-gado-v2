@@ -1,320 +1,168 @@
-<!-- views/login.ejs -->
+
 <!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title><%= title || "Login • Campo do Gado" %></title>
+  <title><%= title || "Manutenção Campo do Gado" %></title>
 
   <link rel="stylesheet" href="/css/app.css" />
 
+  <!-- Menu lateral no padrão das views (verde #16a34a) -->
   <style>
     :root{
-      --action-600: #16a34a; /* mesmo verde do "+ Novo Equipamento" */
-      --action-700: #15803d;
-      --border: #e5e7eb;
-      --text: #0f172a;
-      --muted:#64748b;
+      --cg-green: #16a34a;        /* MESMO verde do botão Equipamentos */
+      --cg-green-dark: #15803d;   /* hover do botão */
+      --cg-green-soft: #ecfdf5;   /* fundo suave */
+      --cg-border: rgba(22,163,74,.35);
     }
 
-    body{
-      min-height:100vh;
-      background:
-        linear-gradient(180deg, rgba(10,90,63,.78), rgba(10,90,63,.72)),
-        url("/img/login-bg.webp");
-      background-size:cover;
-      background-position:center;
-      background-attachment:fixed;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:24px;
-    }
-
-    .login-wrap{ width:100%; max-width:520px; }
-
-    .panel{
-      background: rgba(255,255,255,.92);
-      border:1px solid rgba(229,231,235,.9);
-      border-radius:22px;
-      padding:22px;
-      box-shadow: 0 24px 60px rgba(0,0,0,.22);
-      backdrop-filter: blur(10px);
-    }
-
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      margin-bottom:14px;
-    }
-    .brand-badge{
-      width:44px;height:44px;
-      border-radius:16px;
-      background: linear-gradient(180deg, #0a5a3f, #0e6a45);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      color:#fff;
-      font-weight:900;
-      letter-spacing:.02em;
-      box-shadow: 0 10px 20px rgba(10,90,63,.25);
-      flex:0 0 auto;
-    }
-    .brand-title{
-      font-weight:900;
-      font-size:20px;
-      margin:0;
-      color:var(--text);
-      line-height:1.1;
-    }
-    .brand-sub{
-      margin:4px 0 0;
-      color:var(--muted);
-      font-weight:700;
-      font-size:13px;
-    }
-
-    .alert{
-      border-radius:16px;
-      padding:12px 14px;
-      border:1px solid var(--border);
-      background:#fff;
-      font-weight:800;
-      margin:12px 0 14px;
-    }
-    .alert-error{ border-color:#fecaca; background:#fff5f5; color:#7f1d1d; }
-    .alert-warn{ border-color:#fed7aa; background:#fff7ed; color:#9a3412; }
-    .alert-success{ border-color:#bbf7d0; background:#f0fdf4; color:#14532d; }
-    .alert small{ display:block; margin-top:6px; font-weight:700; opacity:.9; }
-
-    .field{ margin-top:12px; }
-    .label{
-      font-size:12px;
-      font-weight:900;
-      letter-spacing:.06em;
-      text-transform:uppercase;
-      color:var(--muted);
-      margin-bottom:6px;
-    }
-    .input{
-      width:100%;
-      padding:12px 12px;
-      border:1px solid var(--border);
+    /* Nav item base */
+    .nav-item{
+      position: relative;
+      transition: background .15s ease, transform .08s ease, color .15s ease, outline-color .15s ease;
       border-radius:14px;
-      outline:none;
-      font:inherit;
-      background:#fff;
-    }
-    .input:focus{
-      border-color: rgba(22,163,74,.55);
-      box-shadow:0 0 0 3px rgba(22,163,74,.12);
     }
 
-    .pass-row{
-      display:flex;
-      gap:10px;
-      align-items:center;
-    }
-    .pass-row .input{ flex:1; }
-
-    .icon-btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      width:46px; height:46px;
-      border-radius:14px;
-      border:1px solid var(--border);
-      background:#fff;
-      cursor:pointer;
-      transition:.15s ease;
-    }
-    .icon-btn:hover{
-      border-color: rgba(22,163,74,.35);
-      background:#ecfdf5;
-    }
-
-    .row{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-top:12px;
-      flex-wrap:wrap;
-    }
-
-    .check{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      font-weight:800;
-      color:#334155;
-      user-select:none;
-    }
-    .check input{ width:18px; height:18px; }
-
-    .hint{
-      color:var(--muted);
-      font-weight:700;
-      font-size:12px;
-    }
-
-    .btn-primary{
-      width:100%;
-      margin-top:14px;
-      background: var(--action-600);
-      border:1px solid var(--action-600);
-      color:#fff;
-      padding:12px 14px;
-      border-radius:14px;
-      font-weight:900;
-      cursor:pointer;
-      transition:.15s ease;
-      font-size:15px;
-    }
-    .btn-primary:hover{
-      background: var(--action-700);
-      border-color: var(--action-700);
+    /* Hover leve */
+    .nav-item:hover{
+      background: rgba(255,255,255,.12);
       transform: translateY(-1px);
+      color:#fff;
     }
 
-    .footer{
-      margin-top:12px;
-      text-align:center;
-      color: rgba(255,255,255,.85);
-      font-weight:800;
-      font-size:12px;
-      text-shadow: 0 2px 12px rgba(0,0,0,.35);
+    /* Ativo com “fio verde” + fundo sutil */
+    .nav-item.active{
+      background: rgba(255,255,255,.14);
+      outline: 1px solid rgba(255,255,255,.18);
+      color:#fff;
+      font-weight: 800;
+    }
+
+    /* Fio verde (barra na esquerda) */
+    .nav-item.active::before{
+      content:"";
+      position:absolute;
+      left:8px;
+      top:10px;
+      bottom:10px;
+      width:4px;
+      border-radius:999px;
+      background: var(--cg-green);
+      box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+    }
+
+    /* Dá espaço pro fio */
+    .nav-item{ padding-left: 18px; }
+    .nav-item.active{ padding-left: 28px; }
+
+    /* Área ADMIN mais leve */
+    .nav-section{
+      margin-top:4px;
     }
   </style>
 </head>
 
 <body>
-  <%
-    const _flash = (typeof flash !== 'undefined' && flash) ? flash : { error: [], success: [] };
-    const _lockout = (typeof lockout !== 'undefined') ? lockout : null;
-    const _attemptsLeft = (typeof attemptsLeft !== 'undefined') ? attemptsLeft : null;
-    const _rememberedEmail = (typeof rememberedEmail !== 'undefined' && rememberedEmail) ? rememberedEmail : "";
-  %>
-
-  <div class="login-wrap">
-    <div class="panel">
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
       <div class="brand">
         <div class="brand-badge">CG</div>
-        <div>
-          <p class="brand-title">Campo do Gado</p>
-          <p class="brand-sub">Manutenção Industrial • Sistema V2</p>
+        <div class="brand-text">
+          <div class="brand-title">Campo do Gado</div>
+          <div class="brand-sub">V2 • Gestão Industrial</div>
         </div>
       </div>
 
-      <% if (_flash?.error?.length) { %>
-        <div class="alert alert-error"><%= _flash.error[0] %></div>
-      <% } %>
+      <nav class="nav">
+        <a class="nav-item <%= activeMenu === 'dashboard' ? 'active' : '' %>" href="/dashboard">
+          Painel
+        </a>
 
-      <% if (_lockout) { %>
-        <div class="alert alert-warn">
-          Conta temporariamente bloqueada.
-          <small>Tente novamente em <%= _lockout.remainingSeconds %>s.</small>
-        </div>
-      <% } else if (_attemptsLeft !== null && _attemptsLeft !== undefined && Number(_attemptsLeft) <= 2) { %>
-        <div class="alert alert-warn">
-          Atenção: restam <%= _attemptsLeft %> tentativa(s).
-          <small>Por segurança, o sistema bloqueia após exceder o limite.</small>
-        </div>
-      <% } %>
+        <a class="nav-item <%= activeMenu === 'equipamentos' ? 'active' : '' %>" href="/equipamentos">
+          Equipamentos
+        </a>
 
-      <form id="loginForm" method="POST" action="/login" autocomplete="on">
-        <div class="field">
-          <div class="label">E-mail</div>
-          <input
-            id="email"
-            class="input"
-            name="email"
-            type="email"
-            autocomplete="username"
-            required
-            placeholder="seuemail@empresa.com"
-            value="<%= _rememberedEmail %>"
-          />
-        </div>
+        <a class="nav-item <%= activeMenu === 'os' ? 'active' : '' %>" href="/os">
+          Ordens de Serviço
+        </a>
 
-        <div class="field">
-          <div class="label">Senha</div>
+        <a class="nav-item <%= activeMenu === 'preventivas' ? 'active' : '' %>" href="/preventivas">
+          Preventivas
+        </a>
 
-          <div class="pass-row">
-            <input
-              id="password"
-              class="input"
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              required
-              placeholder="••••••••"
-            />
-            <button id="togglePass" class="icon-btn" type="button" aria-label="Mostrar/ocultar senha" title="Mostrar/ocultar senha">
-              👁️
-            </button>
-          </div>
-        </div>
+        <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/solicitacoes">
+          Compras
+        </a>
 
-        <input type="hidden" name="remember_me" id="remember_me" value="0" />
+        <a class="nav-item <%= activeMenu === 'estoque' ? 'active' : '' %>" href="/estoque">
+          Estoque
+        </a>
 
-        <div class="row">
-          <label class="check">
-            <input id="rememberMe" type="checkbox" />
-            Lembrar de mim
-          </label>
+        <a class="nav-item <%= activeMenu === 'escala' ? 'active' : '' %>" href="/escala">
+          Escala
+        </a>
 
-          <div class="hint">
-            <span>Proteção anti-tentativas ativada</span>
-          </div>
+        <!-- ❌ removido "Usuários" duplicado -->
+
+        <div class="nav-divider"></div>
+
+        <div class="nav-section">ADMIN</div>
+        <a class="nav-item <%= activeMenu === 'usuarios' ? 'active' : '' %>" href="/usuarios">
+          Gerenciar Usuários
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <small>© <%= new Date().getFullYear() %> Campo do Gado</small>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <!-- TOPBAR -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <div class="topbar-title">Manutenção Campo do Gado</div>
+          <div class="topbar-sub">V2 • Gestão Industrial</div>
         </div>
 
-        <button class="btn-primary" type="submit">Entrar no Sistema</button>
-      </form>
-    </div>
+        <div class="topbar-right">
+          <% if (user) { %>
+            <div class="pill">
+              <span class="pill-name"><%= user.name || "Usuário" %></span>
+              <span class="pill-role"><%= (user.role || "").toUpperCase() %></span>
+            </div>
 
-    <div class="footer">© <%= new Date().getFullYear() %> Campo do Gado</div>
+            <form action="/logout" method="POST" style="margin:0;">
+              <button class="btn btn-ghost" type="submit">Sair</button>
+            </form>
+          <% } %>
+        </div>
+      </header>
+
+      <!-- FLASH -->
+      <section class="flash">
+        <% if (flash?.error?.length) { %>
+          <div class="alert alert-error"><%= flash.error[0] %></div>
+        <% } %>
+        <% if (flash?.success?.length) { %>
+          <div class="alert alert-success"><%= flash.success[0] %></div>
+        <% } %>
+      </section>
+
+      <!-- CONTENT -->
+      <section class="content">
+        <%- body %>
+      </section>
+
+      <!-- FOOTER -->
+      <footer class="footer">
+        <div>Manutenção Industrial • Campo do Gado</div>
+        <div>© <%= new Date().getFullYear() %> • Sistema V2</div>
+      </footer>
+    </main>
   </div>
-
-  <script>
-    (function(){
-      const pass = document.getElementById('password');
-      const btn = document.getElementById('togglePass');
-      if(!pass || !btn) return;
-
-      btn.addEventListener('click', () => {
-        const isPass = pass.type === 'password';
-        pass.type = isPass ? 'text' : 'password';
-        btn.textContent = isPass ? '🙈' : '👁️';
-      });
-    })();
-
-    (function(){
-      const emailInput = document.getElementById('email');
-      const remember = document.getElementById('rememberMe');
-      const rememberHidden = document.getElementById('remember_me');
-      const form = document.getElementById('loginForm');
-      if(!emailInput || !remember || !rememberHidden || !form) return;
-
-      const saved = localStorage.getItem('cg_remember_email');
-      if(saved && !emailInput.value){
-        emailInput.value = saved;
-        remember.checked = true;
-      } else if(saved){
-        remember.checked = true;
-      }
-
-      form.addEventListener('submit', () => {
-        if(remember.checked){
-          localStorage.setItem('cg_remember_email', emailInput.value || '');
-          rememberHidden.value = '1';
-        } else {
-          localStorage.removeItem('cg_remember_email');
-          rememberHidden.value = '0';
-        }
-      });
-    })();
-  </script>
 </body>
 </html>
