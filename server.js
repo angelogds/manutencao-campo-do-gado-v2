@@ -48,7 +48,7 @@ app.use(flash());
 
 // ======================================================
 // ✅ LOGIN GUARD (bloqueio após X tentativas) — GLOBAL
-// Use dentro do auth.routes via req.authGuard / req.authKey / req.authState
+// Use dentro do auth.routes via req.authGuard
 // ======================================================
 const MAX_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS || 5);
 const LOCK_MINUTES = Number(process.env.LOGIN_LOCK_MINUTES || 5);
@@ -97,6 +97,7 @@ app.use((req, res, next) => {
     isLocked,
     remainingSeconds,
     attemptsLeft,
+
     // marca falha
     fail(req, email) {
       const { state } = getGuard(req, email);
@@ -107,6 +108,7 @@ app.use((req, res, next) => {
       }
       return state;
     },
+
     // marca sucesso
     success(req, email) {
       const { state } = getGuard(req, email);
@@ -125,6 +127,7 @@ app.locals.fmtBR = fmtBR;
 
 app.use((req, res, next) => {
   res.locals.user = req.session?.user || null;
+
   res.locals.flash = {
     success: req.flash("success"),
     error: req.flash("error"),
@@ -133,6 +136,12 @@ app.use((req, res, next) => {
   // ✅ Disponível em TODO EJS
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
+
+  // ✅ BLINDAGEM: evita crash no layout.ejs
+  res.locals.lockout = null;
+  res.locals.attemptsLeft = null;
+  res.locals.remember = false;
+  res.locals.email = "";
 
   // ✅ BLINDAGEM layout: activeMenu sempre definido
   res.locals.activeMenu = res.locals.activeMenu || "dashboard";
