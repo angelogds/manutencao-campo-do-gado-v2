@@ -1,117 +1,123 @@
 <% layout('layout') %>
 
-<style>
-  .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-  .spacer{ flex:1; }
-  .grid{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
-  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
-  .k{ color:#6b7280; font-weight:900; font-size:12px; letter-spacing:.04em; }
-  .v{ font-size:24px; font-weight:900; margin-top:6px; }
-  .muted{ color:#6b7280; }
-  .btn-sm{ padding:8px 10px; border-radius:12px; font-weight:900; border:1px solid #e5e7eb; background:#fff; cursor:pointer; text-decoration:none; display:inline-block; }
-  .btn-sm:hover{ border-color:#10b981; color:#065f46; background:#ecfdf5; }
-  .pill{ display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:900; font-size:12px; }
-  input{
-    padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; outline:none; min-width:260px;
-  }
-  input:focus{ border-color:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.15); }
-  table{ width:100%; border-collapse:separate; border-spacing:0; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; }
-  th,td{ padding:10px 12px; border-bottom:1px solid #eef2f7; vertical-align:top; }
-  th{ text-align:left; font-size:12px; color:#6b7280; letter-spacing:.04em; }
-  tr:last-child td{ border-bottom:none; }
-  .tag{ display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; font-weight:900; border:1px solid #e5e7eb; background:#f9fafb; }
-  .tag.low{ background:#ecfdf5; border-color:#a7f3d0; color:#065f46; }
-  .tag.bad{ background:#fef2f2; border-color:#fecaca; color:#991b1b; }
-  @media (max-width: 980px){ .grid{ grid-template-columns:1fr; } input{ min-width:180px;} }
-</style>
-
-<div class="row">
+<div class="page-head">
   <div>
     <h1>Estoque</h1>
-    <div class="muted">Controle de itens e movimentações (entrada/saída).</div>
+    <p class="muted">Controle de itens e movimentações (entrada/saída).</p>
   </div>
-  <div class="spacer"></div>
 
-  <a class="btn-sm" href="/estoque/novo">+ Novo item</a>
+  <a class="btn btn-green" href="/estoque/novo">+ Novo item</a>
 </div>
 
-<div style="height:10px"></div>
-
-<div class="grid">
+<!-- CARDS (3 colunas) -->
+<div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-bottom:14px;">
   <div class="card">
-    <div class="k">ITENS CADASTRADOS</div>
-    <div class="v"><%= cards?.itens_estoque ?? 0 %></div>
+    <div class="label">Itens cadastrados</div>
+    <div style="font-size:26px; font-weight:900; margin-top:6px;">
+      <%= cards?.itens_estoque ?? 0 %>
+    </div>
   </div>
 
   <div class="card">
-    <div class="k">ABAIXO DO MÍNIMO</div>
-    <div class="v"><%= cards?.abaixo_minimo ?? 0 %></div>
-    <div style="margin-top:8px;">
-      <a class="btn-sm" href="/estoque?below=1">Ver abaixo do mínimo</a>
+    <div class="label">Abaixo do mínimo</div>
+    <div style="font-size:26px; font-weight:900; margin-top:6px;">
+      <%= cards?.abaixo_minimo ?? 0 %>
+    </div>
+
+    <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+      <a class="btn btn-ghost btn-sm" href="/estoque?below=1">Ver abaixo do mínimo</a>
       <% if (onlyBelow) { %>
-        <a class="btn-sm" href="/estoque">Limpar</a>
+        <a class="btn btn-ghost btn-sm" href="/estoque">Limpar</a>
       <% } %>
     </div>
   </div>
 
   <div class="card">
-    <div class="k">SALDO TOTAL (SOMA)</div>
-    <div class="v"><%= Number(cards?.saldo_total ?? 0).toFixed(0) %></div>
+    <div class="label">Saldo total (soma)</div>
+    <div style="font-size:26px; font-weight:900; margin-top:6px;">
+      <%= Number(cards?.saldo_total ?? 0).toFixed(0) %>
+    </div>
     <div class="muted" style="margin-top:6px;">Indicador geral (não financeiro).</div>
   </div>
 </div>
 
-<div style="height:12px"></div>
+<!-- BUSCA -->
+<div class="card" style="margin-bottom:14px;">
+  <form class="row" method="GET" action="/estoque" style="justify-content:space-between;">
+    <div style="flex:1; min-width:260px;">
+      <input class="input" name="q" value="<%= q || '' %>" placeholder="Buscar por nome ou código..." />
+      <% if (onlyBelow) { %>
+        <input type="hidden" name="below" value="1" />
+      <% } %>
+    </div>
 
-<form class="row" method="GET" action="/estoque">
-  <input name="q" value="<%= q || '' %>" placeholder="Buscar por nome ou código..." />
-  <% if (onlyBelow) { %>
-    <input type="hidden" name="below" value="1" />
-  <% } %>
-  <button class="btn-sm" type="submit">Buscar</button>
-  <% if (q) { %>
-    <a class="btn-sm" href="/estoque<%= onlyBelow ? '?below=1' : '' %>">Limpar</a>
-  <% } %>
-</form>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-ghost btn-sm" type="submit">Buscar</button>
+      <% if (q) { %>
+        <a class="btn btn-ghost btn-sm" href="/estoque<%= onlyBelow ? '?below=1' : '' %>">Limpar</a>
+      <% } %>
+    </div>
+  </form>
+</div>
 
-<div style="height:12px"></div>
+<!-- TABELA -->
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:90px;">#</th>
+          <th style="width:140px;">Código</th>
+          <th>Item</th>
+          <th style="width:110px;">Unid.</th>
+          <th style="width:130px;">Mínimo</th>
+          <th style="width:130px;">Saldo</th>
+          <th style="width:110px; text-align:right;">Ações</th>
+        </tr>
+      </thead>
 
-<table>
-  <thead>
-    <tr>
-      <th style="width:90px;">#</th>
-      <th style="width:140px;">Código</th>
-      <th>Item</th>
-      <th style="width:110px;">Unid.</th>
-      <th style="width:130px;">Mínimo</th>
-      <th style="width:130px;">Saldo</th>
-      <th style="width:110px;"></th>
-    </tr>
-  </thead>
+      <tbody>
+        <% if (!lista || !lista.length) { %>
+          <tr>
+            <td colspan="7" class="muted" style="text-align:center; padding:22px;">
+              Nenhum item encontrado.
+            </td>
+          </tr>
+        <% } else { %>
 
-  <tbody>
-    <% if (!lista || !lista.length) { %>
-      <tr><td colspan="7" class="muted">Nenhum item encontrado.</td></tr>
-    <% } %>
+          <% (lista || []).forEach(i => { 
+               const below = Number(i.saldo) < Number(i.estoque_min || 0);
+          %>
+            <tr>
+              <td><%= i.id %></td>
+              <td><%= i.codigo || '-' %></td>
+              <td><%= i.nome %></td>
+              <td><%= i.unidade || 'un' %></td>
+              <td><%= Number(i.estoque_min || 0) %></td>
 
-    <% (lista || []).forEach(i => { 
-         const below = Number(i.saldo) < Number(i.estoque_min || 0);
-    %>
-      <tr>
-        <td><strong>#<%= i.id %></strong></td>
-        <td><%= i.codigo || '-' %></td>
-        <td><%= i.nome %></td>
-        <td><%= i.unidade || 'un' %></td>
-        <td><%= Number(i.estoque_min || 0) %></td>
-        <td>
-          <span class="tag <%= below ? 'bad' : 'low' %>">
-            <%= Number(i.saldo || 0) %>
-          </span>
-        </td>
-        <td style="text-align:right;">
-          <a class="btn-sm" href="/estoque/<%= i.id %>">Abrir</a>
-        </td>
-      </tr>
-    <% }) %>
-  </tbody>
-</table>
+              <td>
+                <% if (below) { %>
+                  <span class="pill-tag pill-amber"><%= Number(i.saldo || 0) %></span>
+                <% } else { %>
+                  <span class="pill-tag pill-green"><%= Number(i.saldo || 0) %></span>
+                <% } %>
+              </td>
+
+              <td style="text-align:right;">
+                <a class="btn btn-ghost btn-sm" href="/estoque/<%= i.id %>">Abrir</a>
+              </td>
+            </tr>
+          <% }) %>
+
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  @media (max-width: 980px){
+    /* 3 cards viram 1 coluna no mobile */
+    div[style*="grid-template-columns:repeat(3"]{ grid-template-columns:1fr !important; }
+  }
+</style>
