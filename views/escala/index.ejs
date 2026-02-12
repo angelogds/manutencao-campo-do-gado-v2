@@ -1,111 +1,141 @@
-<% layout("layout") %>
+<%- layout("layout") %>
 
-<style>
-  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
-  .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px}
-  .muted{color:#6b7280}
-  .btn{display:inline-block;padding:10px 12px;border-radius:10px;border:1px solid #e5e7eb;background:#fff;font-weight:800;cursor:pointer}
-  .btn:hover{border-color:#16a34a;color:#16a34a}
-  .btn-primary{background:#16a34a;color:#fff;border-color:#16a34a}
-  .btn-primary:hover{filter:brightness(.95);color:#fff}
-  .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
-  @media (max-width: 980px){.grid{grid-template-columns:1fr}}
-  table{width:100%;border-collapse:collapse}
-  th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left;font-size:14px}
-  th{font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em}
-  .pill{display:inline-block;padding:4px 10px;border-radius:999px;background:#f3f4f6;font-weight:800;font-size:12px}
-</style>
+<div class="page-head">
+  <div>
+    <h1>Escala</h1>
+    <p class="muted">Publicações oficiais (PDF) + escala semanal do sistema.</p>
+  </div>
 
-<h1>Escala</h1>
-<p class="muted" style="margin-top:-6px;">Semana inteira • <strong><%= range.monday %></strong> até <strong><%= range.sunday %></strong></p>
-
-<div class="row" style="margin:10px 0 14px;">
-  <form method="GET" action="/escala" class="row" style="margin:0;">
-    <div>
-      <label class="muted" style="font-size:12px;font-weight:800;">Ver semana da data</label><br/>
-      <input name="date" type="date" value="<%= (range?.today || '') %>" class="btn" style="height:40px"/>
-    </div>
-    <button class="btn" type="submit">Carregar</button>
-  </form>
-
-  <a class="btn btn-primary" href="/escala/pdf?<%= (range?.today ? ('date=' + range.today) : '') %>">Gerar PDF</a>
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <a class="btn btn-primary" href="/escala/pdf/semana">Gerar PDF da Semana</a>
+    <a class="btn btn-ghost" href="/dashboard">Voltar</a>
+  </div>
 </div>
 
-<div class="grid">
-  <div class="card">
-    <h3 style="margin:0 0 6px;">Alocações da semana</h3>
-    <div class="muted" style="margin-bottom:10px;">Noturno / Diurno / Apoio / Plantão</div>
+<!-- ===========================
+     PUBLICAÇÕES (PDF)
+=========================== -->
+<div class="card" style="margin-bottom:14px;">
+  <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+    <div>
+      <div style="font-weight:900; font-size:16px;">Publicações</div>
+      <div class="muted" style="margin-top:6px;">Escalas prontas para consulta (ex.: 2026).</div>
+    </div>
+  </div>
 
-    <table>
+  <div class="divider"></div>
+
+  <div class="table-wrap">
+    <table class="table">
       <thead>
         <tr>
-          <th>Turno</th>
-          <th>Colaborador</th>
-          <th>Função</th>
-          <th>Horário</th>
-          <th>Obs</th>
+          <th>Título</th>
+          <th style="width:170px;">Criada em</th>
+          <th style="width:160px; text-align:right;">Ações</th>
         </tr>
       </thead>
-      <tbody>
-        <% if (!alocacoes?.length) { %>
-          <tr><td colspan="5" class="muted">Sem registros nesta semana.</td></tr>
-        <% } %>
 
-        <% alocacoes.forEach(a => { %>
+      <tbody>
+        <% if (!publicacoes || publicacoes.length === 0) { %>
           <tr>
-            <td><span class="pill"><%= (a.tipo_turno || '').toUpperCase() %></span></td>
-            <td><%= a.colaborador_nome %></td>
-            <td class="muted"><%= a.colaborador_funcao %></td>
-            <td><%= (a.horario_inicio && a.horario_fim) ? (a.horario_inicio + " - " + a.horario_fim) : "-" %></td>
-            <td class="muted"><%= a.observacao || "-" %></td>
+            <td colspan="3" class="muted" style="text-align:center; padding:18px;">
+              Nenhuma publicação cadastrada.
+            </td>
           </tr>
-        <% }) %>
+        <% } else { %>
+          <% publicacoes.forEach(p => { %>
+            <tr>
+              <td><%= p.titulo %></td>
+              <td><%= p.created_at ? fmtBR(p.created_at) : "-" %></td>
+              <td style="text-align:right;">
+                <a class="btn btn-primary btn-sm" target="_blank" href="<%= p.arquivo_url %>">Abrir PDF</a>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===========================
+     SEMANA ATUAL (DB)
+=========================== -->
+<div class="card">
+  <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+    <div>
+      <div style="font-weight:900; font-size:16px;">Semana do Sistema</div>
+      <div class="muted" style="margin-top:6px;">Período: <strong><%= rangeLabel %></strong></div>
+    </div>
+
+    <form method="GET" action="/escala" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <input class="input" type="date" name="week" value="<%= week %>" style="max-width:190px;" />
+      <button class="btn btn-ghost btn-sm" type="submit">Ir</button>
+      <a class="btn btn-ghost btn-sm" href="/escala">Hoje</a>
+    </form>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:170px;">Data</th>
+          <th>Colaborador</th>
+          <th style="width:180px;">Turno</th>
+          <th style="width:180px;">Setor</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% if (!semana || semana.length === 0) { %>
+          <tr>
+            <td colspan="4" class="muted" style="text-align:center; padding:18px;">
+              Nenhum item cadastrado nesta semana.
+            </td>
+          </tr>
+        <% } else { %>
+          <% semana.forEach(i => { %>
+            <tr>
+              <td><%= i.data ? fmtBR(i.data) : "-" %></td>
+              <td><%= i.colaborador || "-" %></td>
+              <td><%= i.turno || "-" %></td>
+              <td><%= i.setor || "-" %></td>
+            </tr>
+          <% }) %>
+        <% } %>
       </tbody>
     </table>
   </div>
 
-  <div class="card">
-    <h3 style="margin:0 0 6px;">Adicionar alocação (Admin)</h3>
-    <div class="muted" style="margin-bottom:10px;">Por enquanto só o ADMIN altera.</div>
+  <!-- (Opcional) form simples de adicionar item -->
+  <div class="divider"></div>
+  <div class="muted" style="margin-bottom:10px;">Adicionar rápido (opcional):</div>
 
-    <form method="POST" action="/escala">
-      <input type="hidden" name="semana_id" value="<%= semana.id %>"/>
+  <form method="POST" action="/escala" class="row" style="align-items:flex-end;">
+    <div style="flex:1; min-width:180px;">
+      <div class="label">Data</div>
+      <input class="input" type="date" name="data" required />
+    </div>
 
-      <label class="muted" style="font-size:12px;font-weight:800;">Tipo de turno</label><br/>
-      <select name="tipo_turno" class="btn" style="width:100%;height:40px">
-        <option value="noturno">Noturno</option>
-        <option value="diurno">Diurno</option>
-        <option value="apoio">Apoio Operacional</option>
-        <option value="plantao">Plantão</option>
-        <option value="folga">Folga</option>
-      </select>
+    <div style="flex:2; min-width:220px;">
+      <div class="label">Colaborador</div>
+      <input class="input" name="colaborador" placeholder="Ex.: Emanuel" required />
+    </div>
 
-      <div style="display:flex;gap:10px;margin-top:10px;">
-        <div style="flex:1">
-          <label class="muted" style="font-size:12px;font-weight:800;">Início</label><br/>
-          <input name="horario_inicio" type="time" class="btn" style="width:100%;height:40px"/>
-        </div>
-        <div style="flex:1">
-          <label class="muted" style="font-size:12px;font-weight:800;">Fim</label><br/>
-          <input name="horario_fim" type="time" class="btn" style="width:100%;height:40px"/>
-        </div>
-      </div>
+    <div style="flex:1; min-width:160px;">
+      <div class="label">Turno</div>
+      <input class="input" name="turno" placeholder="Dia / Noite" />
+    </div>
 
-      <div style="margin-top:10px;">
-        <label class="muted" style="font-size:12px;font-weight:800;">Colaborador</label><br/>
-        <select name="colaborador_id" class="btn" style="width:100%;height:40px">
-          <% colaboradores.forEach(c => { %>
-            <option value="<%= c.id %>"><%= c.nome %> • <%= c.funcao %></option>
-          <% }) %>
-        </select>
-      </div>
+    <div style="flex:1; min-width:160px;">
+      <div class="label">Setor</div>
+      <input class="input" name="setor" placeholder="Manutenção / Produção" />
+    </div>
 
-      <div style="margin-top:10px;">
-        <label class="muted" style="font-size:12px;font-weight:800;">Observação</label><br/>
-        <input name="observacao" class="btn" style="width:100%;height:40px" placeholder="Ex: apoio operacional, substituição, etc"/>
-      </div>
-
-      <button class="btn btn-primary" style="margin-top:12px;width:100%;" type="submit">Salvar</button>
-    </form>
-  </div>
+    <div>
+      <button class="btn btn-primary" type="submit">Salvar</button>
+    </div>
+  </form>
 </div>
