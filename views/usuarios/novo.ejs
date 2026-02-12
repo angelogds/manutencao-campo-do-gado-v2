@@ -1,50 +1,51 @@
 <% layout('layout') %>
 
-<style>
-  .card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:14px;}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .input{padding:10px;border-radius:12px;border:1px solid #e5e7eb;width:100%;}
-  .btn{padding:10px 12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;}
-  .btn:hover{border-color:#16a34a;color:#16a34a;}
-  .muted{color:#6b7280;}
-  @media(max-width:900px){.grid{grid-template-columns:1fr;}}
-</style>
+<div class="page-head">
+  <div>
+    <h1>Novo Usuário</h1>
+    <p class="muted">Use o e-mail pessoal/corporativo do colaborador.</p>
+  </div>
+</div>
 
-<h1>Novo Usuário</h1>
-<p class="muted">Use o e-mail pessoal/corporativo do colaborador.</p>
-
-<div class="card">
+<div class="card" style="max-width:900px;">
   <form method="POST" action="/usuarios">
-    <div class="grid">
+    
+    <div class="grid-2">
       <div>
-        <label>Nome</label>
+        <div class="label">Nome</div>
         <input class="input" name="name" required />
       </div>
 
       <div>
-        <label>E-mail</label>
+        <div class="label">E-mail</div>
         <input class="input" name="email" type="email" required />
       </div>
 
       <div>
-        <label>Perfil</label>
+        <div class="label">Perfil</div>
         <select class="input" name="role" required>
           <option value="">Selecione</option>
-          <% ROLES.forEach(r => { %>
+          <% (ROLES || []).forEach(r => { %>
             <option value="<%= r.key %>"><%= r.label %></option>
           <% }) %>
         </select>
       </div>
 
       <div>
-        <label>Senha</label>
+        <div class="label">Senha</div>
         <input class="input" name="password" type="password" required />
       </div>
     </div>
 
-    <div style="margin-top:12px;display:flex;gap:10px;">
-      <button class="btn" type="submit">Salvar</button>
-      <a class="btn" href="/usuarios">Cancelar</a>
+    <div style="margin-top:16px; display:flex; gap:10px;">
+      <button class="btn btn-green" type="submit">
+        Salvar Usuário
+      </button>
+
+      <a class="btn btn-ghost btn-sm" href="/usuarios">
+        Cancelar
+      </a>
     </div>
+
   </form>
 </div>
