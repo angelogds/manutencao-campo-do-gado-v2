@@ -1,115 +1,63 @@
 <% layout('layout') %>
 
-<style>
-  .page-title{ margin:0; font-size:42px; font-weight:900; letter-spacing:-.02em; }
-  .sub{ color:#6b7280; margin-top:6px; }
+<div class="page-head">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="muted">Visão geral do sistema (V2).</p>
+  </div>
+</div>
 
-  .grid{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:14px; margin-top:16px; }
-  .card{
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:18px;
-    padding:16px;
-    box-shadow:0 10px 25px rgba(0,0,0,.04);
-  }
-
-  .label{ font-size:12px; font-weight:900; color:#6b7280; letter-spacing:.06em; text-transform:uppercase; }
-  .muted{ color:#6b7280; font-size:13px; margin-top:6px; }
-
-  .big{ font-size:30px; font-weight:900; margin-top:10px; }
-  .mini{ display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
-
-  .pill{
-    display:inline-flex; align-items:center; gap:6px;
-    padding:7px 10px;
-    border-radius:999px;
-    border:1px solid #e5e7eb;
-    background:#f9fafb;
-    font-weight:800;
-    font-size:12px;
-    color:#111827;
-  }
-
-  .actions{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
-  .btn{
-    display:inline-flex; align-items:center; justify-content:center;
-    padding:9px 12px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-    background:#fff;
-    font-weight:900;
-    font-size:13px;
-    color:#111827;
-    text-decoration:none;
-    transition:.15s ease;
-  }
-  .btn:hover{
-    background:#0f6d3b;
-    border-color:#0f6d3b;
-    color:#fff;
-  }
-  .btn.small{ padding:8px 10px; border-radius:10px; font-size:12px; }
-
-  @media (max-width: 1050px){ .grid{ grid-template-columns:repeat(2,1fr);} }
-  @media (max-width: 650px){ .grid{ grid-template-columns:1fr;} .page-title{ font-size:34px; } }
-</style>
-
-<h1 class="page-title">Dashboard</h1>
-<p class="sub">Visão geral do sistema (V2).</p>
-
-<div class="grid">
-
+<div class="grid-2" style="grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px;">
   <!-- OS -->
   <div class="card">
     <div class="label">Ordem de Serviço</div>
-    <div class="big">Abrir / Acompanhar</div>
-    <div class="muted">Abertas, em andamento e concluídas</div>
+    <div style="font-size:22px; font-weight:900; margin-top:6px;">Abrir / Acompanhar</div>
+    <div class="muted" style="margin-top:6px;">Abertas, em andamento e concluídas</div>
 
-    <div class="mini">
-      <span class="pill">Abertas: <%= (cards?.os_abertas ?? 0) %></span>
-      <span class="pill">Concluídas: 0</span>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;">
+      <span class="pill-tag pill-amber">Abertas: <%= (cards?.os_abertas ?? 0) %></span>
+      <span class="pill-tag pill-green">Finalizadas: <%= (cards?.os_finalizadas ?? 0) %></span>
     </div>
 
-    <div class="actions">
-      <a class="btn small" href="/os/nova">Abrir OS</a>
-      <a class="btn small" href="/os">Acompanhar</a>
-      <a class="btn small" href="/os?status=CONCLUIDA">Finalizadas</a>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;">
+      <a class="btn btn-green btn-sm" href="/os/nova">Abrir OS</a>
+      <a class="btn btn-ghost btn-sm" href="/os">Acompanhar</a>
+      <a class="btn btn-ghost btn-sm" href="/os?status=CONCLUIDA">Finalizadas</a>
     </div>
   </div>
 
   <!-- Compras -->
   <div class="card">
-    <div class="label">Compras (Inbox)</div>
-    <div class="big">Solicitações</div>
-    <div class="muted">Criar e acompanhar solicitações</div>
+    <div class="label">Compras</div>
+    <div style="font-size:22px; font-weight:900; margin-top:6px;">Solicitações</div>
+    <div class="muted" style="margin-top:6px;">Criar e acompanhar solicitações</div>
 
-    <div class="mini">
-      <span class="pill">Abertas: <%= (cards?.compras_abertas ?? 0) %></span>
-      <span class="pill">Aprovadas: 0</span>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;">
+      <span class="pill-tag pill-blue">Abertas: <%= (cards?.compras_abertas ?? 0) %></span>
+      <span class="pill-tag pill-green">Aprovadas: <%= (cards?.compras_aprovadas ?? 0) %></span>
     </div>
 
-    <div class="actions">
-      <a class="btn small" href="/solicitacoes/nova">Fazer solicitação</a>
-      <a class="btn small" href="/solicitacoes">Ver solicitações</a>
-      <a class="btn small" href="/compras">Compras</a>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;">
+      <a class="btn btn-green btn-sm" href="/solicitacoes/nova">Fazer solicitação</a>
+      <a class="btn btn-ghost btn-sm" href="/solicitacoes">Ver solicitações</a>
+      <a class="btn btn-ghost btn-sm" href="/compras">Compras</a>
     </div>
   </div>
 
   <!-- Estoque -->
   <div class="card">
     <div class="label">Estoque</div>
-    <div class="big">Controle</div>
-    <div class="muted">Itens cadastrados e movimentações</div>
+    <div style="font-size:22px; font-weight:900; margin-top:6px;">Controle</div>
+    <div class="muted" style="margin-top:6px;">Itens cadastrados e movimentações</div>
 
-    <div class="mini">
-      <span class="pill">Itens cadastrados: <%= (cards?.itens_estoque ?? 0) %></span>
-      <span class="pill">Abaixo do mínimo: <%= (cards?.itens_abaixo_minimo ?? 0) %></span>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;">
+      <span class="pill-tag pill-gray">Itens: <%= (cards?.itens_estoque ?? 0) %></span>
+      <span class="pill-tag pill-amber">Abaixo mín.: <%= (cards?.itens_abaixo_minimo ?? 0) %></span>
     </div>
 
-    <div class="actions">
-      <a class="btn small" href="/estoque">Ver estoque</a>
-      <a class="btn small" href="/estoque/novo">Cadastrar item</a>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;">
+      <a class="btn btn-green btn-sm" href="/estoque">Ver estoque</a>
+      <a class="btn btn-ghost btn-sm" href="/estoque/novo">Cadastrar item</a>
     </div>
   </div>
-
 </div>
