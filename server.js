@@ -32,6 +32,7 @@ app.use(express.static(path.join(__dirname, "public")));
 // ===== Session + Flash (ANTES das rotas) =====
 app.use(
   session({
+    name: process.env.SESSION_COOKIE_NAME || "cg.sid",
     secret: process.env.SESSION_SECRET || "dev-secret",
     resave: false,
     saveUninitialized: false,
@@ -48,7 +49,7 @@ app.use(flash());
 
 // ======================================================
 // ✅ LOGIN GUARD (bloqueio após X tentativas) — GLOBAL
-// Use dentro do auth.routes via req.authGuard
+// Use dentro do auth.controller via req.authGuard
 // ======================================================
 const MAX_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS || 5);
 const LOCK_MINUTES = Number(process.env.LOGIN_LOCK_MINUTES || 5);
@@ -86,8 +87,8 @@ function attemptsLeft(state) {
   return Math.max(0, MAX_ATTEMPTS - Number(state.count || 0));
 }
 
-// Middleware: deixa helpers acessíveis no auth.routes
-app.use((req, res, next) => {
+// Middleware: deixa helpers acessíveis no auth.controller
+app.use((req, _res, next) => {
   req.authGuard = {
     MAX_ATTEMPTS,
     LOCK_MINUTES,
@@ -137,11 +138,10 @@ app.use((req, res, next) => {
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
 
-  // ✅ BLINDAGEM: evita crash no layout.ejs
+  // ✅ BLINDAGEM: evita crash no layout.ejs / views
   res.locals.lockout = null;
   res.locals.attemptsLeft = null;
-  res.locals.remember = false;
-  res.locals.email = "";
+  res.locals.rememberedEmail = "";
 
   // ✅ BLINDAGEM layout: activeMenu sempre definido
   res.locals.activeMenu = res.locals.activeMenu || "dashboard";
