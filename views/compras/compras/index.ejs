@@ -3,12 +3,19 @@
 <div class="page-head">
   <div>
     <h1>Compras</h1>
-    <p class="muted">Solicitações, acompanhamento e recebimento.</p>
+    <p class="muted">Recebimento e acompanhamento de compras.</p>
   </div>
 
   <div class="actions">
-    <a class="btn btn-green" href="/solicitacoes/nova">+ Nova Solicitação</a>
-    <a class="btn btn-ghost" href="/compras">Ir para Compras</a>
+    <!-- ✅ Botão padrão Equipamentos -->
+    <a class="btn btn-green" href="/compras/nova">
+      + Nova Compra
+    </a>
+
+    <!-- ✅ Botão ghost padrão -->
+    <a class="btn btn-ghost" href="/solicitacoes">
+      Ir para Solicitações
+    </a>
   </div>
 </div>
 
@@ -18,9 +25,9 @@
       <thead>
         <tr>
           <th style="width:90px;">#</th>
-          <th style="width:140px;">Status</th>
-          <th>Solicitante</th>
-          <th>Setor</th>
+          <th style="width:160px;">Status</th>
+          <th>Fornecedor</th>
+          <th style="width:180px;">Data da Compra</th>
           <th style="width:180px;">Criada em</th>
           <th style="width:120px; text-align:right;">Ações</th>
         </tr>
@@ -30,29 +37,29 @@
         <% if (!lista || !lista.length) { %>
           <tr>
             <td colspan="6" class="muted" style="text-align:center; padding:22px;">
-              Nenhuma solicitação cadastrada.
+              Nenhuma compra cadastrada.
             </td>
           </tr>
         <% } %>
 
-        <% (lista || []).forEach(s => { %>
+        <% (lista || []).forEach(c => { %>
           <tr>
-            <td>#<%= s.id %></td>
+            <td>#<%= c.id %></td>
 
             <td>
               <span class="pill-tag pill-gray">
-                <%= s.status || "-" %>
+                <%= c.status || "-" %>
               </span>
             </td>
 
-            <td><%= s.solicitante || "-" %></td>
+            <td><%= c.fornecedor || '-' %></td>
 
-            <td><%= s.setor || "-" %></td>
+            <td><%= c.data_compra || '-' %></td>
 
-            <td><%= s.created_at ? fmtBR(s.created_at) : "-" %></td>
+            <td><%= c.created_at ? fmtBR(c.created_at) : '-' %></td>
 
             <td style="text-align:right;">
-              <a class="btn btn-ghost btn-sm" href="/solicitacoes/<%= s.id %>">
+              <a class="btn btn-ghost btn-sm" href="/compras/<%= c.id %>">
                 Abrir
               </a>
             </td>
