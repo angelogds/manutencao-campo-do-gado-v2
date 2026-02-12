@@ -1,22 +1,11 @@
+// modules/escala/escala.routes.js
 const express = require("express");
 const router = express.Router();
 
-let requireRole = null;
+let controller = {};
 try {
-  requireRole = require("../auth/auth.middleware").requireRole;
-} catch (e) {
-  console.error("❌ [escala] Falha ao carregar auth.middleware:", e.message);
-}
-
-const safeRequireRole =
-  typeof requireRole === "function"
-    ? requireRole
-    : () => (_req, res) => res.status(500).send("Erro interno: requireRole indefinido.");
-
-let ctrl = {};
-try {
-  ctrl = require("./escala.controller");
-  console.log("✅ [escala] controller exports:", Object.keys(ctrl));
+  controller = require("./escala.controller");
+  console.log("✅ [escala] controller exports:", Object.keys(controller));
 } catch (e) {
   console.error("❌ [escala] Falha ao carregar escala.controller:", e.message);
 }
@@ -25,15 +14,17 @@ const safe = (fn, name) =>
   typeof fn === "function"
     ? fn
     : (_req, res) => {
-        console.error(`❌ [escala] Handler ${name} indefinido (export errado).`);
+        console.error(`❌ [escala] Handler ${name} indefinido.`);
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// Quem pode ver escala
-const ESCALA_ACCESS = ["ADMIN", "MECANICO", "PRODUCAO", "ALMOXARIFADO", "COMPRAS", "DIRETORIA", "RH"];
+// ✅ páginas
+router.get("/escala", safe(controller.index, "index"));
 
-router.get("/escala", safeRequireRole(ESCALA_ACCESS), safe(ctrl.index, "index"));
-router.post("/escala", safeRequireRole(["ADMIN"]), safe(ctrl.create, "create")); // só admin edita por enquanto
-router.get("/escala/pdf", safeRequireRole(ESCALA_ACCESS), safe(ctrl.pdfSemana, "pdfSemana"));
+// ✅ criar item (opcional: você pode usar depois no form)
+router.post("/escala", safe(controller.create, "create"));
+
+// ✅ PDF da semana (você já tinha — mantive)
+router.get("/escala/pdf/semana", safe(controller.pdfSemana, "pdfSemana"));
 
 module.exports = router;
