@@ -1,77 +1,25 @@
-<% layout('layout') %>
+<h2>Escala - Semana Atual</h2>
 
-<style>
-  .page-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin:8px 0 16px; }
-  .muted{ color:#6b7280; }
-  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
-  .table-wrap{ width:100%; overflow:auto; border-radius:14px; }
-  table{ width:100%; border-collapse:separate; border-spacing:0; min-width:980px; }
-  th,td{ padding:10px 12px; border-bottom:1px solid #eef2f7; vertical-align:top; }
-  th{ text-align:left; font-size:12px; color:#6b7280; letter-spacing:.04em; }
-  tr:last-child td{ border-bottom:none; }
-  .pill{ display:inline-flex; padding:6px 10px; border-radius:999px; background:#f1f5f9; border:1px solid #e2e8f0; font-weight:900; font-size:12px; }
-  .actions{ display:flex; gap:10px; flex-wrap:wrap; }
-</style>
+<% if (semanaAtual) { %>
 
-<div class="page-head">
-  <div>
-    <h1>Escala</h1>
-    <div class="muted">Escala anual (2026) com noturno, diurno e apoio.</div>
-  </div>
+<div class="card">
+  <h3>Semana <%= semanaAtual.semana_numero %></h3>
+  <p><%= semanaAtual.data_inicio %> até <%= semanaAtual.data_fim %></p>
 
-  <div class="actions">
-    <form method="POST" action="/escala/importar-2026" style="margin:0;">
-      <button class="btn btn-primary" type="submit">Importar Escala 2026</button>
-    </form>
-  </div>
+  <% Object.keys(semanaAtual.times).forEach(turno => { %>
+    <h4><%= turno.toUpperCase() %></h4>
+    <ul>
+      <% semanaAtual.times[turno].forEach(nome => { %>
+        <li><%= nome %></li>
+      <% }) %>
+    </ul>
+  <% }) %>
+
+  <a href="/escala/completa" class="btn">Ver Escala Completa</a>
+  <a href="/escala/editar/<%= semanaAtual.id %>" class="btn">Editar</a>
+  <a href="/escala/pdf/<%= semanaAtual.id %>" class="btn">Gerar PDF</a>
 </div>
 
-<% if (!periodo) { %>
-  <div class="card">
-    <div class="muted">Ainda não existe o período da escala. Clique em <strong>Importar Escala 2026</strong>.</div>
-  </div>
 <% } else { %>
-  <div class="card" style="margin-bottom:12px;">
-    <div><strong><%= periodo.titulo %></strong></div>
-    <div class="muted" style="margin-top:6px;">
-      Vigência: <%= periodo.vigencia_inicio %> até <%= periodo.vigencia_fim %>
-      <% if (periodo.intervalo_tecnico) { %>
-        • Intervalo técnico: <%= periodo.intervalo_tecnico %>
-      <% } %>
-    </div>
-    <% if (periodo.regra_texto) { %>
-      <div class="muted" style="margin-top:6px;"><%= periodo.regra_texto %></div>
-    <% } %>
-  </div>
-
-  <div class="card">
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:90px;">Semana</th>
-            <th style="width:220px;">Período</th>
-            <th style="width:200px;">Noturno</th>
-            <th>Diurno</th>
-            <th>Apoio</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% if (!semanas || !semanas.length) { %>
-            <tr><td colspan="5" class="muted">Nenhuma semana cadastrada.</td></tr>
-          <% } %>
-
-          <% (semanas || []).forEach(s => { %>
-            <tr>
-              <td><span class="pill">#<%= s.semana_numero %></span></td>
-              <td class="muted"><%= s.data_inicio %> → <%= s.data_fim %></td>
-              <td><%= (s.times?.noturno || []).join(", ") || "-" %></td>
-              <td><%= (s.times?.diurno || []).join(", ") || "-" %></td>
-              <td><%= (s.times?.apoio || []).join(", ") || "-" %></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-  </div>
+<p>Sem escala ativa.</p>
 <% } %>
