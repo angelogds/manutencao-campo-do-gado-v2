@@ -16,7 +16,7 @@ const TZ = dateUtil.TZ || "America/Sao_Paulo";
 
 const app = express();
 
-// ✅ Railway/Proxy (resolve login que “não segura” sessão em HTTPS)
+// ✅ Railway/Proxy (resolve login HTTPS)
 app.set("trust proxy", 1);
 
 // ===== View engine =====
@@ -29,7 +29,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// ===== Session + Flash (ANTES das rotas) =====
+// ===== Session + Flash =====
 app.use(
   session({
     name: process.env.SESSION_COOKIE_NAME || "cg.sid",
@@ -48,12 +48,12 @@ app.use(
 app.use(flash());
 
 // ======================================================
-// ✅ LOGIN GUARD (bloqueio após X tentativas) — GLOBAL
-// Use dentro do auth.controller via req.authGuard
+// LOGIN GUARD
 // ======================================================
+
 const MAX_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS || 5);
 const LOCK_MINUTES = Number(process.env.LOGIN_LOCK_MINUTES || 5);
-const loginGuardStore = new Map(); // key -> { count, lockUntilTs }
+const loginGuardStore = new Map();
 
 function getIp(req) {
   const xf = req.headers["x-forwarded-for"];
@@ -75,54 +75,45 @@ function getGuard(req, email) {
   return { key, state };
 }
 
-function isLocked(state) {
-  return state.lockUntilTs && Date.now() < state.lockUntilTs;
-}
-
-function remainingSeconds(state) {
-  return Math.max(1, Math.ceil((state.lockUntilTs - Date.now()) / 1000));
-}
-
-function attemptsLeft(state) {
-  return Math.max(0, MAX_ATTEMPTS - Number(state.count || 0));
-}
-
-// Middleware: deixa helpers acessíveis no auth.controller
 app.use((req, _res, next) => {
   req.authGuard = {
     MAX_ATTEMPTS,
     LOCK_MINUTES,
-    getIp,
-    guardKey,
-    getGuard,
-    isLocked,
-    remainingSeconds,
-    attemptsLeft,
 
-    // marca falha
     fail(req, email) {
       const { state } = getGuard(req, email);
-      state.count = Number(state.count || 0) + 1;
+      state.count++;
 
       if (state.count >= MAX_ATTEMPTS) {
         state.lockUntilTs = Date.now() + LOCK_MINUTES * 60 * 1000;
       }
+
       return state;
     },
 
-    // marca sucesso
     success(req, email) {
       const { state } = getGuard(req, email);
       state.count = 0;
       state.lockUntilTs = 0;
       return state;
     },
+
+    isLocked(state) {
+      return state.lockUntilTs && Date.now() < state.lockUntilTs;
+    },
+
+    remainingSeconds(state) {
+      return Math.max(
+        1,
+        Math.ceil((state.lockUntilTs - Date.now()) / 1000)
+      );
+    },
   };
 
   next();
 });
 
-// ===== Globals (disponível em todas as views) =====
+// ===== Globals para EJS =====
 app.locals.TZ = TZ;
 app.locals.fmtBR = fmtBR;
 
@@ -134,57 +125,45 @@ app.use((req, res, next) => {
     error: req.flash("error"),
   };
 
-  // ✅ Disponível em TODO EJS
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
-
-  // ✅ BLINDAGEM: evita crash em view/layout
-  res.locals.lockout = null;
-  res.locals.attemptsLeft = null;
-  res.locals.rememberedEmail = "";
-
-  // ✅ activeMenu sempre definido
-  res.locals.activeMenu = res.locals.activeMenu || "dashboard";
+  res.locals.activeMenu = "dashboard";
 
   next();
 });
 
-// ✅ Seed (admin + escala 2026)
+// ===== Seed =====
 try {
   const { ensureAdmin, seedEscala2026 } = require("./database/seed");
   if (typeof ensureAdmin === "function") ensureAdmin();
   if (typeof seedEscala2026 === "function") seedEscala2026();
 } catch (err) {
-  console.warn("⚠️ Seed não carregado (./database/seed). Motivo:", err.message);
+  console.warn("⚠️ Seed não carregado:", err.message);
 }
 
-// ===== Helpers de carga segura =====
-function safeUse(name, mw) {
-  if (typeof mw !== "function") {
-    console.error(`❌ ROTA/MIDDLEWARE inválido: ${name}`, typeof mw, mw);
-    throw new Error(`Middleware inválido: ${name}`);
-  }
-  app.use(mw);
-}
+// ======================================================
+// ✅ SAFE MODULE CORRIGIDO (ACEITA ROUTER)
+// ======================================================
 
 function safeModule(name, modulePath) {
   try {
     const mod = require(modulePath);
-    if (typeof mod !== "function") {
-      console.error(`❌ [${name}] export inválido. Tipo:`, typeof mod);
-      return { ok: false, err: `export inválido (${typeof mod})` };
+
+    if (!mod) {
+      console.error(`❌ [${name}] módulo vazio`);
+      return;
     }
-    safeUse(name, mod);
+
+    app.use(mod);
+
     console.log(`✅ Módulo carregado: ${name}`);
-    return { ok: true };
   } catch (e) {
-    console.warn(`⚠️ Módulo NÃO carregado: ${name} -> ${e.message}`);
-    console.warn(`👉 Verifique o arquivo: ${modulePath}`);
-    return { ok: false, err: e.message };
+    console.warn(`⚠️ Módulo NÃO carregado: ${name}`);
+    console.warn(e.message);
   }
 }
 
-// ===== Rotas (auth primeiro) =====
+// ===== Rotas =====
 safeModule("authRoutes", "./modules/auth/auth.routes");
 safeModule("dashboardRoutes", "./modules/dashboard/dashboard.routes");
 safeModule("comprasRoutes", "./modules/compras/compras.routes");
@@ -204,19 +183,10 @@ app.get("/", (req, res) => {
 // ===== Debug =====
 app.get("/debug-session", (req, res) => {
   res.json({
-    hasSession: !!req.session,
     user: req.session?.user || null,
-    cookieHeader: req.headers.cookie || null,
     secure: req.secure,
-    xForwardedProto: req.headers["x-forwarded-proto"] || null,
     tz: TZ,
     nowBR: fmtBR(new Date()),
-    fmtBRType: typeof fmtBR,
-    loginGuard: {
-      ip: getIp(req),
-      maxAttempts: MAX_ATTEMPTS,
-      lockMinutes: LOCK_MINUTES,
-    },
   });
 });
 
@@ -224,14 +194,15 @@ app.get("/debug-session", (req, res) => {
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
-    app: "manutencao-campo-do-gado-v2",
     timezone: TZ,
     timestamp_utc: new Date().toISOString(),
   });
 });
 
 // ===== 404 =====
-app.use((_req, res) => res.status(404).send("404 - Página não encontrada"));
+app.use((_req, res) =>
+  res.status(404).send("404 - Página não encontrada")
+);
 
 // ===== Error handler =====
 app.use((err, _req, res, _next) => {
@@ -240,4 +211,6 @@ app.use((err, _req, res, _next) => {
 });
 
 const port = process.env.PORT || 8080;
-app.listen(port, () => console.log(`Servidor ativo na porta ${port}`));
+app.listen(port, () =>
+  console.log(`🚀 Servidor ativo na porta ${port}`)
+);
