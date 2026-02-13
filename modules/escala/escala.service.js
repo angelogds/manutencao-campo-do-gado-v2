@@ -23,10 +23,18 @@ function getSemanaAtual() {
     WHERE a.semana_id = ?
   `).all(semana.id);
 
-  const times = { noturno: [], diurno: [], apoio: [], folga: [], plantao: [] };
+  const times = {
+    noturno: [],
+    diurno: [],
+    apoio: [],
+    folga: [],
+    plantao: [],
+  };
 
-  alocs.forEach(a => {
-    if (!times[a.tipo_turno]) times[a.tipo_turno] = [];
+  alocs.forEach((a) => {
+    if (!times[a.tipo_turno]) {
+      times[a.tipo_turno] = [];
+    }
     times[a.tipo_turno].push(a.nome);
   });
 
@@ -37,7 +45,7 @@ function getSemanaById(id) {
   const semana = db.prepare(`
     SELECT id, semana_numero, data_inicio, data_fim
     FROM escala_semanas
-    WHERE id=?
+    WHERE id = ?
   `).get(id);
 
   if (!semana) return null;
@@ -49,22 +57,22 @@ function getSemanaById(id) {
     WHERE a.semana_id = ?
   `).all(id);
 
-  return { ...semana, alocacoes: alocs };
+  return { ...semana, alocacoes: alocs || [] };
 }
 
 function atualizarTurno(alocacaoId, novoTurno) {
   db.prepare(`
     UPDATE escala_alocacoes
-    SET tipo_turno=?
-    WHERE id=?
+    SET tipo_turno = ?
+    WHERE id = ?
   `).run(novoTurno, alocacaoId);
 }
 
 function getEscalaCompleta() {
   return db.prepare(`
-    SELECT s.id, s.semana_numero, s.data_inicio, s.data_fim
-    FROM escala_semanas s
-    ORDER BY s.semana_numero ASC
+    SELECT id, semana_numero, data_inicio, data_fim
+    FROM escala_semanas
+    ORDER BY semana_numero ASC
   `).all();
 }
 
@@ -72,5 +80,5 @@ module.exports = {
   getSemanaAtual,
   getSemanaById,
   atualizarTurno,
-  getEscalaCompleta
+  getEscalaCompleta,
 };
