@@ -1,34 +1,48 @@
-// modules/escala/escala.controller.js
-const escalaService = require("./escala.service");
+const service = require("./escala.service");
+const PDFDocument = require("pdfkit");
 
 exports.index = (req, res) => {
-  res.locals.activeMenu = "escala";
-
-  const periodo = escalaService.getPeriodo2026();
-  const semanas = periodo ? escalaService.getSemanasComTimes(periodo.id) : [];
-
-  return res.render("escala/index", {
-    title: "Escala",
-    periodo,
-    semanas,
-  });
+  const semanaAtual = service.getSemanaAtual();
+  res.render("escala/index", { semanaAtual });
 };
 
-exports.importarEscala2026 = (req, res) => {
-  res.locals.activeMenu = "escala";
-  try {
-    const { seedEscala2026 } = require("../../database/seed");
-    if (typeof seedEscala2026 !== "function") {
-      req.flash("error", "Seed de escala não disponível.");
-      return res.redirect("/escala");
-    }
+exports.completa = (req, res) => {
+  const semanas = service.getEscalaCompleta();
+  res.render("escala/completa", { semanas });
+};
 
-    seedEscala2026();
-    req.flash("success", "Escala 2026 importada/atualizada com sucesso.");
-    return res.redirect("/escala");
-  } catch (e) {
-    console.error("❌ importarEscala2026:", e);
-    req.flash("error", "Erro ao importar escala 2026.");
-    return res.redirect("/escala");
-  }
+exports.editarSemana = (req, res) => {
+  const semana = service.getSemanaById(req.params.id);
+  res.render("escala/editar", { semana });
+};
+
+exports.salvarEdicao = (req, res) => {
+  const { alocacaoId, novoTurno } = req.body;
+  service.atualizarTurno(alocacaoId, novoTurno);
+  res.redirect("/escala");
+};
+
+exports.gerarPdf = (req, res) => {
+  const semana = service.getSemanaById(req.params.id);
+  if (!semana) return res.send("Semana não encontrada");
+
+  const doc = new PDFDocument();
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", "inline; filename=escala.pdf");
+
+  doc.pipe(res);
+
+  doc.fontSize(18).text("ESCALA SEMANAL - CAMPO DO GADO", { align: "center" });
+  doc.moveDown();
+
+  doc.fontSize(14).text(`Semana ${semana.semana_numero}`);
+  doc.text(`Período: ${semana.data_inicio} até ${semana.data_fim}`);
+  doc.moveDown();
+
+  semana.alocacoes.forEach(a => {
+    doc.text(`${a.nome} - ${a.tipo_turno}`);
+  });
+
+  doc.end();
 };
