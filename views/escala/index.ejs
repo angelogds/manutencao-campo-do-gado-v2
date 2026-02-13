@@ -6,20 +6,23 @@
   <h3>Semana <%= semanaAtual.semana_numero %></h3>
   <p><%= semanaAtual.data_inicio %> até <%= semanaAtual.data_fim %></p>
 
-  <% Object.keys(semanaAtual.times).forEach(turno => { %>
-    <h4><%= turno.toUpperCase() %></h4>
-    <ul>
-      <% semanaAtual.times[turno].forEach(nome => { %>
-        <li><%= nome %></li>
-      <% }) %>
-    </ul>
+  <% Object.keys(semanaAtual.times || {}).forEach(function(turno){ %>
+    <% if (semanaAtual.times[turno].length > 0) { %>
+      <h4><%= turno.toUpperCase() %></h4>
+      <ul>
+        <% semanaAtual.times[turno].forEach(function(nome){ %>
+          <li><%= nome %></li>
+        <% }) %>
+      </ul>
+    <% } %>
   <% }) %>
 
+  <br>
   <a href="/escala/completa" class="btn">Ver Escala Completa</a>
   <a href="/escala/editar/<%= semanaAtual.id %>" class="btn">Editar</a>
   <a href="/escala/pdf/<%= semanaAtual.id %>" class="btn">Gerar PDF</a>
 </div>
 
 <% } else { %>
-<p>Sem escala ativa.</p>
+  <p>Sem escala ativa no momento.</p>
 <% } %>
