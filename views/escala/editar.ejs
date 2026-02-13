@@ -1,0 +1,29 @@
+<h2>Editar Semana <%= semana.semana_numero %></h2>
+
+<table>
+  <tr>
+    <th>Nome</th>
+    <th>Turno</th>
+    <th>Ação</th>
+  </tr>
+
+  <% semana.alocacoes.forEach(a => { %>
+  <tr>
+    <td><%= a.nome %></td>
+    <td><%= a.tipo_turno %></td>
+    <td>
+      <form method="POST">
+        <input type="hidden" name="alocacaoId" value="<%= a.id %>">
+        <select name="novoTurno">
+          <option value="noturno">Noturno</option>
+          <option value="diurno">Diurno</option>
+          <option value="apoio">Apoio</option>
+          <option value="folga">Folga</option>
+          <option value="plantao">Plantão</option>
+        </select>
+        <button type="submit">Salvar</button>
+      </form>
+    </td>
+  </tr>
+  <% }) %>
+</table>
