@@ -18,13 +18,7 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// ✅ páginas
 router.get("/escala", safe(controller.index, "index"));
-
-// ✅ criar item (opcional: você pode usar depois no form)
-router.post("/escala", safe(controller.create, "create"));
-
-// ✅ PDF da semana (você já tinha — mantive)
-router.get("/escala/pdf/semana", safe(controller.pdfSemana, "pdfSemana"));
+router.post("/escala/importar-2026", safe(controller.importarEscala2026, "importarEscala2026"));
 
 module.exports = router;
