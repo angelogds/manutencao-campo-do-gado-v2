@@ -8,14 +8,14 @@ const session = require("express-session");
 const flash = require("connect-flash");
 const engine = require("ejs-mate");
 
+const app = express();
+app.set("trust proxy", 1);
+
 // ===== Helper Data BR =====
 const dateUtil = require("./utils/date");
 const fmtBR =
   typeof dateUtil.fmtBR === "function" ? dateUtil.fmtBR : (v) => String(v ?? "-");
 const TZ = dateUtil.TZ || "America/Sao_Paulo";
-
-const app = express();
-app.set("trust proxy", 1);
 
 // ===== View Engine =====
 app.engine("ejs", engine);
@@ -46,7 +46,7 @@ app.use(
 app.use(flash());
 
 // ======================================================
-// LOGIN GUARD COMPLETO (COMPATÍVEL COM auth.controller)
+// LOGIN GUARD (COMPATÍVEL COM auth.controller)
 // ======================================================
 
 const MAX_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS || 5);
@@ -78,10 +78,7 @@ function isLocked(state) {
 }
 
 function remainingSeconds(state) {
-  return Math.max(
-    1,
-    Math.ceil((state.lockUntilTs - Date.now()) / 1000)
-  );
+  return Math.max(1, Math.ceil((state.lockUntilTs - Date.now()) / 1000));
 }
 
 function attemptsLeft(state) {
@@ -101,12 +98,10 @@ app.use((req, _res, next) => {
 
     fail(req, email) {
       const { state } = getGuard(req, email);
-      state.count = Number(state.count || 0) + 1;
-
+      state.count++;
       if (state.count >= MAX_ATTEMPTS) {
         state.lockUntilTs = Date.now() + LOCK_MINUTES * 60 * 1000;
       }
-
       return state;
     },
 
@@ -117,29 +112,22 @@ app.use((req, _res, next) => {
       return state;
     },
   };
-
   next();
 });
 
-// ===== Globals para EJS =====
+// ===== Globals EJS =====
 app.locals.TZ = TZ;
 app.locals.fmtBR = fmtBR;
 
 app.use((req, res, next) => {
   res.locals.user = req.session?.user || null;
-
   res.locals.flash = {
     success: req.flash("success"),
     error: req.flash("error"),
   };
-
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
-  res.locals.lockout = null;
-  res.locals.attemptsLeft = null;
-  res.locals.rememberedEmail = "";
-  res.locals.activeMenu = "dashboard";
-
+  res.locals.activeMenu = "";
   next();
 });
 
@@ -153,41 +141,23 @@ try {
 }
 
 // ======================================================
-// SAFE MODULE (ACEITA ROUTER)
+// ===== ROTAS COM PREFIXO PADRÃO =====
 // ======================================================
 
-function safeModule(name, modulePath) {
-  try {
-    const mod = require(modulePath);
-
-    if (!mod) {
-      console.error(`❌ [${name}] módulo vazio`);
-      return;
-    }
-
-    app.use(mod);
-    console.log(`✅ Módulo carregado: ${name}`);
-  } catch (e) {
-    console.warn(`⚠️ Módulo NÃO carregado: ${name}`);
-    console.warn(e.message);
-  }
-}
-
-// ===== Rotas =====
-safeModule("authRoutes", "./modules/auth/auth.routes");
-safeModule("dashboardRoutes", "./modules/dashboard/dashboard.routes");
-safeModule("comprasRoutes", "./modules/compras/compras.routes");
-safeModule("estoqueRoutes", "./modules/estoque/estoque.routes");
-safeModule("osRoutes", "./modules/os/os.routes");
-safeModule("usuariosRoutes", "./modules/usuarios/usuarios.routes");
-safeModule("equipamentosRoutes", "./modules/equipamentos/equipamentos.routes");
-safeModule("preventivasRoutes", "./modules/preventivas/preventivas.routes");
-safeModule("escalaRoutes", "./modules/escala/escala.routes");
+app.use("/auth", require("./modules/auth/auth.routes"));
+app.use("/dashboard", require("./modules/dashboard/dashboard.routes"));
+app.use("/compras", require("./modules/compras/compras.routes"));
+app.use("/estoque", require("./modules/estoque/estoque.routes"));
+app.use("/os", require("./modules/os/os.routes"));
+app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
+app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
+app.use("/preventivas", require("./modules/preventivas/preventivas.routes"));
+app.use("/escala", require("./modules/escala/escala.routes"));
 
 // ===== Home =====
 app.get("/", (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
-  return res.redirect("/login");
+  return res.redirect("/auth/login");
 });
 
 // ===== Health =====
