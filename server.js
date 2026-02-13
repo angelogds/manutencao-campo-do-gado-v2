@@ -8,6 +8,7 @@ const session = require("express-session");
 const flash = require("connect-flash");
 const engine = require("ejs-mate");
 
+// ✅ helper global de data/hora BR
 const dateUtil = require("./utils/date");
 const fmtBR =
   typeof dateUtil.fmtBR === "function" ? dateUtil.fmtBR : (v) => String(v ?? "-");
@@ -15,7 +16,7 @@ const TZ = dateUtil.TZ || "America/Sao_Paulo";
 
 const app = express();
 
-// ✅ Railway/Proxy (resolve sessão em HTTPS)
+// ✅ Railway/Proxy (resolve login que “não segura” sessão em HTTPS)
 app.set("trust proxy", 1);
 
 // ===== View engine =====
@@ -62,25 +63,31 @@ function getIp(req) {
     .trim();
   return ip || "unknown";
 }
+
 function guardKey(req, email) {
   return `${getIp(req)}::${String(email || "").toLowerCase()}`;
 }
+
 function getGuard(req, email) {
   const key = guardKey(req, email);
   const state = loginGuardStore.get(key) || { count: 0, lockUntilTs: 0 };
   loginGuardStore.set(key, state);
   return { key, state };
 }
+
 function isLocked(state) {
   return state.lockUntilTs && Date.now() < state.lockUntilTs;
 }
+
 function remainingSeconds(state) {
   return Math.max(1, Math.ceil((state.lockUntilTs - Date.now()) / 1000));
 }
+
 function attemptsLeft(state) {
   return Math.max(0, MAX_ATTEMPTS - Number(state.count || 0));
 }
 
+// Middleware: deixa helpers acessíveis no auth.controller
 app.use((req, _res, next) => {
   req.authGuard = {
     MAX_ATTEMPTS,
@@ -91,14 +98,19 @@ app.use((req, _res, next) => {
     isLocked,
     remainingSeconds,
     attemptsLeft,
+
+    // marca falha
     fail(req, email) {
       const { state } = getGuard(req, email);
       state.count = Number(state.count || 0) + 1;
+
       if (state.count >= MAX_ATTEMPTS) {
         state.lockUntilTs = Date.now() + LOCK_MINUTES * 60 * 1000;
       }
       return state;
     },
+
+    // marca sucesso
     success(req, email) {
       const { state } = getGuard(req, email);
       state.count = 0;
@@ -106,6 +118,7 @@ app.use((req, _res, next) => {
       return state;
     },
   };
+
   next();
 });
 
@@ -121,10 +134,11 @@ app.use((req, res, next) => {
     error: req.flash("error"),
   };
 
+  // ✅ Disponível em TODO EJS
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
 
-  // ✅ BLINDAGEM: evita crash em qualquer view/layout
+  // ✅ BLINDAGEM: evita crash em view/layout
   res.locals.lockout = null;
   res.locals.attemptsLeft = null;
   res.locals.rememberedEmail = "";
@@ -135,16 +149,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ Seed (admin + escala base)
+// ✅ Seed (admin + escala 2026)
 try {
-  const seed = require("./database/seed");
-  if (seed && typeof seed.runSeeds === "function") {
-    seed.runSeeds();
-  } else if (seed && typeof seed.ensureAdmin === "function") {
-    seed.ensureAdmin();
-  } else {
-    console.warn("⚠️ Seed carregado mas não encontrou runSeeds/ensureAdmin");
-  }
+  const { ensureAdmin, seedEscala2026 } = require("./database/seed");
+  if (typeof ensureAdmin === "function") ensureAdmin();
+  if (typeof seedEscala2026 === "function") seedEscala2026();
 } catch (err) {
   console.warn("⚠️ Seed não carregado (./database/seed). Motivo:", err.message);
 }
