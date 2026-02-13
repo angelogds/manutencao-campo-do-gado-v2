@@ -1,45 +1,54 @@
-// modules/estoque/estoque.routes.js
 const express = require("express");
 const router = express.Router();
 
-const { requireLogin, requireRole } = require("../auth/auth.middleware");
-
-// Permissões Estoque:
-// - almoxarifado: controla entradas/saídas
-// - mecânico: consulta e dá baixa (se você quiser)
-// - diretoria: consulta
-// - admin: tudo
-const ESTOQUE_ACCESS = ["almoxarifado", "mecanico", "diretoria"]; // adicione "producao" se quiser só consulta
+const { requireLogin } = require("../auth/auth.middleware");
+const controller = require("./escala.controller");
 
 let ctrl = {};
 try {
-  ctrl = require("./estoque.controller");
-  console.log("✅ [estoque] controller exports:", Object.keys(ctrl));
+  ctrl = controller;
+  console.log("✅ [escala] controller exports:", Object.keys(ctrl));
 } catch (e) {
-  console.error("❌ [estoque] Falha ao carregar estoque.controller:", e.message);
+  console.error("❌ [escala] Falha ao carregar escala.controller:", e.message);
 }
 
 const safe = (fn, name) =>
   typeof fn === "function"
     ? fn
     : (_req, res) => {
-        console.error(`❌ [estoque] Handler ${name} indefinido (export errado).`);
+        console.error(`❌ [escala] Handler ${name} indefinido.`);
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-router.get("/estoque", requireLogin, requireRole(ESTOQUE_ACCESS), safe(ctrl.estoqueIndex, "estoqueIndex"));
-
-router.get("/estoque/novo", requireLogin, requireRole(["almoxarifado", "diretoria"]), safe(ctrl.estoqueNewForm, "estoqueNewForm"));
-router.post("/estoque", requireLogin, requireRole(["almoxarifado", "diretoria"]), safe(ctrl.estoqueCreate, "estoqueCreate"));
-
-router.get("/estoque/:id", requireLogin, requireRole(ESTOQUE_ACCESS), safe(ctrl.estoqueShow, "estoqueShow"));
-
-// Movimentação (entrada/saída/ajuste) — normalmente só almoxarifado (e admin)
-router.post(
-  "/estoque/:id/mov",
+// 🔥 IMPORTANTE: COLOCAR /escala NO CAMINHO
+router.get(
+  "/escala",
   requireLogin,
-  requireRole(["almoxarifado", "diretoria"]),
-  safe(ctrl.estoqueMovCreate, "estoqueMovCreate")
+  safe(ctrl.index, "index")
+);
+
+router.get(
+  "/escala/completa",
+  requireLogin,
+  safe(ctrl.completa, "completa")
+);
+
+router.get(
+  "/escala/editar/:id",
+  requireLogin,
+  safe(ctrl.editarSemana, "editarSemana")
+);
+
+router.post(
+  "/escala/editar/:id",
+  requireLogin,
+  safe(ctrl.salvarEdicao, "salvarEdicao")
+);
+
+router.get(
+  "/escala/pdf/:id",
+  requireLogin,
+  safe(ctrl.gerarPdf, "gerarPdf")
 );
 
 module.exports = router;
