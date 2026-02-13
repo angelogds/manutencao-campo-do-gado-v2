@@ -8,28 +8,26 @@ const session = require("express-session");
 const flash = require("connect-flash");
 const engine = require("ejs-mate");
 
-// ✅ helper global de data/hora BR
+// ===== Helper Data BR =====
 const dateUtil = require("./utils/date");
 const fmtBR =
   typeof dateUtil.fmtBR === "function" ? dateUtil.fmtBR : (v) => String(v ?? "-");
 const TZ = dateUtil.TZ || "America/Sao_Paulo";
 
 const app = express();
-
-// ✅ Railway/Proxy (resolve login HTTPS)
 app.set("trust proxy", 1);
 
-// ===== View engine =====
+// ===== View Engine =====
 app.engine("ejs", engine);
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
-// ===== Middlewares base =====
+// ===== Middlewares Base =====
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// ===== Session + Flash =====
+// ===== Session =====
 app.use(
   session({
     name: process.env.SESSION_COOKIE_NAME || "cg.sid",
@@ -48,7 +46,7 @@ app.use(
 app.use(flash());
 
 // ======================================================
-// LOGIN GUARD
+// LOGIN GUARD COMPLETO (COMPATÍVEL COM auth.controller)
 // ======================================================
 
 const MAX_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS || 5);
@@ -75,14 +73,35 @@ function getGuard(req, email) {
   return { key, state };
 }
 
+function isLocked(state) {
+  return state.lockUntilTs && Date.now() < state.lockUntilTs;
+}
+
+function remainingSeconds(state) {
+  return Math.max(
+    1,
+    Math.ceil((state.lockUntilTs - Date.now()) / 1000)
+  );
+}
+
+function attemptsLeft(state) {
+  return Math.max(0, MAX_ATTEMPTS - Number(state.count || 0));
+}
+
 app.use((req, _res, next) => {
   req.authGuard = {
     MAX_ATTEMPTS,
     LOCK_MINUTES,
+    getIp,
+    guardKey,
+    getGuard,
+    isLocked,
+    remainingSeconds,
+    attemptsLeft,
 
     fail(req, email) {
       const { state } = getGuard(req, email);
-      state.count++;
+      state.count = Number(state.count || 0) + 1;
 
       if (state.count >= MAX_ATTEMPTS) {
         state.lockUntilTs = Date.now() + LOCK_MINUTES * 60 * 1000;
@@ -96,17 +115,6 @@ app.use((req, _res, next) => {
       state.count = 0;
       state.lockUntilTs = 0;
       return state;
-    },
-
-    isLocked(state) {
-      return state.lockUntilTs && Date.now() < state.lockUntilTs;
-    },
-
-    remainingSeconds(state) {
-      return Math.max(
-        1,
-        Math.ceil((state.lockUntilTs - Date.now()) / 1000)
-      );
     },
   };
 
@@ -127,6 +135,9 @@ app.use((req, res, next) => {
 
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
+  res.locals.lockout = null;
+  res.locals.attemptsLeft = null;
+  res.locals.rememberedEmail = "";
   res.locals.activeMenu = "dashboard";
 
   next();
@@ -142,7 +153,7 @@ try {
 }
 
 // ======================================================
-// ✅ SAFE MODULE CORRIGIDO (ACEITA ROUTER)
+// SAFE MODULE (ACEITA ROUTER)
 // ======================================================
 
 function safeModule(name, modulePath) {
@@ -155,7 +166,6 @@ function safeModule(name, modulePath) {
     }
 
     app.use(mod);
-
     console.log(`✅ Módulo carregado: ${name}`);
   } catch (e) {
     console.warn(`⚠️ Módulo NÃO carregado: ${name}`);
@@ -180,16 +190,6 @@ app.get("/", (req, res) => {
   return res.redirect("/login");
 });
 
-// ===== Debug =====
-app.get("/debug-session", (req, res) => {
-  res.json({
-    user: req.session?.user || null,
-    secure: req.secure,
-    tz: TZ,
-    nowBR: fmtBR(new Date()),
-  });
-});
-
 // ===== Health =====
 app.get("/health", (_req, res) => {
   res.status(200).json({
@@ -204,7 +204,7 @@ app.use((_req, res) =>
   res.status(404).send("404 - Página não encontrada")
 );
 
-// ===== Error handler =====
+// ===== Error Handler =====
 app.use((err, _req, res, _next) => {
   console.error("❌ ERRO:", err);
   res.status(500).send("500 - Erro interno");
