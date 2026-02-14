@@ -1,28 +1,141 @@
-<h2>Escala - Semana Atual</h2>
+<%- layout("layout") %>
 
-<% if (semanaAtual) { %>
+<div class="page-head">
+  <div>
+    <h1>Escala</h1>
+    <p class="muted">Publicações oficiais (PDF) + escala semanal do sistema.</p>
+  </div>
 
-<div class="card">
-  <h3>Semana <%= semanaAtual.semana_numero %></h3>
-  <p><%= semanaAtual.data_inicio %> até <%= semanaAtual.data_fim %></p>
-
-  <% Object.keys(semanaAtual.times || {}).forEach(function(turno){ %>
-    <% if (semanaAtual.times[turno].length > 0) { %>
-      <h4><%= turno.toUpperCase() %></h4>
-      <ul>
-        <% semanaAtual.times[turno].forEach(function(nome){ %>
-          <li><%= nome %></li>
-        <% }) %>
-      </ul>
-    <% } %>
-  <% }) %>
-
-  <br>
-  <a href="/escala/completa" class="btn">Ver Escala Completa</a>
-  <a href="/escala/editar/<%= semanaAtual.id %>" class="btn">Editar</a>
-  <a href="/escala/pdf/<%= semanaAtual.id %>" class="btn">Gerar PDF</a>
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <a class="btn btn-primary" href="/escala/pdf/semana">Gerar PDF da Semana</a>
+    <a class="btn btn-ghost" href="/dashboard">Voltar</a>
+  </div>
 </div>
 
-<% } else { %>
-  <p>Sem escala ativa no momento.</p>
-<% } %>
+<!-- ===========================
+     PUBLICAÇÕES (PDF)
+=========================== -->
+<div class="card" style="margin-bottom:14px;">
+  <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+    <div>
+      <div style="font-weight:900; font-size:16px;">Publicações</div>
+      <div class="muted" style="margin-top:6px;">Escalas prontas para consulta (ex.: 2026).</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Título</th>
+          <th style="width:170px;">Criada em</th>
+          <th style="width:160px; text-align:right;">Ações</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% if (!publicacoes || publicacoes.length === 0) { %>
+          <tr>
+            <td colspan="3" class="muted" style="text-align:center; padding:18px;">
+              Nenhuma publicação cadastrada.
+            </td>
+          </tr>
+        <% } else { %>
+          <% publicacoes.forEach(p => { %>
+            <tr>
+              <td><%= p.titulo %></td>
+              <td><%= p.created_at ? fmtBR(p.created_at) : "-" %></td>
+              <td style="text-align:right;">
+                <a class="btn btn-primary btn-sm" target="_blank" href="<%= p.arquivo_url %>">Abrir PDF</a>
+              </td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===========================
+     SEMANA ATUAL (DB)
+=========================== -->
+<div class="card">
+  <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+    <div>
+      <div style="font-weight:900; font-size:16px;">Semana do Sistema</div>
+      <div class="muted" style="margin-top:6px;">Período: <strong><%= rangeLabel %></strong></div>
+    </div>
+
+    <form method="GET" action="/escala" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <input class="input" type="date" name="week" value="<%= week %>" style="max-width:190px;" />
+      <button class="btn btn-ghost btn-sm" type="submit">Ir</button>
+      <a class="btn btn-ghost btn-sm" href="/escala">Hoje</a>
+    </form>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th style="width:170px;">Data</th>
+          <th>Colaborador</th>
+          <th style="width:180px;">Turno</th>
+          <th style="width:180px;">Setor</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% if (!semana || semana.length === 0) { %>
+          <tr>
+            <td colspan="4" class="muted" style="text-align:center; padding:18px;">
+              Nenhum item cadastrado nesta semana.
+            </td>
+          </tr>
+        <% } else { %>
+          <% semana.forEach(i => { %>
+            <tr>
+              <td><%= i.data ? fmtBR(i.data) : "-" %></td>
+              <td><%= i.colaborador || "-" %></td>
+              <td><%= i.turno || "-" %></td>
+              <td><%= i.setor || "-" %></td>
+            </tr>
+          <% }) %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- (Opcional) form simples de adicionar item -->
+  <div class="divider"></div>
+  <div class="muted" style="margin-bottom:10px;">Adicionar rápido (opcional):</div>
+
+  <form method="POST" action="/escala" class="row" style="align-items:flex-end;">
+    <div style="flex:1; min-width:180px;">
+      <div class="label">Data</div>
+      <input class="input" type="date" name="data" required />
+    </div>
+
+    <div style="flex:2; min-width:220px;">
+      <div class="label">Colaborador</div>
+      <input class="input" name="colaborador" placeholder="Ex.: Emanuel" required />
+    </div>
+
+    <div style="flex:1; min-width:160px;">
+      <div class="label">Turno</div>
+      <input class="input" name="turno" placeholder="Dia / Noite" />
+    </div>
+
+    <div style="flex:1; min-width:160px;">
+      <div class="label">Setor</div>
+      <input class="input" name="setor" placeholder="Manutenção / Produção" />
+    </div>
+
+    <div>
+      <button class="btn btn-primary" type="submit">Salvar</button>
+    </div>
+  </form>
+</div>
