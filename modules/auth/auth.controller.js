@@ -1,18 +1,11 @@
+
 // modules/auth/auth.controller.js
 const bcrypt = require("bcryptjs");
 const authService = require("./auth.service");
 
 exports.showLogin = (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
-
-  const rememberedEmail = req.cookies?.cg_remember_email || "";
-
-  return res.render("auth/login", {
-    title: "Login",
-    lockout: null,
-    attemptsLeft: null,
-    rememberedEmail,
-  });
+  return res.render("auth/login", { title: "Login" });
 };
 
 exports.doLogin = (req, res) => {
@@ -20,61 +13,33 @@ exports.doLogin = (req, res) => {
   const password = String(req.body?.password || "");
 
   if (!email || !password) {
-    req.flash("error", "Informe e-mail e senha.");
-    return res.redirect("/auth/login"); // ✅ corrigido
-  }
-
-  const g = req.authGuard;
-  const { state } = g.getGuard(req, email);
-
-  if (g.isLocked(state)) {
-    return res.render("auth/login", {
-      title: "Login",
-      lockout: { remainingSeconds: g.remainingSeconds(state) },
-      attemptsLeft: g.attemptsLeft(state),
-      rememberedEmail: email,
-    });
+    req.flash("error", "Informe email e senha.");
+    return res.redirect("/login");
   }
 
   const user = authService.getUserByEmail(email);
 
   if (!user) {
-    const st = g.fail(req, email);
-    req.flash("error", "Usuário ou senha inválidos.");
-    return res.render("auth/login", {
-      title: "Login",
-      lockout: g.isLocked(st)
-        ? { remainingSeconds: g.remainingSeconds(st) }
-        : null,
-      attemptsLeft: g.attemptsLeft(st),
-      rememberedEmail: email,
-    });
+    req.flash("error", "Usuário não encontrado.");
+    return res.redirect("/login");
   }
 
   const ok = bcrypt.compareSync(password, user.password_hash);
 
   if (!ok) {
-    const st = g.fail(req, email);
-    req.flash("error", "Usuário ou senha inválidos.");
-    return res.render("auth/login", {
-      title: "Login",
-      lockout: g.isLocked(st)
-        ? { remainingSeconds: g.remainingSeconds(st) }
-        : null,
-      attemptsLeft: g.attemptsLeft(st),
-      rememberedEmail: email,
-    });
+    req.flash("error", "Senha inválida.");
+    return res.redirect("/login");
   }
 
-  g.success(req, email);
-
+  // ✅ evita sessão antiga reaproveitada
   req.session.regenerate((err) => {
     if (err) {
       console.error("❌ Erro regenerate session:", err);
       req.flash("error", "Erro ao iniciar sessão. Tente novamente.");
-      return res.redirect("/auth/login"); // ✅ corrigido
+      return res.redirect("/login");
     }
 
+    // ✅ salva na sessão (inclui role!)
     req.session.user = {
       id: user.id,
       name: user.name,
@@ -82,25 +47,24 @@ exports.doLogin = (req, res) => {
       role: user.role,
     };
 
+    // ✅ garante persistência antes do redirect
     req.session.save((err2) => {
       if (err2) {
         console.error("❌ Erro session.save:", err2);
         req.flash("error", "Erro ao salvar sessão. Tente novamente.");
-        return res.redirect("/auth/login"); // ✅ corrigido
+        return res.redirect("/login");
       }
-
-      return res.redirect("/dashboard"); // ✅ ok
+      return res.redirect("/dashboard");
     });
   });
 };
 
 exports.logout = (req, res) => {
-  const sidName = process.env.SESSION_COOKIE_NAME || "cg.sid";
-
+  // limpa e destrói sessão
+  const sidName = "cg.sid"; // se você usa outro nome, ajuste aqui
   req.session?.destroy((err) => {
     if (err) console.error("❌ Erro ao destruir sessão:", err);
-
     res.clearCookie(sidName);
-    return res.redirect("/auth/login"); // ✅ corrigido
+    return res.redirect("/login");
   });
 };
