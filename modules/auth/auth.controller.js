@@ -5,7 +5,6 @@ const authService = require("./auth.service");
 exports.showLogin = (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
 
-  // tenta preencher email lembrado (cookie opcional)
   const rememberedEmail = req.cookies?.cg_remember_email || "";
 
   return res.render("auth/login", {
@@ -22,10 +21,9 @@ exports.doLogin = (req, res) => {
 
   if (!email || !password) {
     req.flash("error", "Informe e-mail e senha.");
-    return res.redirect("/login");
+    return res.redirect("/auth/login"); // ✅ corrigido
   }
 
-  // ✅ login guard
   const g = req.authGuard;
   const { state } = g.getGuard(req, email);
 
@@ -45,7 +43,9 @@ exports.doLogin = (req, res) => {
     req.flash("error", "Usuário ou senha inválidos.");
     return res.render("auth/login", {
       title: "Login",
-      lockout: g.isLocked(st) ? { remainingSeconds: g.remainingSeconds(st) } : null,
+      lockout: g.isLocked(st)
+        ? { remainingSeconds: g.remainingSeconds(st) }
+        : null,
       attemptsLeft: g.attemptsLeft(st),
       rememberedEmail: email,
     });
@@ -58,21 +58,21 @@ exports.doLogin = (req, res) => {
     req.flash("error", "Usuário ou senha inválidos.");
     return res.render("auth/login", {
       title: "Login",
-      lockout: g.isLocked(st) ? { remainingSeconds: g.remainingSeconds(st) } : null,
+      lockout: g.isLocked(st)
+        ? { remainingSeconds: g.remainingSeconds(st) }
+        : null,
       attemptsLeft: g.attemptsLeft(st),
       rememberedEmail: email,
     });
   }
 
-  // ✅ sucesso -> zera tentativas
   g.success(req, email);
 
-  // ✅ evita sessão antiga reaproveitada
   req.session.regenerate((err) => {
     if (err) {
       console.error("❌ Erro regenerate session:", err);
       req.flash("error", "Erro ao iniciar sessão. Tente novamente.");
-      return res.redirect("/login");
+      return res.redirect("/auth/login"); // ✅ corrigido
     }
 
     req.session.user = {
@@ -86,18 +86,20 @@ exports.doLogin = (req, res) => {
       if (err2) {
         console.error("❌ Erro session.save:", err2);
         req.flash("error", "Erro ao salvar sessão. Tente novamente.");
-        return res.redirect("/login");
+        return res.redirect("/auth/login"); // ✅ corrigido
       }
-      return res.redirect("/dashboard");
+
+      return res.redirect("/dashboard"); // ✅ rota correta
     });
   });
 };
 
 exports.logout = (req, res) => {
   const sidName = process.env.SESSION_COOKIE_NAME || "cg.sid";
+
   req.session?.destroy((err) => {
     if (err) console.error("❌ Erro ao destruir sessão:", err);
     res.clearCookie(sidName);
-    return res.redirect("/login");
+    return res.redirect("/auth/login"); // ✅ corrigido
   });
 };
