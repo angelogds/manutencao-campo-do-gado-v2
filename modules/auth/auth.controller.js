@@ -89,7 +89,7 @@ exports.doLogin = (req, res) => {
         return res.redirect("/auth/login"); // ✅ corrigido
       }
 
-      return res.redirect("/dashboard"); // ✅ rota correta
+      return res.redirect("/dashboard"); // ✅ ok
     });
   });
 };
@@ -99,6 +99,7 @@ exports.logout = (req, res) => {
 
   req.session?.destroy((err) => {
     if (err) console.error("❌ Erro ao destruir sessão:", err);
+
     res.clearCookie(sidName);
     return res.redirect("/auth/login"); // ✅ corrigido
   });
