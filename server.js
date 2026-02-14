@@ -1,4 +1,3 @@
-// ================= CONFIG =================
 require("dotenv").config();
 
 try {
@@ -17,12 +16,12 @@ const engine = require("ejs-mate");
 const app = express();
 app.set("trust proxy", 1);
 
-// ================= VIEW ENGINE =================
+// ===== VIEW ENGINE =====
 app.engine("ejs", engine);
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
-// ================= MIDDLEWARES =================
+// ===== MIDDLEWARES =====
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
@@ -44,7 +43,7 @@ app.use(
 
 app.use(flash());
 
-// ================= VARIÁVEIS GLOBAIS NAS VIEWS =================
+// ===== VARIÁVEIS GLOBAIS =====
 app.use((req, res, next) => {
   res.locals.flash = {
     success: req.flash("success") || [],
@@ -52,19 +51,17 @@ app.use((req, res, next) => {
   };
 
   res.locals.user = req.session?.user || null;
-
-  // 👇 IMPORTANTE: evita erro activeMenu undefined
   res.locals.activeMenu = "";
 
   next();
 });
 
-// ================= TESTE =================
+// ===== TESTE =====
 app.get("/teste", (req, res) => {
   res.send("SERVIDOR OK");
 });
 
-// ================= ROTAS =================
+// ===== ROTAS =====
 app.use("/auth", require("./modules/auth/auth.routes"));
 app.use("/dashboard", require("./modules/dashboard/dashboard.routes"));
 app.use("/compras", require("./modules/compras/compras.routes"));
@@ -73,4 +70,32 @@ app.use("/os", require("./modules/os/os.routes"));
 app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
 app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
 app.use("/preventivas", require("./modules/preventivas/preventivas.routes"));
-app.use("/escala", require("./modules/escala/
+app.use("/escala", require("./modules/escala/escala.routes"));
+
+// ===== HOME =====
+app.get("/", (req, res) => {
+  if (req.session?.user) {
+    return res.redirect("/dashboard");
+  }
+  return res.redirect("/auth/login");
+});
+
+// ===== 404 =====
+app.use((req, res) => {
+  res.status(404).send("404 - Página não encontrada");
+});
+
+// ===== ERROR HANDLER =====
+app.use((err, req, res, next) => {
+  console.error("❌ ERRO COMPLETO:", err);
+  res.status(500).send(`
+    <h1>Erro 500</h1>
+    <pre>${err.message}</pre>
+  `);
+});
+
+// ===== START =====
+const port = process.env.PORT || 8080;
+app.listen(port, () => {
+  console.log(`🚀 Servidor rodando na porta ${port}`);
+});
