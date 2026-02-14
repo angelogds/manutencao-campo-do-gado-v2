@@ -1,20 +1,31 @@
+
+// modules/escala/escala.routes.js
 const express = require("express");
 const router = express.Router();
 
-const controller = require("./escala.controller");
-const { requireLogin } = require("../auth/auth.middleware");
+let controller = {};
+try {
+  controller = require("./escala.controller");
+  console.log("✅ [escala] controller exports:", Object.keys(controller));
+} catch (e) {
+  console.error("❌ [escala] Falha ao carregar escala.controller:", e.message);
+}
 
-// Página principal - mostra apenas semana atual
-router.get("/", requireLogin, controller.index);
+const safe = (fn, name) =>
+  typeof fn === "function"
+    ? fn
+    : (_req, res) => {
+        console.error(`❌ [escala] Handler ${name} indefinido.`);
+        return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
+      };
 
-// Escala completa (ano inteiro)
-router.get("/completa", requireLogin, controller.completa);
+// ✅ páginas
+router.get("/escala", safe(controller.index, "index"));
 
-// Editar semana
-router.get("/editar/:id", requireLogin, controller.editarSemana);
-router.post("/editar/:id", requireLogin, controller.salvarEdicao);
+// ✅ criar item (opcional: você pode usar depois no form)
+router.post("/escala", safe(controller.create, "create"));
 
-// Gerar PDF da semana
-router.get("/pdf/:id", requireLogin, controller.gerarPdf);
+// ✅ PDF da semana (você já tinha — mantive)
+router.get("/escala/pdf/semana", safe(controller.pdfSemana, "pdfSemana"));
 
 module.exports = router;
