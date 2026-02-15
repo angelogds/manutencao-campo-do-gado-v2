@@ -1,31 +1,29 @@
-
-// modules/escala/escala.routes.js
 const express = require("express");
 const router = express.Router();
 
-let controller = {};
-try {
-  controller = require("./escala.controller");
-  console.log("✅ [escala] controller exports:", Object.keys(controller));
-} catch (e) {
-  console.error("❌ [escala] Falha ao carregar escala.controller:", e.message);
-}
+const controller = require("./escala.controller");
+const { requireLogin } = require("../auth/auth.middleware");
 
-const safe = (fn, name) =>
-  typeof fn === "function"
-    ? fn
-    : (_req, res) => {
-        console.error(`❌ [escala] Handler ${name} indefinido.`);
-        return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
-      };
+// Página principal (semana atual ou por data)
+router.get("/escala", requireLogin, controller.index);
 
-// ✅ páginas
-router.get("/escala", safe(controller.index, "index"));
+// Ver escala completa (opcional)
+router.get("/escala/completa", requireLogin, controller.completa);
 
-// ✅ criar item (opcional: você pode usar depois no form)
-router.post("/escala", safe(controller.create, "create"));
+// Adicionar rápido (opcional)
+router.post("/escala/adicionar", requireLogin, controller.adicionarRapido);
 
-// ✅ PDF da semana (você já tinha — mantive)
-router.get("/escala/pdf/semana", safe(controller.pdfSemana, "pdfSemana"));
+// Lançar folga/atestado por período
+router.post("/escala/ausencia", requireLogin, controller.lancarAusencia);
+
+// Editar semana (trocar turno)
+router.get("/escala/editar/:id", requireLogin, controller.editarSemana);
+router.post("/escala/editar/:id", requireLogin, controller.salvarEdicao);
+
+// PDF (semana)
+router.get("/escala/pdf/semana/:id", requireLogin, controller.pdfSemana);
+
+// PDF (período start/end)
+router.get("/escala/pdf", requireLogin, controller.pdfPeriodo);
 
 module.exports = router;
