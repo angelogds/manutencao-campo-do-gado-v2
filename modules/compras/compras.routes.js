@@ -4,8 +4,16 @@ const router = express.Router();
 
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
 
+// =====================================================
+// ✅ IMPORTANTE:
+// Este arquivo assume que no server.js você faz:
+// app.use("/compras", require("./modules/compras/compras.routes"))
+// Então aqui dentro NÃO pode repetir "/compras".
+// =====================================================
+
 // Permissões Compras (ADMIN passa automaticamente no middleware)
-const COMPRAS_ACCESS = ["compras", "diretoria"];
+// (coloquei maiúsculo + minúsculo para não dar 403/404 por divergência)
+const COMPRAS_ACCESS = ["COMPRAS", "DIRETORIA", "compras", "diretoria", "ADMIN", "admin"];
 
 let ctrl = {};
 try {
@@ -19,7 +27,6 @@ const safe = (fn, name) =>
   typeof fn === "function"
     ? (req, res, next) => {
         try {
-          // menu ativo
           res.locals.activeMenu = "compras";
           return fn(req, res, next);
         } catch (err) {
@@ -80,43 +87,18 @@ router.post(
 // =====================================================
 
 // GET  /compras
-router.get(
-  "/",
-  requireLogin,
-  requireRole(COMPRAS_ACCESS),
-  safe(ctrl.comprasIndex, "comprasIndex")
-);
+router.get("/", requireLogin, requireRole(COMPRAS_ACCESS), safe(ctrl.comprasIndex, "comprasIndex"));
 
 // GET  /compras/nova
-router.get(
-  "/nova",
-  requireLogin,
-  requireRole(COMPRAS_ACCESS),
-  safe(ctrl.comprasNewForm, "comprasNewForm")
-);
+router.get("/nova", requireLogin, requireRole(COMPRAS_ACCESS), safe(ctrl.comprasNewForm, "comprasNewForm"));
 
 // POST /compras
-router.post(
-  "/",
-  requireLogin,
-  requireRole(COMPRAS_ACCESS),
-  safe(ctrl.comprasCreate, "comprasCreate")
-);
+router.post("/", requireLogin, requireRole(COMPRAS_ACCESS), safe(ctrl.comprasCreate, "comprasCreate"));
 
 // GET  /compras/:id
-router.get(
-  "/:id",
-  requireLogin,
-  requireRole(COMPRAS_ACCESS),
-  safe(ctrl.comprasShow, "comprasShow")
-);
+router.get("/:id", requireLogin, requireRole(COMPRAS_ACCESS), safe(ctrl.comprasShow, "comprasShow"));
 
 // POST /compras/:id/status
-router.post(
-  "/:id/status",
-  requireLogin,
-  requireRole(COMPRAS_ACCESS),
-  safe(ctrl.comprasUpdateStatus, "comprasUpdateStatus")
-);
+router.post("/:id/status", requireLogin, requireRole(COMPRAS_ACCESS), safe(ctrl.comprasUpdateStatus, "comprasUpdateStatus"));
 
 module.exports = router;
