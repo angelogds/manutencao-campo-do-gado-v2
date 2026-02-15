@@ -1,15 +1,8 @@
-// database/seed.js
 const bcrypt = require("bcryptjs");
 const db = require("./db");
 
-// ======================
-// ADMIN
-// ======================
 function ensureAdmin() {
-  const row = db
-    .prepare("SELECT id FROM users WHERE email=? LIMIT 1")
-    .get("admin@campodogado.local");
-
+  const row = db.prepare("SELECT id FROM users WHERE email=? LIMIT 1").get("admin@campodogado.local");
   if (row) {
     console.log("✔ Seed: admin já existe");
     return;
@@ -26,9 +19,7 @@ function ensureAdmin() {
   console.log("✔ Seed: admin criado (admin@campodogado.local / admin123)");
 }
 
-// ======================
-// ESCALA 2026 (AUTO)
-// ======================
+// ---------- ESCALA 2026 (diogo/salviano/rodolfo + apoio) ----------
 const ESCALA_2026 = [
   { semana: 1,  inicio: "2026-01-05", fim: "2026-01-11", noturno: "Diogo",    diurno: ["Salviano","Rodolfo"], apoio: ["Emanuel","Luiz","Júnior"] },
   { semana: 2,  inicio: "2026-01-12", fim: "2026-01-18", noturno: "Salviano", diurno: ["Diogo","Rodolfo"],    apoio: ["Emanuel","Luiz","Júnior"] },
@@ -84,133 +75,79 @@ const ESCALA_2026 = [
   { semana: 52, inicio: "2026-12-28", fim: "2027-01-01", noturno: "Diogo",    diurno: ["Salviano","Rodolfo"], apoio: ["Emanuel","Luiz","Júnior"] },
 ];
 
-function hasTable(name) {
-  const row = db
-    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=? LIMIT 1")
-    .get(name);
-  return !!row;
-}
-
 function ensureColaborador(nome, funcao = "mecanico") {
-  const n = String(nome || "").trim();
-  if (!n) return null;
+  let row = db.prepare(`SELECT id FROM colaboradores WHERE lower(nome)=lower(?) LIMIT 1`).get(nome);
+  if (row) return row.id;
 
-  const row = db
-    .prepare("SELECT id FROM colaboradores WHERE lower(nome)=lower(?) LIMIT 1")
-    .get(n);
-  if (row?.id) return row.id;
+  const info = db.prepare(`
+    INSERT INTO colaboradores (nome, funcao, ativo)
+    VALUES (?, ?, 1)
+  `).run(nome, funcao);
 
-  const r = db
-    .prepare("INSERT INTO colaboradores (nome, funcao, ativo) VALUES (?, ?, 1)")
-    .run(n, funcao);
-
-  return r.lastInsertRowid;
+  return Number(info.lastInsertRowid);
 }
 
-function ensurePeriodo2026() {
-  const titulo = "Escala 2026 (Manutenção)";
-  const row = db
-    .prepare("SELECT id FROM escala_periodos WHERE titulo=? LIMIT 1")
-    .get(titulo);
+function seedEscala2026() {
+  // cria período 2026 se não existir
+  let periodo = db.prepare(`
+    SELECT id FROM escala_periodos
+    WHERE vigencia_inicio='2026-01-05' AND vigencia_fim='2027-01-01'
+    LIMIT 1
+  `).get();
 
-  if (row?.id) return row.id;
-
-  const r = db
-    .prepare(`
-      INSERT INTO escala_periodos
-      (titulo, vigencia_inicio, vigencia_fim, regra_texto, intervalo_tecnico, created_at, updated_at)
+  if (!periodo) {
+    const info = db.prepare(`
+      INSERT INTO escala_periodos (titulo, vigencia_inicio, vigencia_fim, regra_texto, intervalo_tecnico, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `)
-    .run(
-      titulo,
+    `).run(
+      "Escala 2026 (Manutenção)",
       "2026-01-05",
       "2027-01-01",
       "Noturno rotativo (Diogo/Salviano/Rodolfo) + 2 diurnos + apoio fixo.",
       "17h–19h"
     );
-
-  return r.lastInsertRowid;
-}
-
-function ensureSemana(periodoId, semanaNumero, inicio, fim) {
-  const row = db
-    .prepare("SELECT id FROM escala_semanas WHERE periodo_id=? AND semana_numero=? LIMIT 1")
-    .get(periodoId, semanaNumero);
-
-  if (row?.id) return row.id;
-
-  const r = db
-    .prepare(
-      "INSERT INTO escala_semanas (periodo_id, semana_numero, data_inicio, data_fim) VALUES (?, ?, ?, ?)"
-    )
-    .run(periodoId, semanaNumero, inicio, fim);
-
-  return r.lastInsertRowid;
-}
-
-function insertIgnoreAlocacao(semanaId, tipo, colabId, ini, fim, obs = null) {
-  try {
-    db.prepare(`
-      INSERT INTO escala_alocacoes
-      (semana_id, tipo_turno, horario_inicio, horario_fim, colaborador_id, observacao, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(semanaId, tipo, ini || null, fim || null, colabId, obs || null);
-    return true;
-  } catch (e) {
-    const msg = String(e?.message || "");
-    if (msg.includes("UNIQUE")) return false; // já existe
-    throw e;
+    periodo = { id: Number(info.lastInsertRowid) };
+    console.log("✔ Seed: período 2026 criado");
   }
-}
 
-function seedEscala2026() {
-  // se migração não criou as tabelas ainda, não quebra
-  if (!hasTable("colaboradores") || !hasTable("escala_periodos") || !hasTable("escala_semanas") || !hasTable("escala_alocacoes")) {
-    console.log("⚠️ Seed escala: tabelas da escala ainda não existem (migrations).");
+  // se já existem semanas, não duplica
+  const jaTem = db.prepare(`SELECT COUNT(*) AS total FROM escala_semanas WHERE periodo_id=?`).get(periodo.id).total || 0;
+  if (jaTem > 0) {
+    console.log("✔ Seed: escala 2026 já existe (semanas já cadastradas)");
     return;
   }
 
-  const periodoId = ensurePeriodo2026();
+  const insertSemana = db.prepare(`
+    INSERT INTO escala_semanas (periodo_id, semana_numero, data_inicio, data_fim)
+    VALUES (?, ?, ?, ?)
+  `);
 
-  // garante colaboradores
-  const fixos = ["Diogo", "Salviano", "Rodolfo", "Emanuel", "Luiz", "Júnior"];
-  for (const n of fixos) ensureColaborador(n, "mecanico");
+  const insertAloc = db.prepare(`
+    INSERT INTO escala_alocacoes (semana_id, tipo_turno, colaborador_id, observacao)
+    VALUES (?, ?, ?, ?)
+  `);
 
-  const H = {
-    noturno: { ini: "19:00", fim: "05:00" },
-    diurno: { ini: "07:00", fim: "17:00" },
-    apoio: { ini: "07:00", fim: "17:00" },
-  };
+  db.transaction(() => {
+    for (const w of ESCALA_2026) {
+      const info = insertSemana.run(periodo.id, w.semana, w.inicio, w.fim);
+      const semanaId = Number(info.lastInsertRowid);
 
-  let semanas = 0;
-  let inseridos = 0;
+      const idNoturno = ensureColaborador(w.noturno, "mecanico");
+      insertAloc.run(semanaId, "noturno", idNoturno, "Manutenção");
 
-  for (const w of ESCALA_2026) {
-    const semanaId = ensureSemana(periodoId, w.semana, w.inicio, w.fim);
-    semanas++;
+      for (const d of w.diurno) {
+        const idD = ensureColaborador(d, "mecanico");
+        insertAloc.run(semanaId, "diurno", idD, "Manutenção");
+      }
 
-    // noturno
-    const idNot = ensureColaborador(w.noturno, "mecanico");
-    if (idNot) if (insertIgnoreAlocacao(semanaId, "noturno", idNot, H.noturno.ini, H.noturno.fim)) inseridos++;
-
-    // diurno (2)
-    for (const n of (w.diurno || [])) {
-      const id = ensureColaborador(n, "mecanico");
-      if (id) if (insertIgnoreAlocacao(semanaId, "diurno", id, H.diurno.ini, H.diurno.fim)) inseridos++;
+      for (const a of w.apoio) {
+        const idA = ensureColaborador(a, "apoio");
+        insertAloc.run(semanaId, "apoio", idA, "Manutenção");
+      }
     }
+  })();
 
-    // apoio (3)
-    for (const n of (w.apoio || [])) {
-      const id = ensureColaborador(n, "mecanico");
-      if (id) if (insertIgnoreAlocacao(semanaId, "apoio", id, H.apoio.ini, H.apoio.fim)) inseridos++;
-    }
-  }
-
-  console.log(`✔ Seed escala: período 2026 id=${periodoId}`);
-  console.log(`✔ Seed escala: semanas=${semanas}, alocações novas=${inseridos} (idempotente)`);
+  console.log("✔ Seed: escala 2026 importada (52 semanas)");
 }
 
-module.exports = {
-  ensureAdmin,
-  seedEscala2026,
-};
+module.exports = { ensureAdmin, seedEscala2026 };
