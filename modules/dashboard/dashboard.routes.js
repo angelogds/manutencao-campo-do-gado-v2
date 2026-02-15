@@ -27,11 +27,9 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// ⚠️ IMPORTANTE:
-// Como no server.js temos:
-// app.use("/dashboard", require(...))
-// aqui a rota é SOMENTE "/"
-
+// IMPORTANTE:
+// server.js faz: app.use("/dashboard", dashboardRoutes)
+// então aqui é SOMENTE "/"
 router.get("/", requireLogin, safe(ctrl.index, "index"));
 
 module.exports = router;
