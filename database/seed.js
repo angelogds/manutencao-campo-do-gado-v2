@@ -2,75 +2,39 @@
 const bcrypt = require("bcryptjs");
 const db = require("./db");
 
-// ✅ garante FK
-try {
-  db.pragma("foreign_keys = ON");
-} catch (e) {
-  // ignore
-}
-
-/**
- * ADMIN:
- * - cria se não existir
- * - se existir, atualiza senha/role quando:
- *    - ADMIN_RESET=1  (força)
- *    - ou quando role != ADMIN
- *    - ou quando senha atual não bate com ADMIN_PASSWORD
- */
+// ✅ Ajuste de senha controlado por ENV
+// ADMIN_PASSWORD=admin123
+// ADMIN_RESET=1  (só uma vez para forçar reset)
 function ensureAdmin() {
   const email = "admin@campodogado.local";
-  const name = "Administrador";
-  const role = "ADMIN";
+  const password = process.env.ADMIN_PASSWORD || "admin123";
+  const reset = String(process.env.ADMIN_RESET || "0") === "1";
 
-  const password = String(process.env.ADMIN_PASSWORD || "admin123");
-  const force = String(process.env.ADMIN_RESET || "0") === "1";
+  const row = db.prepare("SELECT id FROM users WHERE lower(email)=lower(?) LIMIT 1").get(email);
 
-  const user = db
-    .prepare("SELECT id, password_hash, role FROM users WHERE email=? LIMIT 1")
-    .get(email);
+  const hash = bcrypt.hashSync(password, 10);
 
-  const newHash = bcrypt.hashSync(password, 10);
-
-  if (!user) {
-    db.prepare(
-      `
+  if (!row) {
+    db.prepare(`
       INSERT INTO users (name, email, password_hash, role, created_at)
       VALUES (?, ?, ?, ?, datetime('now','-3 hours'))
-    `
-    ).run(name, email, newHash, role);
+    `).run("Administrador", email, hash, "ADMIN");
 
     console.log(`✔ Seed: admin criado (${email} / ${password})`);
     return;
   }
 
-  // se existir, checa se precisa atualizar
-  const roleDiff = String(user.role || "").toUpperCase() !== role;
-  let passDiff = false;
-  try {
-    passDiff = !bcrypt.compareSync(password, user.password_hash || "");
-  } catch (e) {
-    passDiff = true;
-  }
-
-  if (force || roleDiff || passDiff) {
-    db.prepare(
-      `
+  if (reset) {
+    db.prepare(`
       UPDATE users
-         SET name = ?,
-             password_hash = ?,
-             role = ?
-       WHERE id = ?
-    `
-    ).run(name, newHash, role, user.id);
+      SET password_hash = ?, role = 'ADMIN'
+      WHERE id = ?
+    `).run(hash, row.id);
 
-    console.log(
-      `✔ Seed: admin atualizado (${email}) ` +
-        (force ? "[ADMIN_RESET=1]" : roleDiff ? "[role]" : "[senha]")
-    );
-    return;
+    console.log(`✔ Seed: admin ATUALIZADO (senha resetada para ${password})`);
+  } else {
+    console.log("✔ Seed: admin já existe (não resetou senha).");
   }
-
-  console.log("✔ Seed: admin já existe (sem alterações)");
 }
 
 // ---------- ESCALA 2026 (diogo/salviano/rodolfo + apoio) ----------
@@ -130,59 +94,42 @@ const ESCALA_2026 = [
 ];
 
 function ensureColaborador(nome, funcao = "mecanico") {
-  const row = db
-    .prepare(`SELECT id FROM colaboradores WHERE lower(nome)=lower(?) LIMIT 1`)
-    .get(nome);
+  let row = db.prepare(`SELECT id FROM colaboradores WHERE lower(nome)=lower(?) LIMIT 1`).get(nome);
   if (row) return row.id;
 
-  const info = db
-    .prepare(
-      `
+  const info = db.prepare(`
     INSERT INTO colaboradores (nome, funcao, ativo)
     VALUES (?, ?, 1)
-  `
-    )
-    .run(nome, funcao);
+  `).run(nome, funcao);
 
   return Number(info.lastInsertRowid);
 }
 
 function seedEscala2026() {
-  // cria período 2026 se não existir
-  let periodo = db
-    .prepare(
-      `
+  let periodo = db.prepare(`
     SELECT id FROM escala_periodos
     WHERE vigencia_inicio='2026-01-05' AND vigencia_fim='2027-01-01'
     LIMIT 1
-  `
-    )
-    .get();
+  `).get();
 
   if (!periodo) {
-    const info = db
-      .prepare(
-        `
+    const info = db.prepare(`
       INSERT INTO escala_periodos (titulo, vigencia_inicio, vigencia_fim, regra_texto, intervalo_tecnico, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-    `
-      )
-      .run(
-        "Escala 2026 (Manutenção)",
-        "2026-01-05",
-        "2027-01-01",
-        "Noturno rotativo (Diogo/Salviano/Rodolfo) + 2 diurnos + apoio fixo.",
-        "17h–19h"
-      );
+    `).run(
+      "Escala 2026 (Manutenção)",
+      "2026-01-05",
+      "2027-01-01",
+      "Noturno rotativo (Diogo/Salviano/Rodolfo) + 2 diurnos + apoio fixo.",
+      "17h–19h"
+    );
     periodo = { id: Number(info.lastInsertRowid) };
     console.log("✔ Seed: período 2026 criado");
   }
 
-  // se já existem semanas, não duplica
   const jaTem =
-    db
-      .prepare(`SELECT COUNT(*) AS total FROM escala_semanas WHERE periodo_id=?`)
-      .get(periodo.id)?.total || 0;
+    db.prepare(`SELECT COUNT(*) AS total FROM escala_semanas WHERE periodo_id=?`)
+      .get(periodo.id).total || 0;
 
   if (jaTem > 0) {
     console.log("✔ Seed: escala 2026 já existe (semanas já cadastradas)");
@@ -222,26 +169,9 @@ function seedEscala2026() {
   console.log("✔ Seed: escala 2026 importada (52 semanas)");
 }
 
-/**
- * ✅ ÚNICO ponto de entrada pro server.js
- * (assim você pode chamar seed.runSeeds() no server)
- */
 function runSeeds() {
-  try {
-    ensureAdmin();
-  } catch (e) {
-    console.error("❌ Seed ensureAdmin falhou:", e.message);
-  }
-
-  try {
-    seedEscala2026();
-  } catch (e) {
-    console.error("❌ Seed seedEscala2026 falhou:", e.message);
-  }
+  ensureAdmin();
+  seedEscala2026();
 }
 
-module.exports = {
-  runSeeds,
-  ensureAdmin,
-  seedEscala2026,
-};
+module.exports = { runSeeds, ensureAdmin, seedEscala2026 };
