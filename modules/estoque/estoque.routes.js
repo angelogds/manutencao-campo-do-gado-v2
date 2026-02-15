@@ -5,11 +5,11 @@ const router = express.Router();
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
 
 // Permissões Estoque:
-// - almoxarifado: controla entradas/saídas
-// - mecânico: consulta e dá baixa (se você quiser)
-// - diretoria: consulta
-// - admin: tudo
-const ESTOQUE_ACCESS = ["almoxarifado", "mecanico", "diretoria"]; // adicione "producao" se quiser só consulta
+// - ALMOXARIFADO: controla entradas/saídas
+// - MECANICO: consulta (se quiser)
+// - DIRETORIA: consulta
+// - ADMIN: tudo (admin passa automaticamente no requireRole, se seu middleware faz isso)
+const ESTOQUE_ACCESS = ["ALMOXARIFADO", "MECANICO", "DIRETORIA", "almoxarifado", "mecanico", "diretoria"];
 
 let ctrl = {};
 try {
@@ -21,24 +21,53 @@ try {
 
 const safe = (fn, name) =>
   typeof fn === "function"
-    ? fn
+    ? (req, res, next) => {
+        try {
+          res.locals.activeMenu = "estoque";
+          return fn(req, res, next);
+        } catch (err) {
+          return next(err);
+        }
+      }
     : (_req, res) => {
         console.error(`❌ [estoque] Handler ${name} indefinido (export errado).`);
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-router.get("/estoque", requireLogin, requireRole(ESTOQUE_ACCESS), safe(ctrl.estoqueIndex, "estoqueIndex"));
+// =====================================================
+// ✅ IMPORTANTE:
+// Este arquivo assume que no server.js você faz:
+// app.use("/estoque", require("./modules/estoque/estoque.routes"))
+// Então aqui dentro NÃO pode repetir "/estoque".
+// =====================================================
 
-router.get("/estoque/novo", requireLogin, requireRole(["almoxarifado", "diretoria"]), safe(ctrl.estoqueNewForm, "estoqueNewForm"));
-router.post("/estoque", requireLogin, requireRole(["almoxarifado", "diretoria"]), safe(ctrl.estoqueCreate, "estoqueCreate"));
+// INDEX -> GET /estoque
+router.get("/", requireLogin, requireRole(ESTOQUE_ACCESS), safe(ctrl.estoqueIndex, "estoqueIndex"));
 
-router.get("/estoque/:id", requireLogin, requireRole(ESTOQUE_ACCESS), safe(ctrl.estoqueShow, "estoqueShow"));
-
-// Movimentação (entrada/saída/ajuste) — normalmente só almoxarifado (e admin)
-router.post(
-  "/estoque/:id/mov",
+// FORM NOVO -> GET /estoque/novo
+router.get(
+  "/novo",
   requireLogin,
-  requireRole(["almoxarifado", "diretoria"]),
+  requireRole(["ALMOXARIFADO", "DIRETORIA", "almoxarifado", "diretoria"]),
+  safe(ctrl.estoqueNewForm, "estoqueNewForm")
+);
+
+// CREATE -> POST /estoque
+router.post(
+  "/",
+  requireLogin,
+  requireRole(["ALMOXARIFADO", "DIRETORIA", "almoxarifado", "diretoria"]),
+  safe(ctrl.estoqueCreate, "estoqueCreate")
+);
+
+// SHOW -> GET /estoque/:id
+router.get("/:id", requireLogin, requireRole(ESTOQUE_ACCESS), safe(ctrl.estoqueShow, "estoqueShow"));
+
+// MOV -> POST /estoque/:id/mov
+router.post(
+  "/:id/mov",
+  requireLogin,
+  requireRole(["ALMOXARIFADO", "DIRETORIA", "almoxarifado", "diretoria"]),
   safe(ctrl.estoqueMovCreate, "estoqueMovCreate")
 );
 
