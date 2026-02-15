@@ -4,6 +4,9 @@ const router = express.Router();
 
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
 
+// Permissões Compras (ADMIN passa automaticamente no middleware)
+const COMPRAS_ACCESS = ["COMPRAS", "DIRETORIA", "ADMIN"];
+
 let ctrl = {};
 try {
   ctrl = require("./compras.controller");
@@ -11,11 +14,6 @@ try {
 } catch (e) {
   console.error("❌ [compras] Falha ao carregar compras.controller:", e.message);
 }
-
-const COMPRAS_ACCESS = [
-  "ADMIN", "DIRETORIA", "COMPRAS", // padrão novo
-  "admin", "diretoria", "compras"  // compatibilidade
-];
 
 const safe = (fn, name) =>
   typeof fn === "function"
@@ -28,14 +26,59 @@ const safe = (fn, name) =>
         }
       }
     : (_req, res) => {
-        console.error(`❌ [compras] Handler ${name} indefinido.`);
+        console.error(`❌ [compras] Handler ${name} indefinido (export errado).`);
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// ======================
-// HOME COMPRAS (lista de compras/recebimentos)
-// GET /compras
-// ======================
+// =====================================================
+// ✅ SOLICITAÇÕES  -> /compras/solicitacoes...
+// =====================================================
+
+// GET  /compras/solicitacoes
+router.get(
+  "/solicitacoes",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.solicitacoesIndex, "solicitacoesIndex")
+);
+
+// GET  /compras/solicitacoes/nova
+router.get(
+  "/solicitacoes/nova",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.solicitacoesNewForm, "solicitacoesNewForm")
+);
+
+// POST /compras/solicitacoes
+router.post(
+  "/solicitacoes",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.solicitacoesCreate, "solicitacoesCreate")
+);
+
+// GET  /compras/solicitacoes/:id
+router.get(
+  "/solicitacoes/:id",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.solicitacoesShow, "solicitacoesShow")
+);
+
+// POST /compras/solicitacoes/:id/status
+router.post(
+  "/solicitacoes/:id/status",
+  requireLogin,
+  requireRole(COMPRAS_ACCESS),
+  safe(ctrl.solicitacoesUpdateStatus, "solicitacoesUpdateStatus")
+);
+
+// =====================================================
+// ✅ COMPRAS (recebimento) -> /compras (lista principal)
+// =====================================================
+
+// GET  /compras
 router.get(
   "/",
   requireLogin,
@@ -43,7 +86,7 @@ router.get(
   safe(ctrl.comprasIndex, "comprasIndex")
 );
 
-// GET /compras/nova
+// GET  /compras/nova
 router.get(
   "/nova",
   requireLogin,
@@ -59,7 +102,7 @@ router.post(
   safe(ctrl.comprasCreate, "comprasCreate")
 );
 
-// GET /compras/:id
+// GET  /compras/:id
 router.get(
   "/:id",
   requireLogin,
@@ -73,45 +116,6 @@ router.post(
   requireLogin,
   requireRole(COMPRAS_ACCESS),
   safe(ctrl.comprasUpdateStatus, "comprasUpdateStatus")
-);
-
-// ======================
-// SOLICITAÇÕES (inbox)
-// /compras/solicitacoes...
-// ======================
-router.get(
-  "/solicitacoes",
-  requireLogin,
-  requireRole(COMPRAS_ACCESS),
-  safe(ctrl.solicitacoesIndex, "solicitacoesIndex")
-);
-
-router.get(
-  "/solicitacoes/nova",
-  requireLogin,
-  requireRole(COMPRAS_ACCESS),
-  safe(ctrl.solicitacoesNewForm, "solicitacoesNewForm")
-);
-
-router.post(
-  "/solicitacoes",
-  requireLogin,
-  requireRole(COMPRAS_ACCESS),
-  safe(ctrl.solicitacoesCreate, "solicitacoesCreate")
-);
-
-router.get(
-  "/solicitacoes/:id",
-  requireLogin,
-  requireRole(COMPRAS_ACCESS),
-  safe(ctrl.solicitacoesShow, "solicitacoesShow")
-);
-
-router.post(
-  "/solicitacoes/:id/status",
-  requireLogin,
-  requireRole(COMPRAS_ACCESS),
-  safe(ctrl.solicitacoesUpdateStatus, "solicitacoesUpdateStatus")
 );
 
 module.exports = router;
