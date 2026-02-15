@@ -1,18 +1,8 @@
+// modules/preventivas/preventivas.routes.js
 const express = require("express");
 const router = express.Router();
 
-// RBAC
-let requireRole = null;
-try {
-  requireRole = require("../auth/auth.middleware").requireRole;
-} catch (e) {
-  console.error("❌ [preventivas] Falha ao carregar auth.middleware:", e.message);
-}
-
-const safeRequireRole =
-  typeof requireRole === "function"
-    ? requireRole
-    : () => (_req, res) => res.status(500).send("Erro interno: requireRole indefinido.");
+const { requireLogin, requireRole } = require("../auth/auth.middleware");
 
 // controller
 let ctrl = {};
@@ -25,24 +15,73 @@ try {
 
 const safe = (fn, name) =>
   typeof fn === "function"
-    ? fn
+    ? (req, res, next) => {
+        try {
+          res.locals.activeMenu = "preventivas";
+          return fn(req, res, next);
+        } catch (err) {
+          return next(err);
+        }
+      }
     : (_req, res) => {
         console.error(`❌ [preventivas] Handler ${name} indefinido (export errado).`);
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// Quem pode ver preventivas
+// Quem pode ver preventivas (ajuste se quiser)
 const PREV_ACCESS = ["ADMIN", "MECANICO", "PRODUCAO", "DIRETORIA", "RH"];
 
-// Rotas
-router.get("/preventivas", safeRequireRole(PREV_ACCESS), safe(ctrl.index, "index"));
-router.get("/preventivas/nova", safeRequireRole(["ADMIN", "MECANICO"]), safe(ctrl.newForm, "newForm"));
-router.post("/preventivas", safeRequireRole(["ADMIN", "MECANICO"]), safe(ctrl.create, "create"));
+// =====================================================
+// ✅ ROTAS (prefixo já é /preventivas no server.js)
+// Então aqui é: /, /nova, /:id...
+// =====================================================
 
-router.get("/preventivas/:id", safeRequireRole(PREV_ACCESS), safe(ctrl.show, "show"));
+// GET  /preventivas
+router.get(
+  "/",
+  requireLogin,
+  requireRole(PREV_ACCESS),
+  safe(ctrl.index, "index")
+);
 
-// Execuções do plano
-router.post("/preventivas/:id/execucoes", safeRequireRole(["ADMIN", "MECANICO"]), safe(ctrl.execCreate, "execCreate"));
-router.post("/preventivas/:id/execucoes/:execId/status", safeRequireRole(["ADMIN", "MECANICO"]), safe(ctrl.execUpdateStatus, "execUpdateStatus"));
+// GET  /preventivas/nova
+router.get(
+  "/nova",
+  requireLogin,
+  requireRole(["ADMIN", "MECANICO"]),
+  safe(ctrl.newForm, "newForm")
+);
+
+// POST /preventivas
+router.post(
+  "/",
+  requireLogin,
+  requireRole(["ADMIN", "MECANICO"]),
+  safe(ctrl.create, "create")
+);
+
+// GET  /preventivas/:id
+router.get(
+  "/:id",
+  requireLogin,
+  requireRole(PREV_ACCESS),
+  safe(ctrl.show, "show")
+);
+
+// POST /preventivas/:id/execucoes
+router.post(
+  "/:id/execucoes",
+  requireLogin,
+  requireRole(["ADMIN", "MECANICO"]),
+  safe(ctrl.execCreate, "execCreate")
+);
+
+// POST /preventivas/:id/execucoes/:execId/status
+router.post(
+  "/:id/execucoes/:execId/status",
+  requireLogin,
+  requireRole(["ADMIN", "MECANICO"]),
+  safe(ctrl.execUpdateStatus, "execUpdateStatus")
+);
 
 module.exports = router;
