@@ -9,13 +9,11 @@ function getUserByEmail(email) {
       `
       SELECT id, name, email, password_hash, role
       FROM users
-      WHERE lower(email)=lower(?)
+      WHERE lower(email) = lower(?)
       LIMIT 1
     `
     )
     .get(email);
 }
 
-module.exports = {
-  getUserByEmail,
-};
+module.exports = { getUserByEmail };
