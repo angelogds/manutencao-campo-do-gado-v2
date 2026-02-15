@@ -4,45 +4,32 @@
   <div class="card auth-card">
     <h2>Entrar</h2>
 
-    <!-- ===== FLASH ERROR ===== -->
-    <% if (typeof flash !== 'undefined' && flash.error && flash.error.length > 0) { %>
+    <% if (flash && flash.error && flash.error.length) { %>
+      <div class="alert alert-error"><%= flash.error[0] %></div>
+    <% } %>
+
+    <% if (flash && flash.success && flash.success.length) { %>
+      <div class="alert alert-success"><%= flash.success[0] %></div>
+    <% } %>
+
+    <% if (lockout) { %>
       <div class="alert alert-error">
-        <%= flash.error[0] %>
+        Muitas tentativas. Aguarde <b><%= lockout.remainingSeconds %></b> segundos e tente novamente.
       </div>
     <% } %>
 
-    <!-- ===== FLASH SUCCESS ===== -->
-    <% if (typeof flash !== 'undefined' && flash.success && flash.success.length > 0) { %>
-      <div class="alert alert-success">
-        <%= flash.success[0] %>
-      </div>
-    <% } %>
-
-    <!-- ===== BLOQUEIO TEMPORÁRIO ===== -->
-    <% if (typeof lockout !== 'undefined' && lockout) { %>
-      <div class="alert alert-error">
-        Muitas tentativas. Aguarde
-        <b><%= lockout.remainingSeconds %></b>
-        segundos e tente novamente.
-      </div>
-    <% } %>
-
-    <!-- ===== TENTATIVAS RESTANTES ===== -->
-    <% if (typeof attemptsLeft !== 'undefined' && attemptsLeft !== null) { %>
+    <% if (attemptsLeft !== null && attemptsLeft !== undefined) { %>
       <div class="alert alert-info">
-        Tentativas restantes:
-        <b><%= attemptsLeft %></b>
+        Tentativas restantes: <b><%= attemptsLeft %></b>
       </div>
     <% } %>
 
-    <!-- ===== FORM LOGIN ===== -->
-    <form action="/auth/login" method="POST" autocomplete="on">
-      
+    <form action="/auth/login" method="POST">
       <label>Email</label>
       <input
         type="email"
         name="email"
-        value="<%= typeof rememberedEmail !== 'undefined' ? rememberedEmail : '' %>"
+        value="<%= rememberedEmail || '' %>"
         required
         autocomplete="email"
       />
@@ -57,6 +44,5 @@
 
       <button type="submit">Entrar</button>
     </form>
-
   </div>
 </section>
