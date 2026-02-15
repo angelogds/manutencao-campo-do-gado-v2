@@ -1,7 +1,7 @@
-
 // server.js
 require("dotenv").config();
 
+// ================= MIGRATIONS =================
 try {
   require("./database/migrate");
   console.log("✅ Migrations carregadas");
@@ -15,25 +15,34 @@ const session = require("express-session");
 const flash = require("connect-flash");
 const engine = require("ejs-mate");
 
+// ✅ helper global de data/hora BR
 const dateUtil = require("./utils/date");
 const fmtBR =
   typeof dateUtil.fmtBR === "function" ? dateUtil.fmtBR : (v) => String(v ?? "-");
 const TZ = dateUtil.TZ || "America/Sao_Paulo";
 
 const app = express();
+
+// ✅ Railway/Proxy (resolve sessão em HTTPS)
 app.set("trust proxy", 1);
 
-// ===== View engine =====
+// ================= VIEW ENGINE =================
 app.engine("ejs", engine);
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
 
-// ===== Middlewares base =====
+// ================= MIDDLEWARES BASE =================
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
 
-// ===== Session + Flash =====
+// ✅ garante req.cookies mesmo sem cookie-parser
+app.use((req, _res, next) => {
+  if (!req.cookies) req.cookies = {};
+  next();
+});
+
+// ================= SESSION + FLASH =================
 app.use(
   session({
     name: process.env.SESSION_COOKIE_NAME || "cg.sid",
@@ -51,7 +60,64 @@ app.use(
 
 app.use(flash());
 
-// ===== Globals (views) =====
+// ================= LOGIN GUARD (req.authGuard) =================
+const MAX_ATTEMPTS = Number(process.env.LOGIN_MAX_ATTEMPTS || 5);
+const LOCK_MINUTES = Number(process.env.LOGIN_LOCK_MINUTES || 5);
+const loginGuardStore = new Map(); // key -> { count, lockUntilTs }
+
+function getIp(req) {
+  const xf = req.headers["x-forwarded-for"];
+  const ip = (xf || req.socket.remoteAddress || "").toString().split(",")[0].trim();
+  return ip || "unknown";
+}
+function guardKey(req, email) {
+  return `${getIp(req)}::${String(email || "").toLowerCase()}`;
+}
+function getGuard(req, email) {
+  const key = guardKey(req, email);
+  const state = loginGuardStore.get(key) || { count: 0, lockUntilTs: 0 };
+  loginGuardStore.set(key, state);
+  return { key, state };
+}
+function isLocked(state) {
+  return state.lockUntilTs && Date.now() < state.lockUntilTs;
+}
+function remainingSeconds(state) {
+  return Math.max(1, Math.ceil((state.lockUntilTs - Date.now()) / 1000));
+}
+function attemptsLeft(state) {
+  return Math.max(0, MAX_ATTEMPTS - Number(state.count || 0));
+}
+
+app.use((req, _res, next) => {
+  req.authGuard = {
+    MAX_ATTEMPTS,
+    LOCK_MINUTES,
+    getIp,
+    guardKey,
+    getGuard,
+    isLocked,
+    remainingSeconds,
+    attemptsLeft,
+    fail(req, email) {
+      const { state } = getGuard(req, email);
+      state.count = Number(state.count || 0) + 1;
+      if (state.count >= MAX_ATTEMPTS) {
+        state.lockUntilTs = Date.now() + LOCK_MINUTES * 60 * 1000;
+      }
+      return state;
+    },
+    success(req, email) {
+      const { state } = getGuard(req, email);
+      state.count = 0;
+      state.lockUntilTs = 0;
+      return state;
+    },
+  };
+  next();
+});
+
+// ================= LOCALS (EJS) =================
 app.locals.TZ = TZ;
 app.locals.fmtBR = fmtBR;
 
@@ -66,39 +132,80 @@ app.use((req, res, next) => {
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
 
-  // evita crash no layout
+  // ✅ blindagens do layout/login
   res.locals.activeMenu = res.locals.activeMenu || "";
+  res.locals.lockout = null;
+  res.locals.attemptsLeft = null;
+  res.locals.rememberedEmail = "";
 
   next();
 });
 
-// ✅ Seeds (admin + escala)
+// ================= SEEDS =================
 try {
   const seed = require("./database/seed");
   if (seed && typeof seed.runSeeds === "function") seed.runSeeds();
-  else if (seed && typeof seed.ensureAdmin === "function") seed.ensureAdmin();
+  if (seed && typeof seed.ensureAdmin === "function") seed.ensureAdmin();
+  if (seed && typeof seed.seedEscala2026 === "function") seed.seedEscala2026();
 } catch (err) {
   console.warn("⚠️ Seed não carregado:", err.message);
 }
 
-// ===== ROTAS (prefixo aqui) =====
-app.use("/auth", require("./modules/auth/auth.routes"));
-app.use("/dashboard", require("./modules/dashboard/dashboard.routes"));
-app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
-app.use("/os", require("./modules/os/os.routes"));
-app.use("/preventivas", require("./modules/preventivas/preventivas.routes"));
-app.use("/compras", require("./modules/compras/compras.routes"));
-app.use("/estoque", require("./modules/estoque/estoque.routes"));
-app.use("/escala", require("./modules/escala/escala.routes"));
-app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
+// ================= HELPERS DE ROTAS =================
+function safeRequire(p) {
+  try {
+    return require(p);
+  } catch (e) {
+    console.warn(`⚠️ Não carregou: ${p} -> ${e.message}`);
+    return null;
+  }
+}
 
-// ===== Home =====
+/**
+ * Monta o mesmo router em múltiplas bases para compatibilidade
+ * (resolve módulos que têm prefixo duplicado dentro do routes.js)
+ */
+function mountBoth(bases, router, label) {
+  if (!router) return;
+  const list = Array.isArray(bases) ? bases : [bases];
+  for (const b of list) {
+    app.use(b, router);
+  }
+  console.log(`✅ Rotas montadas (${label}) em: ${list.join(", ")}`);
+}
+
+// ================= ROTAS =================
+
+// Auth SEMPRE em /auth
+mountBoth("/auth", safeRequire("./modules/auth/auth.routes"), "auth");
+
+// Dashboard: alguns projetos usam /dashboard no router, outros /dashboard/dashboard.
+// Montamos nos 2 lugares para nunca quebrar.
+mountBoth(["/", "/dashboard"], safeRequire("./modules/dashboard/dashboard.routes"), "dashboard");
+
+// Equipamentos / OS / Preventivas / Estoque / Escala / Usuários:
+// Monta em "/" E também no prefixo do módulo, para cobrir ambos estilos.
+mountBoth(["/", "/equipamentos"], safeRequire("./modules/equipamentos/equipamentos.routes"), "equipamentos");
+mountBoth(["/", "/os"], safeRequire("./modules/os/os.routes"), "os");
+mountBoth(["/", "/preventivas"], safeRequire("./modules/preventivas/preventivas.routes"), "preventivas");
+mountBoth(["/", "/estoque"], safeRequire("./modules/estoque/estoque.routes"), "estoque");
+mountBoth(["/", "/escala"], safeRequire("./modules/escala/escala.routes"), "escala");
+mountBoth(["/", "/usuarios"], safeRequire("./modules/usuarios/usuarios.routes"), "usuarios");
+
+// Compras: normalmente é correto em /compras (porque no router você já tem "/" e "/solicitacoes")
+mountBoth("/compras", safeRequire("./modules/compras/compras.routes"), "compras");
+
+// ================= ALIASES (evita 404 por links antigos) =================
+app.get("/login", (_req, res) => res.redirect("/auth/login"));
+app.get("/logout", (_req, res) => res.redirect("/auth/login"));
+
+// Home
 app.get("/", (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
   return res.redirect("/auth/login");
 });
 
-// ===== Health =====
+// Health
 app.get("/health", (_req, res) => {
   res.status(200).json({
     status: "ok",
@@ -108,14 +215,15 @@ app.get("/health", (_req, res) => {
   });
 });
 
-// ===== 404 =====
+// 404
 app.use((_req, res) => res.status(404).send("404 - Página não encontrada"));
 
-// ===== Error handler =====
+// Error handler
 app.use((err, _req, res, _next) => {
   console.error("❌ ERRO:", err);
   res.status(500).send("500 - Erro interno");
 });
 
+// Start
 const port = process.env.PORT || 8080;
 app.listen(port, () => console.log(`🚀 Servidor ativo na porta ${port}`));
