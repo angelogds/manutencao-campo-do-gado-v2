@@ -12,7 +12,15 @@ try {
 
 const safe = (fn, name) =>
   typeof fn === "function"
-    ? fn
+    ? (req, res, next) => {
+        try {
+          // login page não precisa estar logado
+          res.locals.activeMenu = "";
+          return fn(req, res, next);
+        } catch (err) {
+          return next(err);
+        }
+      }
     : (_req, res) => {
         console.error(`❌ [auth] Handler ${name} indefinido.`);
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
