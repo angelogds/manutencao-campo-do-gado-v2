@@ -5,15 +5,12 @@ const authService = require("./auth.service");
 exports.showLogin = (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
 
-  // server.js já garante res.locals.flash e activeMenu,
-  // mas aqui deixamos seguro também
-  const rememberedEmail = req.cookies?.cg_remember_email || "";
-
+  // mantém esses campos pra sua view atualizada
   return res.render("auth/login", {
     title: "Login",
     lockout: null,
     attemptsLeft: null,
-    rememberedEmail,
+    rememberedEmail: "",
   });
 };
 
@@ -21,56 +18,29 @@ exports.doLogin = (req, res) => {
   const email = String(req.body?.email || "").trim().toLowerCase();
   const password = String(req.body?.password || "");
 
-  // ✅ IMPORTANTE: rota correta
   if (!email || !password) {
     req.flash("error", "Informe e-mail e senha.");
     return res.redirect("/auth/login");
   }
 
-  // ✅ login guard (vem do server.js)
-  const g = req.authGuard;
-
-  // se por algum motivo req.authGuard não existir, não quebra login
-  if (!g || typeof g.getGuard !== "function") {
-    console.warn("⚠️ req.authGuard não disponível. Login guard desativado.");
-  } else {
-    const { state } = g.getGuard(req, email);
-
-    if (g.isLocked(state)) {
-      return res.render("auth/login", {
-        title: "Login",
-        lockout: { remainingSeconds: g.remainingSeconds(state) },
-        attemptsLeft: g.attemptsLeft(state),
-        rememberedEmail: email,
-      });
-    }
-  }
-
   const user = authService.getUserByEmail(email);
 
   if (!user) {
-    if (g && typeof g.fail === "function") g.fail(req, email);
     req.flash("error", "Usuário ou senha inválidos.");
-    return res.redirect("/auth/login"); // ✅ rota correta
+    return res.redirect("/auth/login");
   }
 
-  const ok = bcrypt.compareSync(password, user.password_hash);
-
+  const ok = bcrypt.compareSync(password, user.password_hash || "");
   if (!ok) {
-    if (g && typeof g.fail === "function") g.fail(req, email);
     req.flash("error", "Usuário ou senha inválidos.");
-    return res.redirect("/auth/login"); // ✅ rota correta
+    return res.redirect("/auth/login");
   }
 
-  // ✅ sucesso -> zera tentativas
-  if (g && typeof g.success === "function") g.success(req, email);
-
-  // ✅ evita sessão antiga reaproveitada
   req.session.regenerate((err) => {
     if (err) {
       console.error("❌ Erro regenerate session:", err);
       req.flash("error", "Erro ao iniciar sessão. Tente novamente.");
-      return res.redirect("/auth/login"); // ✅ rota correta
+      return res.redirect("/auth/login");
     }
 
     req.session.user = {
@@ -84,10 +54,8 @@ exports.doLogin = (req, res) => {
       if (err2) {
         console.error("❌ Erro session.save:", err2);
         req.flash("error", "Erro ao salvar sessão. Tente novamente.");
-        return res.redirect("/auth/login"); // ✅ rota correta
+        return res.redirect("/auth/login");
       }
-
-      // ✅ vai pro dashboard (rota existe)
       return res.redirect("/dashboard");
     });
   });
@@ -95,10 +63,9 @@ exports.doLogin = (req, res) => {
 
 exports.logout = (req, res) => {
   const sidName = process.env.SESSION_COOKIE_NAME || "cg.sid";
-
   req.session?.destroy((err) => {
     if (err) console.error("❌ Erro ao destruir sessão:", err);
     res.clearCookie(sidName);
-    return res.redirect("/auth/login"); // ✅ rota correta
+    return res.redirect("/auth/login");
   });
 };
