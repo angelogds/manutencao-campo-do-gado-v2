@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-br">
 <head>
@@ -8,13 +7,17 @@
 
   <link rel="stylesheet" href="/css/app.css" />
 
-  <!-- Menu lateral no padrão das views (verde #16a34a) -->
+  <!-- Menu lateral no padrão das views -->
   <style>
     :root{
-      --cg-green: #16a34a;        /* MESMO verde do botão Equipamentos */
-      --cg-green-dark: #15803d;   /* hover do botão */
+      --cg-green: #16a34a;        /* mantém para hover/sombra */
+      --cg-green-dark: #15803d;   /* hover */
       --cg-green-soft: #ecfdf5;   /* fundo suave */
       --cg-border: rgba(22,163,74,.35);
+
+      --cg-white: #ffffff;
+      --cg-white-soft: rgba(255,255,255,.18);
+      --cg-white-border: rgba(255,255,255,.28);
     }
 
     /* Nav item base */
@@ -22,6 +25,7 @@
       position: relative;
       transition: background .15s ease, transform .08s ease, color .15s ease, outline-color .15s ease;
       border-radius:14px;
+      padding-left: 18px; /* espaço padrão */
     }
 
     /* Hover leve */
@@ -31,15 +35,16 @@
       color:#fff;
     }
 
-    /* Ativo com “fio verde” + fundo sutil */
+    /* Ativo com “fio branco” + fundo sutil */
     .nav-item.active{
       background: rgba(255,255,255,.14);
       outline: 1px solid rgba(255,255,255,.18);
       color:#fff;
       font-weight: 800;
+      padding-left: 28px; /* espaço pro fio */
     }
 
-    /* Fio verde (barra na esquerda) */
+    /* Fio branco (barra na esquerda) */
     .nav-item.active::before{
       content:"";
       position:absolute;
@@ -48,13 +53,9 @@
       bottom:10px;
       width:4px;
       border-radius:999px;
-      background: var(--cg-green);
-      box-shadow: 0 0 0 3px rgba(22,163,74,.18);
+      background: var(--cg-white);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.18);
     }
-
-    /* Dá espaço pro fio */
-    .nav-item{ padding-left: 18px; }
-    .nav-item.active{ padding-left: 28px; }
 
     /* Área ADMIN mais leve */
     .nav-section{
@@ -92,7 +93,8 @@
           Preventivas
         </a>
 
-        <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/solicitacoes">
+        <!-- ✅ CORRIGIDO: Compras no prefixo certo -->
+        <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">
           Compras
         </a>
 
@@ -103,8 +105,6 @@
         <a class="nav-item <%= activeMenu === 'escala' ? 'active' : '' %>" href="/escala">
           Escala
         </a>
-
-        <!-- ❌ removido "Usuários" duplicado -->
 
         <div class="nav-divider"></div>
 
@@ -135,7 +135,8 @@
               <span class="pill-role"><%= (user.role || "").toUpperCase() %></span>
             </div>
 
-            <form action="/logout" method="POST" style="margin:0;">
+            <!-- ✅ CORRIGIDO: logout no prefixo /auth -->
+            <form action="/auth/logout" method="POST" style="margin:0;">
               <button class="btn btn-ghost" type="submit">Sair</button>
             </form>
           <% } %>
