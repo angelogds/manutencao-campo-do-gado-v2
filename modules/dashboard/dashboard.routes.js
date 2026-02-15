@@ -27,7 +27,7 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// ✅ rota correta: GET /dashboard
+// ✅ /dashboard
 router.get("/", requireLogin, safe(ctrl.index, "index"));
 
 module.exports = router;
