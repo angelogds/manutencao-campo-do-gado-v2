@@ -1,54 +1,49 @@
-<%- layout("layout") %>
+<%- layout('layout') -%>
 
-<div class="page-head">
+<div class="page-head" style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
   <div>
-    <h1>Escala</h1>
-    <p class="muted">Publicações oficiais (PDF) + escala semanal do sistema.</p>
+    <h1 style="margin:0;">Escala</h1>
+    <p style="margin:6px 0 0;color:#64748b;font-weight:700;">
+      Publicações oficiais (PDF) + escala semanal do sistema.
+    </p>
   </div>
 
-  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-    <a class="btn btn-primary" href="/escala/pdf/semana">Gerar PDF da Semana</a>
-    <a class="btn btn-ghost" href="/dashboard">Voltar</a>
-  </div>
+  <% if (semana) { %>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <a class="btn btn-primary" href="/escala/pdf/semana/<%= semana.id %>">Gerar PDF da Semana</a>
+      <a class="btn" href="/dashboard">Voltar</a>
+    </div>
+  <% } %>
 </div>
 
-<!-- ===========================
-     PUBLICAÇÕES (PDF)
-=========================== -->
-<div class="card" style="margin-bottom:14px;">
-  <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+<!-- Publicações -->
+<div class="card" style="margin-top:14px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
     <div>
-      <div style="font-weight:900; font-size:16px;">Publicações</div>
-      <div class="muted" style="margin-top:6px;">Escalas prontas para consulta (ex.: 2026).</div>
+      <h3 style="margin:0;">Publicações</h3>
+      <div style="color:#64748b;font-weight:700;margin-top:4px;">Escalas prontas para consulta (ex.: 2026).</div>
     </div>
   </div>
 
-  <div class="divider"></div>
-
-  <div class="table-wrap">
+  <div style="margin-top:12px;">
     <table class="table">
       <thead>
         <tr>
           <th>Título</th>
-          <th style="width:170px;">Criada em</th>
-          <th style="width:160px; text-align:right;">Ações</th>
+          <th style="width:160px;">Criada em</th>
+          <th style="width:140px;">Ações</th>
         </tr>
       </thead>
-
       <tbody>
         <% if (!publicacoes || publicacoes.length === 0) { %>
-          <tr>
-            <td colspan="3" class="muted" style="text-align:center; padding:18px;">
-              Nenhuma publicação cadastrada.
-            </td>
-          </tr>
+          <tr><td colspan="3" style="text-align:center;color:#64748b;">Nenhuma publicação cadastrada.</td></tr>
         <% } else { %>
           <% publicacoes.forEach(p => { %>
             <tr>
               <td><%= p.titulo %></td>
-              <td><%= p.created_at ? fmtBR(p.created_at) : "-" %></td>
-              <td style="text-align:right;">
-                <a class="btn btn-primary btn-sm" target="_blank" href="<%= p.arquivo_url %>">Abrir PDF</a>
+              <td><%= (p.created_at || '').slice(0,10) %></td>
+              <td>
+                <a class="btn btn-sm" href="/escala/publicacoes/<%= p.id %>">Abrir</a>
               </td>
             </tr>
           <% }) %>
@@ -58,50 +53,59 @@
   </div>
 </div>
 
-<!-- ===========================
-     SEMANA ATUAL (DB)
-=========================== -->
-<div class="card">
-  <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+<!-- Semana do sistema -->
+<div class="card" style="margin-top:14px;">
+  <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;">
     <div>
-      <div style="font-weight:900; font-size:16px;">Semana do Sistema</div>
-      <div class="muted" style="margin-top:6px;">Período: <strong><%= rangeLabel %></strong></div>
+      <h3 style="margin:0;">Semana do Sistema</h3>
+      <% if (semana) { %>
+        <div style="margin-top:6px;color:#334155;font-weight:800;">
+          Período: <%= semana.data_inicio %> até <%= semana.data_fim %>
+        </div>
+      <% } else { %>
+        <div style="margin-top:6px;color:#b91c1c;font-weight:900;">
+          Sem semana cadastrada para esta data.
+        </div>
+      <% } %>
     </div>
 
-    <form method="GET" action="/escala" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <input class="input" type="date" name="week" value="<%= week %>" style="max-width:190px;" />
-      <button class="btn btn-ghost btn-sm" type="submit">Ir</button>
-      <a class="btn btn-ghost btn-sm" href="/escala">Hoje</a>
-    </form>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <form method="GET" action="/escala" style="display:flex;gap:8px;align-items:center;">
+        <input type="date" name="date" value="<%= alvo %>" class="input" style="height:38px;">
+        <button class="btn btn-sm" type="submit">Ir</button>
+        <a class="btn btn-sm" href="/escala?date=<%= (new Date()).toISOString().slice(0,10) %>">Hoje</a>
+      </form>
+    </div>
   </div>
 
-  <div class="divider"></div>
-
-  <div class="table-wrap">
+  <div style="margin-top:12px;">
     <table class="table">
       <thead>
         <tr>
-          <th style="width:170px;">Data</th>
+          <th style="width:160px;">Data</th>
           <th>Colaborador</th>
-          <th style="width:180px;">Turno</th>
-          <th style="width:180px;">Setor</th>
+          <th style="width:140px;">Turno</th>
+          <th style="width:160px;">Setor</th>
+          <th style="width:240px;">Status</th>
+          <th style="width:120px;">Ações</th>
         </tr>
       </thead>
-
       <tbody>
-        <% if (!semana || semana.length === 0) { %>
+        <% if (!semana || !semana.linhas || semana.linhas.length === 0) { %>
           <tr>
-            <td colspan="4" class="muted" style="text-align:center; padding:18px;">
-              Nenhum item cadastrado nesta semana.
-            </td>
+            <td colspan="6" style="text-align:center;color:#64748b;">Nenhum item cadastrado nesta semana.</td>
           </tr>
         <% } else { %>
-          <% semana.forEach(i => { %>
+          <% semana.linhas.forEach(l => { %>
             <tr>
-              <td><%= i.data ? fmtBR(i.data) : "-" %></td>
-              <td><%= i.colaborador || "-" %></td>
-              <td><%= i.turno || "-" %></td>
-              <td><%= i.setor || "-" %></td>
+              <td><%= semana.data_inicio %> a <%= semana.data_fim %></td>
+              <td style="font-weight:900;"><%= l.nome %></td>
+              <td><%= l.turnoLabel %></td>
+              <td><%= l.setor %></td>
+              <td><%= l.statusLabel %></td>
+              <td>
+                <a class="btn btn-sm" href="/escala/editar/<%= semana.id %>">Editar</a>
+              </td>
             </tr>
           <% }) %>
         <% } %>
@@ -109,33 +113,70 @@
     </table>
   </div>
 
-  <!-- (Opcional) form simples de adicionar item -->
-  <div class="divider"></div>
-  <div class="muted" style="margin-bottom:10px;">Adicionar rápido (opcional):</div>
+  <hr style="margin:16px 0;border:0;border-top:1px solid #e5e7eb;">
 
-  <form method="POST" action="/escala" class="row" style="align-items:flex-end;">
-    <div style="flex:1; min-width:180px;">
-      <div class="label">Data</div>
-      <input class="input" type="date" name="data" required />
+  <!-- Adicionar rápido -->
+  <h4 style="margin:0 0 10px;">Adicionar rápido (opcional):</h4>
+  <form method="POST" action="/escala/adicionar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+    <input type="hidden" name="date" value="<%= alvo %>">
+    <div style="min-width:200px;">
+      <div class="label">DATA</div>
+      <input class="input" type="date" name="date" value="<%= alvo %>">
+    </div>
+    <div style="flex:1;min-width:220px;">
+      <div class="label">COLABORADOR</div>
+      <input class="input" name="nome" placeholder="Ex.: Emanuel">
+    </div>
+    <div style="min-width:180px;">
+      <div class="label">TURNO</div>
+      <select class="input" name="turno">
+        <option value="">Selecione</option>
+        <option value="Dia">Dia</option>
+        <option value="Noite">Noite</option>
+        <option value="Apoio">Apoio</option>
+      </select>
+    </div>
+    <div style="min-width:220px;">
+      <div class="label">SETOR</div>
+      <input class="input" name="setor" value="Manutenção">
     </div>
 
-    <div style="flex:2; min-width:220px;">
-      <div class="label">Colaborador</div>
-      <input class="input" name="colaborador" placeholder="Ex.: Emanuel" required />
-    </div>
-
-    <div style="flex:1; min-width:160px;">
-      <div class="label">Turno</div>
-      <input class="input" name="turno" placeholder="Dia / Noite" />
-    </div>
-
-    <div style="flex:1; min-width:160px;">
-      <div class="label">Setor</div>
-      <input class="input" name="setor" placeholder="Manutenção / Produção" />
-    </div>
-
-    <div>
-      <button class="btn btn-primary" type="submit">Salvar</button>
-    </div>
+    <button class="btn btn-primary" type="submit">Salvar</button>
   </form>
+
+  <hr style="margin:16px 0;border:0;border-top:1px solid #e5e7eb;">
+
+  <!-- Folga / Atestado -->
+  <h4 style="margin:0 0 10px;">Folga / Atestado (por período):</h4>
+  <form method="POST" action="/escala/ausencia" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+    <input type="hidden" name="date" value="<%= alvo %>">
+    <div style="flex:1;min-width:220px;">
+      <div class="label">COLABORADOR</div>
+      <input class="input" name="nome" placeholder="Ex.: Diogo">
+    </div>
+    <div style="min-width:180px;">
+      <div class="label">TIPO</div>
+      <select class="input" name="tipo">
+        <option value="folga">Folga</option>
+        <option value="atestado">Atestado</option>
+      </select>
+    </div>
+    <div style="min-width:200px;">
+      <div class="label">INÍCIO</div>
+      <input class="input" type="date" name="inicio">
+    </div>
+    <div style="min-width:200px;">
+      <div class="label">FIM</div>
+      <input class="input" type="date" name="fim">
+    </div>
+    <div style="flex:1;min-width:220px;">
+      <div class="label">MOTIVO (opcional)</div>
+      <input class="input" name="motivo" placeholder="Ex.: Atestado médico / Folga programada">
+    </div>
+    <button class="btn btn-primary" type="submit">Lançar</button>
+  </form>
+
+  <div style="margin-top:14px;color:#64748b;font-weight:700;">
+    PDF por período: use <code>/escala/pdf?start=YYYY-MM-DD&end=YYYY-MM-DD</code>
+  </div>
 </div>
