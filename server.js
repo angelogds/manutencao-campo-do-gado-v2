@@ -1,7 +1,6 @@
 // server.js
 require("dotenv").config();
 
-// aplica migrations
 try {
   require("./database/migrate");
   console.log("✅ Migrations carregadas");
@@ -15,12 +14,9 @@ const session = require("express-session");
 const flash = require("connect-flash");
 const engine = require("ejs-mate");
 
-// helper global de data/hora
 const dateUtil = require("./utils/date");
 const fmtBR =
-  typeof dateUtil.fmtBR === "function"
-    ? dateUtil.fmtBR
-    : (v) => String(v ?? "-");
+  typeof dateUtil.fmtBR === "function" ? dateUtil.fmtBR : (v) => String(v ?? "-");
 const TZ = dateUtil.TZ || "America/Sao_Paulo";
 
 const app = express();
@@ -54,7 +50,7 @@ app.use(
 
 app.use(flash());
 
-// ===== Globals =====
+// ===== Globals (views) =====
 app.locals.TZ = TZ;
 app.locals.fmtBR = fmtBR;
 
@@ -66,21 +62,16 @@ app.use((req, res, next) => {
     error: req.flash("error") || [],
   };
 
-  // blindagens para views/layout
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
 
-  res.locals.lockout = null;
-  res.locals.attemptsLeft = null;
-  res.locals.rememberedEmail = "";
-
-  // ✅ sempre definido para evitar “activeMenu is not defined”
+  // evita crash no layout
   res.locals.activeMenu = res.locals.activeMenu || "";
 
   next();
 });
 
-// ===== Seeds (admin + escala) =====
+// ✅ Seeds (admin + escala)
 try {
   const seed = require("./database/seed");
   if (seed && typeof seed.runSeeds === "function") seed.runSeeds();
@@ -89,27 +80,16 @@ try {
   console.warn("⚠️ Seed não carregado:", err.message);
 }
 
-// ===== Aliases (evita erro por links antigos) =====
-app.get("/login", (_req, res) => res.redirect("/auth/login"));
-app.post("/logout", (req, res) => {
-  // encaminha para rota oficial
-  req.url = "/logout";
-  return require("./modules/auth/auth.routes")(req, res);
-});
-
-// ===== Rotas =====
+// ===== ROTAS (prefixo aqui) =====
 app.use("/auth", require("./modules/auth/auth.routes"));
-
-// ✅ IMPORTANTE: dashboard routes agora é "/"
 app.use("/dashboard", require("./modules/dashboard/dashboard.routes"));
-
+app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
+app.use("/os", require("./modules/os/os.routes"));
+app.use("/preventivas", require("./modules/preventivas/preventivas.routes"));
 app.use("/compras", require("./modules/compras/compras.routes"));
 app.use("/estoque", require("./modules/estoque/estoque.routes"));
-app.use("/os", require("./modules/os/os.routes"));
-app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
-app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
-app.use("/preventivas", require("./modules/preventivas/preventivas.routes"));
 app.use("/escala", require("./modules/escala/escala.routes"));
+app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
 
 // ===== Home =====
 app.get("/", (req, res) => {
@@ -137,4 +117,4 @@ app.use((err, _req, res, _next) => {
 });
 
 const port = process.env.PORT || 8080;
-app.listen(port, () => console.log(`🚀 Servidor rodando na porta ${port}`));
+app.listen(port, () => console.log(`🚀 Servidor ativo na porta ${port}`));
