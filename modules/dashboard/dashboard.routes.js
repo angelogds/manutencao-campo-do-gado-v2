@@ -23,11 +23,11 @@ const safe = (fn, name) =>
         }
       }
     : (_req, res) => {
-        console.error(`❌ [dashboard] Handler ${name} indefinido.`);
+        console.error(`❌ [dashboard] Handler ${name} indefinido (export errado).`);
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// ✅ /dashboard
+// ✅ GET /dashboard
 router.get("/", requireLogin, safe(ctrl.index, "index"));
 
 module.exports = router;
