@@ -16,7 +16,6 @@ const safe = (fn, name) =>
   typeof fn === "function"
     ? (req, res, next) => {
         try {
-          // ✅ garante activeMenu no layout
           res.locals.activeMenu = "dashboard";
           return fn(req, res, next);
         } catch (err) {
@@ -24,13 +23,15 @@ const safe = (fn, name) =>
         }
       }
     : (_req, res) => {
-        console.error(`❌ [dashboard] Handler ${name} indefinido (export errado).`);
+        console.error(`❌ [dashboard] Handler ${name} indefinido.`);
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// ✅ Dashboard principal
-// Como no server.js está: app.use("/dashboard", ...)
-// então aqui a rota é só "/"
+// ⚠️ IMPORTANTE:
+// Como no server.js temos:
+// app.use("/dashboard", require(...))
+// aqui a rota é SOMENTE "/"
+
 router.get("/", requireLogin, safe(ctrl.index, "index"));
 
 module.exports = router;
