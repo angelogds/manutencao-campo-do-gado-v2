@@ -1,14 +1,21 @@
+// modules/auth/auth.service.js
 const db = require("../../database/db");
 
-exports.getUserByEmail = (email) => {
+function getUserByEmail(email) {
+  if (!email) return null;
+
   return db
     .prepare(
       `
-    SELECT id, name, email, role, password_hash
-    FROM users
-    WHERE lower(email) = lower(?)
-    LIMIT 1
-  `
+      SELECT id, name, email, password_hash, role
+      FROM users
+      WHERE lower(email)=lower(?)
+      LIMIT 1
+    `
     )
     .get(email);
+}
+
+module.exports = {
+  getUserByEmail,
 };
