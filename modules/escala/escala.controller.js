@@ -1,198 +1,221 @@
-// modules/escala/escala.controller.js
-const db = require("../../database/db");
+const service = require("./escala.service");
+const PDFDocument = require("pdfkit");
 
-// helpers
-function toISODate(d) {
-  const dt = new Date(d);
-  const y = dt.getFullYear();
-  const m = String(dt.getMonth() + 1).padStart(2, "0");
-  const day = String(dt.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+function isoToday() {
+  return new Date().toISOString().slice(0, 10);
 }
 
-function startOfWeekISO(date = new Date()) {
-  // semana segunda->domingo (Brasil)
-  const d = new Date(date);
-  const day = d.getDay(); // 0 dom .. 6 sab
-  const diff = (day === 0 ? -6 : 1 - day);
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function endOfWeekISO(date = new Date()) {
-  const s = startOfWeekISO(date);
-  const e = new Date(s);
-  e.setDate(e.getDate() + 6);
-  e.setHours(23, 59, 59, 999);
-  return e;
-}
-
-// ========= PUBLICAÇÕES (PDF) =========
-function listPublicacoes() {
-  const hasTable = db
-    .prepare(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name='escala_publicacoes'`
-    )
-    .get();
-
-  if (!hasTable) return [];
-
-  return db
-    .prepare(
-      `
-      SELECT id, slug, titulo, arquivo_url, ativo, created_at
-      FROM escala_publicacoes
-      WHERE ativo = 1
-      ORDER BY id DESC
-    `
-    )
-    .all();
-}
-
-// ========= ITENS SEMANAIS (DB) =========
-// ⚠️ Ajuste os nomes conforme seu schema 060_escala.sql / 061_escala_link_user.sql
-// Eu deixei genérico e “blindado”.
-function listSemana({ inicio, fim }) {
-  // tenta várias colunas para compatibilidade
-  // - data / dia / data_ref
-  // - nome / colaborador / funcionario
-  // - turno / periodo
-  // - setor
-  const cols = db
-    .prepare(`PRAGMA table_info(escala_itens)`)
-    .all()
-    .map((c) => c.name);
-
-  const has = (c) => cols.includes(c);
-
-  if (!cols.length) return [];
-
-  const colData = has("data")
-    ? "data"
-    : has("dia")
-    ? "dia"
-    : has("data_ref")
-    ? "data_ref"
-    : null;
-
-  const colNome = has("colaborador")
-    ? "colaborador"
-    : has("nome")
-    ? "nome"
-    : has("funcionario")
-    ? "funcionario"
-    : null;
-
-  const colTurno = has("turno")
-    ? "turno"
-    : has("periodo")
-    ? "periodo"
-    : null;
-
-  const colSetor = has("setor") ? "setor" : null;
-
-  if (!colData) return [];
-
-  const selectParts = [
-    `id`,
-    `${colData} as data`,
-    colNome ? `${colNome} as colaborador` : `NULL as colaborador`,
-    colTurno ? `${colTurno} as turno` : `NULL as turno`,
-    colSetor ? `${colSetor} as setor` : `NULL as setor`,
-  ];
-
-  const sql = `
-    SELECT ${selectParts.join(", ")}
-    FROM escala_itens
-    WHERE date(${colData}) BETWEEN date(?) AND date(?)
-    ORDER BY date(${colData}) ASC, id ASC
-  `;
-
-  return db.prepare(sql).all(inicio, fim);
-}
-
-exports.index = (req, res) => {
-  res.locals.activeMenu = "escala";
-
-  const qWeek = String(req.query?.week || "").trim();
-  const base = qWeek ? new Date(qWeek) : new Date();
-
-  const ini = startOfWeekISO(base);
-  const fim = endOfWeekISO(base);
-
-  const inicioISO = toISODate(ini);
-  const fimISO = toISODate(fim);
-
-  const publicacoes = listPublicacoes();
-  let semana = [];
+exports.index = (req, res, next) => {
   try {
-    // se não existir tabela escala_itens, não quebra
-    const hasItens = db
-      .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='escala_itens'`)
-      .get();
-    if (hasItens) semana = listSemana({ inicio: inicioISO, fim: fimISO });
+    res.locals.activeMenu = "escala";
+
+    const date = String(req.query?.date || "").slice(0, 10);
+    const alvo = date || isoToday();
+
+    const semana = service.getSemanaPorData(alvo);
+    const publicacoes = service.getPublicacoes();
+
+    return res.render("escala/index", {
+      title: "Escala",
+      alvo,
+      semana,
+      publicacoes,
+    });
   } catch (e) {
-    console.warn("⚠️ Escala semanal não carregada:", e.message);
-  }
-
-  return res.render("escala/index", {
-    title: "Escala",
-    publicacoes,
-    semana,
-    week: inicioISO,
-    rangeLabel: `${inicioISO} até ${fimISO}`,
-  });
-};
-
-// (Opcional) Criar item manual — você pode expandir depois.
-exports.create = (req, res) => {
-  res.locals.activeMenu = "escala";
-
-  try {
-    const { data, colaborador, turno, setor } = req.body || {};
-    if (!data || !colaborador) {
-      req.flash("error", "Informe pelo menos Data e Colaborador.");
-      return res.redirect("/escala");
-    }
-
-    const cols = db.prepare(`PRAGMA table_info(escala_itens)`).all().map((c) => c.name);
-    const has = (c) => cols.includes(c);
-
-    const colData = has("data") ? "data" : has("dia") ? "dia" : "data_ref";
-    const colNome = has("colaborador") ? "colaborador" : has("nome") ? "nome" : "funcionario";
-    const colTurno = has("turno") ? "turno" : has("periodo") ? "periodo" : null;
-    const colSetor = has("setor") ? "setor" : null;
-
-    const fields = [colData, colNome];
-    const values = [data, colaborador];
-
-    if (colTurno) {
-      fields.push(colTurno);
-      values.push(turno || "");
-    }
-    if (colSetor) {
-      fields.push(colSetor);
-      values.push(setor || "");
-    }
-
-    const placeholders = fields.map(() => "?").join(", ");
-
-    db.prepare(
-      `INSERT INTO escala_itens (${fields.join(", ")}) VALUES (${placeholders})`
-    ).run(...values);
-
-    req.flash("success", "Item adicionado na escala.");
-    return res.redirect("/escala");
-  } catch (e) {
-    console.error("❌ Escala create:", e);
-    req.flash("error", "Erro ao salvar item da escala.");
-    return res.redirect("/escala");
+    next(e);
   }
 };
 
-// Mantive como “stub” para você ligar no seu PDF real depois
-exports.pdfSemana = (req, res) => {
-  // Se você já tem implementação, pode substituir esta função
-  return res.status(200).send("pdfSemana: implementar/ligar no gerador atual.");
+exports.completa = (req, res, next) => {
+  try {
+    res.locals.activeMenu = "escala";
+    const semanas = service.getEscalaCompletaComTimes();
+    return res.render("escala/completa", { title: "Escala Completa", semanas });
+  } catch (e) {
+    next(e);
+  }
+};
+
+exports.adicionarRapido = (req, res, next) => {
+  try {
+    const date = String(req.body?.date || "").slice(0, 10) || isoToday();
+    const nome = String(req.body?.nome || "").trim();
+    const turno = String(req.body?.turno || "").trim().toLowerCase(); // dia/noite/apoio
+    const setor = String(req.body?.setor || "Manutenção").trim();
+
+    if (!nome) {
+      req.flash("error", "Informe o nome do colaborador.");
+      return res.redirect(`/escala?date=${date}`);
+    }
+
+    const tipo_turno =
+      turno === "noite" ? "noturno" :
+      turno === "dia" ? "diurno" :
+      turno === "apoio" ? "apoio" :
+      "";
+
+    if (!tipo_turno) {
+      req.flash("error", "Turno inválido. Use: Dia, Noite ou Apoio.");
+      return res.redirect(`/escala?date=${date}`);
+    }
+
+    service.adicionarRapido({ date, nome, tipo_turno, setor });
+
+    req.flash("success", "Adicionado com sucesso na semana do sistema.");
+    return res.redirect(`/escala?date=${date}`);
+  } catch (e) {
+    next(e);
+  }
+};
+
+exports.lancarAusencia = (req, res, next) => {
+  try {
+    const date = String(req.body?.date || "").slice(0, 10) || isoToday();
+    const nome = String(req.body?.nome || "").trim();
+    const tipo = String(req.body?.tipo || "").trim().toLowerCase(); // folga | atestado
+    const inicio = String(req.body?.inicio || "").slice(0, 10);
+    const fim = String(req.body?.fim || "").slice(0, 10);
+    const motivo = String(req.body?.motivo || "").trim();
+
+    if (!nome || !inicio || !fim || !tipo) {
+      req.flash("error", "Preencha: Nome, Tipo (folga/atestado), Início e Fim.");
+      return res.redirect(`/escala?date=${date}`);
+    }
+
+    if (inicio > fim) {
+      req.flash("error", "Data início não pode ser maior que data fim.");
+      return res.redirect(`/escala?date=${date}`);
+    }
+
+    if (tipo !== "folga" && tipo !== "atestado") {
+      req.flash("error", "Tipo inválido (use folga ou atestado).");
+      return res.redirect(`/escala?date=${date}`);
+    }
+
+    service.lancarAusencia({ nome, tipo, inicio, fim, motivo });
+
+    req.flash("success", "Ausência lançada. A semana já vai reconhecer automaticamente.");
+    return res.redirect(`/escala?date=${date}`);
+  } catch (e) {
+    next(e);
+  }
+};
+
+exports.editarSemana = (req, res, next) => {
+  try {
+    res.locals.activeMenu = "escala";
+    const semanaId = Number(req.params.id);
+    const semana = service.getSemanaById(semanaId);
+    if (!semana) return res.status(404).send("Semana não encontrada");
+
+    return res.render("escala/editar", { title: "Editar Semana", semana });
+  } catch (e) {
+    next(e);
+  }
+};
+
+exports.salvarEdicao = (req, res, next) => {
+  try {
+    const semanaId = Number(req.params.id);
+    const alocacaoId = Number(req.body?.alocacaoId);
+    const novoTurno = String(req.body?.novoTurno || "").trim().toLowerCase();
+
+    const tipo_turno =
+      novoTurno === "noturno" || novoTurno === "noite" ? "noturno" :
+      novoTurno === "diurno" || novoTurno === "dia" ? "diurno" :
+      novoTurno === "apoio" ? "apoio" :
+      novoTurno === "folga" ? "folga" :
+      novoTurno === "plantao" ? "plantao" :
+      "";
+
+    if (!alocacaoId || !tipo_turno) {
+      req.flash("error", "Dados inválidos para edição.");
+      return res.redirect(`/escala/editar/${semanaId}`);
+    }
+
+    service.atualizarTurno(alocacaoId, tipo_turno);
+
+    req.flash("success", "Turno atualizado.");
+    return res.redirect(`/escala/editar/${semanaId}`);
+  } catch (e) {
+    next(e);
+  }
+};
+
+exports.pdfSemana = (req, res, next) => {
+  try {
+    const semanaId = Number(req.params.id);
+    const semana = service.getSemanaById(semanaId);
+    if (!semana) return res.status(404).send("Semana não encontrada");
+
+    const doc = new PDFDocument({ margin: 36 });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename=escala-semana-${semana.semana_numero}.pdf`
+    );
+
+    doc.pipe(res);
+
+    doc.fontSize(16).text("CAMPO DO GADO - ESCALA SEMANAL", { align: "center" });
+    doc.moveDown(0.6);
+    doc.fontSize(11).text(`Semana: ${semana.semana_numero}`);
+    doc.text(`Período: ${semana.data_inicio} até ${semana.data_fim}`);
+    doc.text(`Setor: Manutenção`);
+    doc.moveDown(0.8);
+
+    const linhas = service.getLinhasSemanaComStatus(semanaId);
+
+    doc.fontSize(12).text("Colaboradores da Semana", { underline: true });
+    doc.moveDown(0.4);
+
+    linhas.forEach((l) => {
+      doc.fontSize(11).text(`${l.nome}  |  ${l.turnoLabel}  |  ${l.setor}  |  ${l.statusLabel}`);
+    });
+
+    doc.moveDown(1);
+    doc.fontSize(9).text(`Gerado em: ${new Date().toISOString()}`, { align: "right" });
+
+    doc.end();
+  } catch (e) {
+    next(e);
+  }
+};
+
+exports.pdfPeriodo = (req, res, next) => {
+  try {
+    const start = String(req.query?.start || "").slice(0, 10);
+    const end = String(req.query?.end || "").slice(0, 10);
+
+    if (!start || !end) {
+      return res.status(400).send("Informe start e end (YYYY-MM-DD).");
+    }
+    if (start > end) return res.status(400).send("start não pode ser maior que end.");
+
+    const semanas = service.getSemanasNoPeriodo(start, end);
+
+    const doc = new PDFDocument({ margin: 36 });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=escala-${start}-ate-${end}.pdf`);
+    doc.pipe(res);
+
+    doc.fontSize(16).text("CAMPO DO GADO - ESCALA POR PERÍODO", { align: "center" });
+    doc.moveDown(0.6);
+    doc.fontSize(11).text(`Período solicitado: ${start} até ${end}`);
+    doc.text("Setor: Manutenção");
+    doc.moveDown(0.8);
+
+    semanas.forEach((semana) => {
+      doc.fontSize(12).text(`Semana ${semana.semana_numero} (${semana.data_inicio} a ${semana.data_fim})`, { underline: true });
+      const linhas = service.getLinhasSemanaComStatus(semana.id);
+      doc.moveDown(0.2);
+      linhas.forEach((l) => doc.fontSize(10).text(`- ${l.nome} | ${l.turnoLabel} | ${l.statusLabel}`));
+      doc.moveDown(0.6);
+    });
+
+    doc.end();
+  } catch (e) {
+    next(e);
+  }
 };
