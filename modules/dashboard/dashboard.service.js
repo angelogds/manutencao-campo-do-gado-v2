@@ -1,55 +1,54 @@
 // modules/dashboard/dashboard.service.js
 const db = require("../../database/db");
-const escalaService = require("../escala/escala.service");
+
+// ⚠️ pega o serviço correto da escala
+let escalaService = null;
+try {
+  escalaService = require("../escala/escala.service");
+} catch (e) {
+  console.warn("⚠️ [dashboard] escala.service não carregou:", e.message);
+}
 
 function getCards() {
-  // OS abertas
-  const os =
-    db
-      .prepare(
-        `
-        SELECT COUNT(*) AS total
-        FROM os
-        WHERE status IN ('ABERTA','ANDAMENTO','PAUSADA')
+  const os = db
+    .prepare(
       `
-      )
-      .get()?.total || 0;
+      SELECT COUNT(*) AS total
+      FROM os
+      WHERE status IN ('ABERTA','ANDAMENTO','PAUSADA')
+    `
+    )
+    .get()?.total || 0;
 
-  // Compras abertas (status do seu 050 é minúsculo)
-  const compras =
-    db
-      .prepare(
-        `
-        SELECT COUNT(*) AS total
-        FROM solicitacoes_compra
-        WHERE status IN ('aberta','cotacao','aprovada')
+  const compras = db
+    .prepare(
       `
-      )
-      .get()?.total || 0;
+      SELECT COUNT(*) AS total
+      FROM solicitacoes_compra
+      WHERE status IN ('aberta','cotacao','aprovada')
+    `
+    )
+    .get()?.total || 0;
 
-  // Itens estoque
-  const itens =
-    db
-      .prepare(
-        `
-        SELECT COUNT(*) AS total
-        FROM estoque_itens
-        WHERE ativo = 1
+  const itens = db
+    .prepare(
       `
-      )
-      .get()?.total || 0;
+      SELECT COUNT(*) AS total
+      FROM estoque_itens
+      WHERE ativo = 1
+    `
+    )
+    .get()?.total || 0;
 
-  // Equipamentos
-  const equip =
-    db
-      .prepare(
-        `
-        SELECT COUNT(*) AS total
-        FROM equipamentos
-        WHERE ativo = 1
+  const equip = db
+    .prepare(
       `
-      )
-      .get()?.total || 0;
+      SELECT COUNT(*) AS total
+      FROM equipamentos
+      WHERE ativo = 1
+    `
+    )
+    .get()?.total || 0;
 
   return {
     os_abertas: os,
@@ -60,36 +59,11 @@ function getCards() {
 }
 
 function getPlantaoAgora() {
-  // ✅ Blindagem total: se não existir, não derruba o dashboard
+  // Se ainda não existir na escala.service, não derruba o dashboard
   if (!escalaService || typeof escalaService.getPlantaoAgora !== "function") {
-    return {
-      ok: false,
-      message: "getPlantaoAgora() ainda não está disponível no escala.service.",
-      semana: null,
-      times: { noturno: [], diurno: [], apoio: [], plantao: [], folga: [] },
-    };
+    return null;
   }
-
-  try {
-    const result = escalaService.getPlantaoAgora();
-    // ✅ garante estrutura mínima
-    return (
-      result || {
-        ok: false,
-        message: "Sem dados de plantão.",
-        semana: null,
-        times: { noturno: [], diurno: [], apoio: [], plantao: [], folga: [] },
-      }
-    );
-  } catch (err) {
-    console.error("❌ Erro getPlantaoAgora (dashboard.service):", err);
-    return {
-      ok: false,
-      message: "Erro ao carregar plantão da escala.",
-      semana: null,
-      times: { noturno: [], diurno: [], apoio: [], plantao: [], folga: [] },
-    };
-  }
+  return escalaService.getPlantaoAgora();
 }
 
 module.exports = { getCards, getPlantaoAgora };
