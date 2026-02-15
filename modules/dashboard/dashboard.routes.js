@@ -14,12 +14,21 @@ try {
 
 const safe = (fn, name) =>
   typeof fn === "function"
-    ? fn
+    ? (req, res, next) => {
+        try {
+          // ✅ garante activeMenu no layout
+          res.locals.activeMenu = "dashboard";
+          return fn(req, res, next);
+        } catch (err) {
+          return next(err);
+        }
+      }
     : (_req, res) => {
         console.error(`❌ [dashboard] Handler ${name} indefinido (export errado).`);
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
+// ✅ Dashboard principal
 router.get("/dashboard", requireLogin, safe(ctrl.index, "index"));
 
 module.exports = router;
