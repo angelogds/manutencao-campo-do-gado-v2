@@ -1,3 +1,4 @@
+
 // server.js
 require("dotenv").config();
 
@@ -76,54 +77,20 @@ try {
   const seed = require("./database/seed");
   if (seed && typeof seed.runSeeds === "function") seed.runSeeds();
   else if (seed && typeof seed.ensureAdmin === "function") seed.ensureAdmin();
-  if (seed && typeof seed.seedEscala2026 === "function") seed.seedEscala2026();
 } catch (err) {
   console.warn("⚠️ Seed não carregado:", err.message);
 }
 
-// =====================================================
-// ✅ ROTAS
-// =====================================================
-
-// Auth fica em /auth
+// ===== ROTAS (prefixo aqui) =====
 app.use("/auth", require("./modules/auth/auth.routes"));
-
-// Compras fica em /compras (porque o compras.routes usa "/" e "/solicitacoes")
+app.use("/dashboard", require("./modules/dashboard/dashboard.routes"));
+app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
+app.use("/os", require("./modules/os/os.routes"));
+app.use("/preventivas", require("./modules/preventivas/preventivas.routes"));
 app.use("/compras", require("./modules/compras/compras.routes"));
-
-// ✅ IMPORTANTE:
-// Os módulos abaixo (no seu projeto) estão com rotas tipo "/os", "/estoque", "/preventivas", "/escala", "/usuarios" etc.
-// Então eles precisam ser montados no "/" para NÃO virar /os/os, /estoque/estoque etc.
-app.use("/", require("./modules/dashboard/dashboard.routes"));
-app.use("/", require("./modules/equipamentos/equipamentos.routes"));
-app.use("/", require("./modules/os/os.routes"));
-app.use("/", require("./modules/preventivas/preventivas.routes"));
-app.use("/", require("./modules/estoque/estoque.routes"));
-app.use("/", require("./modules/escala/escala.routes"));
-app.use("/", require("./modules/usuarios/usuarios.routes"));
-
-// =====================================================
-// ✅ COMPATIBILIDADE (evita 404 por links antigos)
-// =====================================================
-
-// se algum lugar ainda aponta /login
-app.get("/login", (_req, res) => res.redirect("/auth/login"));
-
-// se algum lugar ainda aponta /logout via GET (opcional)
-app.get("/logout", (_req, res) => res.redirect("/auth/login"));
-
-// Se seu dashboard.routes estiver como "/dashboard" (ou "/dashboard/dashboard"), isso ajuda.
-app.get("/dashboard", (req, res, next) => {
-  // tenta seguir fluxo normal: se existir rota /dashboard no router montado em "/"
-  // se não existir, redireciona para /dashboard/dashboard (que acontece quando router tem "/dashboard" e foi montado em "/dashboard")
-  // como aqui montamos em "/", o mais comum é já existir /dashboard.
-  // mas deixo fallback para o caso de seu dashboard.routes estar com "/dashboard/dashboard".
-  try {
-    return next();
-  } catch (_e) {
-    return res.redirect("/dashboard/dashboard");
-  }
-});
+app.use("/estoque", require("./modules/estoque/estoque.routes"));
+app.use("/escala", require("./modules/escala/escala.routes"));
+app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
 
 // ===== Home =====
 app.get("/", (req, res) => {
