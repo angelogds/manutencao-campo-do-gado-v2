@@ -1,71 +1,38 @@
 <% layout('layout') %>
 
-<div class="page-head">
-  <div>
-    <h1>Compras</h1>
-    <p class="muted">Recebimento e acompanhamento de compras.</p>
-  </div>
-
+<div class="page-header">
+  <h2>Compras / Recebimento</h2>
   <div class="actions">
-    <!-- ✅ Botão padrão Equipamentos -->
-    <a class="btn btn-green" href="/compras/nova">
-      + Nova Compra
-    </a>
-
-    <!-- ✅ Botão ghost padrão -->
-    <a class="btn btn-ghost" href="/solicitacoes">
-      Ir para Solicitações
-    </a>
+    <a class="btn" href="/compras/nova">+ Nova Compra</a>
+    <a class="btn" href="/compras/solicitacoes">Solicitações</a>
   </div>
 </div>
 
-<div class="card">
-  <div class="table-wrap">
-    <table class="table">
-      <thead>
-        <tr>
-          <th style="width:90px;">#</th>
-          <th style="width:160px;">Status</th>
-          <th>Fornecedor</th>
-          <th style="width:180px;">Data da Compra</th>
-          <th style="width:180px;">Criada em</th>
-          <th style="width:120px; text-align:right;">Ações</th>
-        </tr>
-      </thead>
+<table class="table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Fornecedor</th>
+      <th>Status</th>
+      <th>Compra</th>
+      <th>Receb.</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if (!lista || !lista.length) { %>
+      <tr><td colspan="6">Nenhuma compra cadastrada.</td></tr>
+    <% } %>
 
-      <tbody>
-        <% if (!lista || !lista.length) { %>
-          <tr>
-            <td colspan="6" class="muted" style="text-align:center; padding:22px;">
-              Nenhuma compra cadastrada.
-            </td>
-          </tr>
-        <% } %>
-
-        <% (lista || []).forEach(c => { %>
-          <tr>
-            <td>#<%= c.id %></td>
-
-            <td>
-              <span class="pill-tag pill-gray">
-                <%= c.status || "-" %>
-              </span>
-            </td>
-
-            <td><%= c.fornecedor || '-' %></td>
-
-            <td><%= c.data_compra || '-' %></td>
-
-            <td><%= c.created_at ? fmtBR(c.created_at) : '-' %></td>
-
-            <td style="text-align:right;">
-              <a class="btn btn-ghost btn-sm" href="/compras/<%= c.id %>">
-                Abrir
-              </a>
-            </td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-</div>
+    <% (lista || []).forEach(c => { %>
+      <tr>
+        <td><%= c.id %></td>
+        <td><%= c.fornecedor || '-' %></td>
+        <td><%= c.status %></td>
+        <td><%= c.data_compra || '-' %></td>
+        <td><%= c.data_recebimento || '-' %></td>
+        <td><a class="btn btn-sm" href="/compras/<%= c.id %>">Abrir</a></td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
