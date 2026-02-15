@@ -1,62 +1,51 @@
 <% layout('layout') %>
 
-<div class="page-head">
-  <div>
-    <h1>Nova Solicitação</h1>
-    <p class="muted">Cadastro rápido (1 item por enquanto). Depois expandimos para múltiplos itens.</p>
+<div class="page-header">
+  <h2>Nova Solicitação</h2>
+  <div class="actions">
+    <a class="btn" href="/compras/solicitacoes">Voltar</a>
   </div>
 </div>
 
-<div class="card" style="max-width: 920px;">
-  <form action="/solicitacoes" method="POST">
-
-    <div class="grid-2">
-      <div>
-        <div class="label">Solicitante</div>
-        <input class="input" name="solicitante" placeholder="Ex.: Angelo" />
-      </div>
-
-      <div>
-        <div class="label">Setor</div>
-        <input class="input" name="setor" placeholder="Ex.: Manutenção / Produção" />
-      </div>
+<form method="POST" action="/compras/solicitacoes">
+  <div class="grid">
+    <div>
+      <label>Solicitante</label>
+      <input name="solicitante" placeholder="Ex.: Angelo / Encarregado" />
     </div>
-
-    <div class="divider"></div>
 
     <div>
-      <div class="label">Observação</div>
-      <textarea class="input" name="observacao" placeholder="Opcional"></textarea>
+      <label>Setor</label>
+      <input name="setor" value="Manutenção" />
     </div>
+  </div>
 
-    <div class="divider"></div>
+  <label>Observação</label>
+  <textarea name="observacao" rows="3"></textarea>
 
-    <div>
-      <div style="font-weight:900; font-size:16px;">Item</div>
-      <div class="muted" style="margin-top:6px;">Descrição + quantidade + unidade.</div>
+  <h3>Itens</h3>
 
-      <div style="margin-top:12px;">
-        <div class="label">Descrição</div>
-        <input class="input" name="item_descricao" required placeholder="Ex.: Rolamento 6307" />
-      </div>
-
-      <div class="grid-2" style="margin-top:12px;">
-        <div>
-          <div class="label">Quantidade</div>
-          <input class="input" name="item_quantidade" placeholder="1" />
-        </div>
-
-        <div>
-          <div class="label">Unidade</div>
-          <input class="input" name="item_unidade" placeholder="un" />
-        </div>
-      </div>
+  <div id="itens">
+    <div class="row">
+      <input name="itens_descricao" placeholder="Descrição do item" required />
+      <input name="itens_qtd" type="number" step="0.01" value="1" />
+      <input name="itens_un" value="un" />
     </div>
+  </div>
 
-    <div style="margin-top:18px; display:flex; gap:10px;">
-      <button class="btn btn-green" type="submit">Salvar Solicitação</button>
-      <a class="btn btn-ghost" href="/solicitacoes">Cancelar</a>
-    </div>
+  <button type="button" class="btn" onclick="addItem()">+ Adicionar item</button>
+  <button type="submit" class="btn btn-primary">Salvar</button>
+</form>
 
-  </form>
-</div>
+<script>
+  function addItem(){
+    const div = document.createElement('div');
+    div.className = 'row';
+    div.innerHTML = `
+      <input name="itens_descricao" placeholder="Descrição do item" required />
+      <input name="itens_qtd" type="number" step="0.01" value="1" />
+      <input name="itens_un" value="un" />
+    `;
+    document.getElementById('itens').appendChild(div);
+  }
+</script>
