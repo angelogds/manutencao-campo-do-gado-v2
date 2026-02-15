@@ -29,6 +29,8 @@ const safe = (fn, name) =>
       };
 
 // ✅ Dashboard principal
-router.get("/dashboard", requireLogin, safe(ctrl.index, "index"));
+// Como no server.js está: app.use("/dashboard", ...)
+// então aqui a rota é só "/"
+router.get("/", requireLogin, safe(ctrl.index, "index"));
 
 module.exports = router;
