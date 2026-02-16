@@ -1,30 +1,81 @@
-<aside style="
-  width:260px; background:linear-gradient(180deg, #0b6b3a, #07502c);
-  color:#fff; padding:16px; border-right:1px solid rgba(255,255,255,.08);
-  position:relative;
-">
-  <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
-    <div style="width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,.14); display:flex; align-items:center; justify-content:center; font-weight:900;">
-      CG
+<!-- views/partials/sidebar.ejs -->
+<%
+  const role = String(user?.role || "").toUpperCase();
+
+  const isAdmin = role === "ADMIN";
+  const isAlmox = role === "ALMOXARIFE";
+  const isDirecao = role === "DIRECAO";
+  const isEncarregadoProd = role === "ENCARREGADO_PRODUCAO";
+
+  const canAlmoxArea = isAdmin || isAlmox; // Almoxarife + Motores
+  const canEstoque = isAdmin || isAlmox;
+  const canMotores = isAdmin || isAlmox;
+
+  // Compras: (ajuste se você quiser leitura p/ direção/encarregado)
+  const canCompras = isAdmin || isAlmox || isDirecao || isEncarregadoProd;
+
+  const canUsuarios = isAdmin;
+%>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-badge">CG</div>
+    <div class="brand-text">
+      <div class="brand-title">Campo do Gado</div>
+      <div class="brand-sub">V2 • Gestão Industrial</div>
     </div>
-    <div style="font-weight:900;">Campo do Gado</div>
   </div>
 
-  <nav style="display:flex; flex-direction:column; gap:10px;">
-    <a href="/dashboard" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.10); font-weight:800;">Dashboard</a>
-    <a href="/equipamentos" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Equipamentos</a>
-    <a href="/os" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Ordens de Serviço</a>
-    <a href="/compras" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Compras (Inbox)</a>
-    <a href="/estoque" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Estoque</a>
-    <a href="/usuarios" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Usuários</a>
+  <nav class="nav">
+    <a class="nav-item <%= activeMenu === 'dashboard' ? 'active' : '' %>" href="/dashboard">
+      Painel
+    </a>
 
-    <% if ((user?.role || "").toUpperCase() === "ADMIN") { %>
-      <div style="margin-top:10px; opacity:.9; font-weight:900; font-size:12px;">ADMIN</div>
-      <a href="/usuarios" style="color:#fff; text-decoration:none; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.06); font-weight:800;">Gerenciar Usuários</a>
+    <a class="nav-item <%= activeMenu === 'equipamentos' ? 'active' : '' %>" href="/equipamentos">
+      Equipamentos
+    </a>
+
+    <a class="nav-item <%= activeMenu === 'os' ? 'active' : '' %>" href="/os">
+      Ordens de Serviço
+    </a>
+
+    <a class="nav-item <%= activeMenu === 'preventivas' ? 'active' : '' %>" href="/preventivas">
+      Preventivas
+    </a>
+
+    <% if (canCompras) { %>
+      <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">
+        Compras
+      </a>
+    <% } %>
+
+    <% if (canEstoque) { %>
+      <a class="nav-item <%= activeMenu === 'estoque' ? 'active' : '' %>" href="/estoque">
+        Estoque
+      </a>
+    <% } %>
+
+    <% if (canMotores) { %>
+      <a class="nav-item <%= activeMenu === 'motores' ? 'active' : '' %>" href="/motores">
+        Motores
+      </a>
+    <% } %>
+
+    <a class="nav-item <%= activeMenu === 'escala' ? 'active' : '' %>" href="/escala">
+      Escala
+    </a>
+
+    <div class="nav-divider"></div>
+
+    <% if (canUsuarios) { %>
+      <div class="nav-section">ADMIN</div>
+      <a class="nav-item <%= activeMenu === 'usuarios' ? 'active' : '' %>" href="/usuarios">
+        Gerenciar Usuários
+      </a>
     <% } %>
   </nav>
 
-  <div style="position:absolute; left:16px; bottom:16px; opacity:.9; font-size:12px;">
-    © 2026 Campo do Gado
+  <div class="sidebar-footer">
+    <small>© <%= new Date().getFullYear() %> Campo do Gado</small>
   </div>
 </aside>
