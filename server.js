@@ -1,4 +1,3 @@
-
 // server.js
 require("dotenv").config();
 
@@ -91,6 +90,8 @@ app.use("/compras", require("./modules/compras/compras.routes"));
 app.use("/estoque", require("./modules/estoque/estoque.routes"));
 app.use("/escala", require("./modules/escala/escala.routes"));
 app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
+
+// ✅ MOTORES (NOVO)
 app.use("/motores", require("./modules/motores/motores.routes"));
 
 // ===== Home =====
