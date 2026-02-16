@@ -1,0 +1,52 @@
+<% layout('layout') %>
+
+<div class="page">
+  <div class="page-header">
+    <h2>Cadastrar Motor</h2>
+    <a class="btn btn-ghost" href="/motores">Voltar</a>
+  </div>
+
+  <div class="card">
+    <form method="POST" action="/motores" style="display:grid; gap:12px; max-width:720px;">
+      <label>Código / Patrimônio (opcional)</label>
+      <input name="codigo" placeholder="Ex: MTR-001" />
+
+      <label>Descrição *</label>
+      <input name="descricao" required placeholder="Ex: Motor 5CV 1700RPM" />
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:160px;">
+          <label>Potência (CV)</label>
+          <input name="potencia_cv" type="number" step="0.1" placeholder="5" />
+        </div>
+
+        <div style="flex:1; min-width:160px;">
+          <label>RPM</label>
+          <input name="rpm" type="number" step="1" placeholder="1700" />
+        </div>
+      </div>
+
+      <label>Origem</label>
+      <select name="origem_unidade">
+        <option value="RECICLAGEM">RECICLAGEM</option>
+        <option value="FRIGORIFICO">FRIGORÍFICO</option>
+      </select>
+
+      <label>Local de Instalação</label>
+      <input name="local_instalacao" placeholder="Ex: Rosca 02 / Caldeira / Digestor..." />
+
+      <label>Status</label>
+      <select name="status">
+        <option value="EM_USO">EM_USO</option>
+        <option value="RESERVA">RESERVA</option>
+        <option value="RETORNOU">RETORNOU</option>
+        <option value="ENVIADO_REBOB">ENVIADO_REBOB</option>
+      </select>
+
+      <label>Observação</label>
+      <textarea name="observacao" rows="3" placeholder="Detalhes adicionais..."></textarea>
+
+      <button class="btn" type="submit">Salvar</button>
+    </form>
+  </div>
+</div>
