@@ -1,4 +1,3 @@
-<!-- views/layout.ejs -->
 <!doctype html>
 <html lang="pt-br">
 <head>
@@ -7,40 +6,278 @@
   <title><%= title || "Manutenção Campo do Gado" %></title>
 
   <link rel="stylesheet" href="/css/app.css" />
+
+  <style>
+    :root{
+      --cg-green: #16A34A;
+      --cg-green-dark: #15803d;
+      --cg-green-soft: #ecfdf5;
+    }
+
+    body{
+      margin:0;
+      font-family: Arial, Helvetica, sans-serif;
+      background:#f3f4f6;
+    }
+
+    .app{
+      display:flex;
+      min-height:100vh;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar{
+      width:260px;
+      background:linear-gradient(180deg, #16A34A, #0f7a37);
+      color:#fff;
+      padding:20px;
+      display:flex;
+      flex-direction:column;
+      position:relative;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:25px;
+    }
+
+    .brand-badge{
+      width:38px;
+      height:38px;
+      border-radius:10px;
+      background:rgba(255,255,255,.18);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+    }
+
+    .brand-title{
+      font-weight:900;
+      font-size:15px;
+    }
+
+    .brand-sub{
+      font-size:11px;
+      opacity:.85;
+    }
+
+    .nav{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .nav-item{
+      color:#fff;
+      text-decoration:none;
+      padding:10px 14px;
+      border-radius:12px;
+      font-weight:700;
+      background:rgba(255,255,255,.08);
+      transition:all .2s ease;
+    }
+
+    .nav-item:hover{
+      background:rgba(255,255,255,.18);
+      transform:translateY(-1px);
+    }
+
+    .nav-item.active{
+      background:#fff;
+      color:#16A34A;
+      font-weight:900;
+    }
+
+    .nav-divider{
+      height:1px;
+      background:rgba(255,255,255,.25);
+      margin:14px 0;
+    }
+
+    .nav-section{
+      font-size:11px;
+      font-weight:900;
+      opacity:.9;
+      margin-bottom:6px;
+    }
+
+    .sidebar-footer{
+      position:absolute;
+      bottom:15px;
+      left:20px;
+      font-size:12px;
+      opacity:.85;
+    }
+
+    /* ===== MAIN ===== */
+    .main{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .topbar{
+      background:#fff;
+      padding:16px 25px;
+      border-bottom:1px solid #e5e7eb;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .topbar-title{
+      font-weight:900;
+      font-size:16px;
+    }
+
+    .topbar-sub{
+      font-size:12px;
+      opacity:.6;
+    }
+
+    .pill{
+      background:var(--cg-green-soft);
+      padding:6px 10px;
+      border-radius:20px;
+      font-size:12px;
+      font-weight:700;
+      margin-right:10px;
+    }
+
+    .btn-ghost{
+      background:#fff;
+      border:1px solid #ddd;
+      padding:6px 12px;
+      border-radius:8px;
+      cursor:pointer;
+    }
+
+    .flash{
+      padding:10px 25px;
+    }
+
+    .alert{
+      padding:10px 12px;
+      border-radius:8px;
+      margin-bottom:8px;
+      font-size:14px;
+    }
+
+    .alert-error{
+      background:#fee2e2;
+      color:#991b1b;
+    }
+
+    .alert-success{
+      background:#dcfce7;
+      color:#166534;
+    }
+
+    .content{
+      padding:25px;
+      flex:1;
+    }
+
+    .footer{
+      padding:15px 25px;
+      background:#fff;
+      border-top:1px solid #e5e7eb;
+      font-size:12px;
+      display:flex;
+      justify-content:space-between;
+    }
+  </style>
 </head>
 
 <body>
   <div class="app">
 
-    <!-- ✅ SIDEBAR (partial padronizado) -->
-    <%- include("partials/sidebar") %>
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar">
+
+      <div class="brand">
+        <div class="brand-badge">CG</div>
+        <div>
+          <div class="brand-title">Campo do Gado</div>
+          <div class="brand-sub">V2 • Gestão Industrial</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="nav-item <%= activeMenu === 'dashboard' ? 'active' : '' %>" href="/dashboard">
+          Dashboard
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'equipamentos' ? 'active' : '' %>" href="/equipamentos">
+          Equipamentos
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'os' ? 'active' : '' %>" href="/os">
+          Ordens de Serviço
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'preventivas' ? 'active' : '' %>" href="/preventivas">
+          Preventivas
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">
+          Compras
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'estoque' ? 'active' : '' %>" href="/estoque">
+          Estoque
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'motores' ? 'active' : '' %>" href="/motores">
+          Motores
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'escala' ? 'active' : '' %>" href="/escala">
+          Escala
+        </a>
+
+        <div class="nav-divider"></div>
+
+        <% if ((user?.role || '').toUpperCase() === 'ADMIN') { %>
+          <div class="nav-section">ADMIN</div>
+
+          <a class="nav-item <%= activeMenu === 'usuarios' ? 'active' : '' %>" href="/usuarios">
+            Gerenciar Usuários
+          </a>
+        <% } %>
+      </nav>
+
+      <div class="sidebar-footer">
+        © <%= new Date().getFullYear() %> Campo do Gado
+      </div>
+
+    </aside>
 
     <!-- ===== MAIN ===== -->
     <main class="main">
 
-      <!-- TOPBAR -->
       <header class="topbar">
-        <div class="topbar-left">
+        <div>
           <div class="topbar-title">Manutenção Campo do Gado</div>
           <div class="topbar-sub">Sistema Industrial V2</div>
         </div>
 
-        <div class="topbar-right">
+        <div style="display:flex; align-items:center;">
           <% if (user) { %>
             <div class="pill">
-              <span class="pill-name"><%= user.name || "Usuário" %></span>
-              <span class="pill-role"><%= (user.role || "").toUpperCase() %></span>
+              <%= user.name %> • <%= user.role.toUpperCase() %>
             </div>
 
-            <!-- ✅ rota certa -->
             <form action="/auth/logout" method="POST" style="margin:0;">
-              <button class="btn btn-ghost" type="submit">Sair</button>
+              <button class="btn-ghost" type="submit">Sair</button>
             </form>
           <% } %>
         </div>
       </header>
 
-      <!-- FLASH -->
       <section class="flash">
         <% if (flash?.error?.length) { %>
           <div class="alert alert-error"><%= flash.error[0] %></div>
@@ -51,12 +288,10 @@
         <% } %>
       </section>
 
-      <!-- CONTENT -->
       <section class="content">
         <%- body %>
       </section>
 
-      <!-- FOOTER -->
       <footer class="footer">
         <div>Manutenção Industrial • Campo do Gado</div>
         <div>© <%= new Date().getFullYear() %> • Sistema V2</div>
