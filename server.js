@@ -1,4 +1,4 @@
-// server.js
+// /server.js
 require("dotenv").config();
 
 try {
@@ -47,7 +47,6 @@ app.use(
     },
   })
 );
-
 app.use(flash());
 
 // ===== Globals (views) =====
@@ -56,12 +55,10 @@ app.locals.fmtBR = fmtBR;
 
 app.use((req, res, next) => {
   res.locals.user = req.session?.user || null;
-
   res.locals.flash = {
     success: req.flash("success") || [],
     error: req.flash("error") || [],
   };
-
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
 
@@ -71,7 +68,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ Seeds (admin + escala)
+// ✅ Seeds
 try {
   const seed = require("./database/seed");
   if (seed && typeof seed.runSeeds === "function") seed.runSeeds();
@@ -80,7 +77,7 @@ try {
   console.warn("⚠️ Seed não carregado:", err.message);
 }
 
-// ===== ROTAS (prefixo aqui) =====
+// ===== ROTAS =====
 app.use("/auth", require("./modules/auth/auth.routes"));
 app.use("/dashboard", require("./modules/dashboard/dashboard.routes"));
 app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
@@ -90,9 +87,7 @@ app.use("/compras", require("./modules/compras/compras.routes"));
 app.use("/estoque", require("./modules/estoque/estoque.routes"));
 app.use("/escala", require("./modules/escala/escala.routes"));
 app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
-
-// ✅ MOTORES (NOVO)
-app.use("/motores", require("./modules/motores/motores.routes"));
+app.use("/motores", require("./modules/motores/motores.routes")); // ✅ motores
 
 // ===== Home =====
 app.get("/", (req, res) => {
