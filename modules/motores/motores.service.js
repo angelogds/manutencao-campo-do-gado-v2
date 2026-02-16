@@ -1,72 +1,77 @@
+// /modules/motores/motores.service.js
 const db = require("../../database/db");
 
-function nowBRLite() {
-  // mantém no padrão do projeto (datetime('now')) no banco; aqui só para payload
-  return new Date().toISOString();
+function normStr(v) {
+  const s = String(v ?? "").trim();
+  return s.length ? s : null;
 }
 
-function addEvento(motorId, tipo, payloadObj) {
-  const payload = payloadObj ? JSON.stringify(payloadObj) : null;
-  db.prepare(
-    `INSERT INTO motores_eventos (motor_id, tipo, payload, created_at)
-     VALUES (?, ?, ?, datetime('now'))`
-  ).run(motorId, tipo, payload);
-}
-
-function create(data, userId) {
-  const stmt = db.prepare(`
-    INSERT INTO motores
-    (codigo, descricao, potencia_cv, rpm, origem_unidade, local_instalacao, status, observacao, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-  `);
-
-  const info = stmt.run(
-    data.codigo,
-    data.descricao,
-    data.potencia_cv,
-    data.rpm,
-    data.origem_unidade,
-    data.local_instalacao,
-    data.status,
-    data.observacao
-  );
-
-  const id = Number(info.lastInsertRowid);
-  addEvento(id, "CADASTRO", { ...data, by_user_id: userId, at: nowBRLite() });
-  return id;
-}
-
-function list({ q, origem, status, potencia }) {
-  const where = [];
+function list({ status, origem, q } = {}) {
+  let where = "1=1";
   const params = {};
 
-  if (q) {
-    where.push("(codigo LIKE @q OR descricao LIKE @q OR local_instalacao LIKE @q)");
-    params.q = `%${q}%`;
+  if (status) {
+    where += " AND status = @status";
+    params.status = String(status).trim().toUpperCase();
   }
   if (origem) {
-    where.push("origem_unidade = @origem");
-    params.origem = origem;
+    where += " AND origem_unidade = @origem";
+    params.origem = String(origem).trim().toUpperCase();
   }
-  if (status) {
-    where.push("status = @status");
-    params.status = status;
-  }
-  if (potencia) {
-    // filtra por potência exata (simples)
-    where.push("potencia_cv = @potencia");
-    params.potencia = Number(potencia);
+  if (q) {
+    where += " AND (codigo LIKE @q OR descricao LIKE @q OR local_instalacao LIKE @q)";
+    params.q = `%${String(q).trim()}%`;
   }
 
-  const sql = `
-    SELECT *
-    FROM motores
-    ${where.length ? "WHERE " + where.join(" AND ") : ""}
-    ORDER BY updated_at DESC, id DESC
-    LIMIT 500
-  `;
+  return db
+    .prepare(
+      `
+      SELECT *
+      FROM motores
+      WHERE ${where}
+      ORDER BY datetime(created_at) DESC
+    `
+    )
+    .all(params);
+}
 
-  return db.prepare(sql).all(params);
+function create(body) {
+  const codigo = normStr(body.codigo);
+  const descricao = normStr(body.descricao);
+  if (!descricao) throw new Error("Descrição é obrigatória.");
+
+  const potencia_cv = body.potencia_cv !== undefined && body.potencia_cv !== "" ? Number(body.potencia_cv) : null;
+  const rpm = body.rpm !== undefined && body.rpm !== "" ? Number(body.rpm) : null;
+
+  const origem_unidade = normStr(body.origem_unidade)?.toUpperCase() || "RECICLAGEM";
+  const local_instalacao = normStr(body.local_instalacao);
+  const status = normStr(body.status)?.toUpperCase() || "EM_USO";
+  const observacao = normStr(body.observacao);
+
+  const info = db
+    .prepare(
+      `
+      INSERT INTO motores (
+        codigo, descricao, potencia_cv, rpm, origem_unidade, local_instalacao,
+        status, observacao, created_at, updated_at
+      ) VALUES (
+        @codigo, @descricao, @potencia_cv, @rpm, @origem_unidade, @local_instalacao,
+        @status, @observacao, datetime('now'), datetime('now')
+      )
+    `
+    )
+    .run({
+      codigo,
+      descricao,
+      potencia_cv,
+      rpm,
+      origem_unidade,
+      local_instalacao,
+      status,
+      observacao,
+    });
+
+  return Number(info.lastInsertRowid);
 }
 
 function getById(id) {
@@ -75,55 +80,73 @@ function getById(id) {
 
 function listEventos(motorId) {
   return db
-    .prepare(`SELECT * FROM motores_eventos WHERE motor_id=? ORDER BY id DESC LIMIT 100`)
-    .all(motorId)
-    .map((e) => ({
-      ...e,
-      payloadObj: e.payload ? safeJsonParse(e.payload) : null,
-    }));
+    .prepare(
+      `
+      SELECT *
+      FROM motores_eventos
+      WHERE motor_id=?
+      ORDER BY datetime(created_at) DESC
+    `
+    )
+    .all(motorId);
 }
 
-function safeJsonParse(s) {
-  try {
-    return JSON.parse(s);
-  } catch {
-    return { raw: s };
-  }
-}
-
-function enviarRebob(id, { empresa_rebob, motorista_saida, observacao }, userId) {
+function registrarEnvio(id, { empresa_rebob, motorista_saida, observacao }) {
   const motor = getById(id);
-  if (!motor) throw new Error("Motor não encontrado");
+  if (!motor) throw new Error("Motor não encontrado.");
 
-  db.prepare(`
-    UPDATE motores
-    SET status='ENVIADO_REBOB',
-        empresa_rebob=?,
-        motorista_saida=?,
-        data_saida=datetime('now'),
-        observacao=COALESCE(?, observacao),
-        updated_at=datetime('now')
-    WHERE id=?
-  `).run(empresa_rebob || null, motorista_saida || null, observacao, id);
+  const empresa = normStr(empresa_rebob);
+  const motorista = normStr(motorista_saida);
 
-  addEvento(id, "ENVIAR", { empresa_rebob, motorista_saida, observacao, by_user_id: userId, at: nowBRLite() });
+  db.transaction(() => {
+    db.prepare(
+      `
+      UPDATE motores
+      SET status='ENVIADO_REBOB',
+          empresa_rebob=@empresa,
+          motorista_saida=@motorista,
+          data_saida=datetime('now'),
+          observacao=COALESCE(@obs, observacao),
+          updated_at=datetime('now')
+      WHERE id=@id
+    `
+    ).run({ id, empresa, motorista, obs: normStr(observacao) });
+
+    db.prepare(
+      `
+      INSERT INTO motores_eventos (motor_id, tipo, empresa_rebob, motorista, observacao, created_at)
+      VALUES (@motor_id, 'ENVIAR', @empresa, @motorista, @obs, datetime('now'))
+    `
+    ).run({ motor_id: id, empresa, motorista, obs: normStr(observacao) });
+  })();
 }
 
-function registrarRetorno(id, { motorista_retorno, observacao }, userId) {
+function registrarRetorno(id, { motorista_retorno, observacao }) {
   const motor = getById(id);
-  if (!motor) throw new Error("Motor não encontrado");
+  if (!motor) throw new Error("Motor não encontrado.");
 
-  db.prepare(`
-    UPDATE motores
-    SET status='RETORNOU',
-        motorista_retorno=?,
-        data_retorno=datetime('now'),
-        observacao=COALESCE(?, observacao),
-        updated_at=datetime('now')
-    WHERE id=?
-  `).run(motorista_retorno || null, observacao, id);
+  const motorista = normStr(motorista_retorno);
 
-  addEvento(id, "RETORNO", { motorista_retorno, observacao, by_user_id: userId, at: nowBRLite() });
+  db.transaction(() => {
+    db.prepare(
+      `
+      UPDATE motores
+      SET status='RETORNOU',
+          motorista_retorno=@motorista,
+          data_retorno=datetime('now'),
+          observacao=COALESCE(@obs, observacao),
+          updated_at=datetime('now')
+      WHERE id=@id
+    `
+    ).run({ id, motorista, obs: normStr(observacao) });
+
+    db.prepare(
+      `
+      INSERT INTO motores_eventos (motor_id, tipo, empresa_rebob, motorista, observacao, created_at)
+      VALUES (@motor_id, 'RETORNO', NULL, @motorista, @obs, datetime('now'))
+    `
+    ).run({ motor_id: id, motorista, obs: normStr(observacao) });
+  })();
 }
 
 module.exports = {
@@ -131,6 +154,6 @@ module.exports = {
   create,
   getById,
   listEventos,
-  enviarRebob,
+  registrarEnvio,
   registrarRetorno,
 };
