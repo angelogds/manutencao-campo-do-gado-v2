@@ -1,3 +1,4 @@
+// /modules/motores/motores.routes.js
 const express = require("express");
 const router = express.Router();
 
@@ -26,15 +27,24 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-const ACCESS = ["ALMOXARIFE", "ADMIN"];
+const MOTORES_ACCESS = ["ALMOXARIFE", "ADMIN"];
 
-router.get("/", requireLogin, requireRole(ACCESS), safe(ctrl.index, "index"));
-router.get("/new", requireLogin, requireRole(ACCESS), safe(ctrl.newForm, "newForm"));
-router.post("/", requireLogin, requireRole(ACCESS), safe(ctrl.create, "create"));
+// GET /motores
+router.get("/", requireLogin, requireRole(MOTORES_ACCESS), safe(ctrl.index, "index"));
 
-router.get("/:id", requireLogin, requireRole(ACCESS), safe(ctrl.show, "show"));
+// GET /motores/new
+router.get("/new", requireLogin, requireRole(MOTORES_ACCESS), safe(ctrl.newForm, "newForm"));
 
-router.post("/:id/enviar", requireLogin, requireRole(ACCESS), safe(ctrl.enviar, "enviar"));
-router.post("/:id/retorno", requireLogin, requireRole(ACCESS), safe(ctrl.retorno, "retorno"));
+// POST /motores
+router.post("/", requireLogin, requireRole(MOTORES_ACCESS), safe(ctrl.create, "create"));
+
+// GET /motores/:id
+router.get("/:id", requireLogin, requireRole(MOTORES_ACCESS), safe(ctrl.show, "show"));
+
+// POST /motores/:id/enviar
+router.post("/:id/enviar", requireLogin, requireRole(MOTORES_ACCESS), safe(ctrl.enviar, "enviar"));
+
+// POST /motores/:id/retorno
+router.post("/:id/retorno", requireLogin, requireRole(MOTORES_ACCESS), safe(ctrl.retorno, "retorno"));
 
 module.exports = router;
