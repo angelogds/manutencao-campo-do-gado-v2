@@ -1,21 +1,31 @@
+// /modules/motores/motores.controller.js
 const service = require("./motores.service");
 
-function index(req, res) {
-  const filtros = {
-    q: String(req.query.q || "").trim(),
-    origem: String(req.query.origem || "").trim(),
-    status: String(req.query.status || "").trim(),
-    potencia: String(req.query.potencia || "").trim(),
-  };
+function handleMissingTable(err, req, res, next) {
+  if (err && String(err.message || "").includes("no such table: motores")) {
+    req.flash("error", "Tabela 'motores' não existe. Aplique a migration 083_motores.sql e faça deploy.");
+    return res.redirect("/dashboard");
+  }
+  return next(err);
+}
 
-  const lista = service.list(filtros);
-
-  return res.render("motores/index", {
-    title: "Motores",
-    activeMenu: "motores",
-    filtros,
-    lista,
-  });
+function index(req, res, next) {
+  try {
+    const filtros = {
+      status: req.query.status || "",
+      origem: req.query.origem || "",
+      q: req.query.q || "",
+    };
+    const lista = service.list(filtros);
+    return res.render("motores/index", {
+      title: "Motores",
+      activeMenu: "motores",
+      filtros,
+      lista,
+    });
+  } catch (err) {
+    return handleMissingTable(err, req, res, next);
+  }
 }
 
 function newForm(req, res) {
@@ -25,69 +35,56 @@ function newForm(req, res) {
   });
 }
 
-function create(req, res) {
-  const data = {
-    codigo: String(req.body.codigo || "").trim() || null,
-    descricao: String(req.body.descricao || "").trim(),
-    potencia_cv: req.body.potencia_cv ? Number(req.body.potencia_cv) : null,
-    rpm: req.body.rpm ? Number(req.body.rpm) : null,
-    origem_unidade: String(req.body.origem_unidade || "RECICLAGEM").trim(),
-    local_instalacao: String(req.body.local_instalacao || "").trim() || null,
-    status: String(req.body.status || "EM_USO").trim(),
-    observacao: String(req.body.observacao || "").trim() || null,
-  };
-
-  if (!data.descricao) {
-    req.flash("error", "Informe a descrição do motor.");
-    return res.redirect("/motores/new");
-  }
-
-  const id = service.create(data, req.session?.user?.id || null);
-  req.flash("success", `Motor #${id} cadastrado.`);
-  return res.redirect(`/motores/${id}`);
-}
-
-function show(req, res) {
-  const id = Number(req.params.id);
-  const motor = service.getById(id);
-  if (!motor) return res.status(404).send("Motor não encontrado");
-
-  const eventos = service.listEventos(id);
-
-  return res.render("motores/view", {
-    title: `Motor #${id}`,
-    activeMenu: "motores",
-    motor,
-    eventos,
-  });
-}
-
-function enviar(req, res) {
-  const id = Number(req.params.id);
-
-  const empresa_rebob = String(req.body.empresa_rebob || "").trim();
-  const motorista_saida = String(req.body.motorista_saida || "").trim();
-  const observacao = String(req.body.observacao || "").trim() || null;
-
-  if (!empresa_rebob) {
-    req.flash("error", "Informe a empresa de rebobinamento.");
+function create(req, res, next) {
+  try {
+    const id = service.create(req.body);
+    req.flash("success", `Motor #${id} cadastrado.`);
     return res.redirect(`/motores/${id}`);
+  } catch (err) {
+    return handleMissingTable(err, req, res, next);
   }
-
-  service.enviarRebob(id, { empresa_rebob, motorista_saida, observacao }, req.session?.user?.id || null);
-  req.flash("success", "Saída para rebobinamento registrada.");
-  return res.redirect(`/motores/${id}`);
 }
 
-function retorno(req, res) {
-  const id = Number(req.params.id);
+function show(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const motor = service.getById(id);
+    if (!motor) return res.status(404).send("Motor não encontrado");
 
-  const motorista_retorno = String(req.body.motorista_retorno || "").trim();
-  const observacao = String(req.body.observacao || "").trim() || null;
+    const eventos = service.listEventos(id);
+    return res.render("motores/view", {
+      title: `Motor #${id}`,
+      activeMenu: "motores",
+      motor,
+      eventos,
+    });
+  } catch (err) {
+    return handleMissingTable(err, req, res, next);
+  }
+}
 
-  service.registrarRetorno(id, { motorista_retorno, observacao }, req.session?.user?.id || null);
-  req.flash("success", "Retorno registrado.");
-  return res.redirect(`/motores/${id}`);
+function enviar(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const { empresa_rebob, motorista_saida, observacao } = req.body;
+    service.registrarEnvio(id, { empresa_rebob, motorista_saida, observacao });
+    req.flash("success", "Envio registrado.");
+    return res.redirect(`/motores/${id}`);
+  } catch (err) {
+    return handleMissingTable(err, req, res, next);
+  }
+}
+
+function retorno(req, res, next) {
+  try {
+    const id = Number(req.params.id);
+    const { motorista_retorno, observacao } = req.body;
+    service.registrarRetorno(id, { motorista_retorno, observacao });
+    req.flash("success", "Retorno registrado.");
+    return res.redirect(`/motores/${id}`);
+  } catch (err) {
+    return handleMissingTable(err, req, res, next);
+  }
 }
 
 module.exports = { index, newForm, create, show, enviar, retorno };
