@@ -3,144 +3,108 @@
 <div class="page-head">
   <div>
     <h1>Dashboard</h1>
-    <p class="muted">Visão geral do sistema (V2).</p>
+    <p class="muted">Painel de Manutenção</p>
   </div>
 </div>
 
-<!-- 🔔 ALERTA MOTORES EM REBOBINAMENTO -->
-<% if (cards?.motores_conserto && cards.motores_conserto > 0) { %>
-  <div class="card" style="margin-bottom:16px; border-color:#fed7aa; background:#fff7ed;">
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-      <div>
-        <div style="font-weight:900;">
-          Alerta: <%= cards.motores_conserto %> motor(es) em rebobinamento
-          <span class="pill-tag pill-amber" style="margin-left:8px;">ENVIADO_REBOB</span>
-        </div>
+<div class="grid-2" style="grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px;">
 
-        <% if (cards.motor_mais_antigo) { %>
-          <div class="muted" style="margin-top:4px;">
-            Motor mais antigo fora:
-            <strong>#<%= cards.motor_mais_antigo.id %></strong>
-            - <%= cards.motor_mais_antigo.descricao %>
-            (<%= cards.motor_mais_antigo.dias %> dias)
-          </div>
-        <% } %>
-      </div>
-
-      <a class="btn btn-green btn-sm" href="/motores?status=ENVIADO_REBOB">
-        Ver motores
-      </a>
-    </div>
-  </div>
-<% } %>
-
-<div class="grid-2" style="grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px;">
-
-  <!-- OS -->
+  <!-- ORDEM DE SERVIÇO -->
   <div class="card">
     <div class="label">Ordem de Serviço</div>
     <div style="font-size:22px; font-weight:900; margin-top:6px;">
-      Abrir / Acompanhar
-    </div>
-    <div class="muted" style="margin-top:6px;">
-      Abertas, em andamento e concluídas
+      Abertas
     </div>
 
-    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;">
+    <div style="margin-top:12px;">
       <span class="pill-tag pill-amber">
-        Abertas: <%= (cards?.os_abertas ?? 0) %>
+        <%= cards.os_abertas %> em andamento
       </span>
     </div>
 
-    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;">
-      <a class="btn btn-green btn-sm" href="/os/nova">Abrir OS</a>
-      <a class="btn btn-ghost btn-sm" href="/os">Acompanhar</a>
+    <div style="margin-top:14px;">
+      <a class="btn btn-green btn-sm" href="/os">
+        Acompanhar OS
+      </a>
     </div>
   </div>
 
-  <!-- Compras -->
+  <!-- PREVENTIVAS -->
   <div class="card">
-    <div class="label">Compras</div>
+    <div class="label">Preventivas</div>
     <div style="font-size:22px; font-weight:900; margin-top:6px;">
-      Solicitações
-    </div>
-    <div class="muted" style="margin-top:6px;">
-      Criar e acompanhar solicitações
+      Programadas
     </div>
 
-    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;">
+    <div style="margin-top:12px;">
       <span class="pill-tag pill-blue">
-        Abertas: <%= (cards?.compras_abertas ?? 0) %>
+        <%= cards.preventivas %> ativas
       </span>
     </div>
 
-    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;">
-      <a class="btn btn-green btn-sm" href="/solicitacoes/nova">
-        Fazer solicitação
-      </a>
-      <a class="btn btn-ghost btn-sm" href="/solicitacoes">
-        Ver solicitações
-      </a>
-      <a class="btn btn-ghost btn-sm" href="/compras">
-        Compras
-      </a>
+    <div style="margin-top:14px;">
+      <% if (preventivas.length) { %>
+        <% preventivas.forEach(p => { %>
+          <div style="margin-bottom:6px;">
+            • <strong><%= p.equipamento_nome %></strong>
+            (<%= p.periodicidade_dias %> dias)
+          </div>
+        <% }) %>
+      <% } else { %>
+        <div class="muted">Nenhuma preventiva cadastrada.</div>
+      <% } %>
     </div>
   </div>
 
-  <!-- Estoque -->
-  <div class="card">
-    <div class="label">Estoque</div>
-    <div style="font-size:22px; font-weight:900; margin-top:6px;">
-      Controle
-    </div>
-    <div class="muted" style="margin-top:6px;">
-      Itens cadastrados e movimentações
-    </div>
-
-    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;">
-      <span class="pill-tag pill-gray">
-        Itens: <%= (cards?.itens_estoque ?? 0) %>
-      </span>
-    </div>
-
-    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;">
-      <a class="btn btn-green btn-sm" href="/estoque">
-        Ver estoque
-      </a>
-      <a class="btn btn-ghost btn-sm" href="/estoque/novo">
-        Cadastrar item
-      </a>
-    </div>
-  </div>
-
-  <!-- 🔧 MOTORES -->
+  <!-- MOTORES -->
   <div class="card">
     <div class="label">Motores</div>
     <div style="font-size:22px; font-weight:900; margin-top:6px;">
-      Controle de Rebobinamento
-    </div>
-    <div class="muted" style="margin-top:6px;">
-      Acompanhamento de motores enviados
+      Controle
     </div>
 
-    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;">
-      <span class="pill-tag <%= (cards?.motores_conserto ?? 0) > 0 ? 'pill-amber' : 'pill-green' %>">
-        Em conserto: <%= (cards?.motores_conserto ?? 0) %>
+    <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+      <span class="pill-tag pill-green">
+        Na empresa: <%= cards.motores_empresa %>
       </span>
 
-      <% if ((cards?.motores_conserto ?? 0) > 0) { %>
-        <span class="pill-tag pill-gray">
-          Tempo médio: <%= cards.motores_tempo_medio ?? 0 %> dias
+      <% if (cards.motores_conserto > 0) { %>
+        <span class="pill-tag pill-amber">
+          Em conserto: <%= cards.motores_conserto %>
+        </span>
+      <% } else { %>
+        <span class="pill-tag pill-green">
+          Nenhum em conserto
         </span>
       <% } %>
     </div>
 
-    <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:14px;">
+    <div style="margin-top:14px;">
       <a class="btn btn-green btn-sm" href="/motores">
         Ver motores
       </a>
-      <a class="btn btn-ghost btn-sm" href="/motores/new">
-        Cadastrar
+    </div>
+  </div>
+
+  <!-- ESCALA -->
+  <div class="card">
+    <div class="label">Escala da Semana</div>
+    <div style="font-size:22px; font-weight:900; margin-top:6px;">
+      Plantão Atual
+    </div>
+
+    <div style="margin-top:12px;">
+      <% if (escala) { %>
+        <div><strong>Turno Dia:</strong> <%= escala.turno_dia || '-' %></div>
+        <div><strong>Turno Noite:</strong> <%= escala.turno_noite || '-' %></div>
+      <% } else { %>
+        <div class="muted">Escala não disponível.</div>
+      <% } %>
+    </div>
+
+    <div style="margin-top:14px;">
+      <a class="btn btn-green btn-sm" href="/escala">
+        Ver escala completa
       </a>
     </div>
   </div>
