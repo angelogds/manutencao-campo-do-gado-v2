@@ -26,14 +26,19 @@ function applyOne(filename) {
   const full = path.join(__dirname, "migrations", filename);
   const sql = fs.readFileSync(full, "utf8");
 
-  // ✅ Uma transação por arquivo, SEM começar outra dentro
   const tx = db.transaction(() => {
     db.exec(sql);
     markApplied(filename);
   });
 
-  tx();
-  console.log(`✔ Migration aplicada: ${filename}`);
+  try {
+    tx();
+    console.log(`✔ Migration aplicada: ${filename}`);
+  } catch (err) {
+    console.error(`❌ Falha ao aplicar migration: ${filename}`);
+    console.error(err);
+    throw err; // para o boot (melhor do que rodar “meio quebrado”)
+  }
 }
 
 function applyMigrations() {
@@ -53,7 +58,5 @@ function applyMigrations() {
   }
 }
 
-// roda imediatamente
 applyMigrations();
-
 module.exports = { applyMigrations };
