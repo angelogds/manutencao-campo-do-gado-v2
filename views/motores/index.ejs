@@ -12,6 +12,26 @@
     </a>
   </div>
 
+  <% if (rebobCount && rebobCount > 0) { %>
+    <div class="card" style="margin-bottom:16px; border-color:#fed7aa; background:#fff7ed;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:900;">
+            Atenção: <%= rebobCount %> motor(es) enviado(s) para rebobinamento
+            <span class="pill-tag pill-amber" style="margin-left:8px;">ENVIADO_REBOB</span>
+          </div>
+          <div class="muted" style="margin-top:4px;">
+            Verifique empresa e prazo de retorno.
+          </div>
+        </div>
+
+        <a class="btn btn-primary" href="/motores?status=ENVIADO_REBOB">
+          Ver enviados
+        </a>
+      </div>
+    </div>
+  <% } %>
+
   <!-- FILTROS -->
   <div class="card" style="margin-bottom:16px;">
     <form method="GET" action="/motores" class="grid-2">
@@ -22,14 +42,6 @@
                name="q"
                placeholder="Buscar (código, descrição, local)"
                value="<%= filtros.q %>">
-      </div>
-
-      <div>
-        <div class="label">Potência (CV)</div>
-        <input class="input"
-               name="potencia"
-               placeholder="Ex: 5"
-               value="<%= filtros.potencia %>">
       </div>
 
       <div>
@@ -45,10 +57,10 @@
         <div class="label">Status</div>
         <select name="status">
           <option value="">Status (todos)</option>
-          <option value="EM_USO" <%= filtros.status==='EM_USO'?'selected':'' %>>EM_USO</option>
-          <option value="ENVIADO_REBOB" <%= filtros.status==='ENVIADO_REBOB'?'selected':'' %>>ENVIADO_REBOB</option>
-          <option value="RETORNOU" <%= filtros.status==='RETORNOU'?'selected':'' %>>RETORNOU</option>
-          <option value="RESERVA" <%= filtros.status==='RESERVA'?'selected':'' %>>RESERVA</option>
+          <option value="EM_USO">EM_USO</option>
+          <option value="ENVIADO_REBOB">ENVIADO_REBOB</option>
+          <option value="RETORNOU">RETORNOU</option>
+          <option value="RESERVA">RESERVA</option>
         </select>
       </div>
 
