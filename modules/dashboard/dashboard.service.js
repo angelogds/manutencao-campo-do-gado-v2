@@ -10,6 +10,9 @@ try {
 }
 
 function getCards() {
+  // =============================
+  // ORDEM DE SERVIÇO
+  // =============================
   const os = db
     .prepare(
       `
@@ -20,6 +23,9 @@ function getCards() {
     )
     .get()?.total || 0;
 
+  // =============================
+  // COMPRAS
+  // =============================
   const compras = db
     .prepare(
       `
@@ -30,6 +36,9 @@ function getCards() {
     )
     .get()?.total || 0;
 
+  // =============================
+  // ESTOQUE
+  // =============================
   const itens = db
     .prepare(
       `
@@ -40,6 +49,9 @@ function getCards() {
     )
     .get()?.total || 0;
 
+  // =============================
+  // EQUIPAMENTOS
+  // =============================
   const equip = db
     .prepare(
       `
@@ -50,16 +62,68 @@ function getCards() {
     )
     .get()?.total || 0;
 
+  // =============================
+  // 🔧 MOTORES EM CONSERTO
+  // =============================
+  const motoresConserto = db
+    .prepare(
+      `
+      SELECT COUNT(*) AS total
+      FROM motores
+      WHERE status = 'ENVIADO_REBOB'
+    `
+    )
+    .get()?.total || 0;
+
+  // =============================
+  // 🔧 TEMPO MÉDIO EM CONSERTO
+  // =============================
+  const tempoMedio = db
+    .prepare(
+      `
+      SELECT 
+        ROUND(AVG(julianday('now') - julianday(data_saida))) AS dias
+      FROM motores
+      WHERE status = 'ENVIADO_REBOB'
+      AND data_saida IS NOT NULL
+    `
+    )
+    .get()?.dias || 0;
+
+  // =============================
+  // 🔧 Motor mais antigo fora
+  // =============================
+  const motorMaisAntigo = db
+    .prepare(
+      `
+      SELECT 
+        id,
+        descricao,
+        empresa_rebob,
+        CAST((julianday('now') - julianday(data_saida)) AS INTEGER) AS dias
+      FROM motores
+      WHERE status = 'ENVIADO_REBOB'
+      AND data_saida IS NOT NULL
+      ORDER BY data_saida ASC
+      LIMIT 1
+    `
+    )
+    .get() || null;
+
   return {
     os_abertas: os,
     compras_abertas: compras,
     itens_estoque: itens,
     equipamentos: equip,
+
+    // 🔧 Novo bloco motores
+    motores_conserto: motoresConserto,
+    motores_tempo_medio: tempoMedio,
+    motor_mais_antigo: motorMaisAntigo,
   };
 }
 
 function getPlantaoAgora() {
-  // Se ainda não existir na escala.service, não derruba o dashboard
   if (!escalaService || typeof escalaService.getPlantaoAgora !== "function") {
     return null;
   }
