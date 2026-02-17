@@ -3,7 +3,7 @@
 <div class="page-head">
   <div>
     <h1>Dashboard</h1>
-    <p class="muted">Painel de Manutenção</p>
+    <p class="muted">Painel Operacional da Manutenção</p>
   </div>
 </div>
 
@@ -13,15 +13,8 @@
   <div class="card">
     <div class="label">Ordem de Serviço</div>
     <div style="font-size:22px; font-weight:900; margin-top:6px;">
-      Abertas
+      <%= cards.os_abertas %> em andamento
     </div>
-
-    <div style="margin-top:12px;">
-      <span class="pill-tag pill-amber">
-        <%= cards.os_abertas %> em andamento
-      </span>
-    </div>
-
     <div style="margin-top:14px;">
       <a class="btn btn-green btn-sm" href="/os">
         Acompanhar OS
@@ -29,39 +22,9 @@
     </div>
   </div>
 
-  <!-- PREVENTIVAS -->
-  <div class="card">
-    <div class="label">Preventivas</div>
-    <div style="font-size:22px; font-weight:900; margin-top:6px;">
-      Programadas
-    </div>
-
-    <div style="margin-top:12px;">
-      <span class="pill-tag pill-blue">
-        <%= cards.preventivas %> ativas
-      </span>
-    </div>
-
-    <div style="margin-top:14px;">
-      <% if (preventivas.length) { %>
-        <% preventivas.forEach(p => { %>
-          <div style="margin-bottom:6px;">
-            • <strong><%= p.equipamento_nome %></strong>
-            (<%= p.periodicidade_dias %> dias)
-          </div>
-        <% }) %>
-      <% } else { %>
-        <div class="muted">Nenhuma preventiva cadastrada.</div>
-      <% } %>
-    </div>
-  </div>
-
   <!-- MOTORES -->
   <div class="card">
     <div class="label">Motores</div>
-    <div style="font-size:22px; font-weight:900; margin-top:6px;">
-      Controle
-    </div>
 
     <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
       <span class="pill-tag pill-green">
@@ -86,27 +49,66 @@
     </div>
   </div>
 
-  <!-- ESCALA -->
-  <div class="card">
-    <div class="label">Escala da Semana</div>
-    <div style="font-size:22px; font-weight:900; margin-top:6px;">
-      Plantão Atual
+</div>
+
+<!-- PREVENTIVAS -->
+<div class="card" style="margin-top:18px;">
+  <div class="label">Preventivas Programadas</div>
+
+  <% if (preventivas.length === 0) { %>
+    <div class="muted" style="margin-top:10px;">
+      Nenhuma preventiva pendente.
+    </div>
+  <% } else { %>
+
+    <div class="table-wrap" style="margin-top:12px;">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Equipamento</th>
+            <th>Responsável</th>
+            <th>Data</th>
+            <th>Status</th>
+            <th>Observação</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% preventivas.forEach(p => { %>
+            <tr>
+              <td><strong><%= p.equipamento_nome || '-' %></strong></td>
+              <td><%= p.responsavel || '-' %></td>
+              <td><%= p.data_prevista || '-' %></td>
+              <td>
+                <% if (p.status === 'pendente') { %>
+                  <span class="pill-tag pill-blue">Programada</span>
+                <% } else if (p.status === 'em_andamento') { %>
+                  <span class="pill-tag pill-amber">Em andamento</span>
+                <% } else if (p.status === 'atrasada') { %>
+                  <span class="pill-tag pill-amber">Atrasada</span>
+                <% } %>
+              </td>
+              <td><%= p.observacao || '-' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
     </div>
 
-    <div style="margin-top:12px;">
-      <% if (escala) { %>
-        <div><strong>Turno Dia:</strong> <%= escala.turno_dia || '-' %></div>
-        <div><strong>Turno Noite:</strong> <%= escala.turno_noite || '-' %></div>
-      <% } else { %>
-        <div class="muted">Escala não disponível.</div>
-      <% } %>
-    </div>
+  <% } %>
+</div>
 
-    <div style="margin-top:14px;">
-      <a class="btn btn-green btn-sm" href="/escala">
-        Ver escala completa
-      </a>
-    </div>
-  </div>
+<!-- ESCALA -->
+<div class="card" style="margin-top:18px;">
+  <div class="label">Escala da Semana</div>
 
+  <% if (escala) { %>
+    <div style="margin-top:10px;">
+      <strong>Turno Dia:</strong> <%= escala.turno_dia || '-' %>
+    </div>
+    <div style="margin-top:6px;">
+      <strong>Turno Noite:</strong> <%= escala.turno_noite || '-' %>
+    </div>
+  <% } else { %>
+    <div class="muted">Escala não disponível.</div>
+  <% } %>
 </div>
