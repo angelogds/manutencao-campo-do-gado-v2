@@ -7,7 +7,29 @@
   </div>
 </div>
 
+<!-- 🔔 ALERTA MOTORES EM REBOBINAMENTO -->
+<% if (motorRebobCount && motorRebobCount > 0) { %>
+  <div class="card" style="margin-bottom:16px; border-color:#fed7aa; background:#fff7ed;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+      <div>
+        <div style="font-weight:900;">
+          Alerta: <%= motorRebobCount %> motor(es) em rebobinamento
+          <span class="pill-tag pill-amber" style="margin-left:8px;">ENVIADO_REBOB</span>
+        </div>
+        <div class="muted" style="margin-top:4px;">
+          Existem motores fora da planta aguardando retorno.
+        </div>
+      </div>
+
+      <a class="btn btn-green btn-sm" href="/motores?status=ENVIADO_REBOB">
+        Ver motores
+      </a>
+    </div>
+  </div>
+<% } %>
+
 <div class="grid-2" style="grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px;">
+
   <!-- OS -->
   <div class="card">
     <div class="label">Ordem de Serviço</div>
@@ -60,4 +82,5 @@
       <a class="btn btn-ghost btn-sm" href="/estoque/novo">Cadastrar item</a>
     </div>
   </div>
+
 </div>
