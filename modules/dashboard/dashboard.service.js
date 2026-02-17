@@ -20,13 +20,19 @@ function getCards() {
     `)
     .get()?.total || 0;
 
-  const preventivas = db
-    .prepare(`
-      SELECT COUNT(*) AS total
-      FROM preventiva_planejamento
-      WHERE ativo = 1
-    `)
-    .get()?.total || 0;
+  // 🔧 PREVENTIVAS (tabela correta)
+  let preventivas = 0;
+  try {
+    preventivas = db
+      .prepare(`
+        SELECT COUNT(*) AS total
+        FROM preventivas
+        WHERE ativo = 1
+      `)
+      .get()?.total || 0;
+  } catch (err) {
+    console.warn("⚠️ Tabela preventivas não encontrada.");
+  }
 
   const motoresEmpresa = db
     .prepare(`
@@ -53,22 +59,26 @@ function getCards() {
 }
 
 /* ===============================
-   PREVENTIVAS (ordem numérica)
+   PREVENTIVAS ORDENADAS
 =================================*/
 function getPreventivasOrdenadas() {
-  return db
-    .prepare(`
-      SELECT id, equipamento_nome, periodicidade_dias
-      FROM preventiva_planejamento
-      WHERE ativo = 1
-      ORDER BY equipamento_nome ASC
-      LIMIT 6
-    `)
-    .all();
+  try {
+    return db
+      .prepare(`
+        SELECT id, equipamento_id, periodicidade_dias
+        FROM preventivas
+        WHERE ativo = 1
+        ORDER BY equipamento_id ASC
+        LIMIT 6
+      `)
+      .all();
+  } catch (err) {
+    return [];
+  }
 }
 
 /* ===============================
-   ESCALA DA SEMANA
+   ESCALA
 =================================*/
 function getEscalaSemana() {
   if (!escalaService || typeof escalaService.getPlantaoAgora !== "function") {
