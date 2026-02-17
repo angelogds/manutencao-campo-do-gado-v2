@@ -19,33 +19,31 @@ function isApplied(filename) {
 }
 
 function markApplied(filename) {
-  db.prepare("INSERT INTO migrations (filename) VALUES (?)").run(filename);
+  db.prepare("INSERT OR IGNORE INTO migrations (filename) VALUES (?)").run(filename);
 }
 
 function applyOne(filename) {
   const full = path.join(__dirname, "migrations", filename);
   const sql = fs.readFileSync(full, "utf8");
 
+  // ✅ Uma transação por arquivo, SEM começar outra dentro
   const tx = db.transaction(() => {
     db.exec(sql);
     markApplied(filename);
   });
 
-  try {
-    tx();
-    console.log(`✔ Migration aplicada: ${filename}`);
-  } catch (err) {
-    console.error(`❌ Falha ao aplicar migration: ${filename}`);
-    console.error(err);
-    throw err; // para o boot (melhor do que rodar “meio quebrado”)
-  }
+  tx();
+  console.log(`✔ Migration aplicada: ${filename}`);
 }
 
 function applyMigrations() {
   ensureMigrationsTable();
 
   const dir = path.join(__dirname, "migrations");
-  if (!fs.existsSync(dir)) return;
+  if (!fs.existsSync(dir)) {
+    console.warn("⚠️ Pasta de migrations não existe:", dir);
+    return;
+  }
 
   const files = fs
     .readdirSync(dir)
@@ -56,7 +54,39 @@ function applyMigrations() {
     if (isApplied(f)) continue;
     applyOne(f);
   }
+
+  // ==========================================================
+  // ✅ SAFETY: garante tabela motores mesmo se migration foi marcada
+  // (resolve "no such table: motores" em deploys onde a 083 foi
+  //  marcada mas não criou a tabela, ou banco reiniciado parcial)
+  // ==========================================================
+  try {
+    const hasMotores = db
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='motores'")
+      .get();
+
+    if (!hasMotores) {
+      const f = "083_motores.sql";
+      const full = path.join(__dirname, "migrations", f);
+
+      if (fs.existsSync(full)) {
+        const sql = fs.readFileSync(full, "utf8");
+        db.exec(sql);
+
+        // marca como aplicada só pra não ficar tentando sempre
+        markApplied(f);
+
+        console.log("✅ SAFETY: 083_motores.sql executada manualmente (tabela motores criada).");
+      } else {
+        console.warn("⚠️ SAFETY: arquivo 083_motores.sql não encontrado em database/migrations/");
+      }
+    }
+  } catch (e) {
+    console.warn("⚠️ SAFETY motores:", e.message);
+  }
 }
 
+// roda imediatamente
 applyMigrations();
+
 module.exports = { applyMigrations };
