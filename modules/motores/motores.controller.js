@@ -1,5 +1,6 @@
 // /modules/motores/motores.controller.js
 const service = require("./motores.service");
+const db = require("../../database/db");
 
 function handleMissingTable(err, req, res, next) {
   if (err && String(err.message || "").includes("no such table: motores")) {
@@ -16,13 +17,24 @@ function index(req, res, next) {
       origem: req.query.origem || "",
       q: req.query.q || "",
     };
+
     const lista = service.list(filtros);
+
+    // 🔔 CONTADOR INTELIGENTE
+    const rebobCount = db.prepare(`
+      SELECT COUNT(*) as total
+      FROM motores
+      WHERE status = 'ENVIADO_REBOB'
+    `).get().total;
+
     return res.render("motores/index", {
       title: "Motores",
       activeMenu: "motores",
       filtros,
       lista,
+      rebobCount
     });
+
   } catch (err) {
     return handleMissingTable(err, req, res, next);
   }
@@ -52,6 +64,7 @@ function show(req, res, next) {
     if (!motor) return res.status(404).send("Motor não encontrado");
 
     const eventos = service.listEventos(id);
+
     return res.render("motores/view", {
       title: `Motor #${id}`,
       activeMenu: "motores",
