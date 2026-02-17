@@ -1,22 +1,18 @@
-
 // modules/dashboard/dashboard.controller.js
 const service = require("./dashboard.service");
 
-function index(req, res, next) {
-  try {
-    const cards = service.getCards();
-    const plantao = service.getPlantaoAgora();
+function index(req, res) {
+  const cards = service.getCards();
+  const preventivas = service.getPreventivasOrdenadas();
+  const escala = service.getEscalaSemana();
 
-    return res.render("dashboard/index", {
-      layout: "layout",
-      title: "Painel Principal",
-      activeMenu: "dashboard",
-      cards,
-      plantao,
-    });
-  } catch (err) {
-    return next(err);
-  }
+  res.render("dashboard/index", {
+    title: "Dashboard",
+    activeMenu: "dashboard",
+    cards,
+    preventivas,
+    escala,
+  });
 }
 
 module.exports = { index };
