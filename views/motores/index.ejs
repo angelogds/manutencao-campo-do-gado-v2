@@ -1,68 +1,119 @@
 <% layout('layout') %>
 
 <div class="page">
-  <div class="page-header">
-    <h2>Motores</h2>
-    <a class="btn" href="/motores/new">+ Cadastrar Motor</a>
+
+  <!-- HEADER -->
+  <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <h2 style="margin:0;">Motores</h2>
+      <small style="color:#777;">Controle de motores (uso, reserva, rebobinamento e retorno)</small>
+    </div>
+    <a class="btn btn-primary" href="/motores/new">+ Cadastrar Motor</a>
   </div>
 
-  <div class="card">
-    <form method="GET" action="/motores" class="row" style="display:flex; gap:10px; flex-wrap:wrap;">
-      <input name="q" placeholder="Buscar (código, descrição, local)" value="<%= filtros.q %>" />
-      <select name="origem">
-        <option value="">Origem (todas)</option>
-        <option value="RECICLAGEM" <%= filtros.origem==='RECICLAGEM'?'selected':'' %>>RECICLAGEM</option>
-        <option value="FRIGORIFICO" <%= filtros.origem==='FRIGORIFICO'?'selected':'' %>>FRIGORÍFICO</option>
-      </select>
+  <!-- FILTROS -->
+  <div class="card" style="margin-top:20px;">
+    <form method="GET" action="/motores" class="form-grid" style="max-width:100%;">
 
-      <select name="status">
-        <option value="">Status (todos)</option>
-        <option value="EM_USO" <%= filtros.status==='EM_USO'?'selected':'' %>>EM_USO</option>
-        <option value="ENVIADO_REBOB" <%= filtros.status==='ENVIADO_REBOB'?'selected':'' %>>ENVIADO_REBOB</option>
-        <option value="RETORNOU" <%= filtros.status==='RETORNOU'?'selected':'' %>>RETORNOU</option>
-        <option value="RESERVA" <%= filtros.status==='RESERVA'?'selected':'' %>>RESERVA</option>
-      </select>
+      <div style="grid-column: 1 / -1;">
+        <label>Buscar</label>
+        <input
+          name="q"
+          placeholder="Buscar (código, descrição, local)"
+          value="<%= filtros.q %>"
+        />
+      </div>
 
-      <input name="potencia" placeholder="Potência (CV)" value="<%= filtros.potencia %>" style="width:140px;" />
-      <button class="btn" type="submit">Filtrar</button>
-      <a class="btn btn-ghost" href="/motores">Limpar</a>
+      <div>
+        <label>Origem</label>
+        <select name="origem">
+          <option value="">Origem (todas)</option>
+          <option value="RECICLAGEM" <%= filtros.origem==='RECICLAGEM'?'selected':'' %>>RECICLAGEM</option>
+          <option value="FRIGORIFICO" <%= filtros.origem==='FRIGORIFICO'?'selected':'' %>>FRIGORÍFICO</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Status</label>
+        <select name="status">
+          <option value="">Status (todos)</option>
+          <option value="EM_USO" <%= filtros.status==='EM_USO'?'selected':'' %>>EM_USO</option>
+          <option value="ENVIADO_REBOB" <%= filtros.status==='ENVIADO_REBOB'?'selected':'' %>>ENVIADO_REBOB</option>
+          <option value="RETORNOU" <%= filtros.status==='RETORNOU'?'selected':'' %>>RETORNOU</option>
+          <option value="RESERVA" <%= filtros.status==='RESERVA'?'selected':'' %>>RESERVA</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Potência (CV)</label>
+        <input
+          name="potencia"
+          placeholder="Ex: 5"
+          value="<%= filtros.potencia %>"
+        />
+      </div>
+
+      <div style="display:flex; align-items:flex-end; gap:10px;">
+        <button class="btn btn-primary" type="submit">Filtrar</button>
+        <a class="btn btn-secondary" href="/motores">Limpar</a>
+      </div>
+
     </form>
   </div>
 
-  <div class="card">
+  <!-- LISTA -->
+  <div class="card" style="margin-top:20px;">
     <table class="table">
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Código</th>
+          <th style="width:70px;">ID</th>
+          <th style="width:140px;">Código</th>
           <th>Descrição</th>
-          <th>Potência</th>
-          <th>RPM</th>
-          <th>Origem</th>
-          <th>Status</th>
-          <th style="width:120px;">Ações</th>
+          <th style="width:110px;">Potência</th>
+          <th style="width:90px;">RPM</th>
+          <th style="width:140px;">Origem</th>
+          <th style="width:150px;">Status</th>
+          <th style="width:120px; text-align:right;">Ações</th>
         </tr>
       </thead>
+
       <tbody>
         <% if (!lista || !lista.length) { %>
-          <tr><td colspan="8">Nenhum motor encontrado.</td></tr>
+          <tr>
+            <td colspan="8" style="text-align:center; color:#777;">
+              Nenhum motor encontrado.
+            </td>
+          </tr>
         <% } %>
 
         <% lista.forEach(m => { %>
           <tr>
             <td><%= m.id %></td>
-            <td><%= m.codigo || '-' %></td>
-            <td><%= m.descricao %></td>
+
+            <td>
+              <%= m.codigo || '-' %>
+            </td>
+
+            <td>
+              <div style="font-weight:600;"><%= m.descricao %></div>
+              <small style="color:#777;"><%= m.local_instalacao || '' %></small>
+            </td>
+
             <td><%= m.potencia_cv ?? '-' %></td>
             <td><%= m.rpm ?? '-' %></td>
             <td><%= m.origem_unidade %></td>
-            <td><%= m.status %></td>
+
             <td>
-              <a class="btn btn-sm" href="/motores/<%= m.id %>">Ver</a>
+              <span class="badge badge-status"><%= m.status %></span>
+            </td>
+
+            <td style="text-align:right;">
+              <a class="btn btn-sm btn-primary" href="/motores/<%= m.id %>">Ver</a>
             </td>
           </tr>
         <% }) %>
       </tbody>
     </table>
   </div>
+
 </div>
