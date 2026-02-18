@@ -1,149 +1,161 @@
 <% layout('layout') %>
 
-<div class="page-head">
-  <div>
-    <h1>Motor #<%= motor.id %></h1>
-    <p class="muted"><%= motor.descricao %></p>
-  </div>
-  <div style="display:flex; gap:10px;">
+<div class="page">
+
+  <div class="page-head">
+    <div>
+      <h1>Motor #<%= motor.id %></h1>
+      <p class="muted">Detalhes e movimentações</p>
+    </div>
     <a class="btn btn-ghost" href="/motores">Voltar</a>
   </div>
-</div>
 
-<div class="card" style="max-width:1200px;">
-  <div class="grid-2">
-    <div>
-      <div class="label">Código</div>
-      <div style="font-weight:900; font-size:16px;"> <%= motor.codigo || '-' %> </div>
-    </div>
+  <!-- DADOS -->
+  <div class="card">
 
-    <div>
-      <div class="label">Status</div>
+    <div class="grid-2">
+
       <div>
-        <% if (motor.status === 'ENVIADO_REBOB') { %>
-          <span class="pill-tag pill-amber">ENVIADO_REBOB</span>
-        <% } else if (motor.status === 'RETORNOU') { %>
-          <span class="pill-tag pill-green">RETORNOU</span>
-        <% } else if (motor.status === 'RESERVA') { %>
-          <span class="pill-tag pill-gray">RESERVA</span>
-        <% } else { %>
-          <span class="pill-tag pill-blue"><%= motor.status %></span>
-        <% } %>
+        <div class="label">Código</div>
+        <div><%= motor.codigo || '-' %></div>
       </div>
+
+      <div>
+        <div class="label">Descrição</div>
+        <div><%= motor.descricao %></div>
+      </div>
+
+      <div>
+        <div class="label">Potência (CV)</div>
+        <div><%= motor.potencia_cv ?? '-' %></div>
+      </div>
+
+      <div>
+        <div class="label">RPM</div>
+        <div><%= motor.rpm ?? '-' %></div>
+      </div>
+
+      <div>
+        <div class="label">Origem</div>
+        <div><%= motor.origem_unidade %></div>
+      </div>
+
+      <div>
+        <div class="label">Status</div>
+        <div>
+          <% if (motor.status === 'EM_USO') { %>
+            <span class="pill-tag pill-green">EM_USO</span>
+          <% } else if (motor.status === 'ENVIADO_REBOB') { %>
+            <span class="pill-tag pill-amber">ENVIADO_REBOB</span>
+          <% } else if (motor.status === 'RETORNOU') { %>
+            <span class="pill-tag pill-blue">RETORNOU</span>
+          <% } else { %>
+            <span class="pill-tag pill-gray"><%= motor.status %></span>
+          <% } %>
+        </div>
+      </div>
+
+      <div style="grid-column: 1 / -1;">
+        <div class="label">Local de Instalação</div>
+        <div><%= motor.local_instalacao || '-' %></div>
+      </div>
+
+      <div style="grid-column: 1 / -1;">
+        <div class="label">Observação</div>
+        <div><%= motor.observacao || '-' %></div>
+      </div>
+
     </div>
+
   </div>
 
-  <div class="divider"></div>
+  <!-- AÇÕES -->
+  <div class="grid-2" style="margin-top:16px;">
 
-  <div class="grid-2">
-    <div>
-      <div class="label">Potência (CV)</div>
-      <div style="font-weight:900;"><%= motor.potencia_cv ?? '-' %></div>
-    </div>
-    <div>
-      <div class="label">RPM</div>
-      <div style="font-weight:900;"><%= motor.rpm ?? '-' %></div>
-    </div>
-  </div>
+    <div class="card">
+      <h3>Enviar para Rebobinamento</h3>
 
-  <div class="grid-2" style="margin-top:10px;">
-    <div>
-      <div class="label">Origem</div>
-      <div style="font-weight:900;"><%= motor.origem_unidade %></div>
-    </div>
-    <div>
-      <div class="label">Local de Instalação</div>
-      <div style="font-weight:900;"><%= motor.local_instalacao || '-' %></div>
-    </div>
-  </div>
+      <form method="POST" action="/motores/<%= motor.id %>/enviar" class="grid-2">
 
-  <div style="margin-top:10px;">
-    <div class="label">Observação</div>
-    <div class="note"><%= motor.observacao || '-' %></div>
-  </div>
-
-  <div class="divider"></div>
-
-  <div class="grid-2">
-    <div class="card" style="padding:14px;">
-      <div style="font-weight:900; font-size:16px;">Enviar para rebobinamento</div>
-      <p class="muted" style="margin:6px 0 0;">Registra empresa, motorista e observação de saída.</p>
-
-      <form method="POST" action="/motores/<%= motor.id %>/enviar" style="display:grid; gap:12px; margin-top:12px;">
         <div>
           <div class="label">Empresa *</div>
-          <input name="empresa_rebob" required placeholder="Ex: Rebobinadora X" />
+          <input class="input" name="empresa_rebob" required>
         </div>
 
         <div>
           <div class="label">Motorista</div>
-          <input name="motorista_saida" placeholder="Nome do motorista" />
+          <input class="input" name="motorista_saida">
         </div>
 
-        <div>
+        <div style="grid-column: 1 / -1;">
           <div class="label">Observação</div>
-          <input name="observacao" placeholder="Ex: saiu com urgência..." />
+          <input class="input" name="observacao">
         </div>
 
-        <button class="btn btn-green" type="submit">Registrar Saída</button>
+        <div style="grid-column: 1 / -1; text-align:right;">
+          <button class="btn btn-primary" type="submit">Registrar Saída</button>
+        </div>
+
       </form>
     </div>
 
-    <div class="card" style="padding:14px;">
-      <div style="font-weight:900; font-size:16px;">Registrar retorno</div>
-      <p class="muted" style="margin:6px 0 0;">Marca retorno e salva motorista/observação.</p>
+    <div class="card">
+      <h3>Registrar Retorno</h3>
 
-      <form method="POST" action="/motores/<%= motor.id %>/retorno" style="display:grid; gap:12px; margin-top:12px;">
+      <form method="POST" action="/motores/<%= motor.id %>/retorno" class="grid-2">
+
         <div>
           <div class="label">Motorista</div>
-          <input name="motorista_retorno" placeholder="Nome do motorista" />
+          <input class="input" name="motorista_retorno">
         </div>
 
-        <div>
+        <div style="grid-column: 1 / -1;">
           <div class="label">Observação</div>
-          <input name="observacao" placeholder="Ex: retornou testado..." />
+          <input class="input" name="observacao">
         </div>
 
-        <button class="btn btn-green" type="submit">Registrar Retorno</button>
+        <div style="grid-column: 1 / -1; text-align:right;">
+          <button class="btn btn-primary" type="submit">Registrar Retorno</button>
+        </div>
+
       </form>
     </div>
+
   </div>
 
-  <div class="divider"></div>
+  <!-- HISTÓRICO -->
+  <div class="card" style="margin-top:16px;">
+    <h3>Histórico</h3>
 
-  <div>
-    <div style="font-weight:900; font-size:16px;">Histórico</div>
-    <p class="muted" style="margin:6px 0 0;">Eventos de envio e retorno.</p>
-
-    <div class="table-wrap" style="margin-top:12px;">
+    <div class="table-wrap">
       <table class="table">
         <thead>
           <tr>
             <th>ID</th>
             <th>Tipo</th>
-            <th>Quando</th>
+            <th>Data</th>
             <th>Detalhes</th>
           </tr>
         </thead>
         <tbody>
           <% if (!eventos || !eventos.length) { %>
-            <tr><td colspan="4">Sem histórico.</td></tr>
-          <% } else { %>
-            <% eventos.forEach(e => { %>
-              <tr>
-                <td><%= e.id %></td>
-                <td><%= e.tipo %></td>
-                <td><%= e.created_at %></td>
-                <td>
-                  <% if (e.payloadObj) { %>
-                    <pre class="note" style="margin:0;"><%= JSON.stringify(e.payloadObj, null, 2) %></pre>
-                  <% } else { %>
-                    -
-                  <% } %>
-                </td>
-              </tr>
-            <% }) %>
+            <tr>
+              <td colspan="4" style="text-align:center; color:var(--muted);">
+                Sem histórico.
+              </td>
+            </tr>
           <% } %>
+
+          <% eventos.forEach(e => { %>
+            <tr>
+              <td><%= e.id %></td>
+              <td><%= e.tipo %></td>
+              <td><%= e.created_at %></td>
+              <td class="td-clip">
+                <%= e.payloadObj ? JSON.stringify(e.payloadObj) : '-' %>
+              </td>
+            </tr>
+          <% }) %>
         </tbody>
       </table>
     </div>
