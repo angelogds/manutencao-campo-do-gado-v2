@@ -1,62 +1,48 @@
 <% layout('layout') %>
 
-<div class="page-head">
-  <div>
-    <h1>Entrar</h1>
-    <p class="muted">Acesse o sistema de manutenção.</p>
-  </div>
-</div>
+<section class="auth">
+  <div class="card auth-card">
+    <h2>Entrar</h2>
 
-<div class="card" style="max-width:420px;">
+    <% if (flash && flash.error && flash.error.length) { %>
+      <div class="alert alert-error"><%= flash.error[0] %></div>
+    <% } %>
 
-  <% if (error && error.length) { %>
-    <div class="alert alert-error" style="margin-bottom:12px;">
-      <%= error[0] %>
-    </div>
-  <% } %>
+    <% if (flash && flash.success && flash.success.length) { %>
+      <div class="alert alert-success"><%= flash.success[0] %></div>
+    <% } %>
 
-  <% if (success && success.length) { %>
-    <div class="alert alert-success" style="margin-bottom:12px;">
-      <%= success[0] %>
-    </div>
-  <% } %>
+    <% if (lockout) { %>
+      <div class="alert alert-error">
+        Muitas tentativas. Aguarde <b><%= lockout.remainingSeconds %></b> segundos e tente novamente.
+      </div>
+    <% } %>
 
-  <% if (typeof lockout !== 'undefined' && lockout) { %>
-    <div class="alert alert-error" style="margin-bottom:12px;">
-      Muitas tentativas. Aguarde <b><%= lockout.remainingSeconds %></b> segundos e tente novamente.
-    </div>
-  <% } %>
+    <% if (attemptsLeft !== null && attemptsLeft !== undefined) { %>
+      <div class="alert alert-info">
+        Tentativas restantes: <b><%= attemptsLeft %></b>
+      </div>
+    <% } %>
 
-  <% if (typeof attemptsLeft !== 'undefined' && attemptsLeft !== null) { %>
-    <div class="alert" style="margin-bottom:12px;">
-      Tentativas restantes: <b><%= attemptsLeft %></b>
-    </div>
-  <% } %>
-
-  <form action="/auth/login" method="POST" style="display:grid; gap:12px;">
-    <div>
-      <div class="label">Email</div>
+    <form action="/auth/login" method="POST">
+      <label>Email</label>
       <input
-        class="input"
         type="email"
         name="email"
         value="<%= rememberedEmail || '' %>"
         required
         autocomplete="email"
       />
-    </div>
 
-    <div>
-      <div class="label">Senha</div>
+      <label>Senha</label>
       <input
-        class="input"
         type="password"
         name="password"
         required
         autocomplete="current-password"
       />
-    </div>
 
-    <button class="btn btn-green" type="submit">Entrar</button>
-  </form>
-</div>
+      <button type="submit">Entrar</button>
+    </form>
+  </div>
+</section>
