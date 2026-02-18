@@ -94,7 +94,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.PORT || 8080);
 app.listen(PORT, () => {
   console.log(`🚀 Servidor ativo na porta ${PORT}`);
 });
