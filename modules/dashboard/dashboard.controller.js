@@ -1,12 +1,17 @@
 // modules/dashboard/dashboard.controller.js
-const dashboardService = require("./dashboard.service");
+const service = require("./dashboard.service");
 
 function index(req, res) {
-  const data = dashboardService.getDashboardData();
+  const cards = service.getCards();
+  const preventivas = service.getPreventivasDashboard();
+  const escala = service.getEscalaSemana();
 
   return res.render("dashboard/index", {
-    title: "Painel",
-    ...data,
+    title: "Dashboard",
+    activeMenu: "dashboard",
+    cards,
+    preventivas,
+    escala,
   });
 }
 
