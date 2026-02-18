@@ -147,6 +147,16 @@
       margin-right:10px;
     }
 
+    .user-avatar{
+      width:36px;
+      height:36px;
+      border-radius:999px;
+      object-fit:cover;
+      border:1px solid #e5e7eb;
+      margin-right:10px;
+      background:#fff;
+    }
+
     .btn-ghost{
       background:#fff;
       border:1px solid #ddd;
@@ -209,6 +219,9 @@
 
         <div style="display:flex; align-items:center;">
           <% if (user) { %>
+            <% if (user.photo_path) { %>
+              <img class="user-avatar" src="<%= user.photo_path %>" alt="Foto do usuário" />
+            <% } %>
             <div class="pill">
               <%= user.name %> • <%= user.role.toUpperCase() %>
             </div>

@@ -3,13 +3,13 @@
   const role = String(user?.role || "").toUpperCase();
 
   const isAdmin = role === "ADMIN";
-  const isAlmox = role === "ALMOXARIFE";
+  const isAlmox = role === "ALMOXARIFE" || role === "ALMOXARIFADO";
   const isDirecao = role === "DIRECAO" || role === "DIRETORIA";
   const isCompras = role === "COMPRAS";
   const isEncarregadoProd = role === "ENCARREGADO_PRODUCAO";
 
   const canAlmoxArea = isAdmin || isAlmox; // Almoxarife + Motores
-  const canEstoque = isAdmin || isAlmox;
+  const canEstoque = isAdmin || isAlmox || isCompras;
   const canMotores = isAdmin || isAlmox;
 
   // Compras: (ajuste se você quiser leitura p/ direção/encarregado)
