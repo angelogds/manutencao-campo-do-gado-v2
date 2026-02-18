@@ -13,6 +13,8 @@
 
   // Compras: (ajuste se você quiser leitura p/ direção/encarregado)
   const canCompras = isAdmin || isAlmox || isDirecao || isEncarregadoProd;
+  const canSolicitacoes = canCompras;
+  const canAlmoxarifado = isAdmin || isAlmox || role === 'COMPRAS';
 
   const canUsuarios = isAdmin;
 %>
@@ -43,9 +45,21 @@
       Preventivas
     </a>
 
+    <% if (canSolicitacoes) { %>
+      <a class="nav-item <%= activeMenu === 'solicitacoes' ? 'active' : '' %>" href="/solicitacoes">
+        Solicitações
+      </a>
+    <% } %>
+
     <% if (canCompras) { %>
       <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">
         Compras
+      </a>
+    <% } %>
+
+    <% if (canAlmoxarifado) { %>
+      <a class="nav-item <%= activeMenu === 'almoxarifado' ? 'active' : '' %>" href="/almoxarifado">
+        Almoxarifado
       </a>
     <% } %>
 
