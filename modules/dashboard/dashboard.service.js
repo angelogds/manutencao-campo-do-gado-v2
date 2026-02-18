@@ -5,7 +5,7 @@ let escalaService = null;
 try {
   escalaService = require("../escala/escala.service");
 } catch (e) {
-  console.warn("⚠️ [dashboard] escala.service não carregou:", e.message);
+  console.warn("⚠️ escala.service não carregou:", e.message);
 }
 
 /* ===============================
@@ -19,20 +19,6 @@ function getCards() {
       WHERE status IN ('ABERTA','ANDAMENTO','PAUSADA')
     `)
     .get()?.total || 0;
-
-  // 🔧 PREVENTIVAS (tabela correta)
-  let preventivas = 0;
-  try {
-    preventivas = db
-      .prepare(`
-        SELECT COUNT(*) AS total
-        FROM preventivas
-        WHERE ativo = 1
-      `)
-      .get()?.total || 0;
-  } catch (err) {
-    console.warn("⚠️ Tabela preventivas não encontrada.");
-  }
 
   const motoresEmpresa = db
     .prepare(`
@@ -52,29 +38,29 @@ function getCards() {
 
   return {
     os_abertas: os,
-    preventivas,
     motores_empresa: motoresEmpresa,
     motores_conserto: motoresFora,
   };
 }
 
 /* ===============================
-   PREVENTIVAS ORDENADAS
+   PREVENTIVAS ATIVAS (DASHBOARD)
 =================================*/
-function getPreventivasOrdenadas() {
-  try {
-    return db
-      .prepare(`
-        SELECT id, equipamento_id, periodicidade_dias
-        FROM preventivas
-        WHERE ativo = 1
-        ORDER BY equipamento_id ASC
-        LIMIT 6
-      `)
-      .all();
-  } catch (err) {
-    return [];
-  }
+function getPreventivasDashboard() {
+  return db.prepare(`
+    SELECT
+      pe.id,
+      e.nome AS equipamento_nome,
+      pe.data_prevista,
+      pe.status,
+      pe.responsavel,
+      pe.observacao
+    FROM preventiva_execucoes pe
+    JOIN preventiva_planos pp ON pp.id = pe.plano_id
+    LEFT JOIN equipamentos e ON e.id = pp.equipamento_id
+    WHERE pe.status IN ('pendente','atrasada','em_andamento')
+    ORDER BY pe.data_prevista ASC
+  `).all();
 }
 
 /* ===============================
@@ -84,12 +70,11 @@ function getEscalaSemana() {
   if (!escalaService || typeof escalaService.getPlantaoAgora !== "function") {
     return null;
   }
-
   return escalaService.getPlantaoAgora();
 }
 
 module.exports = {
   getCards,
-  getPreventivasOrdenadas,
+  getPreventivasDashboard,
   getEscalaSemana,
 };
