@@ -3,7 +3,7 @@ const service = require("./dashboard.service");
 
 function index(req, res) {
   const cards = service.getCards();
-  const preventivas = service.getPreventivasOrdenadas();
+  const preventivas = service.getPreventivasDashboard();
   const escala = service.getEscalaSemana();
 
   res.render("dashboard/index", {
