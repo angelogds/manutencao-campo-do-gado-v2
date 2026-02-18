@@ -1,118 +1,98 @@
-// /server.js
+// server.js
 require("dotenv").config();
 
-try {
-  require("./database/migrate");
-  console.log("✅ Migrations carregadas");
-} catch (err) {
-  console.error("❌ Erro nas migrations:", err.message);
-}
-
 const express = require("express");
-const path = require("path");
 const session = require("express-session");
-const flash = require("connect-flash");
+const SQLiteStore = require("connect-sqlite3")(session);
+const path = require("path");
 const engine = require("ejs-mate");
+const db = require("./database/db");
 
-const dateUtil = require("./utils/date");
-const fmtBR =
-  typeof dateUtil.fmtBR === "function" ? dateUtil.fmtBR : (v) => String(v ?? "-");
-const TZ = dateUtil.TZ || "America/Sao_Paulo";
+const { runMigrations } = require("./database/migrate");
 
 const app = express();
-app.set("trust proxy", 1);
 
-// ===== View engine =====
+// view engine
 app.engine("ejs", engine);
-app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
 
-// ===== Middlewares base =====
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+// static
 app.use(express.static(path.join(__dirname, "public")));
 
-// ===== Session + Flash =====
+// body
+app.use(express.urlencoded({ extended: true }));
+
+// sessions
 app.use(
   session({
-    name: process.env.SESSION_COOKIE_NAME || "cg.sid",
-    secret: process.env.SESSION_SECRET || "dev-secret",
+    store: new SQLiteStore({
+      db: path.basename(process.env.DB_PATH || "sessions.sqlite"),
+      dir: path.dirname(process.env.DB_PATH || path.join(__dirname, "database")),
+    }),
+    secret: process.env.SESSION_SECRET || "dev_secret_change_me",
     resave: false,
     saveUninitialized: false,
-    proxy: true,
-    cookie: {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: "auto",
-    },
   })
 );
-app.use(flash());
 
-// ===== Globals (views) =====
-app.locals.TZ = TZ;
-app.locals.fmtBR = fmtBR;
-
+// globals (locals)
 app.use((req, res, next) => {
   res.locals.user = req.session?.user || null;
-  res.locals.flash = {
-    success: req.flash("success") || [],
-    error: req.flash("error") || [],
-  };
-  res.locals.fmtBR = fmtBR;
-  res.locals.TZ = TZ;
 
   // evita crash no layout
   res.locals.activeMenu = res.locals.activeMenu || "";
 
+  // 🔔 Badge de motores em rebobinamento (mostra só se tiver)
+  // Não pode derrubar a aplicação se ainda não existir tabela/migration.
+  res.locals.motorBadgeCount = 0;
+  if (req.session?.user) {
+    try {
+      const row = db
+        .prepare(
+          "SELECT COUNT(*) AS total FROM motores WHERE status = 'ENVIADO_REBOB'"
+        )
+        .get();
+      res.locals.motorBadgeCount = row?.total || 0;
+    } catch (e) {
+      // silencioso
+    }
+  }
+
   next();
 });
 
-// ✅ Seeds
-try {
-  const seed = require("./database/seed");
-  if (seed && typeof seed.runSeeds === "function") seed.runSeeds();
-  else if (seed && typeof seed.ensureAdmin === "function") seed.ensureAdmin();
-} catch (err) {
-  console.warn("⚠️ Seed não carregado:", err.message);
-}
+// routes
+const authRoutes = require("./modules/auth/auth.routes");
+const dashboardRoutes = require("./modules/dashboard/dashboard.routes");
+const equipamentosRoutes = require("./modules/equipamentos/equipamentos.routes");
+const osRoutes = require("./modules/os/os.routes");
+const preventivasRoutes = require("./modules/preventivas/preventivas.routes");
+const comprasRoutes = require("./modules/compras/compras.routes");
+const estoqueRoutes = require("./modules/estoque/estoque.routes");
+const motoresRoutes = require("./modules/motores/motores.routes");
+const escalaRoutes = require("./modules/escala/escala.routes");
 
-// ===== ROTAS =====
-app.use("/auth", require("./modules/auth/auth.routes"));
-app.use("/dashboard", require("./modules/dashboard/dashboard.routes"));
-app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
-app.use("/os", require("./modules/os/os.routes"));
-app.use("/preventivas", require("./modules/preventivas/preventivas.routes"));
-app.use("/compras", require("./modules/compras/compras.routes"));
-app.use("/estoque", require("./modules/estoque/estoque.routes"));
-app.use("/escala", require("./modules/escala/escala.routes"));
-app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
-app.use("/motores", require("./modules/motores/motores.routes")); // ✅ motores
+// mount
+app.use("/", authRoutes);
+app.use("/", dashboardRoutes);
+app.use("/", equipamentosRoutes);
+app.use("/", osRoutes);
+app.use("/", preventivasRoutes);
+app.use("/", comprasRoutes);
+app.use("/", estoqueRoutes);
+app.use("/", motoresRoutes);
+app.use("/", escalaRoutes);
 
-// ===== Home =====
-app.get("/", (req, res) => {
-  if (req.session?.user) return res.redirect("/dashboard");
-  return res.redirect("/auth/login");
-});
+// start
+const PORT = process.env.PORT || 3000;
 
-// ===== Health =====
-app.get("/health", (_req, res) => {
-  res.status(200).json({
-    status: "ok",
-    app: "manutencao-campo-do-gado-v2",
-    timezone: TZ,
-    timestamp_utc: new Date().toISOString(),
-  });
-});
-
-// ===== 404 =====
-app.use((_req, res) => res.status(404).send("404 - Página não encontrada"));
-
-// ===== Error handler =====
-app.use((err, _req, res, _next) => {
-  console.error("❌ ERRO:", err);
-  res.status(500).send("500 - Erro interno");
-});
-
-const port = process.env.PORT || 8080;
-app.listen(port, () => console.log(`🚀 Servidor ativo na porta ${port}`));
+(async () => {
+  try {
+    runMigrations();
+    app.listen(PORT, () => console.log(`✅ Server rodando na porta ${PORT}`));
+  } catch (err) {
+    console.error("❌ Falha ao iniciar:", err);
+    process.exit(1);
+  }
+})();
