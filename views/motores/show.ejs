@@ -1,161 +1,149 @@
 <% layout('layout') %>
 
-<div class="page">
-
-  <div class="page-head">
-    <div>
-      <h1>Motor #<%= motor.id %></h1>
-      <p class="muted">Detalhes e movimentações</p>
-    </div>
+<div class="page-head">
+  <div>
+    <h1>Motor #<%= motor.id %></h1>
+    <p class="muted"><%= motor.descricao %></p>
+  </div>
+  <div style="display:flex; gap:10px;">
     <a class="btn btn-ghost" href="/motores">Voltar</a>
   </div>
+</div>
 
-  <!-- DADOS -->
-  <div class="card">
-
-    <div class="grid-2">
-
-      <div>
-        <div class="label">Código</div>
-        <div><%= motor.codigo || '-' %></div>
-      </div>
-
-      <div>
-        <div class="label">Descrição</div>
-        <div><%= motor.descricao %></div>
-      </div>
-
-      <div>
-        <div class="label">Potência (CV)</div>
-        <div><%= motor.potencia_cv ?? '-' %></div>
-      </div>
-
-      <div>
-        <div class="label">RPM</div>
-        <div><%= motor.rpm ?? '-' %></div>
-      </div>
-
-      <div>
-        <div class="label">Origem</div>
-        <div><%= motor.origem_unidade %></div>
-      </div>
-
-      <div>
-        <div class="label">Status</div>
-        <div>
-          <% if (motor.status === 'EM_USO') { %>
-            <span class="pill-tag pill-green">EM_USO</span>
-          <% } else if (motor.status === 'ENVIADO_REBOB') { %>
-            <span class="pill-tag pill-amber">ENVIADO_REBOB</span>
-          <% } else if (motor.status === 'RETORNOU') { %>
-            <span class="pill-tag pill-blue">RETORNOU</span>
-          <% } else { %>
-            <span class="pill-tag pill-gray"><%= motor.status %></span>
-          <% } %>
-        </div>
-      </div>
-
-      <div style="grid-column: 1 / -1;">
-        <div class="label">Local de Instalação</div>
-        <div><%= motor.local_instalacao || '-' %></div>
-      </div>
-
-      <div style="grid-column: 1 / -1;">
-        <div class="label">Observação</div>
-        <div><%= motor.observacao || '-' %></div>
-      </div>
-
+<div class="card" style="max-width:1200px;">
+  <div class="grid-2">
+    <div>
+      <div class="label">Código</div>
+      <div style="font-weight:900; font-size:16px;"> <%= motor.codigo || '-' %> </div>
     </div>
 
+    <div>
+      <div class="label">Status</div>
+      <div>
+        <% if (motor.status === 'ENVIADO_REBOB') { %>
+          <span class="pill-tag pill-amber">ENVIADO_REBOB</span>
+        <% } else if (motor.status === 'RETORNOU') { %>
+          <span class="pill-tag pill-green">RETORNOU</span>
+        <% } else if (motor.status === 'RESERVA') { %>
+          <span class="pill-tag pill-gray">RESERVA</span>
+        <% } else { %>
+          <span class="pill-tag pill-blue"><%= motor.status %></span>
+        <% } %>
+      </div>
+    </div>
   </div>
 
-  <!-- AÇÕES -->
-  <div class="grid-2" style="margin-top:16px;">
+  <div class="divider"></div>
 
-    <div class="card">
-      <h3>Enviar para Rebobinamento</h3>
+  <div class="grid-2">
+    <div>
+      <div class="label">Potência (CV)</div>
+      <div style="font-weight:900;"><%= motor.potencia_cv ?? '-' %></div>
+    </div>
+    <div>
+      <div class="label">RPM</div>
+      <div style="font-weight:900;"><%= motor.rpm ?? '-' %></div>
+    </div>
+  </div>
 
-      <form method="POST" action="/motores/<%= motor.id %>/enviar" class="grid-2">
+  <div class="grid-2" style="margin-top:10px;">
+    <div>
+      <div class="label">Origem</div>
+      <div style="font-weight:900;"><%= motor.origem_unidade %></div>
+    </div>
+    <div>
+      <div class="label">Local de Instalação</div>
+      <div style="font-weight:900;"><%= motor.local_instalacao || '-' %></div>
+    </div>
+  </div>
 
+  <div style="margin-top:10px;">
+    <div class="label">Observação</div>
+    <div class="note"><%= motor.observacao || '-' %></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="grid-2">
+    <div class="card" style="padding:14px;">
+      <div style="font-weight:900; font-size:16px;">Enviar para rebobinamento</div>
+      <p class="muted" style="margin:6px 0 0;">Registra empresa, motorista e observação de saída.</p>
+
+      <form method="POST" action="/motores/<%= motor.id %>/enviar" style="display:grid; gap:12px; margin-top:12px;">
         <div>
           <div class="label">Empresa *</div>
-          <input class="input" name="empresa_rebob" required>
+          <input name="empresa_rebob" required placeholder="Ex: Rebobinadora X" />
         </div>
 
         <div>
           <div class="label">Motorista</div>
-          <input class="input" name="motorista_saida">
+          <input name="motorista_saida" placeholder="Nome do motorista" />
         </div>
-
-        <div style="grid-column: 1 / -1;">
-          <div class="label">Observação</div>
-          <input class="input" name="observacao">
-        </div>
-
-        <div style="grid-column: 1 / -1; text-align:right;">
-          <button class="btn btn-primary" type="submit">Registrar Saída</button>
-        </div>
-
-      </form>
-    </div>
-
-    <div class="card">
-      <h3>Registrar Retorno</h3>
-
-      <form method="POST" action="/motores/<%= motor.id %>/retorno" class="grid-2">
 
         <div>
-          <div class="label">Motorista</div>
-          <input class="input" name="motorista_retorno">
-        </div>
-
-        <div style="grid-column: 1 / -1;">
           <div class="label">Observação</div>
-          <input class="input" name="observacao">
+          <input name="observacao" placeholder="Ex: saiu com urgência..." />
         </div>
 
-        <div style="grid-column: 1 / -1; text-align:right;">
-          <button class="btn btn-primary" type="submit">Registrar Retorno</button>
-        </div>
-
+        <button class="btn btn-green" type="submit">Registrar Saída</button>
       </form>
     </div>
 
+    <div class="card" style="padding:14px;">
+      <div style="font-weight:900; font-size:16px;">Registrar retorno</div>
+      <p class="muted" style="margin:6px 0 0;">Marca retorno e salva motorista/observação.</p>
+
+      <form method="POST" action="/motores/<%= motor.id %>/retorno" style="display:grid; gap:12px; margin-top:12px;">
+        <div>
+          <div class="label">Motorista</div>
+          <input name="motorista_retorno" placeholder="Nome do motorista" />
+        </div>
+
+        <div>
+          <div class="label">Observação</div>
+          <input name="observacao" placeholder="Ex: retornou testado..." />
+        </div>
+
+        <button class="btn btn-green" type="submit">Registrar Retorno</button>
+      </form>
+    </div>
   </div>
 
-  <!-- HISTÓRICO -->
-  <div class="card" style="margin-top:16px;">
-    <h3>Histórico</h3>
+  <div class="divider"></div>
 
-    <div class="table-wrap">
+  <div>
+    <div style="font-weight:900; font-size:16px;">Histórico</div>
+    <p class="muted" style="margin:6px 0 0;">Eventos de envio e retorno.</p>
+
+    <div class="table-wrap" style="margin-top:12px;">
       <table class="table">
         <thead>
           <tr>
             <th>ID</th>
             <th>Tipo</th>
-            <th>Data</th>
+            <th>Quando</th>
             <th>Detalhes</th>
           </tr>
         </thead>
         <tbody>
           <% if (!eventos || !eventos.length) { %>
-            <tr>
-              <td colspan="4" style="text-align:center; color:var(--muted);">
-                Sem histórico.
-              </td>
-            </tr>
+            <tr><td colspan="4">Sem histórico.</td></tr>
+          <% } else { %>
+            <% eventos.forEach(e => { %>
+              <tr>
+                <td><%= e.id %></td>
+                <td><%= e.tipo %></td>
+                <td><%= e.created_at %></td>
+                <td>
+                  <% if (e.payloadObj) { %>
+                    <pre class="note" style="margin:0;"><%= JSON.stringify(e.payloadObj, null, 2) %></pre>
+                  <% } else { %>
+                    -
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
           <% } %>
-
-          <% eventos.forEach(e => { %>
-            <tr>
-              <td><%= e.id %></td>
-              <td><%= e.tipo %></td>
-              <td><%= e.created_at %></td>
-              <td class="td-clip">
-                <%= e.payloadObj ? JSON.stringify(e.payloadObj) : '-' %>
-              </td>
-            </tr>
-          <% }) %>
         </tbody>
       </table>
     </div>
