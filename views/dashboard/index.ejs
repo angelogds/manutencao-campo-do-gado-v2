@@ -30,20 +30,15 @@
     <div class="card">
       <div class="label">Escala da Semana</div>
 
-      <% if (escala && (escala.turno_dia || escala.turno_noite || escala.turno_apoio)) { %>
+      <% if (escala) { %>
         <div style="margin-top:10px;">
           <strong>Turno Dia:</strong><br>
-          <span class="muted"><%= escala.turno_dia || '-' %></span>
+          <%= escala.turno_dia || '-' %>
         </div>
 
         <div style="margin-top:10px;">
           <strong>Turno Noite:</strong><br>
-          <span class="muted"><%= escala.turno_noite || '-' %></span>
-        </div>
-
-        <div style="margin-top:10px;">
-          <strong>Apoio:</strong><br>
-          <span class="muted"><%= escala.turno_apoio || '-' %></span>
+          <%= escala.turno_noite || '-' %>
         </div>
       <% } else { %>
         <div class="muted" style="margin-top:10px;">
@@ -124,12 +119,14 @@
                 <td><%= p.responsavel || '-' %></td>
                 <td><%= p.data_prevista || '-' %></td>
                 <td>
-                  <% if (p.status === 'pendente') { %>
+                  <% const st = (p.status || '').toLowerCase(); %>
+
+                  <% if (st === 'pendente') { %>
                     <span class="pill-tag pill-blue">Programada</span>
-                  <% } else if (p.status === 'atrasada') { %>
+                  <% } else if (st === 'em_andamento' || st === 'andamento') { %>
+                    <span class="pill-tag pill-amber">Em andamento</span>
+                  <% } else if (st === 'atrasada') { %>
                     <span class="pill-tag pill-amber">Atrasada</span>
-                  <% } else if (p.status === 'executada') { %>
-                    <span class="pill-tag pill-green">Concluída</span>
                   <% } else { %>
                     <span class="pill-tag pill-gray"><%= p.status || '-' %></span>
                   <% } %>
@@ -145,4 +142,3 @@
   </div>
 
 </div>
-
