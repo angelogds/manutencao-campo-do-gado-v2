@@ -1,0 +1,20 @@
+<% layout('layout') %>
+<div class="page-head"><div><h1>Nova Solicitação</h1><p class="muted">Solicitação avulsa ou vinculada a OS/preventiva.</p></div></div>
+<div class="card">
+<form method="POST" action="/solicitacoes">
+  <div class="grid-3">
+    <div><div class="label">Solicitante</div><input class="input" name="solicitante" value="<%= user?.name || '' %>" /></div>
+    <div><div class="label">Setor</div><input class="input" name="setor" value="MANUTENCAO" /></div>
+    <div><div class="label">Tipo de origem</div><select class="input" name="tipo_origem"><option value="AVULSA">Avulsa</option><option value="OS">Ordem de Serviço</option><option value="PREVENTIVA">Preventiva</option></select></div>
+    <div><div class="label">ID origem (OS/Preventiva)</div><input class="input" name="origem_id" /></div>
+    <div><div class="label">Equipamento (opcional)</div><select class="input" name="equipamento_id"><option value="">--</option><% (equipamentos||[]).forEach(e=>{ %><option value="<%= e.id %>"><%= e.nome %></option><% }) %></select></div>
+    <div><div class="label">Destino de uso</div><input class="input" name="destino_uso" placeholder="Ex.: Linha 2 / Uso geral" /></div>
+  </div>
+  <div style="margin-top:12px;"><div class="label">Observação</div><textarea class="input" name="observacao"></textarea></div>
+  <h3 style="margin-top:16px;">Itens</h3>
+  <div class="grid-3"><input class="input" name="itens_descricao" placeholder="Descrição do item" required /><input class="input" name="itens_qtd" type="number" step="0.01" value="1" required /><input class="input" name="itens_un" value="UN" /></div>
+  <div class="grid-3" style="margin-top:8px;"><input class="input" name="itens_descricao" placeholder="Descrição do item" /><input class="input" name="itens_qtd" type="number" step="0.01" value="" /><input class="input" name="itens_un" value="UN" /></div>
+  <div class="grid-3" style="margin-top:8px;"><input class="input" name="itens_descricao" placeholder="Descrição do item" /><input class="input" name="itens_qtd" type="number" step="0.01" value="" /><input class="input" name="itens_un" value="UN" /></div>
+  <div style="margin-top:16px;"><button class="btn btn-green" type="submit">Criar solicitação</button></div>
+</form>
+</div>
