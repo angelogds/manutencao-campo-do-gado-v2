@@ -1,22 +1,37 @@
 <% layout('layout') %>
 
-<div class="page-head">
-  <div>
-    <h1>Cadastrar Motor</h1>
-    <p class="muted">Cadastro rápido para controle de motores (planta / reserva / rebobinamento).</p>
-  </div>
-  <div>
+<div class="page">
+
+  <div class="page-head">
+    <div>
+      <h1>Cadastrar Motor</h1>
+      <p class="muted">Cadastro de motor da planta</p>
+    </div>
     <a class="btn btn-ghost" href="/motores">Voltar</a>
   </div>
-</div>
 
-<div class="card" style="max-width:920px;">
-  <form method="POST" action="/motores" style="display:grid; gap:14px;">
+  <div class="card">
 
-    <div class="grid-2">
+    <form method="POST" action="/motores" class="grid-2">
+
       <div>
-        <div class="label">Código / Patrimônio (opcional)</div>
-        <input name="codigo" placeholder="Ex: MTR-001" />
+        <div class="label">Código / Patrimônio</div>
+        <input class="input" name="codigo" placeholder="Ex: MTR-001">
+      </div>
+
+      <div>
+        <div class="label">Descrição *</div>
+        <input class="input" name="descricao" required placeholder="Ex: Motor 5CV 1700RPM">
+      </div>
+
+      <div>
+        <div class="label">Potência (CV)</div>
+        <input class="input" name="potencia_cv" type="number" step="0.1" placeholder="5">
+      </div>
+
+      <div>
+        <div class="label">RPM</div>
+        <input class="input" name="rpm" type="number" step="1" placeholder="1700">
       </div>
 
       <div>
@@ -26,31 +41,7 @@
           <option value="FRIGORIFICO">FRIGORÍFICO</option>
         </select>
       </div>
-    </div>
 
-    <div>
-      <div class="label">Descrição *</div>
-      <input name="descricao" required placeholder="Ex: Motor 5CV 1700RPM" />
-    </div>
-
-    <div class="grid-2">
-      <div>
-        <div class="label">Potência (CV)</div>
-        <input name="potencia_cv" type="number" step="0.1" placeholder="5" />
-      </div>
-
-      <div>
-        <div class="label">RPM</div>
-        <input name="rpm" type="number" step="1" placeholder="1700" />
-      </div>
-    </div>
-
-    <div>
-      <div class="label">Local de Instalação</div>
-      <input name="local_instalacao" placeholder="Ex: Rosca 02 / Caldeira / Digestor..." />
-    </div>
-
-    <div class="grid-2">
       <div>
         <div class="label">Status</div>
         <select name="status">
@@ -61,15 +52,24 @@
         </select>
       </div>
 
-      <div>
-        <div class="label">Observação</div>
-        <input name="observacao" placeholder="Detalhes adicionais..." />
+      <div style="grid-column: 1 / -1;">
+        <div class="label">Local de Instalação</div>
+        <input class="input" name="local_instalacao"
+               placeholder="Ex: Rosca 02 / Caldeira / Digestor">
       </div>
-    </div>
 
-    <div style="display:flex; gap:10px;">
-      <button class="btn btn-green" type="submit">Salvar</button>
-      <a class="btn btn-ghost" href="/motores">Cancelar</a>
-    </div>
-  </form>
+      <div style="grid-column: 1 / -1;">
+        <div class="label">Observação</div>
+        <textarea name="observacao"></textarea>
+      </div>
+
+      <div style="grid-column: 1 / -1; display:flex; justify-content:flex-end; gap:10px;">
+        <a class="btn btn-ghost" href="/motores">Cancelar</a>
+        <button class="btn btn-primary" type="submit">Salvar</button>
+      </div>
+
+    </form>
+
+  </div>
+
 </div>
