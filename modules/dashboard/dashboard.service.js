@@ -278,6 +278,74 @@ function getOSPainel(page = 1, pageSize = 10) {
   });
 }
 
+
+function getComprasResumoDashboard() {
+  return safeGet(() => {
+    const row = db.prepare(`
+      SELECT
+        SUM(CASE WHEN status IN ('aberta','em_cotacao') THEN 1 ELSE 0 END) AS solicitacoes_abertas,
+        SUM(CASE WHEN status IN ('aprovada','aprovada_compra','liberada') THEN 1 ELSE 0 END) AS solicitacoes_aprovadas
+      FROM solicitacoes_compra
+    `).get() || {};
+
+    return {
+      solicitacoes_abertas: Number(row.solicitacoes_abertas || 0),
+      solicitacoes_aprovadas: Number(row.solicitacoes_aprovadas || 0),
+    };
+  }, { solicitacoes_abertas: 0, solicitacoes_aprovadas: 0 });
+}
+
+function getEstoqueResumoDashboard() {
+  return safeGet(() => {
+    const row = db.prepare(`
+      SELECT
+        (SELECT COUNT(*) FROM estoque_itens WHERE ativo=1) AS itens,
+        (SELECT COUNT(*) FROM vw_estoque_saldo s JOIN estoque_itens i ON i.id=s.item_id WHERE i.ativo=1 AND s.saldo < COALESCE(i.estoque_min,0)) AS abaixo_minimo
+    `).get() || {};
+
+    const ultimasMov = db.prepare(`
+      SELECT m.id, m.tipo, m.quantidade, m.created_at, i.nome AS item_nome
+      FROM estoque_movimentos m
+      JOIN estoque_itens i ON i.id = m.item_id
+      ORDER BY m.id DESC
+      LIMIT 5
+    `).all();
+
+    return {
+      itens_ativos: Number(row.itens || 0),
+      abaixo_minimo: Number(row.abaixo_minimo || 0),
+      ultimas_movimentacoes: ultimasMov,
+    };
+  }, { itens_ativos: 0, abaixo_minimo: 0, ultimas_movimentacoes: [] });
+}
+
+function getDemandasResumoDashboard() {
+  return safeGet(() => {
+    const row = db.prepare(`
+      SELECT
+        SUM(CASE WHEN status='NOVA' THEN 1 ELSE 0 END) AS novas,
+        SUM(CASE WHEN status='EM_ANDAMENTO' THEN 1 ELSE 0 END) AS em_andamento,
+        SUM(CASE WHEN status='PARADA' THEN 1 ELSE 0 END) AS paradas
+      FROM demandas
+    `).get() || {};
+
+    const emTrabalho = db.prepare(`
+      SELECT id, titulo, prioridade
+      FROM demandas
+      WHERE status='EM_ANDAMENTO'
+      ORDER BY id DESC
+      LIMIT 5
+    `).all();
+
+    return {
+      novas: Number(row.novas || 0),
+      em_andamento: Number(row.em_andamento || 0),
+      paradas: Number(row.paradas || 0),
+      em_trabalho: emTrabalho,
+    };
+  }, { novas: 0, em_andamento: 0, paradas: 0, em_trabalho: [] });
+}
+
 function getHistoricoEquipamentos(limit = 8) {
   return safeGet(() => {
     return db
@@ -380,6 +448,9 @@ module.exports = {
   getOSResumoStatus,
   getOSPainel,
   getHistoricoEquipamentos,
+  getComprasResumoDashboard,
+  getEstoqueResumoDashboard,
+  getDemandasResumoDashboard,
   getPreventivasDashboard,
   getEscalaSemana,
   getEscalaPainelSemana,

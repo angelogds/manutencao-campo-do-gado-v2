@@ -239,6 +239,45 @@
     </div>
 
     <div class="card">
+      <div class="label">Solicitações / Compras</div>
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <span class="pill-tag pill-amber">Abertas: <%= comprasResumo?.solicitacoes_abertas ?? 0 %></span>
+        <span class="pill-tag pill-blue">Aprovadas: <%= comprasResumo?.solicitacoes_aprovadas ?? 0 %></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">Demandas</div>
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <span class="pill-tag pill-blue">Novas: <%= demandasResumo?.novas ?? 0 %></span>
+        <span class="pill-tag pill-amber">Em andamento: <%= demandasResumo?.em_andamento ?? 0 %></span>
+        <span class="pill-tag pill-gray">Paradas: <%= demandasResumo?.paradas ?? 0 %></span>
+      </div>
+      <div class="muted-xs" style="margin-top:10px;">Em trabalho agora:</div>
+      <ul style="margin:8px 0 0 18px; padding:0;">
+        <% if (!demandasResumo?.em_trabalho?.length) { %><li class="muted-xs">Nenhuma demanda em andamento.</li><% } %>
+        <% (demandasResumo?.em_trabalho || []).forEach((d) => { %>
+          <li><a href="/demandas/<%= d.id %>">#<%= d.id %> - <%= d.titulo %></a></li>
+        <% }) %>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="label">Estoque (Resumo)</div>
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <span class="pill-tag pill-green">Itens ativos: <%= estoqueResumo?.itens_ativos ?? 0 %></span>
+        <span class="pill-tag pill-amber">Abaixo do mínimo: <%= estoqueResumo?.abaixo_minimo ?? 0 %></span>
+      </div>
+      <div class="muted-xs" style="margin-top:10px;">Últimas movimentações:</div>
+      <ul style="margin:8px 0 0 18px; padding:0;">
+        <% if (!estoqueResumo?.ultimas_movimentacoes?.length) { %><li class="muted-xs">Sem movimentações.</li><% } %>
+        <% (estoqueResumo?.ultimas_movimentacoes || []).forEach((m) => { %>
+          <li><%= (m.tipo || '-').toUpperCase() %> • <%= m.item_nome %> (<%= m.quantidade %>)</li>
+        <% }) %>
+      </ul>
+    </div>
+
+    <div class="card">
       <div class="label">Motores</div>
       <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
         <span class="pill-tag pill-green">Em funcionamento: <%= motoresResumo?.em_funcionamento ?? 0 %></span>

@@ -8,6 +8,9 @@ function index(req, res) {
   const osPainel = service.getOSPainel(page, 10);
   const historicoEquipamentos = service.getHistoricoEquipamentos(10);
   const motoresResumo = service.getMotoresResumoDashboard();
+  const comprasResumo = service.getComprasResumoDashboard();
+  const estoqueResumo = service.getEstoqueResumoDashboard();
+  const demandasResumo = service.getDemandasResumoDashboard();
   const preventivas = service.getPreventivasDashboard();
   const escala = service.getEscalaPainelSemana() || service.getEscalaSemana();
 
@@ -19,6 +22,9 @@ function index(req, res) {
     osPainel,
     historicoEquipamentos,
     motoresResumo,
+    comprasResumo,
+    estoqueResumo,
+    demandasResumo,
     preventivas,
     escala,
   });

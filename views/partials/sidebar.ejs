@@ -16,6 +16,7 @@
   const canCompras = isAdmin || isCompras || isAlmox || isDirecao || isEncarregadoProd;
   const canSolicitacoes = canCompras;
   const canAlmoxarifado = isAdmin || isAlmox || isCompras;
+  const canDemandas = isAdmin || isDirecao;
 
   const canUsuarios = isAdmin;
 %>
@@ -45,6 +46,12 @@
     <a class="nav-item <%= activeMenu === 'preventivas' ? 'active' : '' %>" href="/preventivas">
       Preventivas
     </a>
+
+    <% if (canDemandas) { %>
+      <a class="nav-item <%= activeMenu === 'demandas' ? 'active' : '' %>" href="/demandas">
+        Demandas
+      </a>
+    <% } %>
 
     <% if (canSolicitacoes) { %>
       <a class="nav-item <%= activeMenu === 'solicitacoes' ? 'active' : '' %>" href="/solicitacoes">
