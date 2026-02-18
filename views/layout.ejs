@@ -196,7 +196,65 @@
   <div class="app">
 
     <!-- ===== SIDEBAR ===== -->
-    <%- include("partials/sidebar") %>
+    <aside class="sidebar">
+
+      <div class="brand">
+        <div class="brand-badge">CG</div>
+        <div>
+          <div class="brand-title">Campo do Gado</div>
+          <div class="brand-sub">V2 • Gestão Industrial</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="nav-item <%= activeMenu === 'dashboard' ? 'active' : '' %>" href="/dashboard">
+          Dashboard
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'equipamentos' ? 'active' : '' %>" href="/equipamentos">
+          Equipamentos
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'os' ? 'active' : '' %>" href="/os">
+          Ordens de Serviço
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'preventivas' ? 'active' : '' %>" href="/preventivas">
+          Preventivas
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">
+          Compras
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'estoque' ? 'active' : '' %>" href="/estoque">
+          Estoque
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'motores' ? 'active' : '' %>" href="/motores">
+          Motores
+        </a>
+
+        <a class="nav-item <%= activeMenu === 'escala' ? 'active' : '' %>" href="/escala">
+          Escala
+        </a>
+
+        <div class="nav-divider"></div>
+
+        <% if ((user?.role || '').toUpperCase() === 'ADMIN') { %>
+          <div class="nav-section">ADMIN</div>
+
+          <a class="nav-item <%= activeMenu === 'usuarios' ? 'active' : '' %>" href="/usuarios">
+            Gerenciar Usuários
+          </a>
+        <% } %>
+      </nav>
+
+      <div class="sidebar-footer">
+        © <%= new Date().getFullYear() %> Campo do Gado
+      </div>
+
+    </aside>
 
     <!-- ===== MAIN ===== -->
     <main class="main">
@@ -221,7 +279,13 @@
       </header>
 
       <section class="flash">
-        <%- include("partials/alerts") %>
+        <% if (flash?.error?.length) { %>
+          <div class="alert alert-error"><%= flash.error[0] %></div>
+        <% } %>
+
+        <% if (flash?.success?.length) { %>
+          <div class="alert alert-success"><%= flash.success[0] %></div>
+        <% } %>
       </section>
 
       <section class="content">
