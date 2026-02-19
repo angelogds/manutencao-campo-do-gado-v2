@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const db = require("../../database/db");
 
 // compatível com seu CHECK do SQLite
-const VALID_ROLES = new Set(["ADMIN", "DIRECAO", "RH", "COMPRAS", "MANUTENCAO", "PRODUCAO", "ALMOXARIFADO", "MECANICO",]);
+const VALID_ROLES = new Set(["ADMIN", "DIRECAO", "RH", "COMPRAS", "ENCARREGADO_PRODUCAO", "PRODUCAO", "MECANICO", "ALMOXARIFE", "MANUTENCAO"]);
 
 function list({ q = "", role = "" } = {}) {
   const where = [];
@@ -19,7 +19,7 @@ function list({ q = "", role = "" } = {}) {
   }
 
   const sql = `
-    SELECT id, name, email, role, created_at
+    SELECT id, name, email, role, photo_path, created_at
     FROM users
     ${where.length ? "WHERE " + where.join(" AND ") : ""}
     ORDER BY id DESC
@@ -29,14 +29,14 @@ function list({ q = "", role = "" } = {}) {
 }
 
 function getById(id) {
-  return db.prepare("SELECT id, name, email, role, created_at FROM users WHERE id = ?").get(id);
+  return db.prepare("SELECT id, name, email, role, photo_path, created_at FROM users WHERE id = ?").get(id);
 }
 
 function getByEmail(email) {
   return db.prepare("SELECT * FROM users WHERE email = ?").get(email);
 }
 
-function create({ name, email, role, password }) {
+function create({ name, email, role, password, photo_path }) {
   const r = String(role || "").toUpperCase();
   if (!VALID_ROLES.has(r)) {
     throw new Error(`Perfil inválido. Use: ${Array.from(VALID_ROLES).join(", ")}`);
@@ -49,11 +49,11 @@ function create({ name, email, role, password }) {
   const created_at = new Date().toISOString();
 
   db.prepare(
-    "INSERT INTO users (name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)"
-  ).run(name, email, password_hash, r, created_at);
+    "INSERT INTO users (name, email, password_hash, role, photo_path, created_at) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(name, email, password_hash, r, photo_path || null, created_at);
 }
 
-function update(id, { name, email, role }) {
+function update(id, { name, email, role, photo_path }) {
   const current = db.prepare("SELECT id FROM users WHERE id = ?").get(id);
   if (!current) throw new Error("Usuário não encontrado.");
 
@@ -64,6 +64,11 @@ function update(id, { name, email, role }) {
 
   const other = db.prepare("SELECT id FROM users WHERE email = ? AND id <> ?").get(email, id);
   if (other) throw new Error("Este e-mail já está sendo usado por outro usuário.");
+
+  if (photo_path) {
+    db.prepare("UPDATE users SET name = ?, email = ?, role = ?, photo_path = ? WHERE id = ?").run(name, email, r, photo_path, id);
+    return;
+  }
 
   db.prepare("UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?").run(name, email, r, id);
 }

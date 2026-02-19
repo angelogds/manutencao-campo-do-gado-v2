@@ -3,16 +3,20 @@
   const role = String(user?.role || "").toUpperCase();
 
   const isAdmin = role === "ADMIN";
-  const isAlmox = role === "ALMOXARIFE";
-  const isDirecao = role === "DIRECAO";
+  const isAlmox = role === "ALMOXARIFE" || role === "ALMOXARIFADO";
+  const isDirecao = role === "DIRECAO" || role === "DIRETORIA";
+  const isCompras = role === "COMPRAS";
   const isEncarregadoProd = role === "ENCARREGADO_PRODUCAO";
 
   const canAlmoxArea = isAdmin || isAlmox; // Almoxarife + Motores
-  const canEstoque = isAdmin || isAlmox;
+  const canEstoque = isAdmin || isAlmox || isCompras;
   const canMotores = isAdmin || isAlmox;
 
   // Compras: (ajuste se você quiser leitura p/ direção/encarregado)
-  const canCompras = isAdmin || isAlmox || isDirecao || isEncarregadoProd;
+  const canCompras = isAdmin || isCompras || isAlmox || isDirecao || isEncarregadoProd;
+  const canSolicitacoes = canCompras;
+  const canAlmoxarifado = isAdmin || isAlmox || isCompras;
+  const canDemandas = isAdmin || isDirecao;
 
   const canUsuarios = isAdmin;
 %>
@@ -43,9 +47,27 @@
       Preventivas
     </a>
 
+    <% if (canDemandas) { %>
+      <a class="nav-item <%= activeMenu === 'demandas' ? 'active' : '' %>" href="/demandas">
+        Demandas
+      </a>
+    <% } %>
+
+    <% if (canSolicitacoes) { %>
+      <a class="nav-item <%= activeMenu === 'solicitacoes' ? 'active' : '' %>" href="/solicitacoes">
+        Solicitações
+      </a>
+    <% } %>
+
     <% if (canCompras) { %>
       <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">
         Compras
+      </a>
+    <% } %>
+
+    <% if (canAlmoxarifado) { %>
+      <a class="nav-item <%= activeMenu === 'almoxarifado' ? 'active' : '' %>" href="/almoxarifado">
+        Almoxarifado
       </a>
     <% } %>
 
