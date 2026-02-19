@@ -40,9 +40,4 @@ function index(req, res) {
   return res.redirect("/dashboard");
 }
 
-function createAviso(req, res) {
-  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
-  return res.redirect("/avisos");
-}
-
 module.exports = { index, createAviso };
