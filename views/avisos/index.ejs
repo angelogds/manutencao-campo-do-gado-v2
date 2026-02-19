@@ -1,0 +1,42 @@
+<% layout('layout') %>
+
+<div class="page-head">
+  <div>
+    <h1>Avisos</h1>
+    <p class="muted">Mural de informações relevantes para reciclagem, operação e manutenção.</p>
+  </div>
+</div>
+
+<% if (canPublishAviso) { %>
+  <div class="card" style="margin-bottom:16px;">
+    <div class="label">Novo aviso</div>
+    <form method="POST" action="/avisos" style="margin-top:12px;">
+      <div class="grid-2">
+        <input class="input" name="titulo" placeholder="Título do aviso" required>
+      </div>
+      <div style="margin-top:10px;">
+        <textarea class="input" name="mensagem" placeholder="Mensagem do aviso" style="min-height:110px;" required></textarea>
+      </div>
+      <div style="margin-top:12px;">
+        <button class="btn btn-green" type="submit">Publicar aviso</button>
+      </div>
+    </form>
+  </div>
+<% } %>
+
+<div class="card">
+  <div class="label">Mural</div>
+  <% if (!avisos?.length) { %>
+    <p class="muted" style="margin-top:10px;">Sem avisos publicados.</p>
+  <% } else { %>
+    <div style="display:grid; gap:10px; margin-top:12px;">
+      <% (avisos || []).forEach((a) => { %>
+        <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px 12px;">
+          <div style="font-weight:800;"><%= a.titulo %></div>
+          <div class="muted" style="margin-top:4px; white-space:pre-wrap;"><%= a.mensagem %></div>
+          <div class="muted-xs" style="margin-top:6px;">por <%= a.autor_nome || 'Sistema' %> • <%= fmtBR(a.created_at) %></div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
