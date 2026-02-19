@@ -7,7 +7,7 @@ function getUserByEmail(email) {
   return db
     .prepare(
       `
-      SELECT id, name, email, password_hash, role
+      SELECT id, name, email, password_hash, role, photo_path
       FROM users
       WHERE lower(email) = lower(?)
       LIMIT 1
