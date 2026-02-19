@@ -60,6 +60,7 @@
         <span class="pill-tag pill-blue">Aprovadas: <%= safeComprasResumo.solicitacoes_aprovadas || 0 %></span>
       </div>
     </div>
+  </div>
 
     <div class="card">
       <div class="label">Demandas</div>
@@ -77,6 +78,7 @@
         <% }) %>
       </ul>
     </div>
+  </div>
 
     <div class="card">
       <div class="label">Estoque (Resumo)</div>
@@ -184,4 +186,47 @@
       <% } %>
     </div>
   </div>
+</div>
+
+<div class="card" style="min-height:320px; margin-top:16px;">
+  <div class="label">Preventivas Programadas</div>
+      <% if (!preventivas || preventivas.length === 0) { %>
+        <div class="muted" style="margin-top:16px;">Nenhuma preventiva pendente.</div>
+      <% } else { %>
+        <div class="table-wrap" style="margin-top:14px; max-height:420px; overflow:auto;">
+          <table class="table compact">
+            <thead>
+              <tr>
+                <th>Equipamento</th>
+                <th>Resp.</th>
+                <th>Data</th>
+                <th>Status</th>
+                <th>Obs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% preventivas.forEach((p) => { %>
+                <tr>
+                  <td><strong><%= p.equipamento_nome || '-' %></strong></td>
+                  <td><%= p.responsavel || '-' %></td>
+                  <td><%= p.data_prevista || '-' %></td>
+                  <td>
+                    <% const st = (p.status || '').toLowerCase(); %>
+                    <% if (st === 'pendente') { %>
+                      <span class="pill-tag pill-blue">Programada</span>
+                    <% } else if (st === 'em_andamento' || st === 'andamento') { %>
+                      <span class="pill-tag pill-amber">Em andamento</span>
+                    <% } else if (st === 'atrasada') { %>
+                      <span class="pill-tag pill-amber">Atrasada</span>
+                    <% } else { %>
+                      <span class="pill-tag pill-gray"><%= p.status || '-' %></span>
+                    <% } %>
+                  </td>
+                  <td class="td-clip"><%= p.observacao || '-' %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
 </div>
