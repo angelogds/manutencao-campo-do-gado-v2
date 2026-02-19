@@ -1,6 +1,11 @@
 // modules/dashboard/dashboard.controller.js
 const service = require("./dashboard.service");
 
+function canManageAvisos(user) {
+  const role = String(user?.role || "").toUpperCase();
+  return ["ADMIN", "DIRECAO", "DIRETORIA", "ENCARREGADO_PRODUCAO", "RH"].includes(role);
+}
+
 function index(req, res) {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const cards = service.getCards();
@@ -30,6 +35,29 @@ function index(req, res) {
     escala,
     avisos,
   });
+
+  req.flash("success", "Aviso publicado no mural.");
+  return res.redirect("/dashboard");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
 }
 
 function createAviso(req, res) {
