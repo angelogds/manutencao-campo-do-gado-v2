@@ -1,144 +1,355 @@
 <% layout('layout') %>
 
+<style>
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: 0.85fr 1.55fr;
+    gap: 16px;
+    align-items: start;
+  }
+
+  .small-cards,
+  .large-cards {
+    display: grid;
+    gap: 16px;
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .kpi-box {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px;
+    background: #fff;
+  }
+
+  .kpi-value {
+    display: block;
+    margin-top: 4px;
+    font-size: 20px;
+    font-weight: 900;
+    color: #0f172a;
+  }
+
+  .table-wrap { overflow: auto; }
+
+  .table.compact th,
+  .table.compact td {
+    padding: 10px;
+    vertical-align: middle;
+  }
+
+  .muted-xs { font-size: 12px; color: #64748b; }
+
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+
+  .btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    padding: 8px 12px;
+    background: #fff;
+    color: #0f172a;
+    text-decoration: none;
+    font-weight: 700;
+  }
+
+  .btn-inline {
+    border: none;
+    border-radius: 8px;
+    padding: 6px 10px;
+    background: #16a34a;
+    color: #fff;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .aviso-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #fff;
+  }
+
+  @media (max-width: 1200px) {
+    .dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
 <div class="page-head">
   <div>
-    <h1>Dashboard</h1>
-    <p class="muted">Painel Operacional da Manutenção</p>
+    <h1>Painel</h1>
+    <p class="muted">Operacional Reciclagem</p>
   </div>
 </div>
 
-<div style="display:grid; grid-template-columns: 1.2fr 1fr; gap:16px; align-items:start;">
+<%
+  const safeCards = cards || {};
+  const safeComprasResumo = comprasResumo || {};
+  const safeDemandasResumo = demandasResumo || {};
+  const demandasEmTrabalho = safeDemandasResumo.em_trabalho || [];
+  const safeEstoqueResumo = estoqueResumo || {};
+  const estoqueMovimentacoes = safeEstoqueResumo.ultimas_movimentacoes || [];
+  const safeOSResumo = osResumo || {};
+  const safeOSPainel = osPainel || {};
+  const osItems = safeOSPainel.items || [];
+  const safeHistoricoEquipamentos = historicoEquipamentos || [];
+  const safeAvisos = avisos || [];
+  const safeMotoresResumo = motoresResumo || {};
+  const motoresEmConserto = safeMotoresResumo.itens_em_conserto || [];
+  const safeEscala = escala || {};
+  const escalaDiurno = safeEscala.diurno_mecanicos || [];
+  const escalaApoio = safeEscala.apoio_operacional || [];
+  const escalaNoturno = safeEscala.noturno || [];
+%>
 
-  <!-- LADO ESQUERDO (cards pequenos) -->
-  <div style="display:grid; grid-template-columns: repeat(2,1fr); gap:14px;">
-
-    <!-- OS -->
-    <div class="card">
-      <div class="label">Ordem de Serviço</div>
-      <div style="font-size:22px; font-weight:900; margin-top:6px;">
-        <%= (cards?.os_abertas ?? 0) %> em andamento
-      </div>
-
-      <div style="margin-top:14px;">
-        <a class="btn btn-green btn-sm" href="/os">
-          Acompanhar OS
-        </a>
-      </div>
-    </div>
-
-    <!-- ESCALA -->
-    <div class="card">
-      <div class="label">Escala da Semana</div>
-
-      <% if (escala) { %>
-        <div style="margin-top:10px;">
-          <strong>Turno Dia:</strong><br>
-          <%= escala.turno_dia || '-' %>
-        </div>
-
-        <div style="margin-top:10px;">
-          <strong>Turno Noite:</strong><br>
-          <%= escala.turno_noite || '-' %>
-        </div>
-      <% } else { %>
-        <div class="muted" style="margin-top:10px;">
-          Escala não disponível.
-        </div>
-      <% } %>
-    </div>
-
-    <!-- MOTORES -->
-    <div class="card">
-      <div class="label">Motores</div>
-
-      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-        <span class="pill-tag pill-green">
-          Na empresa: <%= (cards?.motores_empresa ?? 0) %>
-        </span>
-
-        <% if ((cards?.motores_conserto ?? 0) > 0) { %>
-          <span class="pill-tag pill-amber">
-            Em conserto: <%= cards.motores_conserto %>
-          </span>
-        <% } else { %>
-          <span class="pill-tag pill-green">
-            Nenhum em conserto
-          </span>
-        <% } %>
-      </div>
-
-      <div style="margin-top:14px;">
-        <a class="btn btn-green btn-sm" href="/motores">
-          Ver motores
-        </a>
-      </div>
-    </div>
-
-    <!-- EQUIPAMENTOS -->
+<div class="dashboard-grid">
+  <div class="small-cards">
     <div class="card">
       <div class="label">Equipamentos</div>
-
-      <div style="font-size:22px; font-weight:900; margin-top:6px;">
-        <%= (cards?.equipamentos ?? 0) %> ativos
-      </div>
-
-      <div style="margin-top:14px;">
-        <a class="btn btn-green btn-sm" href="/equipamentos">
-          Ver equipamentos
-        </a>
+      <div class="kpi-grid">
+        <div class="kpi-box">
+          <span class="muted-xs">Ativos na fábrica</span>
+          <span class="kpi-value"><%= safeCards.equipamentos_ativos || 0 %></span>
+        </div>
+        <div class="kpi-box">
+          <span class="muted-xs">Inativos</span>
+          <span class="kpi-value"><%= safeCards.equipamentos_inativos || 0 %></span>
+        </div>
       </div>
     </div>
 
+    <div class="card">
+      <div class="label">Solicitações / Compras</div>
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <span class="pill-tag pill-amber">Abertas: <%= safeComprasResumo.solicitacoes_abertas || 0 %></span>
+        <span class="pill-tag pill-blue">Aprovadas: <%= safeComprasResumo.solicitacoes_aprovadas || 0 %></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">Demandas</div>
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <span class="pill-tag pill-blue">Novas: <%= safeDemandasResumo.novas || 0 %></span>
+        <span class="pill-tag pill-amber">Em andamento: <%= safeDemandasResumo.em_andamento || 0 %></span>
+        <span class="pill-tag pill-gray">Paradas: <%= safeDemandasResumo.paradas || 0 %></span>
+      </div>
+      <div class="muted-xs" style="margin-top:10px;">Em trabalho agora:</div>
+      <ul style="margin:8px 0 0 18px; padding:0;">
+        <% if (!demandasEmTrabalho.length) { %>
+          <li class="muted-xs">Nenhuma demanda em andamento.</li>
+        <% } %>
+        <% demandasEmTrabalho.forEach((d) => { %>
+          <li><a href="/demandas/<%= d.id %>">#<%= d.id %> - <%= d.titulo %></a></li>
+        <% }) %>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="label">Estoque (Resumo)</div>
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <span class="pill-tag pill-green">Itens ativos: <%= safeEstoqueResumo.itens_ativos || 0 %></span>
+        <span class="pill-tag pill-amber">Abaixo do mínimo: <%= safeEstoqueResumo.abaixo_minimo || 0 %></span>
+      </div>
+      <div class="muted-xs" style="margin-top:10px;">Últimas movimentações:</div>
+      <ul style="margin:8px 0 0 18px; padding:0;">
+        <% if (!estoqueMovimentacoes.length) { %>
+          <li class="muted-xs">Sem movimentações.</li>
+        <% } %>
+        <% estoqueMovimentacoes.forEach((m) => { %>
+          <li><%= (m.tipo || '-').toUpperCase() %> • <%= m.item_nome %> (<%= m.quantidade %>)</li>
+        <% }) %>
+      </ul>
+    </div>
   </div>
 
-  <!-- LADO DIREITO (PREVENTIVAS GRANDE) -->
-  <div class="card" style="min-height:420px;">
-    <div class="label">Preventivas Programadas</div>
-
-    <% if (!preventivas || preventivas.length === 0) { %>
-      <div class="muted" style="margin-top:16px;">
-        Nenhuma preventiva pendente.
+  <div class="large-cards">
+    <div class="card">
+      <div class="label">Ordem de Serviço</div>
+      <div class="kpi-grid">
+        <div class="kpi-box"><span class="muted-xs">Abertas</span><span class="kpi-value"><%= safeOSResumo.abertas || 0 %></span></div>
+        <div class="kpi-box"><span class="muted-xs">Em andamento</span><span class="kpi-value"><%= safeOSResumo.andamento || 0 %></span></div>
+        <div class="kpi-box"><span class="muted-xs">Fechadas</span><span class="kpi-value"><%= safeOSResumo.fechadas || 0 %></span></div>
       </div>
-    <% } else { %>
 
-      <div class="table-wrap" style="margin-top:14px; max-height:500px; overflow:auto;">
-        <table class="table">
+      <div class="table-wrap" style="margin-top:14px;">
+        <table class="table compact">
           <thead>
             <tr>
+              <th style="width:60px;">#</th>
               <th>Equipamento</th>
-              <th>Resp.</th>
-              <th>Data</th>
-              <th>Status</th>
-              <th>Obs</th>
+              <th>Descrição do Serviço</th>
+              <th style="width:120px;">Tipo</th>
+              <th style="width:130px;">Status</th>
+              <th style="width:120px; text-align:right;">Ações</th>
             </tr>
           </thead>
           <tbody>
-            <% preventivas.forEach(p => { %>
-              <tr>
-                <td><strong><%= p.equipamento_nome || '-' %></strong></td>
-                <td><%= p.responsavel || '-' %></td>
-                <td><%= p.data_prevista || '-' %></td>
-                <td>
-                  <% const st = (p.status || '').toLowerCase(); %>
+            <% if (!osItems.length) { %>
+              <tr><td colspan="6" style="text-align:center; color:#6b7280;">Nenhuma OS cadastrada.</td></tr>
+            <% } %>
 
-                  <% if (st === 'pendente') { %>
-                    <span class="pill-tag pill-blue">Programada</span>
-                  <% } else if (st === 'em_andamento' || st === 'andamento') { %>
-                    <span class="pill-tag pill-amber">Em andamento</span>
-                  <% } else if (st === 'atrasada') { %>
-                    <span class="pill-tag pill-amber">Atrasada</span>
+            <% osItems.forEach((o) => { %>
+              <tr>
+                <td><%= o.id %></td>
+                <td><strong><%= o.equipamento || '-' %></strong></td>
+                <td class="td-clip"><%= o.descricao || '-' %></td>
+                <td><span class="pill-tag pill-blue"><%= (o.tipo || '-').toUpperCase() %></span></td>
+                <td>
+                  <% const st = String(o.status || '').toUpperCase(); %>
+                  <% if (st === 'ABERTA') { %><span class="pill-tag pill-amber">Aberta</span>
+                  <% } else if (st === 'ANDAMENTO') { %><span class="pill-tag pill-blue">Em andamento</span>
+                  <% } else if (st === 'PAUSADA') { %><span class="pill-tag pill-gray">Pausada</span>
+                  <% } else if (st === 'CONCLUIDA' || st === 'FINALIZADA') { %><span class="pill-tag pill-green">Fechada</span>
+                  <% } else { %><span class="pill-tag pill-gray"><%= st || '-' %></span><% } %>
+                </td>
+                <td style="text-align:right;">
+                  <% if (String(o.status || '').toUpperCase() === 'ABERTA') { %>
+                    <form method="POST" action="/os/<%= o.id %>/status" style="display:inline;">
+                      <input type="hidden" name="status" value="ANDAMENTO">
+                      <button class="btn-inline" type="submit">Iniciar</button>
+                    </form>
                   <% } else { %>
-                    <span class="pill-tag pill-gray"><%= p.status || '-' %></span>
+                    <a class="btn-outline" href="/os/<%= o.id %>">Ver</a>
                   <% } %>
                 </td>
-                <td class="td-clip"><%= p.observacao || '-' %></td>
               </tr>
             <% }) %>
           </tbody>
         </table>
       </div>
 
-    <% } %>
-  </div>
+      <div class="pagination">
+        <div class="muted-xs">Mostrando <strong><%= osItems.length || 0 %></strong> de <strong><%= safeOSPainel.total || 0 %></strong> ordens de serviço.</div>
+        <div style="display:flex; gap:8px;">
+          <% if (safeOSPainel.hasPrev) { %><a class="btn-outline" href="/dashboard?page=<%= safeOSPainel.page - 1 %>">← Anterior</a><% } %>
+          <span class="btn-outline" style="pointer-events:none; opacity:.8;">Página <%= safeOSPainel.page || 1 %> de <%= safeOSPainel.totalPages || 1 %></span>
+          <% if (safeOSPainel.hasNext) { %><a class="btn-outline" href="/dashboard?page=<%= safeOSPainel.page + 1 %>">Próxima →</a><% } %>
+        </div>
+      </div>
+    </div>
 
+    <div class="card">
+      <div class="label">Histórico por Equipamento (mais OS abertas)</div>
+      <div class="table-wrap" style="margin-top:12px;">
+        <table class="table compact">
+          <thead>
+            <tr><th>Equipamento</th><th style="width:120px;">OS Abertas</th><th style="width:120px;">Corretivas</th><th style="width:120px;">Preventivas</th><th style="width:100px;">Total</th></tr>
+          </thead>
+          <tbody>
+            <% if (!safeHistoricoEquipamentos.length) { %><tr><td colspan="5" style="text-align:center; color:#6b7280;">Sem histórico ainda.</td></tr><% } %>
+            <% safeHistoricoEquipamentos.forEach((h) => { %><tr><td><strong><%= h.equipamento %></strong></td><td><span class="pill-tag pill-amber"><%= h.os_abertas %></span></td><td><%= h.corretivas %></td><td><%= h.preventivas %></td><td><%= h.total_os %></td></tr><% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card" style="min-height:220px;">
+      <div class="label">Mural</div>
+      <% if (!safeAvisos.length) { %>
+        <p class="muted" style="margin-top:10px;">Sem avisos publicados.</p>
+      <% } else { %>
+        <div style="display:grid; gap:10px; margin-top:12px;">
+          <% safeAvisos.slice(0, 8).forEach((a) => { %>
+            <div class="aviso-item">
+              <div style="font-weight:800;"><%= a.titulo %></div>
+              <div class="muted" style="margin-top:4px;"><%= a.mensagem %></div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="card">
+      <div class="label">Motores</div>
+      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+        <span class="pill-tag pill-green">Em funcionamento: <%= safeMotoresResumo.em_funcionamento || 0 %></span>
+        <span class="pill-tag pill-blue">No estoque: <%= safeMotoresResumo.em_estoque || 0 %></span>
+        <span class="pill-tag pill-amber">Em conserto: <%= safeMotoresResumo.em_conserto || 0 %></span>
+      </div>
+      <div class="table-wrap" style="margin-top:12px;">
+        <table class="table compact">
+          <thead><tr><th>Motor</th><th>Data saída</th><th>Tempo em conserto</th></tr></thead>
+          <tbody>
+            <% if (!motoresEmConserto.length) { %><tr><td colspan="3" style="text-align:center; color:#6b7280;">Nenhum motor em conserto.</td></tr><% } %>
+            <% motoresEmConserto.forEach((m) => { %><tr><td><strong><%= m.codigo %></strong> — <%= m.descricao || '-' %></td><td><%= m.data_saida ? fmtBR(m.data_saida) : '-' %></td><td><%= Number(m.dias_conserto || 0) %> dia(s)</td></tr><% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="label">Escala da Semana</div>
+      <% if (escalaDiurno.length || escalaApoio.length || escalaNoturno.length) { %>
+        <div class="muted-xs" style="margin-top:8px;">Semana <strong>#<%= safeEscala.semana_numero %></strong> • <%= safeEscala.data_inicio %> até <%= safeEscala.data_fim %></div>
+        <div class="table-wrap" style="margin-top:10px;">
+          <table class="table compact">
+            <thead><tr><th>Turno/Função</th><th>Escalados</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>Dia (mecânicos)</strong></td>
+                <td><% if (!escalaDiurno.length) { %>-<% } %><% escalaDiurno.forEach((p, idx) => { %><%= p.nome %><%= idx < escalaDiurno.length - 1 ? ', ' : '' %><% }) %></td>
+              </tr>
+              <tr>
+                <td><strong>Apoio operacional</strong></td>
+                <td><% if (!escalaApoio.length) { %>-<% } %><% escalaApoio.forEach((p, idx) => { %><%= p.nome %><%= idx < escalaApoio.length - 1 ? ', ' : '' %><% }) %></td>
+              </tr>
+              <tr>
+                <td><strong>Noite (responsável)</strong></td>
+                <td><% if (!escalaNoturno.length) { %>-<% } %><% escalaNoturno.forEach((p, idx) => { %><%= p.nome %><%= idx < escalaNoturno.length - 1 ? ', ' : '' %><% }) %></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <div class="muted" style="margin-top:10px;">Escala não disponível.</div>
+      <% } %>
+    </div>
+
+    <div class="card">
+      <div class="label">Preventivas Programadas</div>
+      <% if (!preventivas || preventivas.length === 0) { %>
+        <div class="muted" style="margin-top:16px;">Nenhuma preventiva pendente.</div>
+      <% } else { %>
+        <div class="table-wrap" style="margin-top:14px; max-height:420px; overflow:auto;">
+          <table class="table compact">
+            <thead><tr><th>Equipamento</th><th>Resp.</th><th>Data</th><th>Status</th><th>Obs</th></tr></thead>
+            <tbody>
+              <% preventivas.forEach((p) => { %>
+                <tr>
+                  <td><strong><%= p.equipamento_nome || '-' %></strong></td>
+                  <td><%= p.responsavel || '-' %></td>
+                  <td><%= p.data_prevista || '-' %></td>
+                  <td>
+                    <% const st = (p.status || '').toLowerCase(); %>
+                    <% if (st === 'pendente') { %><span class="pill-tag pill-blue">Programada</span>
+                    <% } else if (st === 'em_andamento' || st === 'andamento') { %><span class="pill-tag pill-amber">Em andamento</span>
+                    <% } else if (st === 'atrasada') { %><span class="pill-tag pill-amber">Atrasada</span>
+                    <% } else { %><span class="pill-tag pill-gray"><%= p.status || '-' %></span><% } %>
+                  </td>
+                  <td class="td-clip"><%= p.observacao || '-' %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
 </div>
