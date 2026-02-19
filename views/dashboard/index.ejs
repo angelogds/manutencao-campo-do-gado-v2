@@ -195,31 +195,10 @@
   </div>
 
     <div class="card">
-      <div class="label">Demandas</div>
-      <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-        <span class="pill-tag pill-blue">Novas: <%= demandasResumo?.novas ?? 0 %></span>
-        <span class="pill-tag pill-amber">Em andamento: <%= demandasResumo?.em_andamento ?? 0 %></span>
-        <span class="pill-tag pill-gray">Paradas: <%= demandasResumo?.paradas ?? 0 %></span>
-  <div class="right-cards">
-    <div class="card">
-      <div class="label">Equipamentos</div>
-      <div class="kpi-grid">
-        <div class="kpi-box">
-          <span class="muted-xs">Ativos na fábrica</span>
-          <span class="kpi-value"><%= cards?.equipamentos_ativos ?? 0 %></span>
-        </div>
-        <div class="kpi-box">
-          <span class="muted-xs">Inativos</span>
-          <span class="kpi-value"><%= cards?.equipamentos_inativos ?? 0 %></span>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
       <div class="label">Solicitações / Compras</div>
       <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-        <span class="pill-tag pill-amber">Abertas: <%= comprasResumo?.solicitacoes_abertas ?? 0 %></span>
-        <span class="pill-tag pill-blue">Aprovadas: <%= comprasResumo?.solicitacoes_aprovadas ?? 0 %></span>
+        <span class="pill-tag pill-amber">Abertas: <%= safeComprasResumo.solicitacoes_abertas || 0 %></span>
+        <span class="pill-tag pill-blue">Aprovadas: <%= safeComprasResumo.solicitacoes_aprovadas || 0 %></span>
       </div>
       <div class="muted-xs" style="margin-top:10px;">Em trabalho agora:</div>
       <ul style="margin:8px 0 0 18px; padding:0;">
@@ -232,14 +211,16 @@
     <div class="card">
       <div class="label">Demandas</div>
       <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-        <span class="pill-tag pill-blue">Novas: <%= demandasResumo?.novas ?? 0 %></span>
-        <span class="pill-tag pill-amber">Em andamento: <%= demandasResumo?.em_andamento ?? 0 %></span>
-        <span class="pill-tag pill-gray">Paradas: <%= demandasResumo?.paradas ?? 0 %></span>
+        <span class="pill-tag pill-blue">Novas: <%= safeDemandasResumo.novas || 0 %></span>
+        <span class="pill-tag pill-amber">Em andamento: <%= safeDemandasResumo.em_andamento || 0 %></span>
+        <span class="pill-tag pill-gray">Paradas: <%= safeDemandasResumo.paradas || 0 %></span>
       </div>
       <div class="muted-xs" style="margin-top:10px;">Em trabalho agora:</div>
       <ul style="margin:8px 0 0 18px; padding:0;">
-        <% if (!demandasResumo?.em_trabalho?.length) { %><li class="muted-xs">Nenhuma demanda em andamento.</li><% } %>
-        <% (demandasResumo?.em_trabalho || []).forEach((d) => { %>
+        <% if (!demandasEmTrabalho.length) { %>
+          <li class="muted-xs">Nenhuma demanda em andamento.</li>
+        <% } %>
+        <% demandasEmTrabalho.forEach(function(d) { %>
           <li><a href="/demandas/<%= d.id %>">#<%= d.id %> - <%= d.titulo %></a></li>
         <% }) %>
       </ul>
