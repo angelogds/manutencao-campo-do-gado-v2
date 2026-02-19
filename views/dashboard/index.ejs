@@ -3,7 +3,7 @@
 <style>
   .dashboard-grid {
     display: grid;
-    grid-template-columns: minmax(680px, 1.2fr) minmax(380px, 1fr);
+    grid-template-columns: 1.55fr 1fr;
     gap: 16px;
     align-items: start;
   }
@@ -97,7 +97,11 @@
     background: #fff;
   }
 
-  @media (max-width: 900px) {
+  .preventivas-card {
+    min-height: 300px;
+  }
+
+  @media (max-width: 1200px) {
     .dashboard-grid {
       grid-template-columns: 1fr;
     }
@@ -253,7 +257,7 @@
       <% } %>
     </div>
 
-    <div class="card" style="min-height:320px;">
+    <div class="card preventivas-card">
       <div class="label">Preventivas Programadas</div>
       <% if (!preventivas || preventivas.length === 0) { %>
         <div class="muted" style="margin-top:16px;">Nenhuma preventiva pendente.</div>
@@ -351,7 +355,6 @@
         <% }) %>
       </ul>
     </div>
-  </div>
 
     <div class="card span-2">
       <div class="label">Motores</div>
