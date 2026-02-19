@@ -1,145 +1,57 @@
 <% layout('layout') %>
 
 <style>
-  .dashboard-main {
-    display: grid;
-    grid-template-columns: 1.45fr 1fr;
-    gap: 16px;
-    align-items: start;
-  }
-
-  .dashboard-col {
-    display: grid;
-    gap: 16px;
-    align-content: start;
-  }
+  .dashboard-stack { display:grid; gap:14px; }
+  .dash-row { display:grid; grid-template-columns: 1.4fr 1fr; gap:14px; align-items:stretch; }
 
   .dashboard-card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    padding: 12px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    background:#fff;
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    padding:12px;
+    box-shadow:0 1px 2px rgba(15,23,42,.04);
+    min-height: 150px;
   }
 
   .dashboard-title {
-    font-size: 13px;
-    font-weight: 900;
-    letter-spacing: 0.04em;
-    color: #475569;
-    text-transform: uppercase;
-    margin-bottom: 10px;
+    font-size:13px;
+    font-weight:900;
+    letter-spacing:.04em;
+    color:#475569;
+    text-transform:uppercase;
+    margin-bottom:10px;
   }
 
-  .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(120px, 1fr));
-    gap: 8px;
-    margin-bottom: 10px;
-  }
+  .kpi-grid { display:grid; grid-template-columns:repeat(3,minmax(120px,1fr)); gap:8px; margin-bottom:10px; }
+  .kpi-grid.two { grid-template-columns:repeat(2,minmax(120px,1fr)); margin-bottom:0; }
+  .kpi-box { border:1px solid #e5e7eb; border-radius:10px; padding:8px 10px; background:#fafafa; }
+  .kpi-label { font-size:12px; color:#64748b; }
+  .kpi-value { margin-top:2px; font-size:26px; font-weight:900; line-height:1.1; color:#0f172a; }
 
-  .kpi-grid.two { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  .table-wrap { overflow:auto; }
+  .table.compact th,.table.compact td { padding:8px; vertical-align:middle; font-size:13px; }
+  .table.compact thead th { background:#f8fafc; }
+  .muted-xs { font-size:12px; color:#64748b; }
 
-  .kpi-box {
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 8px 10px;
-    background: #fafafa;
-  }
+  .pagination { display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:8px; flex-wrap:wrap; }
+  .btn-outline { border:1px solid #d1d5db; border-radius:9px; padding:6px 10px; background:#fff; color:#0f172a; text-decoration:none; font-weight:700; font-size:12px; }
+  .btn-inline { border:none; border-radius:8px; padding:5px 9px; background:#16a34a; color:#fff; font-weight:800; cursor:pointer; font-size:12px; }
 
-  .kpi-label {
-    font-size: 12px;
-    color: #64748b;
-  }
+  .aviso-item { border:1px solid #e5e7eb; border-radius:10px; padding:9px 10px; background:#fff; margin-top:8px; }
+  .list-tight { margin:8px 0 0 16px; padding:0; }
+  .list-tight li { margin-bottom:4px; }
 
-  .kpi-value {
-    margin-top: 2px;
-    font-size: 28px;
-    font-weight: 900;
-    line-height: 1.1;
-    color: #0f172a;
-  }
+  .quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
-  .table-wrap { overflow: auto; }
-
-  .table.compact th,
-  .table.compact td {
-    padding: 8px;
-    vertical-align: middle;
-    font-size: 13px;
-  }
-
-  .table.compact thead th {
-    background: #f8fafc;
-  }
-
-  .muted-xs { font-size: 12px; color: #64748b; }
-
-  .pagination {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .btn-outline {
-    border: 1px solid #d1d5db;
-    border-radius: 9px;
-    padding: 6px 10px;
-    background: #fff;
-    color: #0f172a;
-    text-decoration: none;
-    font-weight: 700;
-    font-size: 12px;
-  }
-
-  .btn-inline {
-    border: none;
-    border-radius: 8px;
-    padding: 5px 9px;
-    background: #16a34a;
-    color: #fff;
-    font-weight: 800;
-    cursor: pointer;
-    font-size: 12px;
-  }
-
-  .aviso-item {
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 9px 10px;
-    background: #fff;
-    margin-top: 8px;
-  }
-
-  .secondary-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-
-  .list-tight {
-    margin: 8px 0 0 16px;
-    padding: 0;
-  }
-
-  .list-tight li { margin-bottom: 4px; }
-
-  .card-short { min-height: 132px; }
-  .card-medium { min-height: 250px; }
+  .os-card { min-height: 320px; }
+  .mural-card, .preventivas-card, .escala-card { min-height: 0; }
 
   @media (max-width: 1200px) {
-    .dashboard-main { grid-template-columns: 1fr; }
+    .dash-row { grid-template-columns:1fr; }
   }
 
   @media (max-width: 760px) {
-    .kpi-grid,
-    .kpi-grid.two,
-    .secondary-grid {
-      grid-template-columns: 1fr;
-    }
+    .kpi-grid, .kpi-grid.two, .quick-grid { grid-template-columns:1fr; }
   }
 </style>
 
@@ -159,7 +71,6 @@
   var escalaApoio = (safeEscala.apoio_operacional || []).map(function(p) { return p.nome; }).join(', ');
   var escalaNoturno = (safeEscala.noturno || []).map(function(p) { return p.nome; }).join(', ');
   var safeMotoresResumo = motoresResumo || {};
-  var motoresEmConserto = safeMotoresResumo.itens_em_conserto || [];
 %>
 
 <div class="page-head">
@@ -169,9 +80,9 @@
   </div>
 </div>
 
-<div class="dashboard-main">
-  <div class="dashboard-col">
-    <div class="dashboard-card card-medium">
+<div class="dashboard-stack">
+  <div class="dash-row">
+    <div class="dashboard-card os-card">
       <div class="dashboard-title">Ordem de Serviço</div>
       <div class="kpi-grid">
         <div class="kpi-box"><div class="kpi-label">Abertas</div><div class="kpi-value"><%= safeOSResumo.abertas || 0 %></div></div>
@@ -224,9 +135,25 @@
           <% if (safeOSPainel.hasNext) { %><a class="btn-outline" href="/dashboard?page=<%= safeOSPainel.page + 1 %>">Próxima</a><% } %>
         </div>
       </div>
-    </div>
 
-    <div class="dashboard-card card-medium">
+    <div class="dashboard-card mural-card">
+      <div class="muted-xs" style="margin-top:-4px; margin-bottom:8px;">Comunicados rápidos da empresa</div>
+      <div class="dashboard-title">Mural</div>
+      <% if (safeAvisos.length === 0) { %>
+        <p class="muted" style="margin:0;">Sem avisos publicados.</p>
+      <% } else { %>
+        <% safeAvisos.slice(0, 8).forEach(function(a) { %>
+          <div class="aviso-item">
+            <div style="font-weight:800;"><%= a.titulo %></div>
+            <div class="muted" style="margin-top:3px;"><%= a.mensagem %></div>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="dash-row">
+    <div class="dashboard-card preventivas-card">
       <div class="dashboard-title">Preventivas Programadas</div>
       <% if (!preventivas || preventivas.length === 0) { %>
         <p class="muted" style="margin:0;">Nenhuma preventiva pendente.</p>
@@ -251,72 +178,7 @@
     </div>
   </div>
 
-    <div class="secondary-grid">
-      <div class="dashboard-card card-short">
-        <div class="dashboard-title">Equipamentos</div>
-        <div class="kpi-grid two">
-          <div class="kpi-box"><div class="kpi-label">Ativos</div><div class="kpi-value"><%= safeCards.equipamentos_ativos || 0 %></div></div>
-          <div class="kpi-box"><div class="kpi-label">Inativos</div><div class="kpi-value"><%= safeCards.equipamentos_inativos || 0 %></div></div>
-        </div>
-      </div>
-
-      <div class="dashboard-card card-short">
-        <div class="dashboard-title">Solicitações / Compras</div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-          <span class="pill-tag pill-amber">Abertas: <%= safeComprasResumo.solicitacoes_abertas || 0 %></span>
-          <span class="pill-tag pill-blue">Aprovadas: <%= safeComprasResumo.solicitacoes_aprovadas || 0 %></span>
-        </div>
-      </div>
-
-      <div class="dashboard-card card-short">
-        <div class="dashboard-title">Estoque (Resumo)</div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-          <span class="pill-tag pill-green">Ativos: <%= safeEstoqueResumo.itens_ativos || 0 %></span>
-          <span class="pill-tag pill-amber">Abaixo mín.: <%= safeEstoqueResumo.abaixo_minimo || 0 %></span>
-        </div>
-        <ul class="list-tight">
-          <% if (estoqueMovimentacoes.length === 0) { %><li class="muted-xs">Sem movimentações.</li><% } %>
-          <% estoqueMovimentacoes.slice(0, 2).forEach(function(m) { %>
-            <li><%= (m.tipo || '-').toUpperCase() %> • <%= m.item_nome %></li>
-          <% }) %>
-        </ul>
-      </div>
-
-      <div class="dashboard-card card-short">
-        <div class="dashboard-title">Motores</div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-          <span class="pill-tag pill-green">Funcionando: <%= safeMotoresResumo.em_funcionamento || 0 %></span>
-          <span class="pill-tag pill-blue">Estoque: <%= safeMotoresResumo.em_estoque || 0 %></span>
-        </div>
-        <div class="muted-xs" style="margin-top:8px;">Em conserto: <strong><%= safeMotoresResumo.em_conserto || 0 %></strong></div>
-      </div>
-      <ul style="margin:10px 0 0 18px; padding:0;">
-        <% if (estoqueMovimentacoes.length === 0) { %>
-          <li class="muted-xs">Sem movimentações.</li>
-        <% } %>
-        <% estoqueMovimentacoes.forEach(function(m) { %>
-          <li><%= (m.tipo || '-').toUpperCase() %> • <%= m.item_nome %> (<%= m.quantidade %>)</li>
-        <% }) %>
-      </ul>
-    </div>
-  </div>
-
-  <div class="dashboard-col">
-    <div class="dashboard-card card-medium">
-      <div class="dashboard-title">Mural</div>
-      <% if (safeAvisos.length === 0) { %>
-        <p class="muted" style="margin:0;">Sem avisos publicados.</p>
-      <% } else { %>
-        <% safeAvisos.slice(0, 6).forEach(function(a) { %>
-          <div class="aviso-item">
-            <div style="font-weight:800;"><%= a.titulo %></div>
-            <div class="muted" style="margin-top:3px;"><%= a.mensagem %></div>
-          </div>
-        <% }) %>
-      <% } %>
-    </div>
-
-    <div class="dashboard-card card-medium">
+    <div class="dashboard-card escala-card">
       <div class="dashboard-title">Escala da Semana</div>
       <% if (escalaDiurno || escalaApoio || escalaNoturno) { %>
         <div class="muted-xs" style="margin-bottom:8px;">Semana #<%= safeEscala.semana_numero || '-' %> • <%= safeEscala.data_inicio || '-' %> até <%= safeEscala.data_fim || '-' %></div>
@@ -331,8 +193,10 @@
         <p class="muted" style="margin:0;">Escala não disponível.</p>
       <% } %>
     </div>
+  </div>
 
-    <div class="dashboard-card card-short">
+  <div class="dash-row">
+    <div class="dashboard-card">
       <div class="dashboard-title">Demandas</div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
         <span class="pill-tag pill-blue">Novas: <%= safeDemandasResumo.novas || 0 %></span>
@@ -341,10 +205,49 @@
       </div>
       <ul class="list-tight">
         <% if (demandasEmTrabalho.length === 0) { %><li class="muted-xs">Nenhuma demanda em andamento.</li><% } %>
-        <% demandasEmTrabalho.slice(0, 3).forEach(function(d) { %>
+        <% demandasEmTrabalho.slice(0, 4).forEach(function(d) { %>
           <li><a href="/demandas/<%= d.id %>">#<%= d.id %> - <%= d.titulo %></a></li>
         <% }) %>
       </ul>
+    </div>
+
+    <div class="quick-grid">
+      <div class="dashboard-card">
+        <div class="dashboard-title">Equipamentos</div>
+        <div class="kpi-grid two">
+          <div class="kpi-box"><div class="kpi-label">Ativos</div><div class="kpi-value"><%= safeCards.equipamentos_ativos || 0 %></div></div>
+          <div class="kpi-box"><div class="kpi-label">Inativos</div><div class="kpi-value"><%= safeCards.equipamentos_inativos || 0 %></div></div>
+        </div>
+      </div>
+
+      <div class="dashboard-card">
+        <div class="dashboard-title">Solicitações / Compras</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <span class="pill-tag pill-amber">Abertas: <%= safeComprasResumo.solicitacoes_abertas || 0 %></span>
+          <span class="pill-tag pill-blue">Aprovadas: <%= safeComprasResumo.solicitacoes_aprovadas || 0 %></span>
+        </div>
+      </div>
+
+      <div class="dashboard-card">
+        <div class="dashboard-title">Estoque (Resumo)</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <span class="pill-tag pill-green">Ativos: <%= safeEstoqueResumo.itens_ativos || 0 %></span>
+          <span class="pill-tag pill-amber">Abaixo mín.: <%= safeEstoqueResumo.abaixo_minimo || 0 %></span>
+        </div>
+        <ul class="list-tight">
+          <% if (estoqueMovimentacoes.length === 0) { %><li class="muted-xs">Sem movimentações.</li><% } %>
+          <% estoqueMovimentacoes.slice(0, 2).forEach(function(m) { %><li><%= (m.tipo || '-').toUpperCase() %> • <%= m.item_nome %></li><% }) %>
+        </ul>
+      </div>
+
+      <div class="dashboard-card">
+        <div class="dashboard-title">Motores</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+          <span class="pill-tag pill-green">Funcionando: <%= safeMotoresResumo.em_funcionamento || 0 %></span>
+          <span class="pill-tag pill-blue">Estoque: <%= safeMotoresResumo.em_estoque || 0 %></span>
+          <span class="pill-tag pill-amber">Conserto: <%= safeMotoresResumo.em_conserto || 0 %></span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
