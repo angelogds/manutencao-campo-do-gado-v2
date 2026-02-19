@@ -29,5 +29,6 @@ const safe = (fn, name) =>
 
 // ✅ /dashboard
 router.get("/", requireLogin, safe(ctrl.index, "index"));
+router.post("/avisos", requireLogin, safe(ctrl.createAviso, "createAviso"));
 
 module.exports = router;
