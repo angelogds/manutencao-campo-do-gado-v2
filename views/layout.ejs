@@ -15,18 +15,10 @@
       --cg-green-soft: #ecfdf5;
     }
 
-    body{
-      margin:0;
-      font-family: Arial, Helvetica, sans-serif;
-      background:#f3f4f6;
-    }
+    body{ margin:0; font-family: Arial, Helvetica, sans-serif; background:#f3f4f6; }
 
-    .app{
-      display:flex;
-      min-height:100vh;
-    }
+    .app{ display:flex; min-height:100vh; }
 
-    /* ===== SIDEBAR ===== */
     .sidebar{
       width:260px;
       background:linear-gradient(180deg, #16A34A, #0f7a37);
@@ -35,98 +27,44 @@
       display:flex;
       flex-direction:column;
       position:relative;
+      transition: width .25s ease, padding .25s ease;
     }
 
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      margin-bottom:25px;
+    .app.sidebar-collapsed .sidebar{
+      width:0;
+      padding:0;
+      overflow:hidden;
+      border:none;
     }
 
-    .brand-badge{
-      width:38px;
-      height:38px;
+    .brand{ display:flex; align-items:center; gap:10px; margin-bottom:25px; }
+    .brand-badge{ width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,.18); display:flex; align-items:center; justify-content:center; font-weight:900; }
+    .brand-title{ font-weight:900; font-size:15px; }
+    .brand-sub{ font-size:11px; opacity:.85; }
+
+    .nav{ display:flex; flex-direction:column; gap:8px; }
+    .nav-item{ color:#fff; text-decoration:none; padding:10px 14px; border-radius:12px; font-weight:700; background:rgba(255,255,255,.08); transition:all .2s ease; }
+    .nav-item:hover{ background:rgba(255,255,255,.18); transform:translateY(-1px); }
+    .nav-item.active{ background:#fff; color:#16A34A; font-weight:900; }
+    .nav-divider{ height:1px; background:rgba(255,255,255,.25); margin:14px 0; }
+    .nav-section{ font-size:11px; font-weight:900; opacity:.9; margin-bottom:6px; }
+    .sidebar-footer{ position:absolute; bottom:15px; left:20px; font-size:12px; opacity:.85; }
+
+    .main{ flex:1; display:flex; flex-direction:column; min-width:0; }
+    .topbar{ background:#fff; padding:16px 25px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; }
+    .topbar-left{ display:flex; align-items:center; gap:10px; }
+    .topbar-title{ font-weight:900; font-size:16px; }
+    .topbar-sub{ font-size:12px; opacity:.6; }
+
+    .sidebar-toggle{
+      border:1px solid #d1d5db;
+      background:#fff;
       border-radius:10px;
-      background:rgba(255,255,255,.18);
-      display:flex;
+      width:36px;
+      height:36px;
+      display:inline-flex;
       align-items:center;
       justify-content:center;
-      font-weight:900;
-    }
-
-    .brand-title{
-      font-weight:900;
-      font-size:15px;
-    }
-
-    .brand-sub{
-      font-size:11px;
-      opacity:.85;
-    }
-
-    .nav{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-    }
-
-    .nav-item{
-      color:#fff;
-      text-decoration:none;
-      padding:10px 14px;
-      border-radius:12px;
-      font-weight:700;
-      background:rgba(255,255,255,.08);
-      transition:all .2s ease;
-    }
-
-    .nav-item:hover{
-      background:rgba(255,255,255,.18);
-      transform:translateY(-1px);
-    }
-
-    .nav-item.active{
-      background:#fff;
-      color:#16A34A;
-      font-weight:900;
-    }
-
-    .nav-divider{
-      height:1px;
-      background:rgba(255,255,255,.25);
-      margin:14px 0;
-    }
-
-    .nav-section{
-      font-size:11px;
-      font-weight:900;
-      opacity:.9;
-      margin-bottom:6px;
-    }
-
-    .sidebar-footer{
-      position:absolute;
-      bottom:15px;
-      left:20px;
-      font-size:12px;
-      opacity:.85;
-    }
-
-    /* ===== MAIN ===== */
-    .main{
-      flex:1;
-      display:flex;
-      flex-direction:column;
-    }
-
-    .topbar{
-      background:#fff;
-      padding:16px 25px;
-      border-bottom:1px solid #e5e7eb;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
     }
 
     .topbar-title{
@@ -164,46 +102,53 @@
       padding:6px 12px;
       border-radius:8px;
       cursor:pointer;
+      font-size:18px;
+      line-height:1;
     }
 
-    .flash{
-      padding:10px 25px;
-    }
+    .pill{ background:var(--cg-green-soft); padding:6px 10px; border-radius:20px; font-size:12px; font-weight:700; margin-right:10px; }
+    .user-avatar{ width:36px; height:36px; border-radius:999px; object-fit:cover; border:1px solid #e5e7eb; margin-right:10px; background:#fff; }
+    .btn-ghost{ background:#fff; border:1px solid #ddd; padding:6px 12px; border-radius:8px; cursor:pointer; }
+    .flash{ padding:10px 25px; }
+    .alert{ padding:10px 12px; border-radius:8px; margin-bottom:8px; font-size:14px; }
+    .alert-error{ background:#fee2e2; color:#991b1b; }
+    .alert-success{ background:#dcfce7; color:#166534; }
+    .content{ padding:25px; flex:1; }
+    .footer{ padding:15px 25px; background:#fff; border-top:1px solid #e5e7eb; font-size:12px; display:flex; justify-content:space-between; }
 
-    .alert{
-      padding:10px 12px;
-      border-radius:8px;
-      margin-bottom:8px;
-      font-size:14px;
-    }
+    @media (max-width: 900px) {
+      .sidebar{
+        position:fixed;
+        left:0;
+        top:0;
+        bottom:0;
+        z-index:50;
+        transform:translateX(-100%);
+        width:260px;
+      }
 
-    .alert-error{
-      background:#fee2e2;
-      color:#991b1b;
-    }
+      .app.mobile-sidebar-open .sidebar{
+        transform:translateX(0);
+      }
 
-    .alert-success{
-      background:#dcfce7;
-      color:#166534;
-    }
+      .app.sidebar-collapsed .sidebar{
+        width:260px;
+        padding:20px;
+      }
 
-    .content{
-      padding:25px;
-      flex:1;
-    }
-
-    .footer{
-      padding:15px 25px;
-      background:#fff;
-      border-top:1px solid #e5e7eb;
-      font-size:12px;
-      display:flex;
-      justify-content:space-between;
+      .topbar{ padding:12px 14px; }
+      .content{ padding:14px; }
+      .flash{ padding:8px 14px 0; }
+      .footer{ padding:10px 14px; }
+      .pill{ margin-right:6px; }
     }
   </style>
 </head>
 
 <body>
+  <div class="app" id="appRoot">
+    <%- include("partials/sidebar") %>
+
   <div class="app">
 
     <!-- ===== SIDEBAR ===== -->
@@ -211,11 +156,13 @@
 
     <!-- ===== MAIN ===== -->
     <main class="main">
-
       <header class="topbar">
-        <div>
-          <div class="topbar-title">Manutenção Campo do Gado</div>
-          <div class="topbar-sub">Sistema Industrial V2</div>
+        <div class="topbar-left">
+          <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Mostrar/ocultar menu">☰</button>
+          <div>
+            <div class="topbar-title">Manutenção Campo do Gado</div>
+            <div class="topbar-sub">Sistema Industrial V2</div>
+          </div>
         </div>
 
         <div style="display:flex; align-items:center;">
@@ -223,6 +170,8 @@
             <% if (user.photo_path) { %>
               <img class="user-avatar" src="<%= user.photo_path %>" alt="Foto do usuário" />
             <% } %>
+            <div class="pill"><%= user.name %> • <%= user.role.toUpperCase() %></div>
+            <form action="/auth/logout" method="POST" style="margin:0;"><button class="btn-ghost" type="submit">Sair</button></form>
             <div class="pill">
               <%= user.name %> • <%= user.role.toUpperCase() %>
             </div>
@@ -234,6 +183,9 @@
         </div>
       </header>
 
+      <section class="flash"><%- include("partials/alerts") %></section>
+      <section class="content"><%- body %></section>
+      <footer class="footer"><div>Manutenção Industrial • Campo do Gado</div><div>© <%= new Date().getFullYear() %> • Sistema V2</div></footer>
       <section class="flash">
         <%- include("partials/alerts") %>
       </section>
@@ -249,5 +201,25 @@
 
     </main>
   </div>
+
+  <script>
+    (function () {
+      const app = document.getElementById('appRoot');
+      const btn = document.getElementById('sidebarToggle');
+      if (!app || !btn) return;
+
+      function isMobile() {
+        return window.matchMedia('(max-width: 900px)').matches;
+      }
+
+      btn.addEventListener('click', function () {
+        if (isMobile()) {
+          app.classList.toggle('mobile-sidebar-open');
+          return;
+        }
+        app.classList.toggle('sidebar-collapsed');
+      });
+    })();
+  </script>
 </body>
 </html>
