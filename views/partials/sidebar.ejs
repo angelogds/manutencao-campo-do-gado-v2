@@ -32,7 +32,7 @@
 
   <nav class="nav">
     <a class="nav-item <%= activeMenu === 'dashboard' ? 'active' : '' %>" href="/dashboard">
-      Painel
+      Painel Principal
     </a>
 
     <a class="nav-item <%= activeMenu === 'equipamentos' ? 'active' : '' %>" href="/equipamentos">
@@ -62,6 +62,12 @@
     <% if (canCompras) { %>
       <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">
         Compras
+      </a>
+    <% } %>
+
+    <% if (canAlmoxarifado) { %>
+      <a class="nav-item <%= activeMenu === 'almoxarifado' ? 'active' : '' %>" href="/almoxarifado">
+        Almoxarifado
       </a>
     <% } %>
 
