@@ -1,5 +1,14 @@
 const db = require("../../database/db");
 
+function hasColumn(tableName, columnName) {
+  try {
+    const cols = db.prepare(`PRAGMA table_info(${tableName})`).all();
+    return cols.some((col) => String(col.name || "").toLowerCase() === String(columnName || "").toLowerCase());
+  } catch (_e) {
+    return false;
+  }
+}
+
 function listSolicitacoes() {
   return db.prepare(`
     SELECT s.id, s.solicitante, s.setor, s.status, s.observacao, s.created_at,
@@ -22,10 +31,16 @@ function createSolicitacao({ solicitante, setor, observacao, itens, vinculo, cre
     VALUES (?, ?, 'aberta', ?, ?, datetime('now'))
   `);
 
-  const insertItem = db.prepare(`
-    INSERT INTO solicitacao_itens (solicitacao_id, item_id, descricao, quantidade, unidade, created_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
-  `);
+  const hasEspecificacao = hasColumn('solicitacao_itens', 'especificacao');
+  const insertItem = hasEspecificacao
+    ? db.prepare(`
+        INSERT INTO solicitacao_itens (solicitacao_id, item_id, descricao, especificacao, quantidade, unidade, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+      `)
+    : db.prepare(`
+        INSERT INTO solicitacao_itens (solicitacao_id, item_id, descricao, quantidade, unidade, created_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
+      `);
 
   const insertVinculo = db.prepare(`
     INSERT INTO solicitacao_vinculos (solicitacao_id, tipo_origem, origem_id, equipamento_id, destino_uso, created_at)
@@ -37,13 +52,27 @@ function createSolicitacao({ solicitante, setor, observacao, itens, vinculo, cre
     const solicitacaoId = Number(info.lastInsertRowid);
 
     for (const it of itens || []) {
-      insertItem.run(
-        solicitacaoId,
-        it.item_id ? Number(it.item_id) : null,
-        String(it.descricao || "").trim(),
-        Number(it.quantidade || 1),
-        String(it.unidade || "UN").toUpperCase()
-      );
+      if (hasEspecificacao) {
+        insertItem.run(
+          solicitacaoId,
+          it.item_id ? Number(it.item_id) : null,
+          String(it.descricao || "").trim(),
+          it.especificacao ? String(it.especificacao).trim() : null,
+          Number(it.quantidade || 1),
+          String(it.unidade || "UN").toUpperCase()
+        );
+      } else {
+        const descricaoComposta = [String(it.descricao || "").trim(), it.especificacao ? String(it.especificacao).trim() : ""]
+          .filter(Boolean)
+          .join(" • " );
+        insertItem.run(
+          solicitacaoId,
+          it.item_id ? Number(it.item_id) : null,
+          descricaoComposta,
+          Number(it.quantidade || 1),
+          String(it.unidade || "UN").toUpperCase()
+        );
+      }
     }
 
     insertVinculo.run(
@@ -71,16 +100,30 @@ function getSolicitacaoById(id) {
 
   if (!sol) return null;
 
-  const itens = db.prepare(`
-    SELECT si.id, si.item_id, si.descricao, si.quantidade, si.unidade,
-           ei.codigo AS estoque_codigo, ei.nome AS estoque_nome,
-           COALESCE(vs.saldo, 0) AS saldo_atual
-    FROM solicitacao_itens si
-    LEFT JOIN estoque_itens ei ON ei.id = si.item_id
-    LEFT JOIN vw_estoque_saldo vs ON vs.item_id = si.item_id
-    WHERE si.solicitacao_id = ?
-    ORDER BY si.id
-  `).all(id);
+  const hasEspecificacao = hasColumn('solicitacao_itens', 'especificacao');
+  const itensQuery = hasEspecificacao
+    ? `
+      SELECT si.id, si.item_id, si.descricao, si.especificacao, si.quantidade, si.unidade,
+             ei.codigo AS estoque_codigo, ei.nome AS estoque_nome,
+             COALESCE(vs.saldo, 0) AS saldo_atual
+      FROM solicitacao_itens si
+      LEFT JOIN estoque_itens ei ON ei.id = si.item_id
+      LEFT JOIN vw_estoque_saldo vs ON vs.item_id = si.item_id
+      WHERE si.solicitacao_id = ?
+      ORDER BY si.id
+    `
+    : `
+      SELECT si.id, si.item_id, si.descricao, NULL AS especificacao, si.quantidade, si.unidade,
+             ei.codigo AS estoque_codigo, ei.nome AS estoque_nome,
+             COALESCE(vs.saldo, 0) AS saldo_atual
+      FROM solicitacao_itens si
+      LEFT JOIN estoque_itens ei ON ei.id = si.item_id
+      LEFT JOIN vw_estoque_saldo vs ON vs.item_id = si.item_id
+      WHERE si.solicitacao_id = ?
+      ORDER BY si.id
+    `;
+
+  const itens = db.prepare(itensQuery).all(id);
 
   const cotacoes = db.prepare(`
     SELECT id, fornecedor, valor_total, observacao, anexo_path, created_at

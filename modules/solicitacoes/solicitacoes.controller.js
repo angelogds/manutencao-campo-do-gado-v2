@@ -19,16 +19,20 @@ function newForm(req, res) {
 
 function create(req, res) {
   const { solicitante, setor, observacao, tipo_origem, origem_id, equipamento_id, destino_uso } = req.body;
-  const descArr = Array.isArray(req.body.itens_descricao) ? req.body.itens_descricao : [req.body.itens_descricao];
+  const nomeArr = Array.isArray(req.body.itens_nome) ? req.body.itens_nome : [req.body.itens_nome];
+  const espArr = Array.isArray(req.body.itens_especificacao) ? req.body.itens_especificacao : [req.body.itens_especificacao];
   const qtdArr = Array.isArray(req.body.itens_qtd) ? req.body.itens_qtd : [req.body.itens_qtd];
   const unArr = Array.isArray(req.body.itens_un) ? req.body.itens_un : [req.body.itens_un];
 
   const itens = [];
-  for (let i = 0; i < descArr.length; i++) {
-    const descricao = String(descArr[i] || "").trim();
-    if (!descricao) continue;
+  for (let i = 0; i < nomeArr.length; i++) {
+    const nome = String(nomeArr[i] || "").trim();
+    const especificacao = String(espArr[i] || "").trim();
+    if (!nome) continue;
+
     itens.push({
-      descricao,
+      descricao: nome,
+      especificacao: especificacao || null,
       quantidade: Number(qtdArr[i] || 1),
       unidade: String(unArr[i] || "UN"),
     });

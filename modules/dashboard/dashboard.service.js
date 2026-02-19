@@ -367,6 +367,35 @@ function getHistoricoEquipamentos(limit = 8) {
   }, []);
 }
 
+
+function getAvisosDashboard(limit = 10) {
+  return safeGet(() => {
+    return db
+      .prepare(`
+        SELECT a.id, a.titulo, a.mensagem, a.colaborador_nome, a.data_referencia, a.created_at,
+               COALESCE(u.name, 'Sistema') AS autor_nome
+        FROM avisos a
+        LEFT JOIN users u ON u.id = a.created_by
+        ORDER BY a.id DESC
+        LIMIT ?
+      `)
+      .all(Number(limit) || 10);
+  }, []);
+}
+
+function createAviso({ titulo, mensagem, colaborador_nome, data_referencia, createdBy }) {
+  return safeGet(() => {
+    const info = db
+      .prepare(`
+        INSERT INTO avisos (titulo, mensagem, colaborador_nome, data_referencia, created_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `)
+      .run(titulo, mensagem, colaborador_nome || null, data_referencia || null, createdBy || null);
+
+    return Number(info.lastInsertRowid);
+  }, null);
+}
+
 /* ===============================
    PREVENTIVAS ATIVAS (DASHBOARD)
    tabelas corretas: preventiva_planos / preventiva_execucoes
@@ -451,6 +480,8 @@ module.exports = {
   getComprasResumoDashboard,
   getEstoqueResumoDashboard,
   getDemandasResumoDashboard,
+  getAvisosDashboard,
+  createAviso,
   getPreventivasDashboard,
   getEscalaSemana,
   getEscalaPainelSemana,

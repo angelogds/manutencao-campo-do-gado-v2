@@ -221,6 +221,55 @@
         </table>
       </div>
     </div>
+
+    <div class="card" style="margin-top:14px; min-height:320px;">
+      <div class="label">Mural de Avisos</div>
+      <p class="muted" style="margin-top:6px;">Informações relevantes para reciclagem, operação e manutenção.</p>
+
+      <% if (canManageAvisos) { %>
+        <form method="POST" action="/dashboard/avisos" class="grid-4" style="margin-top:12px;">
+          <input class="input" name="titulo" placeholder="Título do aviso" required />
+          <input class="input" name="colaborador_nome" placeholder="Funcionário (opcional)" />
+          <input class="input" type="date" name="data_referencia" />
+          <button class="btn btn-green" type="submit">Publicar aviso</button>
+          <textarea class="input" name="mensagem" placeholder="Mensagem do aviso" style="grid-column:1/-1; min-height:90px;" required></textarea>
+        </form>
+      <% } %>
+
+      <div class="table-wrap" style="margin-top:12px; max-height:360px; overflow:auto;">
+        <table class="table compact">
+          <thead>
+            <tr>
+              <th>Aviso</th>
+              <th>Funcionário</th>
+              <th>Data ref.</th>
+              <th>Publicado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (!avisos?.length) { %>
+              <tr>
+                <td colspan="4" style="text-align:center; color:#6b7280;">Sem avisos publicados.</td>
+              </tr>
+            <% } %>
+            <% (avisos || []).forEach((a) => { %>
+              <tr>
+                <td>
+                  <strong><%= a.titulo %></strong>
+                  <div class="muted-xs" style="margin-top:4px;"><%= a.mensagem %></div>
+                  <div class="muted-xs" style="margin-top:4px;">por <%= a.autor_nome || 'Sistema' %></div>
+                </td>
+                <td><%= a.colaborador_nome || '-' %></td>
+                <td><%= a.data_referencia ? fmtBR(a.data_referencia) : '-' %></td>
+                <td><%= fmtBR(a.created_at) %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   </div>
 
   <div class="stack">
