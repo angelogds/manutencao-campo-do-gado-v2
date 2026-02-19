@@ -3,12 +3,21 @@
 <style>
   .dashboard-grid {
     display: grid;
-    grid-template-columns: 1.15fr 1fr;
+    grid-template-columns: minmax(680px, 1.2fr) minmax(380px, 1fr);
     gap: 16px;
     align-items: start;
   }
 
   .stack { display: grid; gap: 16px; }
+
+  .right-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-content: start;
+  }
+
+  .span-2 { grid-column: 1 / -1; }
 
   .kpi-grid {
     display: grid;
@@ -81,7 +90,7 @@
 
   .btn-inline:hover { background: #15803d; }
 
-  @media (max-width: 1100px) {
+  @media (max-width: 900px) {
     .dashboard-grid {
       grid-template-columns: 1fr;
     }
@@ -91,7 +100,7 @@
 <div class="page-head">
   <div>
     <h1>Painel</h1>
-    <p class="muted">Operacional e Reciclagem</p>
+    <p class="muted">Operacional Reciclagem</p>
   </div>
 </div>
 
@@ -272,7 +281,7 @@
 
   </div>
 
-  <div class="stack">
+  <div class="right-cards">
     <div class="card">
       <div class="label">Equipamentos</div>
       <div class="kpi-grid">
@@ -326,7 +335,7 @@
       </ul>
     </div>
 
-    <div class="card">
+    <div class="card span-2">
       <div class="label">Motores</div>
       <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
         <span class="pill-tag pill-green">Em funcionamento: <%= motoresResumo?.em_funcionamento ?? 0 %></span>
@@ -362,7 +371,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card span-2">
       <div class="label">Escala da Semana</div>
       <% if (escala?.diurno_mecanicos || escala?.apoio_operacional || escala?.noturno) { %>
         <div class="muted-xs" style="margin-top:8px;">
@@ -413,8 +422,11 @@
       <% } %>
     </div>
 
-    <div class="card" style="min-height:320px;">
-      <div class="label">Preventivas Programadas</div>
+  </div>
+</div>
+
+<div class="card" style="min-height:320px; margin-top:16px;">
+  <div class="label">Preventivas Programadas</div>
       <% if (!preventivas || preventivas.length === 0) { %>
         <div class="muted" style="margin-top:16px;">Nenhuma preventiva pendente.</div>
       <% } else { %>
@@ -454,6 +466,4 @@
           </table>
         </div>
       <% } %>
-    </div>
-  </div>
 </div>
