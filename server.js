@@ -88,6 +88,7 @@ app.use("/solicitacoes", require("./modules/solicitacoes/solicitacoes.routes"));
 app.use("/estoque", require("./modules/estoque/estoque.routes"));
 app.use("/almoxarifado", require("./modules/almoxarifado/almoxarifado.routes"));
 app.use("/escala", require("./modules/escala/escala.routes"));
+app.use("/avisos", require("./modules/avisos/avisos.routes"));
 app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
 app.use("/demandas", require("./modules/demandas/demandas.routes"));
 app.use("/motores", require("./modules/motores/motores.routes")); // ✅ motores

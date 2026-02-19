@@ -34,28 +34,6 @@ function index(req, res) {
     preventivas,
     escala,
     avisos,
-    canManageAvisos: canManageAvisos(req.session?.user),
-  });
-}
-
-function createAviso(req, res) {
-  if (!canManageAvisos(req.session?.user)) {
-    req.flash("error", "Você não tem permissão para publicar avisos.");
-    return res.redirect("/dashboard");
-  }
-
-  const { titulo, mensagem, colaborador_nome, data_referencia } = req.body || {};
-  if (!String(titulo || "").trim() || !String(mensagem || "").trim()) {
-    req.flash("error", "Informe título e mensagem do aviso.");
-    return res.redirect("/dashboard");
-  }
-
-  service.createAviso({
-    titulo: String(titulo).trim(),
-    mensagem: String(mensagem).trim(),
-    colaborador_nome: String(colaborador_nome || "").trim() || null,
-    data_referencia: String(data_referencia || "").trim() || null,
-    createdBy: req.session?.user?.id || null,
   });
 
   req.flash("success", "Aviso publicado no mural.");

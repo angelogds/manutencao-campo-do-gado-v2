@@ -90,6 +90,13 @@
 
   .btn-inline:hover { background: #15803d; }
 
+  .aviso-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #fff;
+  }
+
   @media (max-width: 900px) {
     .dashboard-grid {
       grid-template-columns: 1fr;
@@ -196,7 +203,6 @@
           <% } %>
         </div>
       </div>
-    </div>
 
     <div class="card">
       <div class="label">Histórico por Equipamento (mais OS abertas)</div>
@@ -231,54 +237,64 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:14px; min-height:320px;">
-      <div class="label">Mural de Avisos</div>
-      <p class="muted" style="margin-top:6px;">Informações relevantes para reciclagem, operação e manutenção.</p>
-
-      <% if (canManageAvisos) { %>
-        <form method="POST" action="/dashboard/avisos" class="grid-4" style="margin-top:12px;">
-          <input class="input" name="titulo" placeholder="Título do aviso" required />
-          <input class="input" name="colaborador_nome" placeholder="Funcionário (opcional)" />
-          <input class="input" type="date" name="data_referencia" />
-          <button class="btn btn-green" type="submit">Publicar aviso</button>
-          <textarea class="input" name="mensagem" placeholder="Mensagem do aviso" style="grid-column:1/-1; min-height:90px;" required></textarea>
-        </form>
+    <div class="card" style="min-height:220px;">
+      <div class="label">Mural</div>
+      <% if (!avisos?.length) { %>
+        <p class="muted" style="margin-top:10px;">Sem avisos publicados.</p>
+      <% } else { %>
+        <div style="display:grid; gap:10px; margin-top:12px;">
+          <% (avisos || []).slice(0, 8).forEach((a) => { %>
+            <div class="aviso-item">
+              <div style="font-weight:800;"><%= a.titulo %></div>
+              <div class="muted" style="margin-top:4px;"><%= a.mensagem %></div>
+            </div>
+          <% }) %>
+        </div>
       <% } %>
+    </div>
 
-      <div class="table-wrap" style="margin-top:12px; max-height:360px; overflow:auto;">
-        <table class="table compact">
-          <thead>
-            <tr>
-              <th>Aviso</th>
-              <th>Funcionário</th>
-              <th>Data ref.</th>
-              <th>Publicado</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if (!avisos?.length) { %>
+    <div class="card" style="min-height:320px;">
+      <div class="label">Preventivas Programadas</div>
+      <% if (!preventivas || preventivas.length === 0) { %>
+        <div class="muted" style="margin-top:16px;">Nenhuma preventiva pendente.</div>
+      <% } else { %>
+        <div class="table-wrap" style="margin-top:14px; max-height:420px; overflow:auto;">
+          <table class="table compact">
+            <thead>
               <tr>
-                <td colspan="4" style="text-align:center; color:#6b7280;">Sem avisos publicados.</td>
+                <th>Equipamento</th>
+                <th>Resp.</th>
+                <th>Data</th>
+                <th>Status</th>
+                <th>Obs</th>
               </tr>
-            <% } %>
-            <% (avisos || []).forEach((a) => { %>
-              <tr>
-                <td>
-                  <strong><%= a.titulo %></strong>
-                  <div class="muted-xs" style="margin-top:4px;"><%= a.mensagem %></div>
-                  <div class="muted-xs" style="margin-top:4px;">por <%= a.autor_nome || 'Sistema' %></div>
-                </td>
-                <td><%= a.colaborador_nome || '-' %></td>
-                <td><%= a.data_referencia ? fmtBR(a.data_referencia) : '-' %></td>
-                <td><%= fmtBR(a.created_at) %></td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              <% preventivas.forEach((p) => { %>
+                <tr>
+                  <td><strong><%= p.equipamento_nome || '-' %></strong></td>
+                  <td><%= p.responsavel || '-' %></td>
+                  <td><%= p.data_prevista || '-' %></td>
+                  <td>
+                    <% const st = (p.status || '').toLowerCase(); %>
+                    <% if (st === 'pendente') { %>
+                      <span class="pill-tag pill-blue">Programada</span>
+                    <% } else if (st === 'em_andamento' || st === 'andamento') { %>
+                      <span class="pill-tag pill-amber">Em andamento</span>
+                    <% } else if (st === 'atrasada') { %>
+                      <span class="pill-tag pill-amber">Atrasada</span>
+                    <% } else { %>
+                      <span class="pill-tag pill-gray"><%= p.status || '-' %></span>
+                    <% } %>
+                  </td>
+                  <td class="td-clip"><%= p.observacao || '-' %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
-
   </div>
 
   <div class="right-cards">
@@ -303,6 +319,9 @@
         <span class="pill-tag pill-blue">Aprovadas: <%= comprasResumo?.solicitacoes_aprovadas ?? 0 %></span>
       </div>
     </div>
+  </div>
+
+  </div>
 
     <div class="card">
       <div class="label">Demandas</div>
@@ -421,7 +440,6 @@
         <div class="muted" style="margin-top:10px;">Escala não disponível.</div>
       <% } %>
     </div>
-
   </div>
 </div>
 
