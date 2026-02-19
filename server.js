@@ -65,6 +65,13 @@ app.use((req, res, next) => {
   // evita crash no layout
   res.locals.activeMenu = res.locals.activeMenu || "";
 
+  // compatibilidade com layouts antigos que esperam variáveis globais
+  res.locals.resumoOS = res.locals.resumoOS || {
+    abertas: 0,
+    andamento: 0,
+    fechadas: 0,
+  };
+
   next();
 });
 
