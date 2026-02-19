@@ -1,260 +1,253 @@
-<div>
-  <h2 style="margin:0 0 6px 0; font-size:22px; font-weight:900; color:#111827;">Painel</h2>
-  <div style="font-size:12px; color:#6b7280; margin-bottom:14px;">Operacional Reciclagem</div>
-</div>
 
-<div class="dash">
-  <!-- ===== ESQUERDA (cards grandes empilhados) ===== -->
-  <div class="dash-left">
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title><%= title || "Manutenção Campo do Gado" %></title>
 
-    <!-- ORDEM DE SERVIÇO -->
-    <section class="card">
-      <div class="card-hd">
+  <link rel="stylesheet" href="/css/app.css" />
+
+  <style>
+    :root{
+      --cg-green: #16A34A;
+      --cg-green-dark: #15803d;
+      --cg-green-soft: #ecfdf5;
+    }
+
+    body{
+      margin:0;
+      font-family: Arial, Helvetica, sans-serif;
+      background:#f3f4f6;
+    }
+
+    .app{
+      display:flex;
+      min-height:100vh;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar{
+      width:260px;
+      background:linear-gradient(180deg, #16A34A, #0f7a37);
+      color:#fff;
+      padding:20px;
+      display:flex;
+      flex-direction:column;
+      position:relative;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:25px;
+    }
+
+    .brand-badge{
+      width:38px;
+      height:38px;
+      border-radius:10px;
+      background:rgba(255,255,255,.18);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:900;
+    }
+
+    .brand-title{
+      font-weight:900;
+      font-size:15px;
+    }
+
+    .brand-sub{
+      font-size:11px;
+      opacity:.85;
+    }
+
+    .nav{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .nav-item{
+      color:#fff;
+      text-decoration:none;
+      padding:10px 14px;
+      border-radius:12px;
+      font-weight:700;
+      background:rgba(255,255,255,.08);
+      transition:all .2s ease;
+    }
+
+    .nav-item:hover{
+      background:rgba(255,255,255,.18);
+      transform:translateY(-1px);
+    }
+
+    .nav-item.active{
+      background:#fff;
+      color:#16A34A;
+      font-weight:900;
+    }
+
+    .nav-divider{
+      height:1px;
+      background:rgba(255,255,255,.25);
+      margin:14px 0;
+    }
+
+    .nav-section{
+      font-size:11px;
+      font-weight:900;
+      opacity:.9;
+      margin-bottom:6px;
+    }
+
+    .sidebar-footer{
+      position:absolute;
+      bottom:15px;
+      left:20px;
+      font-size:12px;
+      opacity:.85;
+    }
+
+    /* ===== MAIN ===== */
+    .main{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .topbar{
+      background:#fff;
+      padding:16px 25px;
+      border-bottom:1px solid #e5e7eb;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .topbar-title{
+      font-weight:900;
+      font-size:16px;
+    }
+
+    .topbar-sub{
+      font-size:12px;
+      opacity:.6;
+    }
+
+    .pill{
+      background:var(--cg-green-soft);
+      padding:6px 10px;
+      border-radius:20px;
+      font-size:12px;
+      font-weight:700;
+      margin-right:10px;
+    }
+
+    .user-avatar{
+      width:36px;
+      height:36px;
+      border-radius:999px;
+      object-fit:cover;
+      border:1px solid #e5e7eb;
+      margin-right:10px;
+      background:#fff;
+    }
+
+    .btn-ghost{
+      background:#fff;
+      border:1px solid #ddd;
+      padding:6px 12px;
+      border-radius:8px;
+      cursor:pointer;
+    }
+
+    .flash{
+      padding:10px 25px;
+    }
+
+    .alert{
+      padding:10px 12px;
+      border-radius:8px;
+      margin-bottom:8px;
+      font-size:14px;
+    }
+
+    .alert-error{
+      background:#fee2e2;
+      color:#991b1b;
+    }
+
+    .alert-success{
+      background:#dcfce7;
+      color:#166534;
+    }
+
+    .content{
+      padding:25px;
+      flex:1;
+    }
+
+    .footer{
+      padding:15px 25px;
+      background:#fff;
+      border-top:1px solid #e5e7eb;
+      font-size:12px;
+      display:flex;
+      justify-content:space-between;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- ===== SIDEBAR ===== -->
+    <%- include("partials/sidebar") %>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main">
+
+      <header class="topbar">
         <div>
-          <div class="card-title">ORDEM DE SERVIÇO</div>
-          <div class="card-sub">Resumo das OS cadastradas</div>
+          <div class="topbar-title">Manutenção Campo do Gado</div>
+          <div class="topbar-sub">Sistema Industrial V2</div>
         </div>
 
-        <div class="badges">
-          <span class="badge">Abertas: <b><%= resumoOS?.abertas || 0 %></b></span>
-          <span class="badge badge-yellow">Em andamento: <b><%= resumoOS?.andamento || 0 %></b></span>
-          <span class="badge badge-green">Fechadas: <b><%= resumoOS?.fechadas || 0 %></b></span>
+        <div style="display:flex; align-items:center;">
+          <% if (user) { %>
+            <% if (user.photo_path) { %>
+              <img class="user-avatar" src="<%= user.photo_path %>" alt="Foto do usuário" />
+            <% } %>
+            <div class="pill">
+              <%= user.name %> • <%= user.role.toUpperCase() %>
+            </div>
+
+            <form action="/auth/logout" method="POST" style="margin:0;">
+              <button class="btn-ghost" type="submit">Sair</button>
+            </form>
+          <% } %>
         </div>
-      </div>
+      </header>
 
-      <% if (!osLista || osLista.length === 0) { %>
-        <div class="empty">Nenhuma OS cadastrada.</div>
-      <% } else { %>
-        <div class="card-pad" style="padding-top:10px;">
-          <table class="table">
-            <thead>
-              <tr>
-                <th style="width:60px;">#</th>
-                <th style="width:220px;">Equipamento</th>
-                <th>Descrição do Serviço</th>
-                <th style="width:120px;">Tipo</th>
-                <th style="width:140px;">Status</th>
-                <th style="width:120px;">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% osLista.forEach((o) => { %>
-                <tr>
-                  <td><%= o.id %></td>
-                  <td><%= o.equipamento_nome || "-" %></td>
-                  <td><%= o.descricao %></td>
-                  <td><%= o.tipo %></td>
-                  <td><%= o.status %></td>
-                  <td>
-                    <a class="btn-mini" href="/os/<%= o.id %>">Abrir</a>
-                  </td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
+      <section class="flash">
+        <%- include("partials/alerts") %>
+      </section>
 
-          <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-            <span class="badge">Página 1 de 1</span>
-          </div>
-        </div>
-      <% } %>
-    </section>
+      <section class="content">
+        <%- body %>
+      </section>
 
-    <!-- HISTÓRICO POR EQUIPAMENTO -->
-    <section class="card">
-      <div class="card-hd">
-        <div class="card-title">HISTÓRICO POR EQUIPAMENTO (MAIS OS ABERTAS)</div>
-        <div></div>
-      </div>
+      <footer class="footer">
+        <div>Manutenção Industrial • Campo do Gado</div>
+        <div>© <%= new Date().getFullYear() %> • Sistema V2</div>
+      </footer>
 
-      <% if (!topEquip || topEquip.length === 0) { %>
-        <div class="empty">Sem histórico ainda.</div>
-      <% } else { %>
-        <div class="card-pad" style="padding-top:10px;">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Equipamento</th>
-                <th style="width:110px;">OS Abertas</th>
-                <th style="width:110px;">Corretivas</th>
-                <th style="width:110px;">Preventivas</th>
-                <th style="width:90px;">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% topEquip.forEach((e) => { %>
-                <tr>
-                  <td><%= e.nome %></td>
-                  <td><%= e.abertas %></td>
-                  <td><%= e.corretivas %></td>
-                  <td><%= e.preventivas %></td>
-                  <td><%= e.total %></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
-    </section>
-
-    <!-- MURAL -->
-    <section class="card">
-      <div class="card-hd">
-        <div class="card-title">MURAL</div>
-        <div></div>
-      </div>
-      <div class="card-pad">
-        <% if (!avisos || avisos.length === 0) { %>
-          <div class="empty" style="padding:0;">Sem avisos publicados.</div>
-        <% } else { %>
-          <ul style="margin:0; padding-left:18px;">
-            <% avisos.forEach(a => { %>
-              <li style="margin:6px 0; color:#111827;">
-                <b><%= a.titulo %></b> — <span style="color:#6b7280;"><%= a.texto %></span>
-              </li>
-            <% }) %>
-          </ul>
-        <% } %>
-      </div>
-    </section>
-
-    <!-- PREVENTIVAS PROGRAMADAS -->
-    <section class="card">
-      <div class="card-hd">
-        <div class="card-title">PREVENTIVAS PROGRAMADAS</div>
-        <div></div>
-      </div>
-      <div class="card-pad">
-        <% if (!preventivas || preventivas.length === 0) { %>
-          <div class="empty" style="padding:0;">Nenhuma preventiva pendente.</div>
-        <% } else { %>
-          <ul style="margin:0; padding-left:18px;">
-            <% preventivas.forEach(p => { %>
-              <li style="margin:6px 0;"><%= p.titulo %></li>
-            <% }) %>
-          </ul>
-        <% } %>
-      </div>
-    </section>
-
+    </main>
   </div>
-
-  <!-- ===== DIREITA (cards menores empilhados) ===== -->
-  <aside class="dash-right">
-
-    <!-- EQUIPAMENTOS -->
-    <section class="card">
-      <div class="card-hd">
-        <div class="card-title">EQUIPAMENTOS</div>
-        <div class="badges">
-          <span class="badge badge-green">Ativos: <b><%= eqResumo?.ativos || 0 %></b></span>
-          <span class="badge">Inativos: <b><%= eqResumo?.inativos || 0 %></b></span>
-        </div>
-      </div>
-      <div class="card-pad">
-        <div style="color:#6b7280; font-size:12px;">Resumo da fábrica.</div>
-      </div>
-    </section>
-
-    <!-- SOLICITAÇÕES / COMPRAS -->
-    <section class="card">
-      <div class="card-hd">
-        <div class="card-title">SOLICITAÇÕES / COMPRAS</div>
-        <div class="badges">
-          <span class="badge badge-yellow">Abertas: <b><%= comprasResumo?.abertas || 0 %></b></span>
-          <span class="badge badge-blue">Aprovadas: <b><%= comprasResumo?.aprovadas || 0 %></b></span>
-        </div>
-      </div>
-      <div class="card-pad">
-        <div style="color:#6b7280; font-size:12px;">Fila de solicitações e aprovações.</div>
-      </div>
-    </section>
-
-    <!-- DEMANDAS -->
-    <section class="card">
-      <div class="card-hd">
-        <div class="card-title">DEMANDAS</div>
-        <div class="badges">
-          <span class="badge">Novas: <b><%= demandasResumo?.novas || 0 %></b></span>
-          <span class="badge badge-yellow">Em andamento: <b><%= demandasResumo?.andamento || 0 %></b></span>
-          <span class="badge badge-red">Paradas: <b><%= demandasResumo?.paradas || 0 %></b></span>
-        </div>
-      </div>
-      <div class="card-pad">
-        <div style="color:#6b7280; font-size:12px;">
-          Em trabalho agora:
-          <div style="margin-top:6px; color:#111827; font-weight:800;">
-            <%= demandasResumo?.emTrabalho || "Nenhuma demanda em andamento." %>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ESTOQUE -->
-    <section class="card">
-      <div class="card-hd">
-        <div class="card-title">ESTOQUE (RESUMO)</div>
-        <div class="badges">
-          <span class="badge">Itens ativos: <b><%= estoqueResumo?.ativos || 0 %></b></span>
-          <span class="badge badge-red">Abaixo do mínimo: <b><%= estoqueResumo?.baixoMin || 0 %></b></span>
-        </div>
-      </div>
-      <div class="card-pad">
-        <div style="color:#6b7280; font-size:12px;">Últimas movimentações: <%= estoqueResumo?.ultimas || "—" %></div>
-      </div>
-    </section>
-
-    <!-- MOTORES -->
-    <section class="card">
-      <div class="card-hd">
-        <div class="card-title">MOTORES</div>
-        <div class="badges">
-          <span class="badge badge-green">Em funcionamento: <b><%= motoresResumo?.ok || 0 %></b></span>
-          <span class="badge">No estoque: <b><%= motoresResumo?.estoque || 0 %></b></span>
-          <span class="badge badge-yellow">Em conserto: <b><%= motoresResumo?.conserto || 0 %></b></span>
-        </div>
-      </div>
-
-      <% if (!motoresConserto || motoresConserto.length === 0) { %>
-        <div class="empty">Nenhum motor em conserto.</div>
-      <% } else { %>
-        <div class="card-pad" style="padding-top:10px;">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>Motor</th>
-                <th style="width:110px;">Data saída</th>
-                <th style="width:140px;">Tempo em conserto</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% motoresConserto.forEach(m => { %>
-                <tr>
-                  <td><%= m.nome %></td>
-                  <td><%= m.data_saida %></td>
-                  <td><%= m.tempo %></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-        </div>
-      <% } %>
-    </section>
-
-    <!-- ESCALA DA SEMANA -->
-    <section class="card">
-      <div class="card-hd">
-        <div class="card-title">ESCALA DA SEMANA</div>
-        <div class="badge"><%= escalaResumo?.periodo || "—" %></div>
-      </div>
-      <div class="card-pad" style="padding-top:10px;">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Turno/Função</th>
-              <th>Escalados</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>Dia (mecânicos)</td><td><%= escalaResumo?.dia || "—" %></td></tr>
-            <tr><td>Apoio operacional</td><
+</body>
+</html>
