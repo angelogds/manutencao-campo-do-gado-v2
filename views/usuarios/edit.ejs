@@ -19,7 +19,7 @@
 </div>
 
 <div class="card">
-  <form method="POST" action="/usuarios/<%= user.id %>">
+  <form method="POST" action="/usuarios/<%= user.id %>" enctype="multipart/form-data">
     <div class="grid">
       <div>
         <label>Nome</label>
@@ -43,6 +43,20 @@
       <div>
         <label>Criado em</label>
         <input class="input" value="<%= user.created_at ? fmtBR(user.created_at) : '-' %>" disabled />
+      </div>
+
+      <div>
+        <label>Foto do rosto</label>
+        <input class="input" name="photo" type="file" accept="image/*" capture="user" />
+      </div>
+
+      <div>
+        <label>Foto atual</label>
+        <% if (user.photo_path) { %>
+          <img src="<%= user.photo_path %>" alt="Foto usuário" style="width:72px;height:72px;border-radius:999px;object-fit:cover;border:1px solid #e5e7eb;" />
+        <% } else { %>
+          <div class="muted">Sem foto cadastrada</div>
+        <% } %>
       </div>
     </div>
 
