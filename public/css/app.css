@@ -1,142 +1,368 @@
-/* ===== DASHBOARD GRID + CARDS (PADRÃO DA IMAGEM) ===== */
+
+/* public/css/app.css */
 :root{
-  --cg-bg: #f3f4f6;
-  --cg-card: #ffffff;
-  --cg-line: #e5e7eb;
-  --cg-text: #111827;
-  --cg-muted: #6b7280;
+  /* Verde do tema (sidebar / identidade) */
+  --green-900:#0a5a3f;
+  --green-800:#0e6a45;
+  --green-700:#138a5f;
+  --green-100:#e7f5ee;
 
-  --cg-green: #16A34A;
-  --cg-green-dark: #15803d;
-  --cg-soft: #ecfdf5;
+  /* ✅ Verde de AÇÃO (botões como "+ Novo Equipamento") */
+  --action-600:#16a34a;  /* verde principal */
+  --action-700:#15803d;  /* hover */
 
-  --radius: 14px;
-  --shadow: 0 10px 22px rgba(17,24,39,.06);
+  --bg:#f3faf6;
+  --card:#ffffff;
+  --border:#e5e7eb;
+  --text:#0f172a;
+  --muted:#64748b;
+
+  --radius:18px;
 }
 
-.content{
-  padding: 22px 24px; /* deixa igual ao respiro da imagem */
+*{ box-sizing:border-box; }
+html,body{
+  margin:0; padding:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+  color:var(--text);
+  background:var(--bg);
 }
 
-/* grid geral: esquerda (conteúdo) + direita (cards menores) */
-.dash{
+a{ color:inherit; }
+
+/* APP LAYOUT */
+.app{
   display:grid;
-  grid-template-columns: 1.65fr 1fr;
-  gap: 18px;
-  align-items:start;
+  grid-template-columns: 280px 1fr;
+  min-height:100vh;
 }
 
-@media (max-width: 1100px){
-  .dash{ grid-template-columns: 1fr; }
-}
-
-/* coluna direita com pilha de cards */
-.dash-right{
+/* SIDEBAR */
+.sidebar{
+  background:linear-gradient(180deg, var(--green-900), var(--green-800));
+  color:#fff;
+  padding:18px 16px;
   display:flex;
   flex-direction:column;
-  gap: 14px;
+  gap:14px;
 }
 
-/* colunas dentro da área esquerda (cards empilhados) */
-.dash-left{
+.brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:8px 8px 14px;
+}
+
+.brand-badge{
+  width:40px;height:40px;
+  border-radius:14px;
+  background:rgba(255,255,255,.15);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:900;
+  letter-spacing:.02em;
+}
+
+.brand-title{ font-weight:900; font-size:16px; }
+.brand-sub{ font-size:12px; opacity:.85; margin-top:2px; }
+
+.nav{ display:flex; flex-direction:column; gap:10px; }
+
+.nav-item{
+  display:block;
+  text-decoration:none;
+  color:#fff;
+  padding:12px 14px;
+  border-radius:14px;
+  background:rgba(255,255,255,.06);
+  transition: transform .08s ease, background .15s ease;
+  font-weight:700;
+}
+
+.nav-item:hover{
+  background:rgba(255,255,255,.14);
+  transform: translateY(-1px);
+}
+
+.nav-item.active{
+  background:rgba(255,255,255,.18);
+  outline:1px solid rgba(255,255,255,.18);
+}
+
+.nav-divider{
+  height:1px;
+  background:rgba(255,255,255,.18);
+  margin:10px 6px;
+}
+
+.nav-section{
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.08em;
+  opacity:.85;
+  padding:0 8px;
+}
+
+.sidebar-footer{
+  margin-top:auto;
+  opacity:.85;
+  padding:10px 8px 4px;
+}
+
+/* MAIN */
+.main{
   display:flex;
   flex-direction:column;
-  gap: 14px;
+  min-width:0;
 }
 
-/* CARD padrão */
-.card{
-  background: var(--cg-card);
-  border: 1px solid var(--cg-line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow:hidden;
-}
-
-.card-pad{ padding: 14px 14px; }
-
-.card-hd{
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--cg-line);
+.topbar{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  gap: 12px;
+  padding:16px 22px;
+  border-bottom:1px solid var(--border);
+  background:rgba(255,255,255,.55);
+  backdrop-filter: blur(8px);
 }
 
-.card-title{
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: .5px;
-  color: var(--cg-muted);
-  text-transform: uppercase;
+.topbar-title{ font-weight:900; font-size:18px; }
+.topbar-sub{ color:var(--muted); font-size:12px; margin-top:2px; }
+
+.topbar-right{
+  display:flex;
+  align-items:center;
+  gap:10px;
 }
 
-.card-sub{
-  font-size: 12px;
-  color: var(--cg-muted);
-  margin-top: 4px;
+.pill{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  border:1px solid var(--border);
+  background:#fff;
+  border-radius:999px;
+  padding:8px 10px;
 }
 
-/* badges / pills do topo */
-.badges{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
-.badge{
-  font-size: 11px;
-  font-weight: 800;
-  padding: 5px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--cg-line);
-  background: #fff;
-  color: var(--cg-text);
+.pill-name{ font-weight:800; }
+.pill-role{
+  font-size:12px;
+  font-weight:900;
+  padding:4px 8px;
+  border-radius:999px;
+  background:var(--green-100);
+  color:var(--green-900);
 }
-.badge-green{ background: var(--cg-soft); border-color:#bbf7d0; color: var(--cg-green-dark); }
-.badge-yellow{ background:#fffbeb; border-color:#fde68a; color:#92400e; }
-.badge-blue{ background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
-.badge-red{ background:#fef2f2; border-color:#fecaca; color:#b91c1c; }
 
-/* tabela padrão dentro dos cards */
+/* FLASH */
+.flash{ padding:12px 22px 0; }
+.alert{
+  border-radius:14px;
+  padding:12px 14px;
+  border:1px solid var(--border);
+  background:#fff;
+  font-weight:700;
+}
+.alert-error{ border-color:#fecaca; background:#fff5f5; color:#7f1d1d; }
+.alert-success{ border-color:#bbf7d0; background:#f0fdf4; color:#14532d; }
+
+/* CONTENT + FOOTER */
+.content{ padding:18px 22px; }
+.footer{
+  margin-top:auto;
+  padding:14px 22px;
+  border-top:1px solid var(--border);
+  color:var(--muted);
+  display:flex;
+  justify-content:space-between;
+  background:rgba(255,255,255,.45);
+}
+
+/* BUTTONS (base) */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  border:1px solid var(--border);
+  background:#fff;
+  padding:10px 12px;
+  border-radius:14px;
+  font-weight:900;
+  cursor:pointer;
+  transition: background .15s ease, transform .08s ease, border-color .15s ease, filter .15s ease;
+  text-decoration:none;
+}
+
+.btn:hover{
+  border-color: rgba(19,138,95,.35);
+  transform: translateY(-1px);
+}
+
+/* ✅ Botão verde padronizado (mesmo do "+ Novo Equipamento") */
+.btn-primary,
+.btn-green{
+  background: var(--action-600);
+  border-color: var(--action-600);
+  color:#fff;
+  text-decoration:none;
+}
+.btn-primary:hover,
+.btn-green:hover{
+  background: var(--action-700);
+  border-color: var(--action-700);
+}
+
+/* Botão secundário */
+.btn-ghost{
+  background:#fff;
+  text-decoration:none;
+}
+.btn-ghost:hover{
+  background:var(--green-100);
+  border-color: rgba(19,138,95,.35);
+}
+
+/* ===== PADRÃO TABELAS / CARDS / PÁGINAS ===== */
+
+/* Cabeçalho da página (título + ações) */
+.page-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  margin:8px 0 16px;
+}
+.page-head h1{ margin:0; font-size:34px; letter-spacing:-.02em; }
+.page-head .muted{ margin:6px 0 0; }
+
+/* Card padrão */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px;
+}
+
+/* Tabela padrão */
+.table-wrap{ width:100%; overflow:auto; border-radius:14px; }
 .table{
   width:100%;
-  border-collapse: collapse;
-  font-size: 12px;
+  border-collapse:separate;
+  border-spacing:0;
+  font-size:14px;
 }
-.table th, .table td{
-  padding: 10px 10px;
-  border-bottom: 1px solid var(--cg-line);
+.table thead th{
+  background:#f8fafc;
+  color:var(--text);
+  font-weight:900;
   text-align:left;
-  vertical-align: top;
+  padding:12px;
+  border-bottom:1px solid var(--border);
 }
-.table th{
-  font-size: 11px;
-  color: var(--cg-muted);
-  font-weight: 900;
+.table tbody td{
+  padding:12px;
+  border-bottom:1px solid #eef2f7;
+  vertical-align:top;
 }
-.table tr:last-child td{ border-bottom: 0; }
-
-.empty{
-  padding: 14px;
-  color: var(--cg-muted);
-  font-size: 12px;
+.table tbody tr:hover td{
+  background:#fbfdff;
 }
 
-/* botão mini “ver / abrir” no estilo da imagem */
-.btn-mini{
-  border: 1px solid var(--cg-line);
+/* Texto cortado em coluna */
+.td-clip{
+  max-width:420px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* btn-sm = só tamanho */
+.btn-sm{
+  padding:7px 10px;
+  border-radius:12px;
+  font-weight:900;
+}
+
+/* Pílulas de status (tabela) */
+.pill-tag{
+  display:inline-flex;
+  align-items:center;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:900;
+  border:1px solid transparent;
+}
+.pill-amber{ background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
+.pill-green{ background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+.pill-blue{  background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+.pill-sky{   background:#ecfeff; color:#155e75; border-color:#a5f3fc; }
+.pill-gray{  background:#f1f5f9; color:#334155; border-color:#e2e8f0; }
+
+/* Forms padrão */
+.input, select, textarea{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  outline:none;
+  font:inherit;
   background:#fff;
-  padding: 6px 10px;
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 800;
-  cursor:pointer;
 }
-.btn-mini:hover{ transform: translateY(-1px); }
+textarea{ min-height:110px; resize:vertical; }
 
-/* pequenos grids dentro da direita (quando quiser 2 cards por linha) */
+.input:focus, select:focus, textarea:focus{
+  border-color: rgba(19,138,95,.55);
+  box-shadow:0 0 0 3px rgba(19,138,95,.12);
+}
+
+.label{
+  font-size:12px;
+  font-weight:900;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+
 .grid-2{
   display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
 }
-@media (max-width: 1100px){
-  .grid-2{ grid-template-columns: 1fr; }
+@media (max-width: 920px){
+  .grid-2{ grid-template-columns:1fr; }
+}
+
+/* divisória */
+.divider{
+  height:1px;
+  background:#eef2f7;
+  margin:16px 0;
+}
+
+/* bloco de texto */
+.note{
+  background:#f8fafc;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  white-space:pre-wrap;
+}
+
+/* layout de linha em forms */
+.row{
+  display:flex;
+  align-items:end;
+  gap:12px;
+}
+
+/* RESPONSIVO */
+@media (max-width: 980px){
+  .app{ grid-template-columns: 1fr; }
+  .sidebar{ position:sticky; top:0; z-index:5; }
 }
