@@ -53,18 +53,26 @@ function applyOne(filename) {
   const full = path.join(__dirname, "migrations", filename);
   const sql = fs.readFileSync(full, "utf8");
 
+  // PRAGMA foreign_keys só tem efeito fora de transação no SQLite.
+  // Algumas migrations (ex.: recriação da tabela users) precisam rodar sem tx.
+  const needsNoTx = /PRAGMA\s+foreign_keys\s*=\s*OFF/i.test(sql);
+
   try {
     // ✅ antes da 080, garante coluna categoria (corrige banco já existente)
     if (filename === "080_estoque_core.sql") {
       ensureEstoqueCategoriaColumn();
     }
 
-    const tx = db.transaction(() => {
+    if (needsNoTx) {
       db.exec(sql);
       markApplied(filename);
-    });
-
-    tx();
+    } else {
+      const tx = db.transaction(() => {
+        db.exec(sql);
+        markApplied(filename);
+      });
+      tx();
+    }
     console.log(`✔ Migration aplicada: ${filename}`);
   } catch (err) {
     console.error(`❌ Erro na migration: ${filename}`);
