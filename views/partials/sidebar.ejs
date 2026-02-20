@@ -17,6 +17,7 @@
   const canSolicitacoes = canCompras;
   const canAlmoxarifado = isAdmin || isAlmox || isCompras;
   const canDemandas = isAdmin || isDirecao;
+  const canPCM = isAdmin;
 
   const canUsuarios = isAdmin;
 %>
@@ -91,6 +92,13 @@
     <a class="nav-item <%= activeMenu === 'avisos' ? 'active' : '' %>" href="/avisos">
       Avisos
     </a>
+
+
+    <% if (canPCM) { %>
+      <a class="nav-item <%= activeMenu === 'pcm' ? 'active' : '' %>" href="/pcm">
+        PCM – Planejamento e Controle da Manutenção
+      </a>
+    <% } %>
 
     <div class="nav-divider"></div>
 

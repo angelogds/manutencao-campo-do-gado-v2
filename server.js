@@ -87,6 +87,7 @@ try {
 // ===== ROTAS =====
 app.use("/auth", require("./modules/auth/auth.routes"));
 app.use("/dashboard", require("./modules/dashboard/dashboard.routes"));
+app.use("/pcm", require("./modules/pcm/pcm.routes"));
 app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
 app.use("/os", require("./modules/os/os.routes"));
 app.use("/preventivas", require("./modules/preventivas/preventivas.routes"));
