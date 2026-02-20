@@ -1,0 +1,23 @@
+<% layout('layout') %>
+<%- include('partials/internal-styles') %>
+<div class="page-head"><div><h1>PCM • Falhas</h1><p class="muted">Ponto de integração com o banco de falhas já existente.</p></div></div>
+<div class="pcm-shell">
+  <%- include('partials/internal-nav', { activePcmSection: activePcmSection }) %>
+  <div class="pcm-content">
+    <div class="card">
+      <div class="label">Falhas recentes (placeholder de integração)</div>
+      <p class="muted" style="margin-top:8px;">TODO: integrar com endpoint/consulta consolidada de falhas do módulo já existente.</p>
+      <table class="table compact">
+        <thead><tr><th>OS</th><th>Equipamento</th><th>Tipo de falha</th><th>Data</th><th>Status</th></tr></thead>
+        <tbody>
+          <% if (!falhas.length) { %>
+            <tr><td colspan="5" class="muted">Sem dados carregados nesta tela base.</td></tr>
+          <% } %>
+          <% falhas.forEach(function(f){ %>
+            <tr><td>#<%= f.id %></td><td><%= f.equipamento || '-' %></td><td><%= f.tipo || '-' %></td><td><%= f.opened_at || '-' %></td><td><%= f.status || '-' %></td></tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
