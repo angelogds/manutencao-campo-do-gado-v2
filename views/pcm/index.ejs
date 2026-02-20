@@ -1,67 +1,126 @@
 <% layout('layout') %>
-<%- include('partials/internal-styles') %>
+
+<style>
+  .pcm-cards { display:grid; grid-template-columns:repeat(6,minmax(140px,1fr)); gap:10px; }
+  .pcm-card { border:1px solid #e5e7eb; border-radius:12px; padding:10px; background:#fff; }
+  .pcm-card .k { font-size:12px; color:#64748b; }
+  .pcm-card .v { margin-top:4px; font-size:24px; font-weight:900; }
+  .pcm-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px; }
+  .bar { height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin-top:6px; }
+  .bar > span { display:block; height:100%; background:#16a34a; }
+  .table.compact th,.table.compact td{ padding:8px; }
+  @media (max-width:1200px){ .pcm-cards{grid-template-columns:repeat(2,minmax(140px,1fr));} .pcm-grid{grid-template-columns:1fr;} }
+</style>
 
 <div class="page-head">
   <div>
     <h1>PCM – Planejamento e Controle da Manutenção</h1>
-    <p class="muted">Visão Geral do módulo PCM com acesso às novas telas internas.</p>
+    <p class="muted">Etapa 1 • camada estratégica de planejamento e visão.</p>
   </div>
 </div>
 
-<div class="pcm-shell">
-  <%- include('partials/internal-nav', { activePcmSection: activePcmSection }) %>
+<div class="card">
+  <div class="label">Visão Geral / Dashboard</div>
+  <div class="pcm-cards" style="margin-top:10px;">
+    <div class="pcm-card"><div class="k">% Preventiva (mês)</div><div class="v"><%= indicadores.preventiva_pct_mes %>%</div></div>
+    <div class="pcm-card"><div class="k">% Corretiva (mês)</div><div class="v"><%= indicadores.corretiva_pct_mes %>%</div></div>
+    <div class="pcm-card"><div class="k">OS Atrasadas</div><div class="v"><%= indicadores.os_atrasadas %></div></div>
+    <div class="pcm-card"><div class="k">MTBF Médio (dias)</div><div class="v"><%= indicadores.mtbf_medio_dias %></div></div>
+    <div class="pcm-card"><div class="k">MTTR Médio (horas)</div><div class="v"><%= indicadores.mttr_medio_horas %></div></div>
+    <div class="pcm-card"><div class="k">Custo Manut. Mês</div><div class="v">R$ <%= Number(indicadores.custo_manutencao_mes || 0).toFixed(2) %></div></div>
+  </div>
+  <div style="margin-top:10px;" class="muted-xs">Paradas não planejadas: <strong><%= indicadores.paradas_nao_planejadas %></strong></div>
 
-  <div class="pcm-content">
-    <div class="card">
-      <div class="label">Indicadores básicos</div>
-      <div class="grid-3" style="margin-top:10px; gap:10px;">
-        <div><div class="muted-xs">% Preventiva (mês)</div><div style="font-size:22px;font-weight:900;"><%= indicadores.preventiva_pct_mes %>%</div></div>
-        <div><div class="muted-xs">% Corretiva (mês)</div><div style="font-size:22px;font-weight:900;"><%= indicadores.corretiva_pct_mes %>%</div></div>
-        <div><div class="muted-xs">OS Atrasadas</div><div style="font-size:22px;font-weight:900;"><%= indicadores.os_atrasadas %></div></div>
-        <div><div class="muted-xs">MTBF (dias)</div><div style="font-size:22px;font-weight:900;"><%= indicadores.mtbf_medio_dias %></div></div>
-        <div><div class="muted-xs">MTTR (horas)</div><div style="font-size:22px;font-weight:900;"><%= indicadores.mttr_medio_horas %></div></div>
-        <div><div class="muted-xs">Custo do mês</div><div style="font-size:22px;font-weight:900;">R$ <%= Number(indicadores.custo_manutencao_mes || 0).toFixed(2) %></div></div>
-      </div>
+  <div class="pcm-grid">
+    <div class="card" style="margin:0;">
+      <div class="label">Preventiva x Corretiva (quantidade)</div>
+      <div style="margin-top:8px;">Preventiva: <strong><%= indicadores.preventiva_qtd_mes %></strong></div>
+      <div class="bar"><span style="width:<%= indicadores.preventiva_pct_mes %>%;"></span></div>
+      <div style="margin-top:8px;">Corretiva: <strong><%= indicadores.corretiva_qtd_mes %></strong></div>
+      <div class="bar"><span style="width:<%= indicadores.corretiva_pct_mes %>%; background:#f59e0b;"></span></div>
     </div>
 
-    <div class="card" style="margin-top:12px;">
-      <div class="label">Top equipamentos com mais OS</div>
-      <table class="table compact" style="margin-top:8px;">
-        <thead><tr><th>Equipamento</th><th>Total OS</th></tr></thead>
-        <tbody>
-          <% if (!ranking.length) { %>
-            <tr><td colspan="2" class="muted">Sem dados no período.</td></tr>
-          <% } %>
-          <% ranking.forEach(function(item){ %>
-            <tr><td><%= item.equipamento %></td><td><%= item.total_os %></td></tr>
-          <% }) %>
-        </tbody>
-      </table>
+    <div class="card" style="margin:0;">
+      <div class="label">Top 5 Equipamentos com mais OS (últimos meses)</div>
+      <ul style="margin:10px 0 0 16px; padding:0;">
+        <% if (!ranking.length) { %><li class="muted">Sem dados.</li><% } %>
+        <% ranking.forEach(function(r) { %><li><strong><%= r.equipamento %></strong> — <%= r.total_os %> OS</li><% }) %>
+      </ul>
     </div>
+  </div>
+</div>
 
-    <div class="card" style="margin-top:12px;">
-      <div class="label">Plano Mestre (resumo)</div>
-      <div class="pcm-actions" style="margin:8px 0 10px;">
-        <a class="btn" href="/pcm/planejamento">Abrir tela de Planejamento</a>
-        <a class="btn btn-outline" href="/pcm/backlog">Abrir Backlog</a>
-      </div>
-      <table class="table compact">
-        <thead><tr><th>Equipamento</th><th>Atividade</th><th>Tipo</th><th>Próxima data</th><th>Situação</th></tr></thead>
-        <tbody>
-          <% if (!planos.length) { %>
-            <tr><td colspan="5" class="muted">Sem planos cadastrados.</td></tr>
-          <% } %>
-          <% planos.slice(0, 8).forEach(function(p){ %>
-            <tr>
-              <td><%= p.equipamento_nome %></td>
-              <td><%= p.atividade_descricao %></td>
-              <td><%= p.tipo_manutencao %></td>
-              <td><%= p.proxima_data_prevista || '-' %></td>
-              <td><%= p.situacao %></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+<div class="card" style="margin-top:14px;">
+  <div class="label">Planejamento de Manutenção • Plano Mestre</div>
+
+  <form method="GET" action="/pcm" class="grid-2" style="margin-top:10px; gap:10px;">
+    <select class="input" name="equipamento_id">
+      <option value="">Filtrar por equipamento</option>
+      <% opcoes.equipamentos.forEach(function(e){ %>
+        <option value="<%= e.id %>" <%= String(filtros.equipamento_id||'')===String(e.id) ? 'selected' : '' %>><%= e.nome %></option>
+      <% }) %>
+    </select>
+    <select class="input" name="setor">
+      <option value="">Filtrar por setor/área</option>
+      <% opcoes.setores.forEach(function(s){ if(s.setor){ %>
+        <option value="<%= s.setor %>" <%= String(filtros.setor||'')===String(s.setor) ? 'selected' : '' %>><%= s.setor %></option>
+      <% } }) %>
+    </select>
+    <select class="input" name="tipo_manutencao">
+      <option value="">Filtrar por tipo</option>
+      <% opcoes.tipos.forEach(function(t){ %>
+        <option value="<%= t %>" <%= String(filtros.tipo_manutencao||'')===String(t) ? 'selected' : '' %>><%= t %></option>
+      <% }) %>
+    </select>
+    <button class="btn btn-outline" type="submit">Aplicar filtros</button>
+  </form>
+
+  <details style="margin-top:12px;">
+    <summary><strong>Novo item no Plano Mestre</strong></summary>
+    <form method="POST" action="/pcm/planos" class="grid-2" style="margin-top:10px; gap:10px;">
+      <select class="input" name="equipamento_id" required>
+        <option value="">Equipamento</option>
+        <% opcoes.equipamentos.forEach(function(e){ %><option value="<%= e.id %>"><%= e.nome %> <% if(e.setor){ %>• <%= e.setor %><% } %></option><% }) %>
+      </select>
+      <input class="input" name="atividade_descricao" placeholder="Descrição da atividade" required>
+      <select class="input" name="tipo_manutencao" required>
+        <% opcoes.tipos.forEach(function(t){ %><option value="<%= t %>"><%= t %></option><% }) %>
+      </select>
+      <input class="input" name="proxima_data_prevista" type="date" required>
+      <input class="input" name="frequencia_dias" type="number" min="0" placeholder="Frequência em dias">
+      <input class="input" name="frequencia_horas" type="number" min="0" placeholder="Frequência em horas-máquina">
+      <textarea class="input" name="observacao" placeholder="Observação" style="grid-column:1/-1;"></textarea>
+      <button class="btn btn-green" type="submit">Adicionar ao Plano Mestre</button>
+    </form>
+  </details>
+
+  <div class="table-wrap" style="margin-top:12px;">
+    <table class="table compact">
+      <thead><tr><th>Equipamento</th><th>Atividade</th><th>Tipo</th><th>Freq.</th><th>Próx. data</th><th>Situação</th><th style="text-align:right;">Ações</th></tr></thead>
+      <tbody>
+        <% if (!planos.length) { %><tr><td colspan="7" style="text-align:center; color:#64748b;">Nenhum item no plano mestre.</td></tr><% } %>
+        <% planos.forEach(function(p){ %>
+          <tr>
+            <td><strong><%= p.equipamento_nome %></strong><div class="muted-xs"><%= p.equipamento_setor || '-' %></div></td>
+            <td><%= p.atividade_descricao %></td>
+            <td><span class="pill-tag pill-blue"><%= p.tipo_manutencao %></span></td>
+            <td>
+              <% if (p.frequencia_dias) { %><div><%= p.frequencia_dias %> dias</div><% } %>
+              <% if (p.frequencia_horas) { %><div><%= p.frequencia_horas %> h-máq</div><% } %>
+            </td>
+            <td><%= p.proxima_data_prevista ? fmtBR(p.proxima_data_prevista) : '-' %></td>
+            <td>
+              <% if (p.situacao === 'ATRASADO') { %><span class="pill-tag pill-amber">Atrasado</span>
+              <% } else if (p.situacao === 'PROXIMO_VENCIMENTO') { %><span class="pill-tag pill-blue">Próx. vencimento</span>
+              <% } else { %><span class="pill-tag pill-green">No prazo</span><% } %>
+            </td>
+            <td style="text-align:right; white-space:nowrap;">
+              <form method="POST" action="/pcm/planos/<%= p.id %>/gerar-os" style="display:inline;"><button class="btn btn-outline" type="submit">Gerar OS</button></form>
+              <form method="POST" action="/pcm/planos/<%= p.id %>/registrar-execucao" style="display:inline;"><button class="btn btn-green" type="submit">Registrar execução</button></form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
   </div>
 </div>
