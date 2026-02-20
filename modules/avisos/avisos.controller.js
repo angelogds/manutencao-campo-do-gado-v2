@@ -22,6 +22,7 @@ function create(req, res) {
 
   const titulo = String(req.body?.titulo || "").trim();
   const mensagem = String(req.body?.mensagem || "").trim();
+  const diasVisiveis = Number(req.body?.dias_visiveis || 7);
 
   if (!titulo || !mensagem) {
     req.flash("error", "Informe o título e a mensagem do aviso.");
@@ -31,6 +32,7 @@ function create(req, res) {
   service.createAviso({
     titulo,
     mensagem,
+    diasVisiveis,
     createdBy: req.session?.user?.id || null,
   });
 
@@ -38,7 +40,24 @@ function create(req, res) {
   return res.redirect("/avisos");
 }
 
+function remove(req, res) {
+  if (!canPublishAviso(req.session?.user)) {
+    req.flash("error", "Você não tem permissão para excluir avisos.");
+    return res.redirect("/avisos");
+  }
+
+  const changes = service.deleteAviso(req.params?.id);
+  if (!changes) {
+    req.flash("error", "Aviso não encontrado.");
+    return res.redirect("/avisos");
+  }
+
+  req.flash("success", "Aviso excluído com sucesso.");
+  return res.redirect("/avisos");
+}
+
 module.exports = {
   index,
   create,
+  remove,
 };

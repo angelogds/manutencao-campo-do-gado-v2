@@ -90,4 +90,9 @@ function createAviso(req, res) {
   return res.redirect("/avisos");
 }
 
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
 module.exports = { index, createAviso };

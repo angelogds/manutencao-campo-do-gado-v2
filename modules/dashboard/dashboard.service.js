@@ -370,16 +370,29 @@ function getHistoricoEquipamentos(limit = 8) {
 
 function getAvisosDashboard(limit = 10) {
   return safeGet(() => {
-    return db
-      .prepare(`
+    const cols = db.prepare("PRAGMA table_info(avisos)").all();
+    const hasVisibleUntil = cols.some((c) => String(c.name || "").toLowerCase() === "visible_until");
+
+    const sql = hasVisibleUntil
+      ? `
+        SELECT a.id, a.titulo, a.mensagem, a.colaborador_nome, a.data_referencia, a.created_at, a.visible_until,
+               COALESCE(u.name, 'Sistema') AS autor_nome
+        FROM avisos a
+        LEFT JOIN users u ON u.id = a.created_by
+        WHERE a.visible_until IS NULL OR datetime(a.visible_until) >= datetime('now')
+        ORDER BY a.id DESC
+        LIMIT ?
+      `
+      : `
         SELECT a.id, a.titulo, a.mensagem, a.colaborador_nome, a.data_referencia, a.created_at,
                COALESCE(u.name, 'Sistema') AS autor_nome
         FROM avisos a
         LEFT JOIN users u ON u.id = a.created_by
         ORDER BY a.id DESC
         LIMIT ?
-      `)
-      .all(Number(limit) || 10);
+      `;
+
+    return db.prepare(sql).all(Number(limit) || 10);
   }, []);
 }
 
