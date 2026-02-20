@@ -229,6 +229,131 @@ function registrarExecucao(planoId, userId) {
   return os.id;
 }
 
+
+
+function safeAll(sql, params) {
+  try {
+    const stmt = db.prepare(sql);
+    if (Array.isArray(params)) return stmt.all(...params);
+    if (params && typeof params === 'object') return stmt.all(params);
+    return stmt.all();
+  } catch (_e) {
+    return [];
+  }
+}
+
+function getEquipamentos() {
+  return safeAll(`SELECT id, COALESCE(tag, codigo, '') AS tag, nome, COALESCE(setor,'') AS setor FROM equipamentos WHERE ativo=1 ORDER BY nome`);
+}
+
+function getEquipamentoById(id) {
+  if (!id) return null;
+  try {
+    return db.prepare(`
+      SELECT e.id, COALESCE(e.tag, e.codigo, '') AS tag, e.nome, COALESCE(e.setor,'') AS setor,
+             COALESCE(c.nivel_criticidade, 'N/D') AS criticidade
+      FROM equipamentos e
+      LEFT JOIN pcm_equipamento_criticidade c ON c.equipamento_id = e.id
+      WHERE e.id = ?
+    `).get(Number(id));
+  } catch (_e) {
+    return db.prepare(`SELECT id, COALESCE(tag, codigo, '') AS tag, nome, COALESCE(setor,'') AS setor FROM equipamentos WHERE id=?`).get(Number(id)) || null;
+  }
+}
+
+function listBom({ equipamento_id, categoria, busca } = {}) {
+  let where = '1=1';
+  const params = {};
+  if (equipamento_id) { where += ' AND b.equipamento_id=@equipamento_id'; params.equipamento_id = Number(equipamento_id); }
+  if (categoria) { where += ' AND UPPER(COALESCE(b.categoria, "")) = UPPER(@categoria)'; params.categoria = String(categoria); }
+  if (busca) { where += ' AND (COALESCE(b.codigo_interno,"") LIKE @q OR COALESCE(b.modelo_comercial,"") LIKE @q OR COALESCE(b.descricao_tecnica,"") LIKE @q)'; params.q = `%${busca}%`; }
+  return safeAll(`
+    SELECT b.*, COALESCE(cfg.peca_critica,0) AS peca_critica
+    FROM pcm_bom_itens b
+    LEFT JOIN pcm_bom_estoque_config cfg ON cfg.bom_item_id = b.id
+    WHERE ${where}
+    ORDER BY b.id DESC
+  `, params);
+}
+
+function listLubrificacao({ equipamento_id, setor } = {}) {
+  let where = '1=1';
+  const params = {};
+  if (equipamento_id) { where += ' AND l.equipamento_id=@equipamento_id'; params.equipamento_id = Number(equipamento_id); }
+  if (setor) { where += ' AND COALESCE(e.setor,"")=@setor'; params.setor = String(setor); }
+  const rows = safeAll(`
+    SELECT l.*, e.nome AS equipamento_nome, e.setor
+    FROM pcm_lubrificacao_planos l
+    JOIN equipamentos e ON e.id = l.equipamento_id
+    WHERE ${where}
+    ORDER BY datetime(l.proxima_execucao_em) ASC, l.id DESC
+  `, params);
+  return rows.map((r) => {
+    const dias = Number(r.frequencia_dias || 0);
+    const sem = Number(r.frequencia_semanas || 0);
+    const mes = Number(r.frequencia_meses || 0);
+    const horas = Number(r.frequencia_horas_operacao || 0);
+    const freq = dias ? `${dias}d` : sem ? `${sem} sem` : mes ? `${mes} mês` : horas ? `${horas}h op.` : '-';
+    let situacao = 'NO_PRAZO';
+    if (r.proxima_execucao_em) {
+      const diff = (new Date(r.proxima_execucao_em) - new Date()) / 86400000;
+      if (diff < 0) situacao = 'ATRASADO';
+      else if (diff <= 7) situacao = 'EM_BREVE';
+    }
+    return { ...r, frequencia_label: freq, situacao };
+  });
+}
+
+function listPecasCriticas({ tipo, busca, abaixo_minimo } = {}) {
+  let where = 'COALESCE(cfg.peca_critica,0)=1';
+  const params = {};
+  if (tipo) { where += ' AND UPPER(COALESCE(b.categoria,""))=UPPER(@tipo)'; params.tipo = String(tipo); }
+  if (busca) { where += ' AND (COALESCE(b.codigo_interno,"") LIKE @q OR COALESCE(b.modelo_comercial,"") LIKE @q OR COALESCE(b.descricao_tecnica,"") LIKE @q)'; params.q = `%${busca}%`; }
+  if (abaixo_minimo) {
+    where += ' AND COALESCE(ei.quantidade_atual,0) < COALESCE(cfg.estoque_minimo_pcm, ei.estoque_minimo, 0)';
+  }
+  return safeAll(`
+    SELECT b.*, cfg.peca_critica,
+           COALESCE(ei.quantidade_atual,0) AS estoque_atual,
+           COALESCE(cfg.estoque_minimo_pcm, ei.estoque_minimo, 0) AS estoque_minimo,
+           1 AS qtd_equipamentos
+    FROM pcm_bom_itens b
+    LEFT JOIN pcm_bom_estoque_config cfg ON cfg.bom_item_id = b.id
+    LEFT JOIN estoque_itens ei ON ei.id = cfg.estoque_item_id
+    WHERE ${where}
+    ORDER BY b.id DESC
+  `, params);
+}
+
+function listBacklogSimples() {
+  const osRows = safeAll(`
+    SELECT o.id, COALESCE(e.nome, o.equipamento, 'Sem equipamento') AS equipamento,
+           UPPER(COALESCE(o.tipo,'CORRETIVA')) AS tipo,
+           COALESCE(o.prioridade,'MEDIA') AS prioridade,
+           COALESCE(c.nivel_criticidade,'N/D') AS criticidade,
+           COALESCE(o.status,'ABERTA') AS status,
+           COALESCE(o.opened_at,'') AS data_ref,
+           CAST(julianday('now') - julianday(o.opened_at) AS INTEGER) AS atraso
+    FROM os o
+    LEFT JOIN equipamentos e ON e.id=o.equipamento_id
+    LEFT JOIN pcm_equipamento_criticidade c ON c.equipamento_id=o.equipamento_id
+    WHERE UPPER(COALESCE(o.status,'')) NOT IN ('CONCLUIDA','FINALIZADA')
+    ORDER BY datetime(o.opened_at) ASC
+    LIMIT 100
+  `);
+  return osRows.map((r) => ({ ...r, numero: `OS-${r.id}` }));
+}
+
+function listOSFalhasPreview() {
+  return safeAll(`
+    SELECT id, equipamento, tipo, status, opened_at
+    FROM os
+    WHERE UPPER(COALESCE(tipo,''))='CORRETIVA'
+    ORDER BY datetime(opened_at) DESC
+    LIMIT 20
+  `);
+}
+
 module.exports = {
   getIndicadores,
   getRankingEquipamentos,
@@ -237,4 +362,11 @@ module.exports = {
   createPlano,
   gerarOS,
   registrarExecucao,
+  getEquipamentos,
+  getEquipamentoById,
+  listBom,
+  listLubrificacao,
+  listPecasCriticas,
+  listBacklogSimples,
+  listOSFalhasPreview,
 };
