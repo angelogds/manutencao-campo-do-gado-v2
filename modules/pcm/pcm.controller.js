@@ -18,6 +18,8 @@ function index(req, res) {
   return res.render("pcm/index", {
     ...baseView(req),
     activePcmSection: "visao-geral",
+    title: "PCM – Planejamento e Controle da Manutenção",
+    activeMenu: "pcm",
     indicadores: service.getIndicadores(),
     ranking: service.getRankingEquipamentos(5, Number(req.query.meses || 6)),
     planos: service.listPlanos(filtros),
@@ -192,6 +194,7 @@ function relatoriosAvancados(req, res) {
       pct_preventiva: indicadores.preventiva_pct_mes || 0,
       pct_corretiva: indicadores.corretiva_pct_mes || 0,
     },
+    opcoes: service.listFiltros(),
   });
 }
 
@@ -212,6 +215,7 @@ function createPlano(req, res) {
     req.flash("error", e.message || "Erro ao criar plano mestre.");
   }
   return res.redirect("/pcm/planejamento");
+  return res.redirect("/pcm");
 }
 
 function gerarOS(req, res) {
@@ -222,6 +226,7 @@ function gerarOS(req, res) {
     req.flash("error", e.message || "Erro ao gerar OS do plano.");
   }
   return res.redirect("/pcm/planejamento");
+  return res.redirect("/pcm");
 }
 
 function registrarExecucao(req, res) {
@@ -232,6 +237,7 @@ function registrarExecucao(req, res) {
     req.flash("error", e.message || "Erro ao registrar execução.");
   }
   return res.redirect("/pcm/planejamento");
+  return res.redirect("/pcm");
 }
 
 module.exports = {

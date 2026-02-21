@@ -5,10 +5,33 @@
   .pcm-nav a { display:block; padding:9px 10px; border-radius:8px; color:#1f2937; text-decoration:none; font-size:14px; }
   .pcm-nav a:hover { background:#f8fafc; }
   .pcm-nav a.active { background:#eff6ff; color:#1d4ed8; font-weight:700; }
+  .pcm-shell { display:grid; grid-template-columns: 1fr; gap:14px; align-items:start; }
+  .pcm-nav {
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    background:#fff;
+    padding:10px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    align-items:center;
+  }
+  .pcm-nav-title {
+    font-size:12px;
+    color:#64748b;
+    text-transform:uppercase;
+    font-weight:700;
+    margin-right:6px;
+    padding:0 4px;
+  }
+  .pcm-nav a { display:inline-block; padding:8px 10px; border-radius:999px; color:#1f2937; text-decoration:none; font-size:13px; border:1px solid #e5e7eb; background:#f8fafc; }
+  .pcm-nav a:hover { background:#eef2ff; border-color:#c7d2fe; }
+  .pcm-nav a.active { background:#eff6ff; color:#1d4ed8; border-color:#93c5fd; font-weight:700; }
   .pcm-content .card { margin-top:0; }
   .pcm-toolbar { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:10px; }
   .pcm-toolbar .input, .pcm-toolbar select { width:100%; }
   .pcm-actions { display:flex; gap:8px; flex-wrap:wrap; }
   .pcm-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   @media (max-width:1100px){ .pcm-shell { grid-template-columns: 1fr; } .pcm-nav { position:static; } .pcm-toolbar, .pcm-grid-2 { grid-template-columns:1fr; } }
+  @media (max-width:1100px){ .pcm-toolbar, .pcm-grid-2 { grid-template-columns:1fr; } }
 </style>

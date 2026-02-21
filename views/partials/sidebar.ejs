@@ -33,7 +33,7 @@
 
   <nav class="nav">
     <a class="nav-item <%= activeMenu === 'dashboard' ? 'active' : '' %>" href="/dashboard">
-      Painel
+      Painel Principal
     </a>
 
     <a class="nav-item <%= activeMenu === 'equipamentos' ? 'active' : '' %>" href="/equipamentos">
@@ -78,6 +78,7 @@
       </a>
     <% } %>
 
+  
     <% if (canMotores) { %>
       <a class="nav-item <%= activeMenu === 'motores' ? 'active' : '' %>" href="/motores">
         Motores
