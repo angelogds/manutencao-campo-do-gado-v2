@@ -160,6 +160,25 @@ function createOS({ equipamento_id, equipamento_texto, descricao, tipo, opened_b
     fields.splice(1, 0, 'equipamento_id');
     values.splice(1, 0, equipId);
   }
+  if (hasCategoria) {
+    fields.push('categoria_sugerida');
+    values.push(score.categoria_sugerida);
+  }
+  if (hasAlert) {
+    fields.push('alertar_imediatamente');
+    values.push(score.alertar_imediatamente ? 1 : 0);
+  }
+  if (grauColumn && grau) {
+    // TODO: usar apenas o campo de grau oficial da OS. Esta rotina detecta automaticamente o nome da coluna.
+    fields.push(grauColumn);
+    values.push(String(grau).toUpperCase());
+  }
+
+  const placeholders = fields.map(() => '?').join(', ');
+  const stmt = db.prepare(`INSERT INTO os (${fields.join(', ')}) VALUES (${placeholders})`);
+  const info = stmt.run(...values);
+
+  const osId = Number(info.lastInsertRowid);
 
   if (hasPrioridade) {
     fields.push('prioridade');
