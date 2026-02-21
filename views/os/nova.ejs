@@ -119,6 +119,16 @@
         </select>
       </div>
 
+
+      <div class="form-group">
+        <label>Grau da OS</label>
+        <select name="grau">
+          <% (graus || ['BAIXO','MEDIO','ALTO','CRITICO']).forEach(function(g){ %>
+            <option value="<%= g %>"><%= g %></option>
+          <% }) %>
+        </select>
+      </div>
+
       <!-- Descrição -->
       <div class="form-group form-full">
         <label>Descrição do serviço</label>
