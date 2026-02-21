@@ -14,6 +14,16 @@ function hasOSColumn(name) {
 }
 
 
+function hasLegacyUsersOldFK() {
+  try {
+    const fks = db.prepare(`PRAGMA foreign_key_list(os)`).all();
+    return fks.some((fk) => String(fk.table || '').toLowerCase() === 'users_old');
+  } catch (_e) {
+    return false;
+  }
+}
+
+
 function resolveGrauColumn(columns) {
   if (columns.includes('grau')) return 'grau';
   if (columns.includes('grau_dificuldade')) return 'grau_dificuldade';
@@ -141,13 +151,34 @@ function createOS({ equipamento_id, equipamento_texto, descricao, tipo, opened_b
   const hasAlert = cols.includes('alertar_imediatamente');
   const grauColumn = resolveGrauColumn(cols);
 
+  const openedBySafe = hasLegacyUsersOldFK() ? null : (opened_by || null);
+
   const fields = ['equipamento', 'descricao', 'tipo', 'status', 'opened_by'];
-  const values = [equipamentoFinal, desc, t, 'ABERTA', opened_by || null];
+  const values = [equipamentoFinal, desc, t, 'ABERTA', openedBySafe];
 
   if (hasEquipId) {
     fields.splice(1, 0, 'equipamento_id');
     values.splice(1, 0, equipId);
   }
+  if (hasCategoria) {
+    fields.push('categoria_sugerida');
+    values.push(score.categoria_sugerida);
+  }
+  if (hasAlert) {
+    fields.push('alertar_imediatamente');
+    values.push(score.alertar_imediatamente ? 1 : 0);
+  }
+  if (grauColumn && grau) {
+    // TODO: usar apenas o campo de grau oficial da OS. Esta rotina detecta automaticamente o nome da coluna.
+    fields.push(grauColumn);
+    values.push(String(grau).toUpperCase());
+  }
+
+  const placeholders = fields.map(() => '?').join(', ');
+  const stmt = db.prepare(`INSERT INTO os (${fields.join(', ')}) VALUES (${placeholders})`);
+  const info = stmt.run(...values);
+
+  const osId = Number(info.lastInsertRowid);
 
   if (hasPrioridade) {
     fields.push('prioridade');
@@ -197,7 +228,7 @@ function updateStatus(id, status, closed_by) {
       `UPDATE os
        SET status = ?, closed_by = ?, closed_at = datetime('now')
        WHERE id = ?`
-    ).run(st, closed_by || null, id);
+).run(st, hasLegacyUsersOldFK() ? null : (closed_by || null), id);
     finalizarExecucao(id);
     emitOSEvents(id, 'status');
     return;
