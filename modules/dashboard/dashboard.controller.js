@@ -37,6 +37,89 @@ function index(req, res) {
     avisos,
     alertaAtivo,
   });
+
+  req.flash("success", "Aviso publicado no mural.");
+  return res.redirect("/dashboard");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
 }
 
 function sse(req, res) {
