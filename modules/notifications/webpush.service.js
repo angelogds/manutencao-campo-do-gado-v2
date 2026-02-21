@@ -40,11 +40,11 @@ function saveSubscription({ userId, subscription, userAgent }) {
 
 function listSubscriptionsForUsers(userIds) {
   if (!userIds?.length) return [];
-  const inPlaceholders = userIds.map(() => '?').join(',');
+  const placeholders = userIds.map(() => '?').join(',');
   return db.prepare(`
     SELECT id, user_id, endpoint, p256dh, auth
     FROM web_push_subscriptions
-    WHERE user_id IN (${inPlaceholders})
+    WHERE user_id IN (${placeholders})
   `).all(...userIds.map(Number));
 }
 
