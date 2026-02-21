@@ -4,16 +4,12 @@ const alertsHub = require('../alerts/alerts.hub');
 const alertsService = require('../alerts/alerts.service');
 const webPushService = require('../notifications/webpush.service');
 
-function canManageAvisos(user) {
-  const role = String(user?.role || "").toUpperCase();
-  return ["ADMIN", "DIRECAO", "DIRETORIA", "ENCARREGADO_PRODUCAO", "RH"].includes(role);
-}
-
 function index(req, res) {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const cards = service.getCards();
   const osResumo = service.getOSResumoStatus();
   const osPainel = service.getOSPainel(page, 10);
+  const osEmAndamento = service.getOSEmAndamento();
   const historicoEquipamentos = service.getHistoricoEquipamentos(10);
   const motoresResumo = service.getMotoresResumoDashboard();
   const comprasResumo = service.getComprasResumoDashboard();
@@ -22,6 +18,7 @@ function index(req, res) {
   const preventivas = service.getPreventivasDashboard();
   const escala = service.getEscalaPainelSemana() || service.getEscalaSemana();
   const avisos = service.getAvisosDashboard(12);
+  const alertaAtivo = alertsService.getAlertaAtivo();
 
   return res.render("dashboard/index", {
     title: "Painel",
@@ -29,6 +26,7 @@ function index(req, res) {
     cards,
     osResumo,
     osPainel,
+    osEmAndamento,
     historicoEquipamentos,
     motoresResumo,
     comprasResumo,
@@ -37,6 +35,7 @@ function index(req, res) {
     preventivas,
     escala,
     avisos,
+    alertaAtivo,
   });
 
   req.flash("success", "Aviso publicado no mural.");
@@ -123,4 +122,58 @@ function createAviso(req, res) {
   return res.redirect("/avisos");
 }
 
-module.exports = { index, createAviso };
+function sse(req, res) {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  alertsHub.subscribe('dashboard', res);
+
+  const atual = alertsService.getAlertaAtivo();
+  res.write(`event: estado_inicial\ndata: ${JSON.stringify({ alertaAtivo: atual })}\n\n`);
+
+  const ping = setInterval(() => {
+    try { res.write(`event: ping\ndata: ${JSON.stringify({ ts: Date.now() })}\n\n`); } catch (_e) {}
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(ping);
+    alertsHub.unsubscribe('dashboard', res);
+  });
+}
+
+function reconhecerAlerta(req, res) {
+  try {
+    const result = alertsService.reconhecerAlerta({
+      os_id: req.body.os_id,
+      user_id: req.session?.user?.id || null,
+      observacao: req.body.observacao || null,
+    });
+    alertsHub.publish('alerta_reconhecido', { os_id: result.os_id, reconhecido_por: req.session?.user?.id || null });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e.message || 'Erro ao reconhecer alerta.' });
+  }
+}
+
+
+function subscribePush(req, res) {
+  try {
+    const result = webPushService.saveSubscription({
+      userId: req.session?.user?.id,
+      subscription: req.body?.subscription,
+      userAgent: req.headers['user-agent'] || null,
+    });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e.message || 'Falha ao registrar push.' });
+  }
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+module.exports = { index, createAviso, sse, reconhecerAlerta, subscribePush };
