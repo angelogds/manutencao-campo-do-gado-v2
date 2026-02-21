@@ -5,6 +5,7 @@
     <h1>OS #<%= os.id %></h1>
     <div class="muted">Equipamento: <strong><%= os.equipamento_nome || os.equipamento %></strong></div>
     <div class="muted">Aberta em: <%= os.opened_at ? fmtBR(os.opened_at) : '-' %></div>
+    <div class="muted">Grau: <strong><%= os.grau || os.grau_dificuldade || os.nivel_grau || os.prioridade || '-' %></strong></div>
   </div>
 
   <a class="btn btn-ghost" href="/os">Voltar</a>
@@ -22,7 +23,7 @@
         <label class="label">Status</label>
         <select class="input" name="status">
           <option value="ABERTA" <%= os.status==='ABERTA'?'selected':'' %>>ABERTA</option>
-          <option value="ANDAMENTO" <%= os.status==='ANDAMENTO'?'selected':'' %>>ANDAMENTO</option>
+          <option value="EM_ANDAMENTO" <%= (os.status==='ANDAMENTO' || os.status==='EM_ANDAMENTO')?'selected':'' %>>EM ANDAMENTO</option>
           <option value="PAUSADA" <%= os.status==='PAUSADA'?'selected':'' %>>PAUSADA</option>
           <option value="CONCLUIDA" <%= os.status==='CONCLUIDA'?'selected':'' %>>CONCLUIDA</option>
           <option value="CANCELADA" <%= os.status==='CANCELADA'?'selected':'' %>>CANCELADA</option>
