@@ -33,7 +33,7 @@
 
   <nav class="nav">
     <a class="nav-item <%= activeMenu === 'dashboard' ? 'active' : '' %>" href="/dashboard">
-      Painel
+      Painel Principal
     </a>
 
     <a class="nav-item <%= activeMenu === 'equipamentos' ? 'active' : '' %>" href="/equipamentos">
@@ -78,6 +78,7 @@
       </a>
     <% } %>
 
+  
     <% if (canMotores) { %>
       <a class="nav-item <%= activeMenu === 'motores' ? 'active' : '' %>" href="/motores">
         Motores
@@ -97,21 +98,6 @@
       <a class="nav-item <%= activeMenu === 'pcm' ? 'active' : '' %>" href="/pcm">
         PCM – Planejamento e Controle da Manutenção
       </a>
-      <% if (activeMenu === 'pcm') { %>
-        <div style="margin:6px 0 10px 10px; display:grid; gap:4px;">
-          <a class="nav-item <%= activePcmSection === 'visao-geral' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm">• Visão Geral</a>
-          <a class="nav-item <%= activePcmSection === 'planejamento' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/planejamento">• Planejamento</a>
-          <a class="nav-item <%= activePcmSection === 'falhas' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/falhas">• Falhas</a>
-          <a class="nav-item <%= activePcmSection === 'engenharia' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/engenharia">• Engenharia</a>
-          <a class="nav-item <%= activePcmSection === 'criticidade' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/criticidade">• Criticidade</a>
-          <a class="nav-item <%= activePcmSection === 'lubrificacao' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/lubrificacao">• Lubrificação</a>
-          <a class="nav-item <%= activePcmSection === 'pecas-criticas' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/pecas-criticas">• Peças Críticas</a>
-          <a class="nav-item <%= activePcmSection === 'programacao-semanal' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/programacao-semanal">• Programação Semanal</a>
-          <a class="nav-item <%= activePcmSection === 'backlog' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/backlog">• Backlog</a>
-          <a class="nav-item <%= activePcmSection === 'rotas-inspecao' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/rotas-inspecao">• Rotas de Inspeção</a>
-          <a class="nav-item <%= activePcmSection === 'relatorios-avancados' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/relatorios-avancados">• Relatórios Avançados</a>
-        </div>
-      <% } %>
     <% } %>
 
     <div class="nav-divider"></div>
