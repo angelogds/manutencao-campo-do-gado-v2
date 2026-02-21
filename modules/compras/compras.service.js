@@ -2,12 +2,13 @@
 const db = require("../../database/db");
 
 // ===== SOLICITAÇÕES =====
-function listSolicitacoes() {
+function listSolicitacoesParaCompra() {
   return db
     .prepare(
       `
       SELECT id, solicitante, setor, status, observacao, created_at
       FROM solicitacoes_compra
+      WHERE status IN ('aberta','em_cotacao','liberada','aprovada_compra')
       ORDER BY id DESC
     `
     )
@@ -161,7 +162,7 @@ function createCompraFromSolicitacao(solicitacaoId, payload = {}) {
         custo_unit: 0,
       }));
 
-      updateSolicitacaoStatus(Number(solicitacaoId), "comprada");
+      updateSolicitacaoStatus(Number(solicitacaoId), "aprovada_compra");
     }
 
     for (const it of itens) {
@@ -247,7 +248,7 @@ function listEstoqueItensAtivos() {
 }
 
 module.exports = {
-  listSolicitacoes,
+  listSolicitacoesParaCompra,
   getSolicitacaoById,
   createSolicitacao,
   updateSolicitacaoStatus,
