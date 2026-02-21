@@ -7,7 +7,6 @@
     grid-template-areas:
       "os mural"
       "preventivas escala"
-      "andamento quick"
       "demandas quick";
     gap: 10px;
     align-items: start;
@@ -17,12 +16,25 @@
   .area-mural { grid-area: mural; min-height: 260px; }
   .area-preventivas { grid-area: preventivas; min-height: 210px; }
   .area-escala { grid-area: escala; }
-  .area-andamento { grid-area: andamento; }
   .area-demandas { grid-area: demandas; }
   .area-quick { grid-area: quick; }
 
-  .dashboard-card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
-  .dashboard-title { font-size:13px; font-weight:900; letter-spacing:.04em; color:#475569; text-transform:uppercase; margin-bottom:10px; }
+  .dashboard-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 12px;
+    box-shadow: 0 1px 2px rgba(15,23,42,.04);
+  }
+
+  .dashboard-title {
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: .04em;
+    color: #475569;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
 
   .kpi-grid { display:grid; grid-template-columns:repeat(3,minmax(120px,1fr)); gap:8px; margin-bottom:10px; }
   .kpi-grid.two { grid-template-columns:repeat(2,minmax(120px,1fr)); margin-bottom:0; }
@@ -40,30 +52,24 @@
   .btn-outline { border:1px solid #d1d5db; border-radius:9px; padding:6px 10px; background:#fff; color:#0f172a; text-decoration:none; font-weight:700; font-size:12px; }
   .btn-inline { border:none; border-radius:8px; padding:5px 9px; background:#16a34a; color:#fff; font-weight:800; cursor:pointer; font-size:12px; }
   .aviso-item { border:1px solid #e5e7eb; border-radius:10px; padding:9px 10px; background:#fff; margin-top:8px; }
+
   .quick-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
-  .alerta-tv { border:2px solid #dc2626; border-radius:14px; background:#fff1f2; color:#7f1d1d; padding:14px; margin-bottom:10px; display:flex; gap:14px; align-items:center; justify-content:space-between; }
-  .alerta-tv.hidden { display:none; }
-  .alerta-tv__title { font-size:28px; font-weight:900; letter-spacing:.02em; }
-  .alerta-tv__meta { font-size:16px; font-weight:700; }
-  .alerta-tv.piscar { animation: alertaPulse 1s infinite; }
-  @keyframes alertaPulse { 0%{box-shadow:0 0 0 0 rgba(220,38,38,.45);} 70%{box-shadow:0 0 0 14px rgba(220,38,38,0);} 100%{box-shadow:0 0 0 0 rgba(220,38,38,0);} }
-  .pill-prioridade { padding:3px 8px; border-radius:999px; font-size:11px; font-weight:800; border:1px solid #d1d5db; }
-  .pill-prioridade.emergencial { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
-  .pill-prioridade.alta { background:#ffedd5; color:#9a3412; border-color:#fdba74; }
-  .os-row-critico { background:#fef2f2; border-left:4px solid #dc2626; }
-  .os-row-medio { background:#fffbeb; border-left:4px solid #f59e0b; }
-  .os-row-leve { background:#f8fafc; }
-
   @media (max-width: 1200px) {
-    .tv-grid { grid-template-columns: 1fr; grid-template-areas: "os" "mural" "preventivas" "escala" "andamento" "demandas" "quick"; }
-    .alerta-tv__title { font-size:22px; }
+    .tv-grid {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "os"
+        "mural"
+        "preventivas"
+        "escala"
+        "demandas"
+        "quick";
+    }
   }
 
   @media (max-width: 760px) {
     .kpi-grid, .kpi-grid.two, .quick-grid { grid-template-columns:1fr; }
-    .alerta-tv { flex-direction:column; align-items:flex-start; }
-    .alerta-tv__title { font-size:20px; }
   }
 </style>
 
@@ -77,40 +83,20 @@
   var safeOSResumo = osResumo || {};
   var safeOSPainel = osPainel || {};
   var osItems = safeOSPainel.items || [];
-  var osAndamento = osEmAndamento || [];
   var safeAvisos = avisos || [];
   var safeEscala = escala || {};
   var escalaDiurno = (safeEscala.diurno_mecanicos || []).map(function(p) { return p.nome; }).join(', ');
   var escalaApoio = (safeEscala.apoio_operacional || []).map(function(p) { return p.nome; }).join(', ');
   var escalaNoturno = (safeEscala.noturno || []).map(function(p) { return p.nome; }).join(', ');
   var safeMotoresResumo = motoresResumo || {};
-  var alertaInicial = alertaAtivo || null;
 %>
 
 <div class="page-head">
   <div>
-    <h1>Painel Operacional Reciclagem</h1>
-    <p class="muted">TV da manutenção • OS, mural, preventivas, escala e demandas em tempo real</p>
+    <h1>Painel</h1>
+    <p class="muted">Operacional Reciclagem</p>
   </div>
-  <button id="btn-ativar-push" class="btn-outline" type="button">Ativar alertas de OS neste dispositivo</button>
 </div>
-
-<section id="alerta-tv" class="alerta-tv <%= alertaInicial ? 'piscar' : 'hidden' %>">
-  <div>
-    <div class="alerta-tv__title">⚠ NOVA OS EMERGENCIAL</div>
-    <div class="alerta-tv__meta" id="alerta-tv-meta">
-      <% if (alertaInicial) { %>
-        Equipamento: <%= alertaInicial.equipamento || '-' %> • Setor: <%= alertaInicial.setor || '-' %> • Grau: <%= alertaInicial.grau || alertaInicial.prioridade || '-' %>
-      <% } else { %>
-        Nenhum alerta crítico no momento.
-      <% } %>
-    </div>
-  </div>
-  <div>
-    <button id="btn-reconhecer-alerta" class="btn-inline" style="background:#dc2626;">Reconhecer alerta</button>
-  </div>
-</section>
-
 
 <div class="tv-grid">
   <section class="dashboard-card area-os">
@@ -122,25 +108,23 @@
     </div>
     <div class="table-wrap">
       <table class="table compact">
-        <thead><tr><th>#</th><th>Equipamento</th><th>Setor</th><th>Descrição</th><th>Grau</th><th>Status</th><th>Abertura</th><th style="text-align:right;">Ações</th></tr></thead>
+        <thead><tr><th>#</th><th>Equipamento</th><th>Descrição</th><th>Tipo</th><th>Status</th><th style="text-align:right;">Ações</th></tr></thead>
         <tbody>
-          <% if (osItems.length === 0) { %><tr><td colspan="8" style="text-align:center; color:#6b7280;">Nenhuma OS cadastrada.</td></tr><% } %>
-          <% osItems.forEach(function(o) { var prio = String(o.grau || o.prioridade || 'MEDIA').toUpperCase(); var rowClass = (prio === 'CRITICO' || prio === 'CRÍTICO' || prio === 'ALTO' || prio === 'EMERGENCIAL') ? 'os-row-critico' : ((prio === 'MEDIO' || prio === 'MÉDIO' || prio === 'MEDIA') ? 'os-row-medio' : 'os-row-leve'); %>
-            <tr class="<%= rowClass %>">
+          <% if (osItems.length === 0) { %><tr><td colspan="6" style="text-align:center; color:#6b7280;">Nenhuma OS cadastrada.</td></tr><% } %>
+          <% osItems.forEach(function(o) { %>
+            <tr>
               <td><%= o.id %></td>
               <td><strong><%= o.equipamento || '-' %></strong></td>
-              <td><%= o.setor || '-' %></td>
               <td><%= o.descricao || '-' %></td>
-              <td><span class="pill-prioridade <%= (prio === 'CRITICO' || prio === 'CRÍTICO' || prio === 'EMERGENCIAL') ? 'emergencial' : ((prio === 'ALTO' || prio === 'ALTA' || prio === 'MEDIO' || prio === 'MÉDIO' || prio === 'MEDIA') ? 'alta' : '') %>"><%= prio %></span></td>
+              <td><span class="pill-tag pill-blue"><%= (o.tipo || '-').toUpperCase() %></span></td>
               <td>
                 <% var statusOs = String(o.status || '').toUpperCase(); %>
                 <% if (statusOs === 'ABERTA') { %><span class="pill-tag pill-amber">Aberta</span>
-                <% } else if (statusOs === 'ANDAMENTO' || statusOs === 'EM_ANDAMENTO') { %><span class="pill-tag pill-blue">Em andamento</span>
+                <% } else if (statusOs === 'ANDAMENTO') { %><span class="pill-tag pill-blue">Em andamento</span>
                 <% } else if (statusOs === 'PAUSADA') { %><span class="pill-tag pill-gray">Pausada</span>
                 <% } else if (statusOs === 'CONCLUIDA' || statusOs === 'FINALIZADA') { %><span class="pill-tag pill-green">Fechada</span>
                 <% } else { %><span class="pill-tag pill-gray"><%= statusOs || '-' %></span><% } %>
               </td>
-              <td><%= o.opened_at ? fmtBR(o.opened_at) : '-' %></td>
               <td style="text-align:right;">
                 <% if (statusOs === 'ABERTA') { %>
                   <form method="POST" action="/os/<%= o.id %>/status" style="display:inline;"><input type="hidden" name="status" value="ANDAMENTO"><button class="btn-inline" type="submit">Iniciar</button></form>
@@ -188,25 +172,6 @@
     <% } else { %><p class="muted" style="margin:0;">Escala não disponível.</p><% } %>
   </section>
 
-  <section class="dashboard-card area-andamento">
-    <div class="dashboard-title">OS em andamento (por mecânico)</div>
-    <div class="table-wrap"><table class="table compact">
-      <thead><tr><th>OS</th><th>Equipamento</th><th>Grau</th><th>Mecânico</th><th>Início</th></tr></thead>
-      <tbody>
-        <% if (osAndamento.length === 0) { %><tr><td colspan="5" class="muted-xs">Nenhuma OS em andamento agora.</td></tr><% } %>
-        <% osAndamento.forEach(function(o){ %>
-          <tr>
-            <td><a href="/os/<%= o.id %>">#<%= o.id %></a></td>
-            <td><%= o.equipamento || '-' %></td>
-            <td><span class="pill-prioridade"><%= o.grau || '-' %></span></td>
-            <td><%= o.mecanico || '-' %></td>
-            <td><%= o.iniciado_em ? fmtBR(o.iniciado_em) : '-' %></td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table></div>
-  </section>
-
   <section class="dashboard-card area-demandas">
     <div class="dashboard-title">Demandas</div>
     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
@@ -221,90 +186,23 @@
   </section>
 
   <section class="area-quick quick-grid">
-    <div class="dashboard-card"><div class="dashboard-title">Status geral</div><div class="kpi-grid two"><div class="kpi-box"><div class="kpi-label">OS abertas</div><div class="kpi-value"><%= safeCards.os_abertas || 0 %></div></div><div class="kpi-box"><div class="kpi-label">OS críticas</div><div class="kpi-value"><%= safeCards.os_criticas || 0 %></div></div><div class="kpi-box"><div class="kpi-label">Equip. ativos</div><div class="kpi-value"><%= safeCards.equipamentos_ativos || 0 %></div></div><div class="kpi-box"><div class="kpi-label">Parados manutenção</div><div class="kpi-value"><%= safeCards.equipamentos_parados_manutencao || safeCards.equipamentos_inativos || 0 %></div></div></div></div>
-    <div class="dashboard-card"><div class="dashboard-title">Solicitações / Compras</div><div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"><span class="pill-tag pill-amber">Abertas: <%= safeComprasResumo.solicitacoes_abertas || 0 %></span><span class="pill-tag pill-blue">Aprovadas: <%= safeComprasResumo.solicitacoes_aprovadas || 0 %></span></div></div>
-    <div class="dashboard-card"><div class="dashboard-title">Estoque (Resumo)</div><div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"><span class="pill-tag pill-green">Ativos: <%= safeEstoqueResumo.itens_ativos || 0 %></span><span class="pill-tag pill-amber">Abaixo mín.: <%= safeEstoqueResumo.abaixo_minimo || 0 %></span></div><ul class="list-tight"><% if (estoqueMovimentacoes.length === 0) { %><li class="muted-xs">Sem movimentações.</li><% } %><% estoqueMovimentacoes.slice(0, 2).forEach(function(m) { %><li><%= (m.tipo || '-').toUpperCase() %> • <%= m.item_nome %></li><% }) %></ul></div>
-    <div class="dashboard-card"><div class="dashboard-title">Motores</div><div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"><span class="pill-tag pill-green">Funcionando: <%= safeMotoresResumo.em_funcionamento || 0 %></span><span class="pill-tag pill-blue">Estoque: <%= safeMotoresResumo.em_estoque || 0 %></span><span class="pill-tag pill-amber">Conserto: <%= safeMotoresResumo.em_conserto || 0 %></span></div></div>
+    <div class="dashboard-card">
+      <div class="dashboard-title">Equipamentos</div>
+      <div class="kpi-grid two"><div class="kpi-box"><div class="kpi-label">Ativos</div><div class="kpi-value"><%= safeCards.equipamentos_ativos || 0 %></div></div><div class="kpi-box"><div class="kpi-label">Inativos</div><div class="kpi-value"><%= safeCards.equipamentos_inativos || 0 %></div></div></div>
+    </div>
+    <div class="dashboard-card">
+      <div class="dashboard-title">Solicitações / Compras</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"><span class="pill-tag pill-amber">Abertas: <%= safeComprasResumo.solicitacoes_abertas || 0 %></span><span class="pill-tag pill-blue">Aprovadas: <%= safeComprasResumo.solicitacoes_aprovadas || 0 %></span></div>
+    </div>
+    <div class="dashboard-card">
+      <div class="dashboard-title">Estoque (Resumo)</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"><span class="pill-tag pill-green">Ativos: <%= safeEstoqueResumo.itens_ativos || 0 %></span><span class="pill-tag pill-amber">Abaixo mín.: <%= safeEstoqueResumo.abaixo_minimo || 0 %></span></div>
+      <ul class="list-tight"><% if (estoqueMovimentacoes.length === 0) { %><li class="muted-xs">Sem movimentações.</li><% } %><% estoqueMovimentacoes.slice(0, 2).forEach(function(m) { %><li><%= (m.tipo || '-').toUpperCase() %> • <%= m.item_nome %></li><% }) %></ul>
+    </div>
+    <div class="dashboard-card">
+      <div class="dashboard-title">Motores</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"><span class="pill-tag pill-green">Funcionando: <%= safeMotoresResumo.em_funcionamento || 0 %></span><span class="pill-tag pill-blue">Estoque: <%= safeMotoresResumo.em_estoque || 0 %></span><span class="pill-tag pill-amber">Conserto: <%= safeMotoresResumo.em_conserto || 0 %></span></div>
+    </div>
   </section>
 </div>
 
-<script>
-(function(){
-  var eventSource = new EventSource('/dashboard/alertas/stream');
-  var box = document.getElementById('alerta-tv');
-  var meta = document.getElementById('alerta-tv-meta');
-  var btnReconhecer = document.getElementById('btn-reconhecer-alerta');
-  var alertaAtual = <%- JSON.stringify(alertaInicial || null) %>;
-
-  function renderAlerta(payload){
-    if (!payload || !payload.id_os) {
-      box.classList.add('hidden');
-      box.classList.remove('piscar');
-      meta.textContent = 'Nenhum alerta crítico no momento.';
-      return;
-    }
-    alertaAtual = payload;
-    box.classList.remove('hidden');
-    box.classList.add('piscar');
-    meta.textContent = 'Equipamento: ' + (payload.equipamento || '-') + ' • Setor: ' + (payload.setor || '-') + ' • Grau: ' + (payload.grau || payload.prioridade || '-') + ' • OS #' + payload.id_os;
-  }
-
-  eventSource.addEventListener('estado_inicial', function(e){
-    try {
-      var data = JSON.parse(e.data || '{}');
-      if (data.alertaAtivo) renderAlerta({
-        id_os: data.alertaAtivo.os_id,
-        equipamento: data.alertaAtivo.equipamento,
-        setor: data.alertaAtivo.setor,
-        prioridade: data.alertaAtivo.prioridade,
-        grau: data.alertaAtivo.grau,
-      });
-    } catch(_e){}
-  });
-
-  eventSource.addEventListener('os_criada', function(){
-    setTimeout(function(){ window.location.reload(); }, 900);
-  });
-
-  eventSource.addEventListener('nova_os_emergencial', function(e){
-    var data = JSON.parse(e.data || '{}');
-    renderAlerta(data);
-    setTimeout(function(){ window.location.reload(); }, 1800);
-  });
-
-  eventSource.addEventListener('os_status_alterado', function(){
-    setTimeout(function(){ window.location.reload(); }, 1200);
-  });
-
-
-
-  var pushBtn = document.getElementById('btn-ativar-push');
-  async function ativarPush() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return alert('Push não suportado neste navegador.');
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
-    const reg = await navigator.serviceWorker.register('/sw.js');
-    const vapid = '<%= process.env.VAPID_PUBLIC_KEY || "" %>';
-    if (!vapid) { alert('VAPID_PUBLIC_KEY não configurada no servidor.'); return; }
-    const key = Uint8Array.from(atob(vapid.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-    await fetch('/dashboard/push/subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: sub }) });
-    pushBtn.textContent = 'Alertas ativados neste dispositivo';
-    pushBtn.disabled = true;
-  }
-  pushBtn?.addEventListener('click', function(){ ativarPush().catch(function(){}); });
-
-  btnReconhecer?.addEventListener('click', function(){
-    if (!alertaAtual || !alertaAtual.id_os) return;
-    fetch('/dashboard/alertas/reconhecer', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ os_id: alertaAtual.id_os })
-    }).then(function(){
-      box.classList.remove('piscar');
-      box.classList.add('hidden');
-      setTimeout(function(){ window.location.reload(); }, 500);
-    }).catch(function(){});
-  });
-})();
-</script>

@@ -98,13 +98,6 @@ function getCards() {
     };
   }, { ativos: 0, inativos: 0 });
 
-  const osCriticas = safeGet(() => db.prepare(`
-    SELECT COUNT(*) AS total
-    FROM os o
-    WHERE UPPER(COALESCE(o.status,'')) IN ('ABERTA','ANDAMENTO','PAUSADA')
-      AND UPPER(${resolveOSGrauExpression()}) IN ('CRITICO','CRÍTICO','ALTO','EMERGENCIAL')
-  `).get()?.total || 0, 0);
-
   return {
     os_abertas: os,
     os_criticas: Number(osCriticas || 0),
@@ -112,7 +105,6 @@ function getCards() {
     motores_conserto: motoresFora,
     equipamentos_ativos: equipamentosResumo.ativos,
     equipamentos_inativos: equipamentosResumo.inativos,
-    equipamentos_parados_manutencao: equipamentosResumo.inativos,
   };
 }
 
@@ -255,23 +247,13 @@ function getOSPainel(page = 1, pageSize = 10) {
         )
         .get()?.total || 0;
 
-    const grauExpr = resolveOSGrauExpression();
-
     const itens = db
       .prepare(
         `
-          SELECT o.id, o.equipamento, o.descricao, o.tipo, o.status, o.opened_at, COALESCE(o.prioridade,'MEDIA') AS prioridade, ${grauExpr} AS grau, COALESCE(e.setor,'-') AS setor
-          FROM os o
-          LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+          SELECT id, equipamento, descricao, tipo, status, opened_at
+          FROM os
           ORDER BY
-            CASE UPPER(COALESCE(prioridade,'MEDIA'))
-              WHEN 'EMERGENCIAL' THEN 1
-              WHEN 'ALTA' THEN 2
-              WHEN 'MEDIA' THEN 3
-              WHEN 'BAIXA' THEN 4
-              ELSE 5
-            END,
-            CASE o.status
+            CASE status
               WHEN 'ABERTA' THEN 1
               WHEN 'ANDAMENTO' THEN 2
               WHEN 'PAUSADA' THEN 3
@@ -279,8 +261,8 @@ function getOSPainel(page = 1, pageSize = 10) {
               WHEN 'CANCELADA' THEN 5
               ELSE 6
             END,
-            datetime(o.opened_at) DESC,
-            o.id DESC
+            datetime(opened_at) DESC,
+            id DESC
           LIMIT ? OFFSET ?
         `
       )
@@ -537,7 +519,6 @@ module.exports = {
   getMotoresResumoDashboard,
   getOSResumoStatus,
   getOSPainel,
-  getOSEmAndamento,
   getHistoricoEquipamentos,
   getComprasResumoDashboard,
   getEstoqueResumoDashboard,
