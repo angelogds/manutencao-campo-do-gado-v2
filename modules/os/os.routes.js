@@ -15,6 +15,17 @@ try {
   console.error("❌ [os] Falha ao carregar os.controller:", e.message);
 }
 
+function resolveCtrlFn(name, current) {
+  if (typeof current === 'function') return current;
+  try {
+    const fresh = require('./os.controller');
+    if (typeof fresh?.[name] === 'function') return fresh[name];
+  } catch (e) {
+    console.error(`❌ [os] Reload controller falhou para ${name}:`, e.message);
+  }
+  return null;
+}
+
 const safe = (fn, name) =>
   typeof fn === "function"
     ? (req, res, next) => {
@@ -26,7 +37,16 @@ const safe = (fn, name) =>
           return next(err);
         }
       }
-    : (_req, res) => {
+    : (req, res, next) => {
+        const recovered = resolveCtrlFn(name, fn);
+        if (recovered) {
+          try {
+            res.locals.activeMenu = 'os';
+            return recovered(req, res, next);
+          } catch (err) {
+            return next(err);
+          }
+        }
         console.error(`❌ [os] Handler ${name} indefinido.`);
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
