@@ -1,16 +1,31 @@
 // modules/usuarios/usuarios.controller.js
+const path = require("path");
+const fs = require("fs");
 const service = require("./usuarios.service");
 
 const ROLES = [
   { key: "ADMIN", label: "Admin" },
   { key: "DIRECAO", label: "Direção" },
   { key: "RH", label: "RH" },
-  { key: "COMPRAS", label: "Compras" },
+  { key: "ENCARREGADO_PRODUCAO", label: "Encarregado de Produção" },
   { key: "PRODUCAO", label: "Produção" },
-  { key: "ALMOXARIFADO", label: "Almoxarifado" },
   { key: "MECANICO", label: "Mecânico" },
+  { key: "ALMOXARIFE", label: "Almoxarife" },
+  { key: "COMPRAS", label: "Compras" },
   { key: "MANUTENCAO", label: "Manutenção (Supervisor)" },
 ];
+
+function ensureUploadDir() {
+  const dir = path.join(__dirname, "../../public/uploads/users");
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function normalizePhotoPath(file) {
+  if (!file) return null;
+  ensureUploadDir();
+  return `/uploads/users/${file.filename}`;
+}
 
 function list(req, res) {
   res.locals.activeMenu = "usuarios";
@@ -43,6 +58,7 @@ function create(req, res) {
   const email = (req.body.email || "").trim().toLowerCase();
   const role = String(req.body.role || "").trim().toUpperCase();
   const password = (req.body.password || "").trim();
+  const photo_path = normalizePhotoPath(req.file);
 
   if (!name || !email || !role || !password) {
     req.flash("error", "Preencha nome, e-mail, perfil e senha.");
@@ -50,7 +66,7 @@ function create(req, res) {
   }
 
   try {
-    service.create({ name, email, role, password });
+    service.create({ name, email, role, password, photo_path });
     req.flash("success", "Usuário criado com sucesso.");
     return res.redirect("/usuarios");
   } catch (e) {
@@ -66,7 +82,7 @@ function editForm(req, res) {
   const user = service.getById(id);
   if (!user) return res.status(404).render("errors/404", { title: "Não encontrado" });
 
-  return res.render("usuarios/editar", {
+  return res.render("usuarios/edit", {
     title: `Editar Usuário #${id}`,
     user,
     ROLES,
@@ -78,6 +94,7 @@ function update(req, res) {
   const name = (req.body.name || "").trim();
   const email = (req.body.email || "").trim().toLowerCase();
   const role = String(req.body.role || "").trim().toUpperCase();
+  const photo_path = normalizePhotoPath(req.file);
 
   if (!name || !email || !role) {
     req.flash("error", "Preencha nome, e-mail e perfil.");
@@ -85,7 +102,7 @@ function update(req, res) {
   }
 
   try {
-    service.update(id, { name, email, role });
+    service.update(id, { name, email, role, photo_path });
     req.flash("success", "Usuário atualizado com sucesso.");
     return res.redirect("/usuarios");
   } catch (e) {
