@@ -107,6 +107,11 @@ app.get("/", (req, res) => {
   return res.redirect("/auth/login");
 });
 
+app.get('/painel-operacional', (req, res) => {
+  if (!req.session?.user) return res.redirect('/auth/login');
+  return res.redirect('/dashboard');
+});
+
 // ===== Health =====
 app.get("/health", (_req, res) => {
   res.status(200).json({

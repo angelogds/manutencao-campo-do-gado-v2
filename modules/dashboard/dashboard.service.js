@@ -23,6 +23,17 @@ function safeGet(fn, fallback) {
   }
 }
 
+
+function resolveOSGrauExpression() {
+  const cols = safeGet(() => db.prepare('PRAGMA table_info(os)').all(), []);
+  const names = new Set(cols.map((c) => c.name));
+  if (names.has('grau')) return "COALESCE(o.grau,'-')";
+  if (names.has('grau_dificuldade')) return "COALESCE(o.grau_dificuldade,'-')";
+  if (names.has('nivel_grau')) return "COALESCE(o.nivel_grau,'-')";
+  // TODO: quando o campo oficial de grau da OS existir em produção, usar ele aqui.
+  return "COALESCE(o.prioridade,'MEDIA')";
+}
+
 /* ===============================
    CARDS PRINCIPAIS
 =================================*/
@@ -89,6 +100,7 @@ function getCards() {
 
   return {
     os_abertas: os,
+    os_criticas: Number(osCriticas || 0),
     motores_empresa: motoresEmpresa,
     motores_conserto: motoresFora,
     equipamentos_ativos: equipamentosResumo.ativos,
@@ -482,6 +494,24 @@ function getEscalaSemana() {
     turno_dia: raw.dia || raw.turnoDia || raw.diurno || "-",
     turno_noite: raw.noite || raw.turnoNoite || raw.noturno || "-",
   };
+}
+
+
+function getOSEmAndamento() {
+  return safeGet(() => {
+    const grauExpr = resolveOSGrauExpression();
+    return db.prepare(`
+      SELECT o.id, o.equipamento, ${grauExpr} AS grau, o.status, o.opened_at,
+             COALESCE(u.name, 'Não atribuído') AS mecanico,
+             ex.iniciado_em
+      FROM os o
+      LEFT JOIN os_execucoes ex ON ex.os_id = o.id AND ex.finalizado_em IS NULL
+      LEFT JOIN users u ON u.id = ex.mecanico_user_id
+      WHERE UPPER(COALESCE(o.status,'')) IN ('ANDAMENTO','EM_ANDAMENTO')
+      ORDER BY datetime(COALESCE(ex.iniciado_em, o.opened_at)) DESC
+      LIMIT 20
+    `).all();
+  }, []);
 }
 
 module.exports = {

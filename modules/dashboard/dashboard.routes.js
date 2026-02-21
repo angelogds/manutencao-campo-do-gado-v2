@@ -27,7 +27,6 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// ✅ /dashboard
 router.get("/", requireLogin, safe(ctrl.index, "index"));
 router.post("/avisos", requireLogin, safe(ctrl.createAviso, "createAviso"));
 

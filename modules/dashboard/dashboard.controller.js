@@ -1,5 +1,8 @@
 // modules/dashboard/dashboard.controller.js
 const service = require("./dashboard.service");
+const alertsHub = require('../alerts/alerts.hub');
+const alertsService = require('../alerts/alerts.service');
+const webPushService = require('../notifications/webpush.service');
 
 function canManageAvisos(user) {
   const role = String(user?.role || "").toUpperCase();
