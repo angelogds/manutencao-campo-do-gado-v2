@@ -18,6 +18,8 @@ function index(req, res) {
   return res.render("pcm/index", {
     ...baseView(req),
     activePcmSection: "visao-geral",
+    title: "PCM – Planejamento e Controle da Manutenção",
+    activeMenu: "pcm",
     indicadores: service.getIndicadores(),
     ranking: service.getRankingEquipamentos(5, Number(req.query.meses || 6)),
     planos: service.listPlanos(filtros),
@@ -40,15 +42,9 @@ function planejamento(req, res) {
 }
 
 function falhas(req, res) {
-  const filtros = {
-    periodo: req.query.periodo || "",
-    equipamento: req.query.equipamento || "",
-    tipo_falha: req.query.tipo_falha || "",
-  };
   return res.render("pcm/falhas", {
     ...baseView(req),
     activePcmSection: "falhas",
-    filtros,
     falhas: service.listOSFalhasPreview(),
   });
 }
@@ -120,8 +116,6 @@ function programacaoSemanal(req, res) {
     semana: req.query.semana || "",
     responsavel: req.query.responsavel || "",
     tipo: req.query.tipo || "",
-    setor: req.query.setor || "",
-    criticidade: req.query.criticidade || "",
   };
 
   const atividadesSemProgramacao = service.listBacklogSimples().slice(0, 12).map((b) => ({
@@ -154,7 +148,6 @@ function backlog(req, res) {
     setor: req.query.setor || "",
     criticidade: req.query.criticidade || "",
     prioridade: req.query.prioridade || "",
-    dias_atraso: req.query.dias_atraso || "",
   };
 
   let items = service.listBacklogSimples().map((b) => ({
@@ -172,7 +165,6 @@ function backlog(req, res) {
   if (filtros.tipo) items = items.filter((i) => String(i.tipo).includes(filtros.tipo.toUpperCase()));
   if (filtros.criticidade) items = items.filter((i) => String(i.criticidade).includes(filtros.criticidade.toUpperCase()));
   if (filtros.prioridade) items = items.filter((i) => String(i.prioridade).includes(filtros.prioridade.toUpperCase()));
-  if (filtros.dias_atraso) items = items.filter((i) => Number(i.atraso || 0) >= Number(filtros.dias_atraso));
 
   return res.render("pcm/backlog", {
     ...baseView(req),
@@ -192,15 +184,9 @@ function rotasInspecao(req, res) {
 
 function relatoriosAvancados(req, res) {
   const indicadores = service.getIndicadores();
-  const filtros = {
-    periodo_inicio: req.query.periodo_inicio || "",
-    periodo_fim: req.query.periodo_fim || "",
-    setor: req.query.setor || "",
-  };
   return res.render("pcm/relatorios-avancados", {
     ...baseView(req),
     activePcmSection: "relatorios-avancados",
-    filtros,
     ranking: service.getRankingEquipamentos(10, Number(req.query.meses || 6)),
     resumo: {
       custo_total: Number(indicadores.custo_manutencao_mes || 0).toFixed(2),
@@ -208,6 +194,7 @@ function relatoriosAvancados(req, res) {
       pct_preventiva: indicadores.preventiva_pct_mes || 0,
       pct_corretiva: indicadores.corretiva_pct_mes || 0,
     },
+    opcoes: service.listFiltros(),
   });
 }
 
@@ -228,6 +215,7 @@ function createPlano(req, res) {
     req.flash("error", e.message || "Erro ao criar plano mestre.");
   }
   return res.redirect("/pcm/planejamento");
+  return res.redirect("/pcm");
 }
 
 function gerarOS(req, res) {
@@ -238,6 +226,7 @@ function gerarOS(req, res) {
     req.flash("error", e.message || "Erro ao gerar OS do plano.");
   }
   return res.redirect("/pcm/planejamento");
+  return res.redirect("/pcm");
 }
 
 function registrarExecucao(req, res) {
@@ -248,57 +237,8 @@ function registrarExecucao(req, res) {
     req.flash("error", e.message || "Erro ao registrar execução.");
   }
   return res.redirect("/pcm/planejamento");
+  return res.redirect("/pcm");
 }
-
-
-function atualizarIndicadores(_req, res) {
-  return res.redirect('/pcm');
-}
-
-function registrarFalha(req, res) {
-  // TODO: integrar com criação de OS de falha / banco de falhas existente
-  req.flash('success', 'Ação de registro de falha recebida (integração pendente).');
-  return res.redirect('/pcm/falhas');
-}
-
-function adicionarComponente(req, res) {
-  // TODO: integrar com CRUD da lista técnica (BOM)
-  req.flash('success', 'Componente enviado para cadastro (integração pendente).');
-  const eid = encodeURIComponent(req.body.equipamento_id || '');
-  return res.redirect(`/pcm/engenharia?equipamento_id=${eid}`);
-}
-
-function adicionarLubrificacao(req, res) {
-  // TODO: integrar com criação de pontos de lubrificação
-  req.flash('success', 'Ponto de lubrificação enviado (integração pendente).');
-  const eid = encodeURIComponent(req.body.equipamento_id || '');
-  return res.redirect(`/pcm/lubrificacao?equipamento_id=${eid}`);
-}
-
-function salvarProgramacao(req, res) {
-  // TODO: persistir programação semanal em pcm_programacao_semana/itens
-  req.flash('success', 'Programação da semana salva (integração pendente).');
-  return res.redirect('/pcm/programacao-semanal');
-}
-
-function programarBacklog(req, res) {
-  // TODO: mover item backlog para programação semanal
-  req.flash('success', `Item ${req.params.id} enviado para programação (integração pendente).`);
-  return res.redirect('/pcm/programacao-semanal');
-}
-
-function novaRota(req, res) {
-  // TODO: integrar cadastro de rota de inspeção
-  req.flash('success', 'Cadastro de nova rota recebido (integração pendente).');
-  return res.redirect('/pcm/rotas-inspecao');
-}
-
-function salvarExecucaoRota(req, res) {
-  // TODO: integrar execução de checklist / geração de OS ou demanda
-  req.flash('success', 'Execução da rota salva (integração pendente).');
-  return res.redirect('/pcm/rotas-inspecao');
-}
-
 
 module.exports = {
   index,
@@ -313,14 +253,6 @@ module.exports = {
   backlog,
   rotasInspecao,
   relatoriosAvancados,
-  atualizarIndicadores,
-  registrarFalha,
-  adicionarComponente,
-  adicionarLubrificacao,
-  salvarProgramacao,
-  programarBacklog,
-  novaRota,
-  salvarExecucaoRota,
   createPlano,
   gerarOS,
   registrarExecucao,
