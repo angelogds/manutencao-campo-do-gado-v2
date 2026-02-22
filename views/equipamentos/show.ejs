@@ -1,164 +1,80 @@
 <% layout('layout') %>
-
 <style>
-  .page-head{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-start;
-    gap:12px;
-    margin-bottom:14px;
-  }
-  .muted{ font-size:13px; color:#6b7280; margin-top:6px; }
-
-  .card{
-    background:#fff;
-    border:1px solid #e5e7eb;
-    border-radius:16px;
-    padding:18px;
-  }
-
-  .actions{
-    display:flex;
-    gap:10px;
-    align-items:center;
-  }
-
-  .btn-primary{
-    background:#16a34a;
-    color:#fff;
-    border:none;
-    padding:10px 16px;
-    border-radius:10px;
-    font-weight:800;
-    cursor:pointer;
-    text-decoration:none;
-    display:inline-flex;
-    align-items:center;
-  }
-  .btn-primary:hover{ background:#15803d; }
-
-  .btn-sm{
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    padding:8px 12px;
-    border-radius:10px;
-    border:1px solid #d1d5db;
-    background:#fff;
-    cursor:pointer;
-    text-decoration:none;
-    font-weight:800;
-    color:#0f172a;
-    white-space:nowrap;
-  }
-  .btn-sm:hover{
-    border-color: rgba(22,163,74,.45);
-    background:#ecfdf5;
-  }
-
-  /* ✅ “tabela” harmoniosa */
-  .grid{
-    display:grid;
-    grid-template-columns: 220px 1fr;
-    gap:0;
-    border:1px solid #eef2f7;
-    border-radius:14px;
-    overflow:hidden;
-  }
-
-  .cell{
-    padding:12px 14px;
-    border-bottom:1px solid #eef2f7;
-    font-size:14px;
-  }
-
-  .cell.k{
-    background:#fbfdff;
-    color:#64748b;
-    font-weight:700;
-    font-size:13px;
-  }
-
-  .cell.v{
-    color:#0f172a;
-    font-weight:600;   /* ✅ menos pesado */
-  }
-
-  .cell:last-child,
-  .cell:nth-last-child(2){
-    border-bottom:none;
-  }
-
-  /* ✅ pills mais discretas */
-  .pill{
-    display:inline-flex;
-    align-items:center;
-    padding:4px 10px;
-    border-radius:999px;
-    font-weight:800;
-    font-size:12px;
-    border:1px solid #e5e7eb;
-    background:#f8fafc;
-    color:#334155;
-  }
-  .pill-on{ background:#ecfdf5; border-color:#bbf7d0; color:#14532d; }
-  .pill-off{ background:#fff1f2; border-color:#fecdd3; color:#9f1239; }
-
-  .mono{
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size:13px;
-    font-weight:600;
-    color:#0f172a;
-  }
-
-  @media (max-width: 820px){
-    .grid{ grid-template-columns: 1fr; }
-    .cell.k{ border-bottom:none; padding-bottom:6px; }
-    .cell.v{ padding-top:0; }
-  }
+.equip-layout{display:grid;grid-template-columns:360px 1fr;gap:16px}.foto-col .card{position:sticky;top:12px}.foto-box{aspect-ratio:4/3;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;background:#f8fafc;display:flex;align-items:center;justify-content:center}.foto-box img{width:100%;height:100%;object-fit:cover}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.tab{padding:8px 12px;border-radius:999px;border:1px solid #d1d5db;text-decoration:none;color:#111827;font-weight:700}.tab.active{background:#166534;color:#fff;border-color:#166534}.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.badge{padding:3px 10px;border-radius:999px;background:#eef2ff}.crit-alta{background:#fee2e2}.crit-media{background:#fef3c7}.crit-baixa{background:#dcfce7}@media(max-width:900px){.equip-layout{grid-template-columns:1fr}}
 </style>
 
-<div class="page-head">
+<div class="equip-layout">
+  <div class="foto-col">
+    <div class="card">
+      <div class="foto-box">
+        <% if (equip.foto_url) { %><img src="<%= equip.foto_url %>" alt="Foto de <%= equip.nome %>"/><% } else { %><div>Sem foto cadastrada</div><% } %>
+      </div>
+      <a href="/equipamentos/<%= equip.id %>/editar" class="btn" style="margin-top:10px;">Editar ficha</a>
+    </div>
+  </div>
+
   <div>
-    <h1>Equipamento #<%= equip.id %></h1>
-    <div class="muted"><%= equip.nome %></div>
-  </div>
-
-  <div class="actions">
-    <a class="btn-sm" href="/equipamentos">Voltar</a>
-    <a class="btn-primary" href="/equipamentos/<%= equip.id %>/editar">Editar</a>
-  </div>
-</div>
-
-<div class="card">
-  <div class="grid">
-    <div class="cell k">Código</div>
-    <div class="cell v"><span class="mono"><%= equip.codigo || '-' %></span></div>
-
-    <div class="cell k">Nome</div>
-    <div class="cell v"><%= equip.nome %></div>
-
-    <div class="cell k">Setor</div>
-    <div class="cell v"><%= equip.setor || '-' %></div>
-
-    <div class="cell k">Tipo</div>
-    <div class="cell v"><%= equip.tipo || '-' %></div>
-
-    <div class="cell k">Criticidade</div>
-    <div class="cell v"><span class="pill"><%= (equip.criticidade || 'media') %></span></div>
-
-    <div class="cell k">Ativo</div>
-    <div class="cell v">
-      <% if (Number(equip.ativo) === 1) { %>
-        <span class="pill pill-on">SIM</span>
-      <% } else { %>
-        <span class="pill pill-off">NÃO</span>
-      <% } %>
+    <div class="card">
+      <h1><%= equip.nome %></h1>
+      <div class="grid-2">
+        <div><b>Código:</b> <%= equip.codigo || '-' %></div>
+        <div><b>Setor:</b> <%= equip.setor || '-' %></div>
+        <div><b>Tipo:</b> <%= equip.tipo || '-' %></div>
+        <div><b>Idade:</b> <%= idadeEquipamento ?? '-' %> anos</div>
+        <div><b>Status:</b> <%= equip.status_operacional || 'ATIVO' %></div>
+        <div><b>Criticidade:</b> <span class="badge crit-<%= (equip.criticidade||'media') %>"><%= equip.criticidade || 'media' %></span></div>
+      </div>
+      <form method="POST" action="/equipamentos/<%= equip.id %>/qrcode" style="margin-top:10px;"><button class="btn btn-green">Gerar/Regerar QR Code</button></form>
     </div>
 
-    <div class="cell k">Observação</div>
-    <div class="cell v" style="font-weight:600; color:#475569;">
-      <%= equip.observacao || '-' %>
+    <div class="tabs">
+      <a class="tab <%= tab==='dados'?'active':'' %>" href="?tab=dados">Dados gerais</a>
+      <a class="tab <%= tab==='historico'?'active':'' %>" href="?tab=historico">Histórico</a>
+      <a class="tab <%= tab==='pecas'?'active':'' %>" href="?tab=pecas">Peças / Lista técnica</a>
+      <a class="tab <%= tab==='documentos'?'active':'' %>" href="?tab=documentos">Documentos</a>
+      <a class="tab <%= tab==='qrcode'?'active':'' %>" href="?tab=qrcode">QR Code</a>
+    </div>
+
+    <div class="card">
+      <% if (tab === 'historico') { %>
+        <form class="grid-4" method="GET"><input type="hidden" name="tab" value="historico"/><input class="input" type="date" name="data_inicio" value="<%= filtros.data_inicio %>"/><input class="input" type="date" name="data_fim" value="<%= filtros.data_fim %>"/><input class="input" name="tipo" placeholder="Tipo" value="<%= filtros.tipo %>"/><input class="input" name="grau" placeholder="Grau" value="<%= filtros.grau %>"/><button class="btn">Filtrar</button></form>
+        <h3>OS do equipamento</h3>
+        <div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>Abertura</th><th>Fechamento</th><th>Tipo</th><th>Grau</th><th>Descrição</th><th>Parada (h)</th><th>Custo</th></tr></thead><tbody><% if(!historicoOS.length){ %><tr><td colspan="8">Sem OS no período.</td></tr><% } %><% historicoOS.forEach(o=>{ %><tr><td><%= o.id %></td><td><%= fmtBR(o.opened_at) %></td><td><%= fmtBR(o.closed_at) %></td><td><%= o.tipo %></td><td><%= o.grau %></td><td><%= o.descricao %></td><td><%= o.tempo_parada_horas || '-' %></td><td>R$ <%= Number(o.custo_total||0).toFixed(2) %></td></tr><% }) %></tbody></table></div>
+        <h3 style="margin-top:12px;">Preventivas executadas</h3>
+        <div class="table-wrap"><table class="table"><thead><tr><th>Atividade</th><th>Execução</th><th>Responsável</th><th>Observações</th></tr></thead><tbody><% if(!historicoPreventivas.length){ %><tr><td colspan="4">Sem preventivas.</td></tr><% } %><% historicoPreventivas.forEach(p=>{ %><tr><td><%= p.atividade %></td><td><%= p.data_execucao || '-' %></td><td><%= p.responsavel || '-' %></td><td><%= p.observacao || '-' %></td></tr><% }) %></tbody></table></div>
+      <% } else if (tab === 'pecas') { %>
+        <form method="POST" action="/equipamentos/<%= equip.id %>/pecas" class="grid-3">
+          <select name="peca_id" class="input"><option value="">Selecionar peça catálogo</option><% catalogoPecas.forEach(c=>{ %><option value="<%= c.id %>"><%= c.tipo %> - <%= c.modelo_descricao %></option><% }) %></select>
+          <input class="input" name="aplicacao" placeholder="Aplicação no equipamento"/>
+          <button class="btn btn-green">+ Adicionar peça ao equipamento</button>
+          <input class="input" name="tipo" placeholder="(nova) Tipo"/>
+          <input class="input" name="modelo_descricao" placeholder="(nova) Modelo/descrição"/>
+          <input class="input" name="codigo_interno" placeholder="(nova) Código interno"/>
+          <input class="input" name="fabricante" placeholder="(nova) Fabricante"/>
+        </form>
+        <div class="table-wrap"><table class="table"><thead><tr><th>Tipo</th><th>Modelo</th><th>Código</th><th>Fabricante</th><th>Aplicação</th><th>Ações</th></tr></thead><tbody><% if(!pecas.length){ %><tr><td colspan="6">Nenhuma peça associada.</td></tr><% } %><% pecas.forEach(p=>{ %><tr><td><%= p.tipo %></td><td><%= p.modelo_descricao %></td><td><%= p.codigo_interno || '-' %></td><td><%= p.fabricante || '-' %></td><td><form method="POST" action="/equipamentos/<%= equip.id %>/pecas/<%= p.id %>"><input class="input" name="aplicacao" value="<%= p.aplicacao || '' %>"/><button class="btn">Salvar</button></form></td><td><form method="POST" action="/equipamentos/<%= equip.id %>/pecas/<%= p.id %>/remover"><button class="btn btn-red">Remover</button></form></td></tr><% }) %></tbody></table></div>
+      <% } else if (tab === 'documentos') { %>
+        <form method="POST" action="/equipamentos/<%= equip.id %>/documentos" enctype="multipart/form-data" class="grid-3">
+          <input class="input" name="tipo_documento" placeholder="Tipo (manual, laudo...)" required/>
+          <input class="input" name="descricao" placeholder="Descrição"/>
+          <input class="input" type="file" name="arquivo" required/>
+          <input class="input" type="date" name="data_emissao"/>
+          <input class="input" type="date" name="validade"/>
+          <input class="input" name="responsavel" placeholder="Responsável"/>
+          <button class="btn btn-green">Anexar documento</button>
+        </form>
+        <div class="table-wrap"><table class="table"><thead><tr><th>Tipo</th><th>Descrição</th><th>Emissão</th><th>Validade</th><th>Responsável</th><th>Ações</th></tr></thead><tbody><% if(!documentos.length){ %><tr><td colspan="6">Sem documentos anexados.</td></tr><% } %><% documentos.forEach(d=>{ %><tr><td><%= d.tipo_documento %></td><td><%= d.descricao || '-' %></td><td><%= d.data_emissao || '-' %></td><td><%= d.validade || '-' %></td><td><%= d.responsavel || '-' %></td><td><a class="btn" href="<%= d.caminho_arquivo %>" download>Baixar</a><form method="POST" action="/equipamentos/<%= equip.id %>/documentos/<%= d.id %>/remover" style="display:inline;"><button class="btn btn-red">Remover</button></form></td></tr><% }) %></tbody></table></div>
+      <% } else if (tab === 'qrcode') { %>
+        <% if (qrImage) { %><img src="<%= qrImage %>" style="max-width:260px;"/><p><a href="<%= qrUrl %>" target="_blank"><%= qrUrl %></a></p><a class="btn" href="/equipamentos/<%= equip.id %>/qrcode/print" target="_blank">Imprimir QR Code</a><% } else { %><p>Ainda sem QR Code. Use o botão de gerar.</p><% } %>
+      <% } else { %>
+        <div class="grid-2">
+          <div><b>Código interno</b><br/><%= equip.codigo || '-' %></div><div><b>Nome</b><br/><%= equip.nome %></div>
+          <div><b>Setor / área</b><br/><%= equip.setor || '-' %></div><div><b>Tipo de equipamento</b><br/><%= equip.tipo || '-' %></div>
+          <div><b>Fabricante</b><br/><%= equip.fabricante || '-' %></div><div><b>Ano de fabricação</b><br/><%= equip.ano_fabricacao || '-' %></div>
+          <div><b>Ano de instalação</b><br/><%= equip.ano_instalacao || '-' %></div><div><b>Capacidade</b><br/><%= equip.capacidade || '-' %></div>
+          <div><b>Pressão de trabalho</b><br/><%= equip.pressao_trabalho || '-' %></div><div><b>Observação</b><br/><%= equip.observacao || '-' %></div>
+        </div>
+      <% } %>
     </div>
   </div>
 </div>
