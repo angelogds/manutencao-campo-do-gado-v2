@@ -10,18 +10,20 @@ function osIndex(req, res) {
 function osNewForm(req, res) {
   res.locals.activeMenu = "os";
   const equipamentos = service.listEquipamentosAtivos();
-  return res.render("os/nova", { title: "Nova OS", equipamentos });
+  const graus = service.listGrauOptions();
+  return res.render("os/nova", { title: "Nova OS", equipamentos, graus });
 }
 
 function osCreate(req, res) {
   try {
-    const { equipamento_id, equipamento_texto, descricao, tipo } = req.body;
+    const { equipamento_id, equipamento_texto, descricao, tipo, grau } = req.body;
 
     const id = service.createOS({
       equipamento_id: equipamento_id ? Number(equipamento_id) : null,
       equipamento_texto,
       descricao,
       tipo,
+      grau,
       opened_by: req.session?.user?.id || null,
     });
 

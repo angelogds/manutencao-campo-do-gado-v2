@@ -22,6 +22,17 @@ const TZ = dateUtil.TZ || "America/Sao_Paulo";
 const app = express();
 app.set("trust proxy", 1);
 
+function mountRoute(basePath, routeModulePath) {
+  try {
+    app.use(basePath, require(routeModulePath));
+  } catch (err) {
+    console.error(`❌ [routes] Falha ao carregar ${routeModulePath}:`, err.message || err);
+    app.use(basePath, (_req, res) => {
+      res.status(503).send(`Módulo temporariamente indisponível: ${basePath}`);
+    });
+  }
+}
+
 // ===== View engine =====
 app.engine("ejs", engine);
 app.set("views", path.join(__dirname, "views"));
@@ -65,6 +76,13 @@ app.use((req, res, next) => {
   // evita crash no layout
   res.locals.activeMenu = res.locals.activeMenu || "";
 
+  // compatibilidade com layouts antigos que esperam variáveis globais
+  res.locals.resumoOS = res.locals.resumoOS || {
+    abertas: 0,
+    andamento: 0,
+    fechadas: 0,
+  };
+
   next();
 });
 
@@ -78,21 +96,31 @@ try {
 }
 
 // ===== ROTAS =====
-app.use("/auth", require("./modules/auth/auth.routes"));
-app.use("/dashboard", require("./modules/dashboard/dashboard.routes"));
-app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
-app.use("/os", require("./modules/os/os.routes"));
-app.use("/preventivas", require("./modules/preventivas/preventivas.routes"));
-app.use("/compras", require("./modules/compras/compras.routes"));
-app.use("/estoque", require("./modules/estoque/estoque.routes"));
-app.use("/escala", require("./modules/escala/escala.routes"));
-app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
-app.use("/motores", require("./modules/motores/motores.routes")); // ✅ motores
+mountRoute('/auth', './modules/auth/auth.routes');
+mountRoute('/dashboard', './modules/dashboard/dashboard.routes');
+mountRoute('/pcm', './modules/pcm/pcm.routes');
+mountRoute('/equipamentos', './modules/equipamentos/equipamentos.routes');
+mountRoute('/os', './modules/os/os.routes');
+mountRoute('/preventivas', './modules/preventivas/preventivas.routes');
+mountRoute('/compras', './modules/compras/compras.routes');
+mountRoute('/solicitacoes', './modules/solicitacoes/solicitacoes.routes');
+mountRoute('/estoque', './modules/estoque/estoque.routes');
+mountRoute('/almoxarifado', './modules/almoxarifado/almoxarifado.routes');
+mountRoute('/escala', './modules/escala/escala.routes');
+mountRoute('/avisos', './modules/avisos/avisos.routes');
+mountRoute('/usuarios', './modules/usuarios/usuarios.routes');
+mountRoute('/demandas', './modules/demandas/demandas.routes');
+mountRoute('/motores', './modules/motores/motores.routes'); // ✅ motores
 
 // ===== Home =====
 app.get("/", (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
   return res.redirect("/auth/login");
+});
+
+app.get('/painel-operacional', (req, res) => {
+  if (!req.session?.user) return res.redirect('/auth/login');
+  return res.redirect('/dashboard');
 });
 
 // ===== Health =====
