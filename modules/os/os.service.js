@@ -3,15 +3,7 @@ const db = require("../../database/db");
 const { classifyOSPriority } = require('./os-priority.service');
 const alertsHub = require('../alerts/alerts.hub');
 const alertsService = require('../alerts/alerts.service');
-
-function getWebPushService() {
-  try {
-    return require('../notifications/webpush.service');
-  } catch (e) {
-    console.error('❌ [os] webpush.service indisponível:', e.message || e);
-    return null;
-  }
-}
+const webPushService = require('../notifications/webpush.service');
 
 function getOSColumns() {
   return db.prepare(`PRAGMA table_info(os)`).all().map(c => c.name);
@@ -168,6 +160,25 @@ function createOS({ equipamento_id, equipamento_texto, descricao, tipo, opened_b
     fields.splice(1, 0, 'equipamento_id');
     values.splice(1, 0, equipId);
   }
+  if (hasCategoria) {
+    fields.push('categoria_sugerida');
+    values.push(score.categoria_sugerida);
+  }
+  if (hasAlert) {
+    fields.push('alertar_imediatamente');
+    values.push(score.alertar_imediatamente ? 1 : 0);
+  }
+  if (grauColumn && grau) {
+    // TODO: usar apenas o campo de grau oficial da OS. Esta rotina detecta automaticamente o nome da coluna.
+    fields.push(grauColumn);
+    values.push(String(grau).toUpperCase());
+  }
+
+  const placeholders = fields.map(() => '?').join(', ');
+  const stmt = db.prepare(`INSERT INTO os (${fields.join(', ')}) VALUES (${placeholders})`);
+  const info = stmt.run(...values);
+
+  const osId = Number(info.lastInsertRowid);
 
   if (hasPrioridade) {
     fields.push('prioridade');
@@ -189,6 +200,8 @@ function createOS({ equipamento_id, equipamento_texto, descricao, tipo, opened_b
 
   const insertPlaceholders = fields.map(() => '?').join(', ');
   const stmt = db.prepare(`INSERT INTO os (${fields.join(', ')}) VALUES (${insertPlaceholders})`);
+  const placeholders = fields.map(() => '?').join(', ');
+  const stmt = db.prepare(`INSERT INTO os (${fields.join(', ')}) VALUES (${placeholders})`);
   const info = stmt.run(...values);
 
   const osId = Number(info.lastInsertRowid);
@@ -200,11 +213,8 @@ function createOS({ equipamento_id, equipamento_texto, descricao, tipo, opened_b
 
   emitOSEvents(osId, 'create');
   const os = getOSById(osId) || {};
-  const webPushService = getWebPushService();
-  if (webPushService?.sendOSPushNotifications) {
-    webPushService.sendOSPushNotifications({ osId, equipamento: os.equipamento || equipamentoFinal, grau: os.grau || os.grau_dificuldade || os.nivel_grau || score.prioridade, descricao: os.descricao || desc })
-      .catch(() => {});
-  }
+  webPushService.sendOSPushNotifications({ osId, equipamento: os.equipamento || equipamentoFinal, grau: os.grau || os.grau_dificuldade || os.nivel_grau || score.prioridade, descricao: os.descricao || desc })
+    .catch(() => {});
   return osId;
 }
 

@@ -18,9 +18,8 @@ function configureWebPush() {
 }
 
 function saveSubscription({ userId, subscription, userAgent }) {
-  const safeSubscription = subscription || {};
-  const endpoint = safeSubscription.endpoint;
-  const keys = safeSubscription.keys || {};
+  const endpoint = subscription?.endpoint;
+  const keys = subscription?.keys || {};
   if (!userId || !endpoint || !keys.p256dh || !keys.auth) {
     throw new Error('Subscription inválida.');
   }
@@ -40,13 +39,18 @@ function saveSubscription({ userId, subscription, userAgent }) {
 }
 
 function listSubscriptionsForUsers(userIds) {
-  if (!Array.isArray(userIds) || userIds.length === 0) return [];
+  if (!userIds?.length) return [];
   const inPlaceholders = userIds.map(() => '?').join(',');
-  const sql =
-    'SELECT id, user_id, endpoint, p256dh, auth ' +
-    'FROM web_push_subscriptions ' +
-    `WHERE user_id IN (${inPlaceholders})`;
-  return db.prepare(sql).all(...userIds.map(Number));
+  return db.prepare(`
+    SELECT id, user_id, endpoint, p256dh, auth
+    FROM web_push_subscriptions
+    WHERE user_id IN (${inPlaceholders})
+  const placeholders = userIds.map(() => '?').join(',');
+  return db.prepare(`
+    SELECT id, user_id, endpoint, p256dh, auth
+    FROM web_push_subscriptions
+    WHERE user_id IN (${placeholders})
+  `).all(...userIds.map(Number));
 }
 
 function targetUserIdsForOS() {
