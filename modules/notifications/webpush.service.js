@@ -39,12 +39,7 @@ function saveSubscription({ userId, subscription, userAgent }) {
 }
 
 function listSubscriptionsForUsers(userIds) {
-  if (!userIds?.length) return [];
-  const inPlaceholders = userIds.map(() => '?').join(',');
-  return db.prepare(`
-    SELECT id, user_id, endpoint, p256dh, auth
-    FROM web_push_subscriptions
-    WHERE user_id IN (${inPlaceholders})
+  if (!Array.isArray(userIds) || userIds.length === 0) return [];
   const placeholders = userIds.map(() => '?').join(',');
   return db.prepare(`
     SELECT id, user_id, endpoint, p256dh, auth
@@ -97,7 +92,10 @@ async function sendOSPushNotifications({ osId, equipamento, grau, descricao }) {
       data: { id_os: Number(osId), url: `/os/${osId}` },
     });
     try {
-      await webPush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload);
+      await webPush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        payload
+      );
       db.prepare(`
         UPDATE notificacoes_os
         SET status='ENVIADO', enviado_em=datetime('now')
