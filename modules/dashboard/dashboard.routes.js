@@ -1,31 +1,26 @@
 // modules/dashboard/dashboard.routes.js
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 
-const { requireLogin } = require("../auth/auth.middleware");
+const { requireLogin } = require('../auth/auth.middleware');
+const ctrl = require('./dashboard.controller');
 
-let ctrl = {};
-try {
-  ctrl = require("./dashboard.controller");
-  console.log("✅ [dashboard] controller exports:", Object.keys(ctrl));
-} catch (e) {
-  console.error("❌ [dashboard] Falha ao carregar dashboard.controller:", e.message);
+function wrapRoute(handler, name) {
+  return (req, res, next) => {
+    res.locals.activeMenu = 'dashboard';
+
+    if (typeof handler !== 'function') {
+      console.error(`❌ [dashboard] Handler ${name} indefinido.`);
+      return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
+    }
+
+    try {
+      return handler(req, res, next);
+    } catch (err) {
+      return next(err);
+    }
+  };
 }
-
-const safe = (fn, name) =>
-  typeof fn === "function"
-    ? (req, res, next) => {
-        try {
-          res.locals.activeMenu = "dashboard";
-          return fn(req, res, next);
-        } catch (err) {
-          return next(err);
-        }
-      }
-    : (_req, res) => {
-        console.error(`❌ [dashboard] Handler ${name} indefinido.`);
-        return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
-      };
 
 router.get("/", requireLogin, safe(ctrl.index, "index"));
 router.post("/avisos", requireLogin, safe(ctrl.createAviso, "createAviso"));
