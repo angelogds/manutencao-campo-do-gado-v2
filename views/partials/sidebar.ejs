@@ -3,18 +3,24 @@
   const role = String(user?.role || "").toUpperCase();
 
   const isAdmin = role === "ADMIN";
-  const isAlmox = role === "ALMOXARIFE";
-  const isDirecao = role === "DIRECAO";
+  const isAlmox = role === "ALMOXARIFE" || role === "ALMOXARIFADO";
+  const isDirecao = role === "DIRECAO" || role === "DIRETORIA";
+  const isCompras = role === "COMPRAS";
   const isEncarregadoProd = role === "ENCARREGADO_PRODUCAO";
 
   const canAlmoxArea = isAdmin || isAlmox; // Almoxarife + Motores
-  const canEstoque = isAdmin || isAlmox;
+  const canEstoque = isAdmin || isAlmox || isCompras;
   const canMotores = isAdmin || isAlmox;
 
   // Compras: (ajuste se você quiser leitura p/ direção/encarregado)
-  const canCompras = isAdmin || isAlmox || isDirecao || isEncarregadoProd;
+  const canCompras = isAdmin || isCompras || isAlmox || isDirecao || isEncarregadoProd;
+  const canSolicitacoes = canCompras;
+  const canAlmoxarifado = isAdmin || isAlmox || isCompras;
+  const canDemandas = isAdmin || isDirecao;
+  const canPCM = isAdmin;
 
   const canUsuarios = isAdmin;
+  const currentPcmSection = typeof activePcmSection !== "undefined" ? activePcmSection : "";
 %>
 
 <aside class="sidebar">
@@ -43,9 +49,27 @@
       Preventivas
     </a>
 
+    <% if (canDemandas) { %>
+      <a class="nav-item <%= activeMenu === 'demandas' ? 'active' : '' %>" href="/demandas">
+        Demandas
+      </a>
+    <% } %>
+
+    <% if (canSolicitacoes) { %>
+      <a class="nav-item <%= activeMenu === 'solicitacoes' ? 'active' : '' %>" href="/solicitacoes">
+        Solicitações
+      </a>
+    <% } %>
+
     <% if (canCompras) { %>
       <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">
         Compras
+      </a>
+    <% } %>
+
+    <% if (canAlmoxarifado) { %>
+      <a class="nav-item <%= activeMenu === 'almoxarifado' ? 'active' : '' %>" href="/almoxarifado">
+        Almoxarifado
       </a>
     <% } %>
 
@@ -64,6 +88,32 @@
     <a class="nav-item <%= activeMenu === 'escala' ? 'active' : '' %>" href="/escala">
       Escala
     </a>
+
+    <a class="nav-item <%= activeMenu === 'avisos' ? 'active' : '' %>" href="/avisos">
+      Avisos
+    </a>
+
+
+    <% if (canPCM) { %>
+      <a class="nav-item <%= activeMenu === 'pcm' ? 'active' : '' %>" href="/pcm">
+        PCM – Planejamento e Controle da Manutenção
+      </a>
+      <% if (activeMenu === 'pcm') { %>
+        <div style="margin:6px 0 10px 10px; display:grid; gap:4px;">
+          <a class="nav-item <%= currentPcmSection === 'visao-geral' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm">• Visão Geral</a>
+          <a class="nav-item <%= currentPcmSection === 'planejamento' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/planejamento">• Planejamento</a>
+          <a class="nav-item <%= currentPcmSection === 'falhas' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/falhas">• Falhas</a>
+          <a class="nav-item <%= currentPcmSection === 'engenharia' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/engenharia">• Engenharia</a>
+          <a class="nav-item <%= currentPcmSection === 'criticidade' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/criticidade">• Criticidade</a>
+          <a class="nav-item <%= currentPcmSection === 'lubrificacao' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/lubrificacao">• Lubrificação</a>
+          <a class="nav-item <%= currentPcmSection === 'pecas-criticas' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/pecas-criticas">• Peças Críticas</a>
+          <a class="nav-item <%= currentPcmSection === 'programacao-semanal' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/programacao-semanal">• Programação Semanal</a>
+          <a class="nav-item <%= currentPcmSection === 'backlog' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/backlog">• Backlog</a>
+          <a class="nav-item <%= currentPcmSection === 'rotas-inspecao' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/rotas-inspecao">• Rotas de Inspeção</a>
+          <a class="nav-item <%= currentPcmSection === 'relatorios-avancados' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/relatorios-avancados">• Relatórios Avançados</a>
+        </div>
+      <% } %>
+    <% } %>
 
     <div class="nav-divider"></div>
 
