@@ -48,6 +48,7 @@ exports.doLogin = (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
+      photo_path: user.photo_path || null,
     };
 
     req.session.save((err2) => {

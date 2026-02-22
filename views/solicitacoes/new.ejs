@@ -1,0 +1,85 @@
+<% layout('layout') %>
+<div class="page-head"><div><h1>Nova Solicitação</h1><p class="muted">Solicitação avulsa ou vinculada a OS/preventiva.</p></div></div>
+<div class="card">
+<form method="POST" action="/solicitacoes" id="form-solicitacao">
+  <div class="grid-3">
+    <div><div class="label">Solicitante</div><input class="input" name="solicitante" value="<%= user?.name || '' %>" /></div>
+    <div><div class="label">Setor</div><input class="input" name="setor" value="MANUTENCAO" /></div>
+    <div><div class="label">Tipo de origem</div><select class="input" name="tipo_origem"><option value="AVULSA">Avulsa</option><option value="OS">Ordem de Serviço</option><option value="PREVENTIVA">Preventiva</option></select></div>
+    <div><div class="label">ID origem (OS/Preventiva)</div><input class="input" name="origem_id" /></div>
+    <div><div class="label">Equipamento (opcional)</div><select class="input" name="equipamento_id"><option value="">--</option><% (equipamentos||[]).forEach(e=>{ %><option value="<%= e.id %>"><%= e.nome %></option><% }) %></select></div>
+    <div><div class="label">Destino de uso</div><input class="input" name="destino_uso" placeholder="Ex.: Linha 2 / Uso geral" /></div>
+  </div>
+
+  <div style="margin-top:12px;"><div class="label">Observação</div><textarea class="input" name="observacao"></textarea></div>
+
+  <h3 style="margin-top:16px;">Itens da solicitação</h3>
+  <div style="overflow-x:auto; border:1px solid #e5e7eb; border-radius:12px;">
+    <table class="table" style="margin:0; min-width: 760px;">
+      <thead>
+        <tr>
+          <th style="width: 25%;">Item</th>
+          <th style="width: 35%;">Descrição / Medida</th>
+          <th style="width: 15%;">Unidade</th>
+          <th style="width: 15%;">Quantidade</th>
+          <th style="width: 10%; text-align:center;">Ação</th>
+        </tr>
+      </thead>
+      <tbody id="itens-body"></tbody>
+    </table>
+  </div>
+
+  <div style="display:flex; gap:8px; margin-top:12px;">
+    <button type="button" class="btn" id="btn-add-item">+ Adicionar mais itens</button>
+    <button class="btn btn-green" type="submit">Criar solicitação</button>
+  </div>
+</form>
+</div>
+
+<template id="item-row-template">
+  <tr>
+    <td><input class="input" name="itens_nome" placeholder="Ex.: Rolamento" required></td>
+    <td><input class="input" name="itens_especificacao" placeholder="Ex.: 130 interno x 200 externo x 30 largura"></td>
+    <td>
+      <select class="input" name="itens_un">
+        <option value="UN">Unidade</option>
+        <option value="CX">Caixa</option>
+        <option value="KG">Quilo</option>
+        <option value="L">Litro</option>
+        <option value="M">Metro</option>
+      </select>
+    </td>
+    <td><input class="input" name="itens_qtd" type="number" min="0.01" step="0.01" value="1" required></td>
+    <td style="text-align:center;"><button type="button" class="btn btn-danger btn-sm btn-remove-item">Remover</button></td>
+  </tr>
+</template>
+
+<script>
+  (function () {
+    const tbody = document.getElementById('itens-body');
+    const tpl = document.getElementById('item-row-template');
+    const btnAdd = document.getElementById('btn-add-item');
+
+    function addRow() {
+      const clone = tpl.content.cloneNode(true);
+      tbody.appendChild(clone);
+      refreshButtons();
+    }
+
+    function refreshButtons() {
+      const rows = tbody.querySelectorAll('tr');
+      rows.forEach((row) => {
+        const btn = row.querySelector('.btn-remove-item');
+        if (!btn) return;
+        btn.disabled = rows.length <= 1;
+        btn.onclick = () => {
+          row.remove();
+          refreshButtons();
+        };
+      });
+    }
+
+    btnAdd.addEventListener('click', addRow);
+    addRow();
+  })();
+</script>
