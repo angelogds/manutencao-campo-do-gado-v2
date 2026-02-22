@@ -1,3 +1,4 @@
+
 /* public/css/app.css */
 :root{
   /* Verde do tema (sidebar / identidade) */
@@ -44,7 +45,6 @@ a{ color:inherit; }
   display:flex;
   flex-direction:column;
   gap:14px;
-  border-right:1px solid rgba(255,255,255,.08);
 }
 
 .brand{
@@ -72,40 +72,23 @@ a{ color:inherit; }
 
 .nav-item{
   display:block;
-  position:relative;
   text-decoration:none;
   color:#fff;
   padding:12px 14px;
   border-radius:14px;
   background:rgba(255,255,255,.06);
-  transition: transform .08s ease, background .15s ease, outline-color .15s ease;
-  font-weight:800;
+  transition: transform .08s ease, background .15s ease;
+  font-weight:700;
 }
 
-/* hover */
 .nav-item:hover{
   background:rgba(255,255,255,.14);
   transform: translateY(-1px);
 }
 
-/* active */
 .nav-item.active{
   background:rgba(255,255,255,.18);
   outline:1px solid rgba(255,255,255,.18);
-  padding-left:28px; /* espaço pro “fio” */
-}
-
-/* ✅ fio branco na esquerda (ativo) */
-.nav-item.active::before{
-  content:"";
-  position:absolute;
-  left:10px;
-  top:10px;
-  bottom:10px;
-  width:4px;
-  border-radius:999px;
-  background:#ffffff;                  /* ✅ branco */
-  box-shadow:0 0 0 3px rgba(255,255,255,.18);
 }
 
 .nav-divider{
@@ -120,7 +103,6 @@ a{ color:inherit; }
   letter-spacing:.08em;
   opacity:.85;
   padding:0 8px;
-  margin-top:4px;
 }
 
 .sidebar-footer{
@@ -211,7 +193,7 @@ a{ color:inherit; }
   border-radius:14px;
   font-weight:900;
   cursor:pointer;
-  transition: background .15s ease, transform .08s ease, border-color .15s ease;
+  transition: background .15s ease, transform .08s ease, border-color .15s ease, filter .15s ease;
   text-decoration:none;
 }
 
@@ -220,7 +202,7 @@ a{ color:inherit; }
   transform: translateY(-1px);
 }
 
-/* ✅ Botão verde padronizado */
+/* ✅ Botão verde padronizado (mesmo do "+ Novo Equipamento") */
 .btn-primary,
 .btn-green{
   background: var(--action-600);
@@ -246,7 +228,7 @@ a{ color:inherit; }
 
 /* ===== PADRÃO TABELAS / CARDS / PÁGINAS ===== */
 
-/* Cabeçalho da página */
+/* Cabeçalho da página (título + ações) */
 .page-head{
   display:flex;
   align-items:flex-end;
@@ -255,7 +237,7 @@ a{ color:inherit; }
   margin:8px 0 16px;
 }
 .page-head h1{ margin:0; font-size:34px; letter-spacing:-.02em; }
-.page-head .muted{ margin:6px 0 0; color:var(--muted); }
+.page-head .muted{ margin:6px 0 0; }
 
 /* Card padrão */
 .card{
@@ -298,14 +280,14 @@ a{ color:inherit; }
   text-overflow:ellipsis;
 }
 
-/* btn-sm */
+/* btn-sm = só tamanho */
 .btn-sm{
   padding:7px 10px;
   border-radius:12px;
   font-weight:900;
 }
 
-/* Pílulas de status */
+/* Pílulas de status (tabela) */
 .pill-tag{
   display:inline-flex;
   align-items:center;
