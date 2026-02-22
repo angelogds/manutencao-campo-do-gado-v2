@@ -1,156 +1,134 @@
+// modules/solicitacoes/solicitacoes.service.js
 const db = require("../../database/db");
 
-function hasColumn(tableName, columnName) {
+function tableColumns(tableName) {
   try {
-    const cols = db.prepare(`PRAGMA table_info(${tableName})`).all();
-    return cols.some((col) => String(col.name || "").toLowerCase() === String(columnName || "").toLowerCase());
+    return db.prepare(`PRAGMA table_info(${tableName})`).all().map((c) => c.name);
   } catch (_e) {
-    return false;
+    return [];
   }
 }
 
-function listSolicitacoes() {
-  return db.prepare(`
-    SELECT s.id, s.solicitante, s.setor, s.status, s.observacao, s.created_at,
-           v.tipo_origem, v.destino_uso,
-           e.nome AS equipamento_nome
-    FROM solicitacoes_compra s
-    LEFT JOIN solicitacao_vinculos v ON v.solicitacao_id = s.id
-    LEFT JOIN equipamentos e ON e.id = v.equipamento_id
-    ORDER BY s.id DESC
-  `).all();
+function resolveCreatedByColumn(cols) {
+  // tenta várias possibilidades comuns no teu projeto
+  if (cols.includes("created_by")) return "created_by";
+  if (cols.includes("criado_por")) return "criado_por";
+  if (cols.includes("user_id")) return "user_id";
+  if (cols.includes("solicitante_id")) return "solicitante_id";
+  return null;
 }
 
-function listEquipamentos() {
-  return db.prepare(`SELECT id, nome FROM equipamentos WHERE ativo = 1 ORDER BY nome`).all();
-}
+function createSolicitacao({ titulo, finalidade, setor, prioridade, itens, createdBy }) {
+  const cols = tableColumns("solicitacoes_compra");
+  if (!cols.length) throw new Error("Tabela solicitacoes_compra não encontrada.");
 
-function createSolicitacao({ solicitante, setor, observacao, itens, vinculo, createdBy }) {
-  const insertSolic = db.prepare(`
-    INSERT INTO solicitacoes_compra (solicitante, setor, status, observacao, created_by, created_at)
-    VALUES (?, ?, 'aberta', ?, ?, datetime('now'))
-  `);
+  const title = (titulo || "").trim();
+  if (!title) throw new Error("Título obrigatório.");
 
-  const hasEspecificacao = hasColumn('solicitacao_itens', 'especificacao');
-  const insertItem = hasEspecificacao
-    ? db.prepare(`
-        INSERT INTO solicitacao_itens (solicitacao_id, item_id, descricao, especificacao, quantidade, unidade, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-      `)
-    : db.prepare(`
-        INSERT INTO solicitacao_itens (solicitacao_id, item_id, descricao, quantidade, unidade, created_at)
-        VALUES (?, ?, ?, ?, ?, datetime('now'))
-      `);
+  const fields = [];
+  const values = [];
 
-  const insertVinculo = db.prepare(`
-    INSERT INTO solicitacao_vinculos (solicitacao_id, tipo_origem, origem_id, equipamento_id, destino_uso, created_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
-  `);
+  // campos básicos (só coloca se existir)
+  if (cols.includes("titulo")) {
+    fields.push("titulo");
+    values.push(title);
+  }
+  if (cols.includes("finalidade")) {
+    fields.push("finalidade");
+    values.push((finalidade || "").trim() || null);
+  }
+  if (cols.includes("setor")) {
+    fields.push("setor");
+    values.push((setor || "").trim() || "MANUTENCAO");
+  }
+  if (cols.includes("prioridade")) {
+    fields.push("prioridade");
+    values.push((prioridade || "NORMAL").toUpperCase());
+  }
 
-  return db.transaction(() => {
-    const info = insertSolic.run(solicitante, setor || "MANUTENCAO", observacao || null, createdBy || null);
-    const solicitacaoId = Number(info.lastInsertRowid);
+  // created_by (ou equivalente)
+  const createdCol = resolveCreatedByColumn(cols);
+  if (createdCol) {
+    fields.push(createdCol);
+    values.push(createdBy ? Number(createdBy) : null);
+  }
 
-    for (const it of itens || []) {
-      if (hasEspecificacao) {
-        insertItem.run(
-          solicitacaoId,
-          it.item_id ? Number(it.item_id) : null,
-          String(it.descricao || "").trim(),
-          it.especificacao ? String(it.especificacao).trim() : null,
-          Number(it.quantidade || 1),
-          String(it.unidade || "UN").toUpperCase()
-        );
-      } else {
-        const descricaoComposta = [String(it.descricao || "").trim(), it.especificacao ? String(it.especificacao).trim() : ""]
-          .filter(Boolean)
-          .join(" • " );
-        insertItem.run(
-          solicitacaoId,
-          it.item_id ? Number(it.item_id) : null,
-          descricaoComposta,
-          Number(it.quantidade || 1),
-          String(it.unidade || "UN").toUpperCase()
-        );
+  // created_at/created_em (se existir)
+  if (cols.includes("created_at")) {
+    fields.push("created_at");
+    values.push(null); // deixa default do banco, se tiver
+    // se não tiver default, vamos preencher abaixo
+  } else if (cols.includes("criado_em")) {
+    fields.push("criado_em");
+    values.push(null);
+  }
+
+  if (!fields.length) {
+    throw new Error("Nenhum campo compatível para inserir em solicitacoes_compra.");
+  }
+
+  // remove campos com null “placeholder” se a tabela não tiver default
+  // (se tiver default, o SQLite ignora? não: vai gravar NULL; então melhor não incluir se for null)
+  const filtered = fields
+    .map((f, i) => ({ f, v: values[i] }))
+    .filter(({ f, v }) => !(v === null && (f === "created_at" || f === "criado_em")));
+
+  const finalFields = filtered.map((x) => x.f);
+  const finalValues = filtered.map((x) => x.v);
+
+  const placeholders = finalFields.map(() => "?").join(", ");
+  const sql = `INSERT INTO solicitacoes_compra (${finalFields.join(", ")}) VALUES (${placeholders})`;
+  const info = db.prepare(sql).run(...finalValues);
+
+  const solicitacaoId = Number(info.lastInsertRowid);
+
+  // Itens (se existir tabela de itens; se não existir, ignora)
+  try {
+    const itensCols = tableColumns("solicitacoes_compra_itens");
+    if (itensCols.length && Array.isArray(itens) && itens.length) {
+      const hasSolicId = itensCols.includes("solicitacao_id");
+      const hasDesc = itensCols.includes("descricao") || itensCols.includes("item");
+      const descCol = itensCols.includes("descricao") ? "descricao" : (itensCols.includes("item") ? "item" : null);
+      const hasQtd = itensCols.includes("quantidade") || itensCols.includes("qtd");
+      const qtdCol = itensCols.includes("quantidade") ? "quantidade" : (itensCols.includes("qtd") ? "qtd" : null);
+      const hasUn = itensCols.includes("unidade") || itensCols.includes("un");
+      const unCol = itensCols.includes("unidade") ? "unidade" : (itensCols.includes("un") ? "un" : null);
+
+      const stmt = db.prepare(
+        `INSERT INTO solicitacoes_compra_itens (${[
+          hasSolicId ? "solicitacao_id" : null,
+          descCol,
+          qtdCol,
+          unCol,
+        ].filter(Boolean).join(", ")}) VALUES (${[
+          hasSolicId ? "?" : null,
+          descCol ? "?" : null,
+          qtdCol ? "?" : null,
+          unCol ? "?" : null,
+        ].filter(Boolean).join(", ")})`
+      );
+
+      for (const it of itens) {
+        const desc = String(it.descricao || it.item || "").trim();
+        if (!desc) continue;
+
+        const qtd = Number(it.quantidade ?? it.qtd ?? 1) || 1;
+        const un = String(it.unidade || it.un || "").trim() || null;
+
+        const params = [];
+        if (hasSolicId) params.push(solicitacaoId);
+        if (descCol) params.push(desc);
+        if (qtdCol) params.push(qtd);
+        if (unCol) params.push(un);
+
+        stmt.run(...params);
       }
     }
+  } catch (_e) {
+    // sem itens, ok
+  }
 
-    insertVinculo.run(
-      solicitacaoId,
-      String(vinculo?.tipo_origem || "AVULSA").toUpperCase(),
-      vinculo?.origem_id ? Number(vinculo.origem_id) : null,
-      vinculo?.equipamento_id ? Number(vinculo.equipamento_id) : null,
-      vinculo?.destino_uso ? String(vinculo.destino_uso).trim() : null
-    );
-
-    return solicitacaoId;
-  })();
+  return solicitacaoId;
 }
 
-function getSolicitacaoById(id) {
-  const sol = db.prepare(`
-    SELECT s.id, s.solicitante, s.setor, s.status, s.observacao, s.created_at,
-           v.tipo_origem, v.origem_id, v.destino_uso, v.equipamento_id,
-           e.nome AS equipamento_nome
-    FROM solicitacoes_compra s
-    LEFT JOIN solicitacao_vinculos v ON v.solicitacao_id = s.id
-    LEFT JOIN equipamentos e ON e.id = v.equipamento_id
-    WHERE s.id = ?
-  `).get(id);
-
-  if (!sol) return null;
-
-  const hasEspecificacao = hasColumn('solicitacao_itens', 'especificacao');
-  const itensQuery = hasEspecificacao
-    ? `
-      SELECT si.id, si.item_id, si.descricao, si.especificacao, si.quantidade, si.unidade,
-             ei.codigo AS estoque_codigo, ei.nome AS estoque_nome,
-             COALESCE(vs.saldo, 0) AS saldo_atual
-      FROM solicitacao_itens si
-      LEFT JOIN estoque_itens ei ON ei.id = si.item_id
-      LEFT JOIN vw_estoque_saldo vs ON vs.item_id = si.item_id
-      WHERE si.solicitacao_id = ?
-      ORDER BY si.id
-    `
-    : `
-      SELECT si.id, si.item_id, si.descricao, NULL AS especificacao, si.quantidade, si.unidade,
-             ei.codigo AS estoque_codigo, ei.nome AS estoque_nome,
-             COALESCE(vs.saldo, 0) AS saldo_atual
-      FROM solicitacao_itens si
-      LEFT JOIN estoque_itens ei ON ei.id = si.item_id
-      LEFT JOIN vw_estoque_saldo vs ON vs.item_id = si.item_id
-      WHERE si.solicitacao_id = ?
-      ORDER BY si.id
-    `;
-
-  const itens = db.prepare(itensQuery).all(id);
-
-  const cotacoes = db.prepare(`
-    SELECT id, fornecedor, valor_total, observacao, anexo_path, created_at
-    FROM solicitacao_cotacoes
-    WHERE solicitacao_id = ?
-    ORDER BY id DESC
-  `).all(id);
-
-  return { ...sol, itens, cotacoes };
-}
-
-function updateStatus(id, status) {
-  db.prepare(`UPDATE solicitacoes_compra SET status = ? WHERE id = ?`).run(String(status || "").toLowerCase(), id);
-}
-
-function addCotacao(solicitacaoId, { fornecedor, valor_total, observacao, anexo_path }) {
-  db.prepare(`
-    INSERT INTO solicitacao_cotacoes (solicitacao_id, fornecedor, valor_total, observacao, anexo_path, created_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
-  `).run(solicitacaoId, fornecedor, Number(valor_total || 0), observacao || null, anexo_path || null);
-}
-
-module.exports = {
-  listSolicitacoes,
-  listEquipamentos,
-  createSolicitacao,
-  getSolicitacaoById,
-  updateStatus,
-  addCotacao,
-};
+module.exports = { createSolicitacao };
