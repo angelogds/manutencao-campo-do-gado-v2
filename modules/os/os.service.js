@@ -198,6 +198,8 @@ function createOS({ equipamento_id, equipamento_texto, descricao, tipo, opened_b
     values.push(String(grau).toUpperCase());
   }
 
+  const insertPlaceholders = fields.map(() => '?').join(', ');
+  const stmt = db.prepare(`INSERT INTO os (${fields.join(', ')}) VALUES (${insertPlaceholders})`);
   const placeholders = fields.map(() => '?').join(', ');
   const stmt = db.prepare(`INSERT INTO os (${fields.join(', ')}) VALUES (${placeholders})`);
   const info = stmt.run(...values);
