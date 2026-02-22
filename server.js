@@ -22,6 +22,17 @@ const TZ = dateUtil.TZ || "America/Sao_Paulo";
 const app = express();
 app.set("trust proxy", 1);
 
+function mountRoute(basePath, routeModulePath) {
+  try {
+    app.use(basePath, require(routeModulePath));
+  } catch (err) {
+    console.error(`❌ [routes] Falha ao carregar ${routeModulePath}:`, err.message || err);
+    app.use(basePath, (_req, res) => {
+      res.status(503).send(`Módulo temporariamente indisponível: ${basePath}`);
+    });
+  }
+}
+
 // ===== View engine =====
 app.engine("ejs", engine);
 app.set("views", path.join(__dirname, "views"));

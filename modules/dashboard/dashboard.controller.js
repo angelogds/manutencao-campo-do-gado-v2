@@ -37,6 +37,27 @@ function index(req, res) {
     avisos,
     alertaAtivo,
   });
+}
+
+function sse(req, res) {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  alertsHub.subscribe('dashboard', res);
+
+  const atual = alertsService.getAlertaAtivo();
+  res.write(`event: estado_inicial\ndata: ${JSON.stringify({ alertaAtivo: atual })}\n\n`);
+
+  const ping = setInterval(() => {
+    try { res.write(`event: ping\ndata: ${JSON.stringify({ ts: Date.now() })}\n\n`); } catch (_e) {}
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(ping);
+    alertsHub.unsubscribe('dashboard', res);
+  });
 
   req.flash("success", "Aviso publicado no mural.");
   return res.redirect("/dashboard");
