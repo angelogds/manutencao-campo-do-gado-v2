@@ -6,7 +6,7 @@ function normRole(role) {
 function requireLogin(req, res, next) {
   if (req.session?.user) return next();
   req.flash("error", "Faça login para continuar.");
-  return res.redirect("/login");
+  return res.redirect("/auth/login");
 }
 
 /**
@@ -21,7 +21,7 @@ function requireRole(roles = []) {
     const user = req.session?.user;
     if (!user) {
       req.flash("error", "Faça login para continuar.");
-      return res.redirect("/login");
+      return res.redirect("/auth/login");
     }
 
     const role = normRole(user.role);
