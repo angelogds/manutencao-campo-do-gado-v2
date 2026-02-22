@@ -5,25 +5,25 @@ const router = express.Router();
 const { requireLogin } = require('../auth/auth.middleware');
 const ctrl = require('./dashboard.controller');
 
-function wrapRoute(handler, name) {
-  return (req, res, next) => {
-    res.locals.activeMenu = 'dashboard';
+// padrão igual aos outros módulos (auth/compras/estoque/etc)
+// + já marca o menu ativo do dashboard
+const safe = (fn, name) =>
+  typeof fn === 'function'
+    ? (req, res, next) => {
+        res.locals.activeMenu = 'dashboard';
+        try {
+          return fn(req, res, next);
+        } catch (err) {
+          return next(err);
+        }
+      }
+    : (_req, res) => {
+        console.error(`❌ [dashboard] Handler ${name} indefinido.`);
+        return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
+      };
 
-    if (typeof handler !== 'function') {
-      console.error(`❌ [dashboard] Handler ${name} indefinido.`);
-      return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
-    }
-
-    try {
-      return handler(req, res, next);
-    } catch (err) {
-      return next(err);
-    }
-  };
-}
-
-router.get("/", requireLogin, safe(ctrl.index, "index"));
-router.post("/avisos", requireLogin, safe(ctrl.createAviso, "createAviso"));
+router.get('/', requireLogin, safe(ctrl.index, 'index'));
+router.post('/avisos', requireLogin, safe(ctrl.createAviso, 'createAviso'));
 
 router.get('/alertas/stream', requireLogin, safe(ctrl.sse, 'sse'));
 router.post('/alertas/reconhecer', requireLogin, safe(ctrl.reconhecerAlerta, 'reconhecerAlerta'));
