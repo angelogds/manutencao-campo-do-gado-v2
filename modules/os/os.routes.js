@@ -44,5 +44,56 @@ router.get("/nova", requireLogin, requireRole(OS_ACCESS), safe("osNewForm"));
 router.post("/", requireLogin, requireRole(OS_ACCESS), safe("osCreate"));
 router.get("/:id", requireLogin, requireRole(OS_ACCESS), safe("osShow"));
 router.post("/:id/status", requireLogin, requireRole(OS_ACCESS), safe("osUpdateStatus"));
+function resolveCtrlFn(name, current) {
+  if (typeof current === 'function') return current;
+  try {
+    const fresh = require('./os.controller');
+    if (typeof fresh?.[name] === 'function') return fresh[name];
+  } catch (e) {
+    console.error(`❌ [os] Reload controller falhou para ${name}:`, e.message);
+  }
+  return null;
+}
+
+const safe = (fn, name) =>
+  typeof fn === "function"
+    ? (req, res, next) => {
+        try {
+          // garante menu ativo no layout
+          res.locals.activeMenu = "os";
+          return fn(req, res, next);
+        } catch (err) {
+          return next(err);
+        }
+      }
+    : (req, res, next) => {
+        const recovered = resolveCtrlFn(name, fn);
+        if (recovered) {
+          try {
+            res.locals.activeMenu = 'os';
+            return recovered(req, res, next);
+          } catch (err) {
+            return next(err);
+          }
+        }
+        console.error(`❌ [os] Handler ${name} indefinido.`);
+        return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
+      };
+
+// ✅ ROTAS CERTAS (prefixo /os já está no server.js)
+// GET  /os
+router.get("/", requireLogin, requireRole(OS_ACCESS), safe(ctrl.osIndex, "osIndex"));
+
+// GET  /os/nova
+router.get("/nova", requireLogin, requireRole(OS_ACCESS), safe(ctrl.osNewForm, "osNewForm"));
+
+// POST /os
+router.post("/", requireLogin, requireRole(OS_ACCESS), safe(ctrl.osCreate, "osCreate"));
+
+// GET  /os/:id
+router.get("/:id", requireLogin, requireRole(OS_ACCESS), safe(ctrl.osShow, "osShow"));
+
+// POST /os/:id/status
+router.post("/:id/status", requireLogin, requireRole(OS_ACCESS), safe(ctrl.osUpdateStatus, "osUpdateStatus"));
 
 module.exports = router;
