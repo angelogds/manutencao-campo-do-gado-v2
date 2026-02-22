@@ -96,21 +96,21 @@ try {
 }
 
 // ===== ROTAS =====
-mountRoute('/auth', './modules/auth/auth.routes');
-mountRoute('/dashboard', './modules/dashboard/dashboard.routes');
-mountRoute('/pcm', './modules/pcm/pcm.routes');
-mountRoute('/equipamentos', './modules/equipamentos/equipamentos.routes');
-mountRoute('/os', './modules/os/os.routes');
-mountRoute('/preventivas', './modules/preventivas/preventivas.routes');
-mountRoute('/compras', './modules/compras/compras.routes');
-mountRoute('/solicitacoes', './modules/solicitacoes/solicitacoes.routes');
-mountRoute('/estoque', './modules/estoque/estoque.routes');
-mountRoute('/almoxarifado', './modules/almoxarifado/almoxarifado.routes');
-mountRoute('/escala', './modules/escala/escala.routes');
-mountRoute('/avisos', './modules/avisos/avisos.routes');
-mountRoute('/usuarios', './modules/usuarios/usuarios.routes');
-mountRoute('/demandas', './modules/demandas/demandas.routes');
-mountRoute('/motores', './modules/motores/motores.routes'); // ✅ motores
+app.use("/auth", require("./modules/auth/auth.routes"));
+app.use("/dashboard", require("./modules/dashboard/dashboard.routes"));
+app.use("/pcm", require("./modules/pcm/pcm.routes"));
+app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
+app.use("/os", require("./modules/os/os.routes"));
+app.use("/preventivas", require("./modules/preventivas/preventivas.routes"));
+app.use("/compras", require("./modules/compras/compras.routes"));
+app.use("/solicitacoes", require("./modules/solicitacoes/solicitacoes.routes"));
+app.use("/estoque", require("./modules/estoque/estoque.routes"));
+app.use("/almoxarifado", require("./modules/almoxarifado/almoxarifado.routes"));
+app.use("/escala", require("./modules/escala/escala.routes"));
+app.use("/avisos", require("./modules/avisos/avisos.routes"));
+app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
+app.use("/demandas", require("./modules/demandas/demandas.routes"));
+app.use("/motores", require("./modules/motores/motores.routes")); // ✅ motores
 
 // ===== Home =====
 app.get("/", (req, res) => {

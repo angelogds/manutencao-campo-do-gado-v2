@@ -17,117 +17,103 @@ function configureWebPush() {
   return true;
 }
 
-function saveSubscription(input) {
-  const payload = input || {};
-  const userId = payload.userId;
-  const userAgent = payload.userAgent;
-  const subscription = payload.subscription || {};
-  const endpoint = subscription.endpoint;
-  const keys = subscription.keys || {};
-
+function saveSubscription({ userId, subscription, userAgent }) {
+  const endpoint = subscription?.endpoint;
+  const keys = subscription?.keys || {};
   if (!userId || !endpoint || !keys.p256dh || !keys.auth) {
     throw new Error('Subscription inválida.');
   }
 
-  const sql = [
-    'INSERT INTO web_push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, updated_at)',
-    "VALUES (?, ?, ?, ?, ?, datetime('now'))",
-    'ON CONFLICT(endpoint) DO UPDATE SET',
-    '  user_id = excluded.user_id,',
-    '  p256dh = excluded.p256dh,',
-    '  auth = excluded.auth,',
-    '  user_agent = excluded.user_agent,',
-    "  updated_at = datetime('now')",
-  ].join('\n');
+  db.prepare(`
+    INSERT INTO web_push_subscriptions (user_id, endpoint, p256dh, auth, user_agent, updated_at)
+    VALUES (?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(endpoint) DO UPDATE SET
+      user_id = excluded.user_id,
+      p256dh = excluded.p256dh,
+      auth = excluded.auth,
+      user_agent = excluded.user_agent,
+      updated_at = datetime('now')
+  `).run(Number(userId), endpoint, keys.p256dh, keys.auth, userAgent || null);
 
-  db.prepare(sql).run(Number(userId), endpoint, keys.p256dh, keys.auth, userAgent || null);
   return { ok: true };
 }
 
 function listSubscriptionsForUsers(userIds) {
-  if (!Array.isArray(userIds) || userIds.length === 0) return [];
-  const inPlaceholders = userIds.map(function () { return '?'; }).join(',');
-  const sql =
-    'SELECT id, user_id, endpoint, p256dh, auth ' +
-    'FROM web_push_subscriptions ' +
-    'WHERE user_id IN (' + inPlaceholders + ')';
-
-  return db.prepare(sql).all(...userIds.map(Number));
+  if (!userIds?.length) return [];
+  const inPlaceholders = userIds.map(() => '?').join(',');
+  return db.prepare(`
+    SELECT id, user_id, endpoint, p256dh, auth
+    FROM web_push_subscriptions
+    WHERE user_id IN (${inPlaceholders})
+  const placeholders = userIds.map(() => '?').join(',');
+  return db.prepare(`
+    SELECT id, user_id, endpoint, p256dh, auth
+    FROM web_push_subscriptions
+    WHERE user_id IN (${placeholders})
+  `).all(...userIds.map(Number));
 }
 
 function targetUserIdsForOS() {
-  return db.prepare('SELECT id FROM users WHERE ativo = 1').all().map(function (u) {
-    return Number(u.id);
-  });
+  // TODO: ajustar regra por perfil/permissão quando matriz de notificações estiver finalizada.
+  return db.prepare(`SELECT id FROM users WHERE ativo = 1`).all().map((u) => Number(u.id));
 }
 
-function createNotificationRows(input) {
-  const payload = input || {};
-  const osId = payload.osId;
-  const title = payload.title;
-  const body = payload.body;
-  const grau = payload.grau;
-
+function createNotificationRows({ osId, title, body, grau }) {
   const userIds = targetUserIdsForOS();
-  const stmt = db.prepare(
-    "INSERT INTO notificacoes_os (os_id, user_id, titulo, corpo, grau, status) VALUES (?, ?, ?, ?, ?, 'PENDENTE')"
-  );
-
+  const stmt = db.prepare(`
+    INSERT INTO notificacoes_os (os_id, user_id, titulo, corpo, grau, status)
+    VALUES (?, ?, ?, ?, ?, 'PENDENTE')
+  `);
   for (const userId of userIds) {
     stmt.run(Number(osId), userId, title, body, grau || null);
   }
   return userIds;
 }
 
-async function sendOSPushNotifications(input) {
-  const payloadInput = input || {};
-  const osId = payloadInput.osId;
-  const equipamento = payloadInput.equipamento;
-  const grau = payloadInput.grau;
-  const descricao = payloadInput.descricao;
-
+async function sendOSPushNotifications({ osId, equipamento, grau, descricao }) {
   const resumo = String(descricao || '').slice(0, 120);
-  const grauNorm = String(grau || '').toUpperCase();
-  const isCritica = ['CRITICO', 'CRÍTICO', 'ALTO', 'EMERGENCIAL'].includes(grauNorm);
-  const titlePrefix = isCritica ? 'OS CRÍTICA' : 'Nova OS';
-  const title = titlePrefix + ' - ' + (equipamento || 'Equipamento');
-  const body = 'OS #' + osId + ' • Grau: ' + (grau || '-') + ' • ' + resumo;
+  const titlePrefix = ['CRITICO', 'CRÍTICO', 'ALTO', 'EMERGENCIAL'].includes(String(grau || '').toUpperCase())
+    ? 'OS CRÍTICA'
+    : 'Nova OS';
+  const title = `${titlePrefix} - ${equipamento || 'Equipamento'}`;
+  const body = `OS #${osId} • Grau: ${grau || '-'} • ${resumo}`;
 
   const userIds = createNotificationRows({ osId, title, body, grau });
   const subscriptions = listSubscriptionsForUsers(userIds);
+
   if (!subscriptions.length) return { sent: 0, skipped: userIds.length };
 
   const enabled = configureWebPush();
-  if (!enabled) return { sent: 0, skipped: subscriptions.length };
+  if (!enabled) {
+    // TODO: configurar VAPID_PUBLIC_KEY e VAPID_PRIVATE_KEY para envio real de push.
+    return { sent: 0, skipped: subscriptions.length };
+  }
 
   let sent = 0;
   for (const sub of subscriptions) {
-    const pushPayload = JSON.stringify({
-      title: title,
-      body: body,
-      data: { id_os: Number(osId), url: '/os/' + osId },
+    const payload = JSON.stringify({
+      title,
+      body,
+      data: { id_os: Number(osId), url: `/os/${osId}` },
     });
-
     try {
-      await webPush.sendNotification(
-        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        pushPayload
-      );
-
-      db.prepare(
-        "UPDATE notificacoes_os SET status='ENVIADO', enviado_em=datetime('now') WHERE os_id=? AND user_id=?"
-      ).run(Number(osId), Number(sub.user_id));
+      await webPush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload);
+      db.prepare(`
+        UPDATE notificacoes_os
+        SET status='ENVIADO', enviado_em=datetime('now')
+        WHERE os_id=? AND user_id=?
+      `).run(Number(osId), Number(sub.user_id));
       sent += 1;
     } catch (e) {
-      db.prepare("UPDATE notificacoes_os SET status='ERRO', erro=? WHERE os_id=? AND user_id=?").run(
-        String((e && e.message) || e),
-        Number(osId),
-        Number(sub.user_id)
-      );
+      db.prepare(`
+        UPDATE notificacoes_os
+        SET status='ERRO', erro=?
+        WHERE os_id=? AND user_id=?
+      `).run(String(e.message || e), Number(osId), Number(sub.user_id));
     }
   }
 
-  return { sent: sent, skipped: Math.max(0, subscriptions.length - sent) };
+  return { sent, skipped: Math.max(0, subscriptions.length - sent) };
 }
 
 module.exports = { saveSubscription, sendOSPushNotifications, configureWebPush };
