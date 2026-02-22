@@ -16,6 +16,7 @@
         <div class="label">Vincular à Solicitação (opcional)</div>
         <select name="solicitacao_id" class="input">
           <option value="">-- sem vínculo --</option>
+          <% if (solicitacaoSelecionada) { %><option value="<%= solicitacaoSelecionada %>" selected>#<%= solicitacaoSelecionada %> (pré-selecionada)</option><% } %>
           <% (solicitacoes || []).forEach(s => { %>
             <option value="<%= s.id %>">
               #<%= s.id %> • <%= s.status %> • <%= s.setor || "-" %>
