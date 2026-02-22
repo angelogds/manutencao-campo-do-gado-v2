@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "start": "node database/migrate.js && node server.js",
     "migrate": "node database/migrate.js",
-    "seed": "node database/seed.js"
+    "seed": "node database/seed.js",
+    "test": "node --test tests/*.test.js"
   },
   "engines": {
     "node": ">=18"
@@ -24,7 +25,8 @@
     "express": "^4.19.2",
     "express-session": "^1.17.3",
     "multer": "^1.4.5-lts.1",
-    "pdfkit": "^0.15.0"
+    "pdfkit": "^0.15.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
