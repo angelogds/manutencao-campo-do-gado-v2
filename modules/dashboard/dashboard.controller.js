@@ -2,15 +2,7 @@
 const service = require("./dashboard.service");
 const alertsHub = require('../alerts/alerts.hub');
 const alertsService = require('../alerts/alerts.service');
-
-function getWebPushService() {
-  try {
-    return require('../notifications/webpush.service');
-  } catch (e) {
-    console.error('❌ [dashboard] webpush.service indisponível:', e.message || e);
-    return null;
-  }
-}
+const webPushService = require('../notifications/webpush.service');
 
 function index(req, res) {
   const page = Math.max(Number(req.query.page) || 1, 1);
@@ -45,6 +37,89 @@ function index(req, res) {
     avisos,
     alertaAtivo,
   });
+
+  req.flash("success", "Aviso publicado no mural.");
+  return res.redirect("/dashboard");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
 }
 
 function sse(req, res) {
@@ -85,10 +160,114 @@ function reconhecerAlerta(req, res) {
 
 function subscribePush(req, res) {
   try {
-    const webPushService = getWebPushService();
-    if (!webPushService?.saveSubscription) {
-      return res.status(503).json({ ok: false, error: 'Push indisponível no momento.' });
-    }
+    const result = webPushService.saveSubscription({
+      userId: req.session?.user?.id,
+      subscription: req.body?.subscription,
+      userAgent: req.headers['user-agent'] || null,
+    });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e.message || 'Falha ao registrar push.' });
+  }
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function sse(req, res) {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  alertsHub.subscribe('dashboard', res);
+
+  const atual = alertsService.getAlertaAtivo();
+  res.write(`event: estado_inicial\ndata: ${JSON.stringify({ alertaAtivo: atual })}\n\n`);
+
+  const ping = setInterval(() => {
+    try { res.write(`event: ping\ndata: ${JSON.stringify({ ts: Date.now() })}\n\n`); } catch (_e) {}
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(ping);
+    alertsHub.unsubscribe('dashboard', res);
+  });
+}
+
+function reconhecerAlerta(req, res) {
+  try {
+    const result = alertsService.reconhecerAlerta({
+      os_id: req.body.os_id,
+      user_id: req.session?.user?.id || null,
+      observacao: req.body.observacao || null,
+    });
+    alertsHub.publish('alerta_reconhecido', { os_id: result.os_id, reconhecido_por: req.session?.user?.id || null });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e.message || 'Erro ao reconhecer alerta.' });
+  }
+}
+
+
+function subscribePush(req, res) {
+  try {
+    const result = webPushService.saveSubscription({
+      userId: req.session?.user?.id,
+      subscription: req.body?.subscription,
+      userAgent: req.headers['user-agent'] || null,
+    });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e.message || 'Falha ao registrar push.' });
+  }
+}
+
+function createAviso(req, res) {
+  req.flash("success", "Cadastro de avisos foi movido para o módulo Avisos.");
+  return res.redirect("/avisos");
+}
+
+function sse(req, res) {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+
+  alertsHub.subscribe('dashboard', res);
+
+  const atual = alertsService.getAlertaAtivo();
+  res.write(`event: estado_inicial\ndata: ${JSON.stringify({ alertaAtivo: atual })}\n\n`);
+
+  const ping = setInterval(() => {
+    try { res.write(`event: ping\ndata: ${JSON.stringify({ ts: Date.now() })}\n\n`); } catch (_e) {}
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(ping);
+    alertsHub.unsubscribe('dashboard', res);
+  });
+}
+
+function reconhecerAlerta(req, res) {
+  try {
+    const result = alertsService.reconhecerAlerta({
+      os_id: req.body.os_id,
+      user_id: req.session?.user?.id || null,
+      observacao: req.body.observacao || null,
+    });
+    alertsHub.publish('alerta_reconhecido', { os_id: result.os_id, reconhecido_por: req.session?.user?.id || null });
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e.message || 'Erro ao reconhecer alerta.' });
+  }
+}
+
+
+function subscribePush(req, res) {
+  try {
     const result = webPushService.saveSubscription({
       userId: req.session?.user?.id,
       subscription: req.body?.subscription,
