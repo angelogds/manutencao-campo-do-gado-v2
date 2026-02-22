@@ -11,25 +11,38 @@ const dbPath = process.env.DB_PATH || defaultDevPath;
 const dir = path.dirname(dbPath);
 if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-// ✅ RESET CONTROLADO (use DB_RESET=1 só uma vez e depois remova)
-if (process.env.DB_RESET === "1") {
+const db = new Database(dbPath);
+
+// pragmas base
+db.pragma("journal_mode = WAL");
+db.pragma("foreign_keys = ON");
+
+function tableExists(name) {
+  const row = db
+    .prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`)
+    .get(name);
+  return !!row;
+}
+
+function osHasFKToUsersOld() {
   try {
-    if (fs.existsSync(dbPath)) {
-      fs.unlinkSync(dbPath);
-      console.log(`⚠️ DB_RESET=1 -> Banco removido: ${dbPath}`);
-    } else {
-      console.log(`⚠️ DB_RESET=1 -> Banco não existia: ${dbPath}`);
-    }
-  } catch (e) {
-    console.error("❌ Falha ao resetar DB:", e.message);
+    const fks = db.prepare(`PRAGMA foreign_key_list(os)`).all();
+    return fks.some((fk) => String(fk.table || "").toLowerCase() === "users_old");
+  } catch (_e) {
+    return false;
   }
 }
 
-// ✅ LOG do caminho real do DB (pra matar de vez dúvida de “qual DB está usando”)
-console.log("🗄️ SQLite DB em:", dbPath);
-
-const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+// ✅ Auto-fix: se a tabela OS referencia users_old e users_old não existe, desliga FKs
+try {
+  const broken = osHasFKToUsersOld() && !tableExists("users_old");
+  if (broken) {
+    console.log("⚠️ [db] Detectado FK quebrado: os -> users_old (tabela users_old não existe).");
+    console.log("⚠️ [db] Aplicando workaround: PRAGMA foreign_keys = OFF para permitir inserts.");
+    db.pragma("foreign_keys = OFF");
+  }
+} catch (e) {
+  console.log("⚠️ [db] Não foi possível checar FK quebrado:", e.message || e);
+}
 
 module.exports = db;
