@@ -1,26 +1,21 @@
 <!-- views/partials/sidebar.ejs -->
 <%
-  const role = String(user?.role || "").toUpperCase();
-
-  const isAdmin = role === "ADMIN";
-  const isAlmox = role === "ALMOXARIFE" || role === "ALMOXARIFADO";
-  const isDirecao = role === "DIRECAO" || role === "DIRETORIA";
-  const isCompras = role === "COMPRAS";
-  const isEncarregadoProd = role === "ENCARREGADO_PRODUCAO";
-
-  const canAlmoxArea = isAdmin || isAlmox; // Almoxarife + Motores
-  const canEstoque = isAdmin || isAlmox || isCompras;
-  const canMotores = isAdmin || isAlmox;
-
-  // Compras: (ajuste se você quiser leitura p/ direção/encarregado)
-  const canCompras = isAdmin || isCompras || isAlmox || isDirecao || isEncarregadoProd;
-  const canSolicitacoes = canCompras;
-  const canAlmoxarifado = isAdmin || isAlmox || isCompras;
-  const canDemandas = isAdmin || isDirecao;
-  const canPCM = isAdmin;
-
-  const canUsuarios = isAdmin;
-  const currentPcmSection = typeof activePcmSection !== "undefined" ? activePcmSection : "";
+  const role = normalizeRole(user?.role || '');
+  const canPainel = canAccessModule(role, 'painel_operacional');
+  const canPCM = canAccessModule(role, 'pcm');
+  const canEquipamentos = canAccessModule(role, 'equipamentos');
+  const canOS = canAccessModule(role, 'os_view');
+  const canPreventivas = canAccessModule(role, 'preventivas_view');
+  const canDemandas = canAccessModule(role, 'demandas_view');
+  const canSolicitacoes = canAccessModule(role, 'solicitacoes');
+  const canCompras = canAccessModule(role, 'compras');
+  const canAlmoxarifado = canAccessModule(role, 'almoxarifado');
+  const canEstoque = canAccessModule(role, 'estoque_view');
+  const canMotores = canAccessModule(role, 'motores');
+  const canAvisos = canAccessModule(role, 'avisos_view');
+  const canUsuarios = canAccessModule(role, 'usuarios');
+  const canEscala = canAccessModule(role, 'escala');
+  const currentPcmSection = typeof activePcmSection !== 'undefined' ? activePcmSection : '';
 %>
 
 <aside class="sidebar">
@@ -33,72 +28,56 @@
   </div>
 
   <nav class="nav">
-    <a class="nav-item <%= activeMenu === 'dashboard' ? 'active' : '' %>" href="/dashboard">
-      Painel Principal
-    </a>
+    <% if (canPainel) { %>
+      <a class="nav-item <%= activeMenu === 'dashboard' ? 'active' : '' %>" href="/dashboard">Painel Operacional</a>
+    <% } %>
 
-    <a class="nav-item <%= activeMenu === 'equipamentos' ? 'active' : '' %>" href="/equipamentos">
-      Equipamentos
-    </a>
+    <% if (canEquipamentos) { %>
+      <a class="nav-item <%= activeMenu === 'equipamentos' ? 'active' : '' %>" href="/equipamentos">Equipamentos</a>
+    <% } %>
 
-    <a class="nav-item <%= activeMenu === 'os' ? 'active' : '' %>" href="/os">
-      Ordens de Serviço
-    </a>
+    <% if (canOS) { %>
+      <a class="nav-item <%= activeMenu === 'os' ? 'active' : '' %>" href="/os">Ordens de Serviço</a>
+    <% } %>
 
-    <a class="nav-item <%= activeMenu === 'preventivas' ? 'active' : '' %>" href="/preventivas">
-      Preventivas
-    </a>
+    <% if (canPreventivas) { %>
+      <a class="nav-item <%= activeMenu === 'preventivas' ? 'active' : '' %>" href="/preventivas">Preventivas</a>
+    <% } %>
 
     <% if (canDemandas) { %>
-      <a class="nav-item <%= activeMenu === 'demandas' ? 'active' : '' %>" href="/demandas">
-        Demandas
-      </a>
+      <a class="nav-item <%= activeMenu === 'demandas' ? 'active' : '' %>" href="/demandas">Demandas</a>
     <% } %>
 
     <% if (canSolicitacoes) { %>
-      <a class="nav-item <%= activeMenu === 'solicitacoes' ? 'active' : '' %>" href="/solicitacoes">
-        Solicitações
-      </a>
+      <a class="nav-item <%= activeMenu === 'solicitacoes' ? 'active' : '' %>" href="/solicitacoes">Solicitações</a>
     <% } %>
 
     <% if (canCompras) { %>
-      <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">
-        Compras
-      </a>
+      <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">Compras</a>
     <% } %>
 
     <% if (canAlmoxarifado) { %>
-      <a class="nav-item <%= activeMenu === 'almoxarifado' ? 'active' : '' %>" href="/almoxarifado">
-        Almoxarifado
-      </a>
+      <a class="nav-item <%= activeMenu === 'almoxarifado' ? 'active' : '' %>" href="/almoxarifado">Almoxarifado</a>
     <% } %>
 
     <% if (canEstoque) { %>
-      <a class="nav-item <%= activeMenu === 'estoque' ? 'active' : '' %>" href="/estoque">
-        Estoque
-      </a>
+      <a class="nav-item <%= activeMenu === 'estoque' ? 'active' : '' %>" href="/estoque">Estoque</a>
     <% } %>
 
-  
     <% if (canMotores) { %>
-      <a class="nav-item <%= activeMenu === 'motores' ? 'active' : '' %>" href="/motores">
-        Motores
-      </a>
+      <a class="nav-item <%= activeMenu === 'motores' ? 'active' : '' %>" href="/motores">Motores</a>
     <% } %>
 
-    <a class="nav-item <%= activeMenu === 'escala' ? 'active' : '' %>" href="/escala">
-      Escala
-    </a>
+    <% if (canEscala) { %>
+      <a class="nav-item <%= activeMenu === 'escala' ? 'active' : '' %>" href="/escala">Escala</a>
+    <% } %>
 
-    <a class="nav-item <%= activeMenu === 'avisos' ? 'active' : '' %>" href="/avisos">
-      Avisos
-    </a>
-
+    <% if (canAvisos) { %>
+      <a class="nav-item <%= activeMenu === 'avisos' ? 'active' : '' %>" href="/avisos">Avisos</a>
+    <% } %>
 
     <% if (canPCM) { %>
-      <a class="nav-item <%= activeMenu === 'pcm' ? 'active' : '' %>" href="/pcm">
-        PCM – Planejamento e Controle da Manutenção
-      </a>
+      <a class="nav-item <%= activeMenu === 'pcm' ? 'active' : '' %>" href="/pcm">PCM – Planejamento e Controle da Manutenção</a>
       <% if (activeMenu === 'pcm') { %>
         <div style="margin:6px 0 10px 10px; display:grid; gap:4px;">
           <a class="nav-item <%= currentPcmSection === 'visao-geral' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm">• Visão Geral</a>
@@ -120,9 +99,7 @@
 
     <% if (canUsuarios) { %>
       <div class="nav-section">ADMIN</div>
-      <a class="nav-item <%= activeMenu === 'usuarios' ? 'active' : '' %>" href="/usuarios">
-        Gerenciar Usuários
-      </a>
+      <a class="nav-item <%= activeMenu === 'usuarios' ? 'active' : '' %>" href="/usuarios">Gerenciar Usuários</a>
     <% } %>
   </nav>
 

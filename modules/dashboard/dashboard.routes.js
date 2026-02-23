@@ -2,12 +2,13 @@
 const express = require('express');
 const router = express.Router();
 
-const { requireLogin } = require('../auth/auth.middleware');
+const { requireLogin, requireRole } = require('../auth/auth.middleware');
+const { ACCESS } = require('../../config/rbac');
 const ctrl = require('./dashboard.controller');
 
 // padrão igual aos outros módulos (auth/compras/estoque/etc)
 // + já marca o menu ativo do dashboard
-const safe = (fn, name) =>
+const wrap = (fn, name) =>
   typeof fn === 'function'
     ? (req, res, next) => {
         res.locals.activeMenu = 'dashboard';
@@ -22,11 +23,11 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-router.get('/', requireLogin, safe(ctrl.index, 'index'));
-router.post('/avisos', requireLogin, safe(ctrl.createAviso, 'createAviso'));
+router.get('/', requireLogin, requireRole(ACCESS.painel_operacional), wrap(ctrl.index, 'index'));
+router.post('/avisos', requireLogin, requireRole(ACCESS.avisos_manage), wrap(ctrl.createAviso, 'createAviso'));
 
-router.get('/alertas/stream', requireLogin, safe(ctrl.sse, 'sse'));
-router.post('/alertas/reconhecer', requireLogin, safe(ctrl.reconhecerAlerta, 'reconhecerAlerta'));
-router.post('/push/subscribe', requireLogin, safe(ctrl.subscribePush, 'subscribePush'));
+router.get('/alertas/stream', requireLogin, requireRole(ACCESS.painel_operacional), wrap(ctrl.sse, 'sse'));
+router.post('/alertas/reconhecer', requireLogin, requireRole(ACCESS.painel_operacional), wrap(ctrl.reconhecerAlerta, 'reconhecerAlerta'));
+router.post('/push/subscribe', requireLogin, requireRole(ACCESS.painel_operacional), wrap(ctrl.subscribePush, 'subscribePush'));
 
 module.exports = router;

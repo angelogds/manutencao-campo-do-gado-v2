@@ -2,7 +2,8 @@
 const express = require("express");
 const router = express.Router();
 
-const { requireLogin } = require("../auth/auth.middleware");
+const { requireLogin, requireRole } = require("../auth/auth.middleware");
+const { ACCESS } = require("../../config/rbac");
 
 // controller (carrega seguro)
 let controller = {};
@@ -35,32 +36,32 @@ const safe = (fn, name) =>
 
 // Página principal (semana atual ou por data)
 // GET /escala
-router.get("/", requireLogin, safe(controller.index, "index"));
+router.get("/", requireLogin, requireRole(ACCESS.escala), safe(controller.index, "index"));
 
 // Ver escala completa (opcional)
 // GET /escala/completa
-router.get("/completa", requireLogin, safe(controller.completa, "completa"));
+router.get("/completa", requireLogin, requireRole(ACCESS.escala), safe(controller.completa, "completa"));
 
 // Adicionar rápido (opcional)
 // POST /escala/adicionar
-router.post("/adicionar", requireLogin, safe(controller.adicionarRapido, "adicionarRapido"));
+router.post("/adicionar", requireLogin, requireRole(ACCESS.escala), safe(controller.adicionarRapido, "adicionarRapido"));
 
 // Lançar folga/atestado por período
 // POST /escala/ausencia
-router.post("/ausencia", requireLogin, safe(controller.lancarAusencia, "lancarAusencia"));
+router.post("/ausencia", requireLogin, requireRole(ACCESS.escala), safe(controller.lancarAusencia, "lancarAusencia"));
 
 // Editar semana (trocar turno)
 // GET /escala/editar/:id
-router.get("/editar/:id", requireLogin, safe(controller.editarSemana, "editarSemana"));
+router.get("/editar/:id", requireLogin, requireRole(ACCESS.escala), safe(controller.editarSemana, "editarSemana"));
 // POST /escala/editar/:id
-router.post("/editar/:id", requireLogin, safe(controller.salvarEdicao, "salvarEdicao"));
+router.post("/editar/:id", requireLogin, requireRole(ACCESS.escala), safe(controller.salvarEdicao, "salvarEdicao"));
 
 // PDF (semana)
 // GET /escala/pdf/semana/:id
-router.get("/pdf/semana/:id", requireLogin, safe(controller.pdfSemana, "pdfSemana"));
+router.get("/pdf/semana/:id", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfSemana, "pdfSemana"));
 
 // PDF (período start/end)  ex: /escala/pdf?start=2026-01-10&end=2026-02-15
 // GET /escala/pdf
-router.get("/pdf", requireLogin, safe(controller.pdfPeriodo, "pdfPeriodo"));
+router.get("/pdf", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfPeriodo, "pdfPeriodo"));
 
 module.exports = router;

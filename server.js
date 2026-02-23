@@ -15,6 +15,7 @@ const flash = require("connect-flash");
 const engine = require("ejs-mate");
 
 const dateUtil = require("./utils/date");
+const { canAccessModule, normalizeRole } = require("./config/rbac");
 const fmtBR =
   typeof dateUtil.fmtBR === "function" ? dateUtil.fmtBR : (v) => String(v ?? "-");
 const TZ = dateUtil.TZ || "America/Sao_Paulo";
@@ -63,6 +64,8 @@ app.use(flash());
 // ===== Globals (views) =====
 app.locals.TZ = TZ;
 app.locals.fmtBR = fmtBR;
+app.locals.canAccessModule = canAccessModule;
+app.locals.normalizeRole = normalizeRole;
 
 app.use((req, res, next) => {
   res.locals.user = req.session?.user || null;
@@ -72,6 +75,8 @@ app.use((req, res, next) => {
   };
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
+  res.locals.canAccessModule = canAccessModule;
+  res.locals.normalizeRole = normalizeRole;
 
   // evita crash no layout
   res.locals.activeMenu = res.locals.activeMenu || "";

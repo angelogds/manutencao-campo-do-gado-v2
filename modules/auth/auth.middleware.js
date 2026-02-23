@@ -1,12 +1,14 @@
 // modules/auth/auth.middleware.js
+const { normalizeRole } = require("../../config/rbac");
+
 function normRole(role) {
-  return String(role || "").trim().toUpperCase();
+  return normalizeRole(role);
 }
 
 function requireLogin(req, res, next) {
   if (req.session?.user) return next();
   req.flash("error", "Faça login para continuar.");
-  return res.redirect("/auth/login");
+  return res.redirect(`/auth/login?next=${encodeURIComponent(req.originalUrl || "/dashboard")}`);
 }
 
 /**
@@ -21,7 +23,7 @@ function requireRole(roles = []) {
     const user = req.session?.user;
     if (!user) {
       req.flash("error", "Faça login para continuar.");
-      return res.redirect("/auth/login");
+      return res.redirect(`/auth/login?next=${encodeURIComponent(req.originalUrl || "/dashboard")}`);
     }
 
     const role = normRole(user.role);
