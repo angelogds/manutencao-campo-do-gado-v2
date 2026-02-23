@@ -1,9 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
+const { ACCESS } = require("../../config/rbac");
 const ctrl = require("./pcm.controller");
 
-const PCM_ACCESS = ["ADMIN"];
+const PCM_ACCESS = ACCESS.pcm;
 
 router.get("/", requireLogin, requireRole(PCM_ACCESS), ctrl.index);
 router.get("/planejamento", requireLogin, requireRole(PCM_ACCESS), ctrl.planejamento);

@@ -1,6 +1,8 @@
 // modules/auth/auth.middleware.js
+const { normalizeRole } = require("../../config/rbac");
+
 function normRole(role) {
-  return String(role || "").trim().toUpperCase();
+  return normalizeRole(role);
 }
 
 function requireLogin(req, res, next) {

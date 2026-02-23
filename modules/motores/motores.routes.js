@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
+const { ACCESS } = require("../../config/rbac");
 
 let ctrl = {};
 try {
@@ -27,7 +28,7 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-const MOTORES_ACCESS = ["ALMOXARIFE", "ADMIN"];
+const MOTORES_ACCESS = ACCESS.motores;
 
 // GET /motores
 router.get("/", requireLogin, requireRole(MOTORES_ACCESS), safe(ctrl.index, "index"));

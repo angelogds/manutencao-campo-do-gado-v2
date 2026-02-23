@@ -5,6 +5,7 @@ const fs = require("fs");
 const router = express.Router();
 
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
+const { ACCESS } = require("../../config/rbac");
 const ctrl = require("./os.controller");
 
 const OS_ACCESS = ["MANUTENCAO", "MECANICO", "PRODUCAO", "ENCARREGADO", "DIRECAO"];

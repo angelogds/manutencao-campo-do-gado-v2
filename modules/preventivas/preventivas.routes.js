@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
+const { ACCESS } = require("../../config/rbac");
 
 // controller
 let ctrl = {};
@@ -29,7 +30,7 @@ const safe = (fn, name) =>
       };
 
 // Quem pode ver preventivas (ajuste se quiser)
-const PREV_ACCESS = ["ADMIN", "MECANICO", "PRODUCAO", "DIRETORIA", "RH"];
+const PREV_ACCESS = ACCESS.preventivas_view;
 
 // =====================================================
 // ✅ ROTAS (prefixo já é /preventivas no server.js)
@@ -48,7 +49,7 @@ router.get(
 router.get(
   "/nova",
   requireLogin,
-  requireRole(["ADMIN", "MECANICO"]),
+  requireRole(ACCESS.preventivas_manage),
   safe(ctrl.newForm, "newForm")
 );
 
@@ -56,7 +57,7 @@ router.get(
 router.post(
   "/",
   requireLogin,
-  requireRole(["ADMIN", "MECANICO"]),
+  requireRole(ACCESS.preventivas_manage),
   safe(ctrl.create, "create")
 );
 
@@ -72,7 +73,7 @@ router.get(
 router.post(
   "/:id/execucoes",
   requireLogin,
-  requireRole(["ADMIN", "MECANICO"]),
+  requireRole(ACCESS.preventivas_manage),
   safe(ctrl.execCreate, "execCreate")
 );
 
@@ -80,7 +81,7 @@ router.post(
 router.post(
   "/:id/execucoes/:execId/status",
   requireLogin,
-  requireRole(["ADMIN", "MECANICO"]),
+  requireRole(ACCESS.preventivas_manage),
   safe(ctrl.execUpdateStatus, "execUpdateStatus")
 );
 

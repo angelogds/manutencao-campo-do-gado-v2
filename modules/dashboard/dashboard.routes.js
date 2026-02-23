@@ -2,7 +2,8 @@
 const express = require('express');
 const router = express.Router();
 
-const { requireLogin } = require('../auth/auth.middleware');
+const { requireLogin, requireRole } = require('../auth/auth.middleware');
+const { ACCESS } = require('../../config/rbac');
 const ctrl = require('./dashboard.controller');
 
 // padrão igual aos outros módulos (auth/compras/estoque/etc)
