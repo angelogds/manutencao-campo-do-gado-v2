@@ -1,11 +1,11 @@
-// /server.js
+// server.js
 require("dotenv").config();
 
 try {
   require("./database/migrate");
   console.log("✅ Migrations carregadas");
 } catch (err) {
-  console.error("❌ Erro nas migrations:", err.message);
+  console.error("❌ Erro nas migrations:", err.message || err);
 }
 
 const express = require("express");
@@ -20,7 +20,15 @@ const fmtBR =
 const TZ = dateUtil.TZ || "America/Sao_Paulo";
 
 // ✅ RBAC helpers (para usar no EJS sem require)
-const { canAccessModule, normalizeRole } = require("./config/rbac");
+let canAccessModule = () => true;
+let normalizeRole = (v) => String(v || "").toLowerCase();
+try {
+  const rbac = require("./config/rbac");
+  if (typeof rbac.canAccessModule === "function") canAccessModule = rbac.canAccessModule;
+  if (typeof rbac.normalizeRole === "function") normalizeRole = rbac.normalizeRole;
+} catch (e) {
+  console.warn("⚠️ [rbac] não carregado (seguindo permissivo):", e.message || e);
+}
 
 const app = express();
 app.set("trust proxy", 1);
@@ -29,6 +37,15 @@ app.set("trust proxy", 1);
 app.engine("ejs", engine);
 app.set("views", path.join(__dirname, "views"));
 app.set("view engine", "ejs");
+
+// ✅ (IMPORTANTÍSSIMO) Se o layout antigo usa "incluir(...)" em PT-BR,
+// criamos um alias global pra apontar pro include padrão.
+app.locals.incluir = function (p) {
+  // aceita "parciais/..." e converte para "partials/..." (padrão atual)
+  if (typeof p !== "string") return p;
+  if (p.startsWith("parciais/")) return "partials/" + p.slice("parciais/".length);
+  return p;
+};
 
 // ===== Middlewares base =====
 app.use(express.json());
@@ -58,10 +75,14 @@ app.locals.fmtBR = fmtBR;
 
 app.use((req, res, next) => {
   res.locals.user = req.session?.user || null;
+
+  // ✅ flash sempre existe no EJS
   res.locals.flash = {
     success: req.flash("success") || [],
     error: req.flash("error") || [],
   };
+
+  // ✅ data helpers
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
 
@@ -69,11 +90,14 @@ app.use((req, res, next) => {
   res.locals.canAccessModule = canAccessModule;
   res.locals.normalizeRole = normalizeRole;
 
+  // ✅ alias "incluir" também disponível no res.locals (alguns layouts chamam direto)
+  res.locals.incluir = app.locals.incluir;
+
   // evita crash no layout
   res.locals.activeMenu = res.locals.activeMenu || "";
   res.locals.activePcmSection = res.locals.activePcmSection || "";
 
-  // compatibilidade com layouts antigos
+  // compatibilidade com layouts antigos que esperam resumoOS
   res.locals.resumoOS = res.locals.resumoOS || {
     abertas: 0,
     andamento: 0,
@@ -89,25 +113,36 @@ try {
   if (seed && typeof seed.runSeeds === "function") seed.runSeeds();
   else if (seed && typeof seed.ensureAdmin === "function") seed.ensureAdmin();
 } catch (err) {
-  console.warn("⚠️ Seed não carregado:", err.message);
+  console.warn("⚠️ Seed não carregado:", err.message || err);
 }
 
 // ===== ROTAS =====
-app.use("/auth", require("./modules/auth/auth.routes"));
-app.use("/dashboard", require("./modules/dashboard/dashboard.routes"));
-app.use("/pcm", require("./modules/pcm/pcm.routes"));
-app.use("/equipamentos", require("./modules/equipamentos/equipamentos.routes"));
-app.use("/os", require("./modules/os/os.routes"));
-app.use("/preventivas", require("./modules/preventivas/preventivas.routes"));
-app.use("/compras", require("./modules/compras/compras.routes"));
-app.use("/solicitacoes", require("./modules/solicitacoes/solicitacoes.routes"));
-app.use("/estoque", require("./modules/estoque/estoque.routes"));
-app.use("/almoxarifado", require("./modules/almoxarifado/almoxarifado.routes"));
-app.use("/escala", require("./modules/escala/escala.routes"));
-app.use("/avisos", require("./modules/avisos/avisos.routes"));
-app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
-app.use("/demandas", require("./modules/demandas/demandas.routes"));
-app.use("/motores", require("./modules/motores/motores.routes"));
+function mount(basePath, modPath) {
+  try {
+    app.use(basePath, require(modPath));
+  } catch (err) {
+    console.error(`❌ [routes] Falha ao carregar ${modPath}:`, err.message || err);
+    app.use(basePath, (_req, res) => {
+      res.status(503).send(`Módulo temporariamente indisponível: ${basePath}`);
+    });
+  }
+}
+
+mount("/auth", "./modules/auth/auth.routes");
+mount("/dashboard", "./modules/dashboard/dashboard.routes");
+mount("/pcm", "./modules/pcm/pcm.routes");
+mount("/equipamentos", "./modules/equipamentos/equipamentos.routes");
+mount("/os", "./modules/os/os.routes");
+mount("/preventivas", "./modules/preventivas/preventivas.routes");
+mount("/compras", "./modules/compras/compras.routes");
+mount("/solicitacoes", "./modules/solicitacoes/solicitacoes.routes");
+mount("/estoque", "./modules/estoque/estoque.routes");
+mount("/almoxarifado", "./modules/almoxarifado/almoxarifado.routes");
+mount("/escala", "./modules/escala/escala.routes");
+mount("/avisos", "./modules/avisos/avisos.routes");
+mount("/usuarios", "./modules/usuarios/usuarios.routes");
+mount("/demandas", "./modules/demandas/demandas.routes");
+mount("/motores", "./modules/motores/motores.routes");
 
 // ===== Home =====
 app.get("/", (req, res) => {
