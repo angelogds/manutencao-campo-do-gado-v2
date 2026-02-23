@@ -15,7 +15,6 @@
     }
 
     body{ margin:0; font-family: Arial, Helvetica, sans-serif; background:#f3f4f6; }
-
     .app{ display:flex; min-height:100vh; }
 
     .sidebar{
@@ -110,7 +109,6 @@
 
 <body>
   <%
-    // ===== Normalização do usuário (não quebra se os campos mudarem) =====
     const u = user || null;
     const uName = u ? (u.nome || u.name || u.usuario || "Usuário") : "";
     const uRoleRaw = u ? (u.funcao || u.Função || u.role || u.perfil || u.cargo || "") : "";
@@ -120,8 +118,8 @@
   %>
 
   <div class="app" id="appRoot">
-    <!-- ✅ Ajustado para o padrão pt-BR -->
-    <%- include("parciais/sidebar") %>
+    <!-- ✅ CAMINHO CERTO: views/partials/sidebar.ejs -->
+    <%- include("partials/sidebar") %>
 
     <main class="main">
       <header class="topbar">
@@ -146,8 +144,8 @@
         </div>
       </header>
 
-      <!-- ✅ Ajustado para o padrão pt-BR -->
-      <section class="flash"><%- include("parciais/alerts") %></section>
+      <!-- ✅ CAMINHO CERTO: views/partials/alerts.ejs -->
+      <section class="flash"><%- include("partials/alerts") %></section>
 
       <section class="content"><%- body %></section>
 
