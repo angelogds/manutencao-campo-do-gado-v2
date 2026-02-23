@@ -96,10 +96,26 @@ function getOSById(id) {
 }
 
 function listOS() {
+  const cols = getOSColumns();
+
+  const prioridadeExpr = cols.includes("prioridade") ? "prioridade" : "NULL";
+  const createdExpr = cols.includes("created_at")
+    ? "created_at"
+    : (cols.includes("opened_at") ? "opened_at" : "NULL");
+  const startedExpr = cols.includes("started_at")
+    ? "started_at"
+    : (cols.includes("data_inicio") ? "data_inicio" : "NULL");
+  const closedExpr = cols.includes("closed_at")
+    ? "closed_at"
+    : (cols.includes("data_conclusao") ? "data_conclusao" : "NULL");
+
   return db
     .prepare(
-      `SELECT id, equipamento, descricao, tipo, status, prioridade,
-              created_at, started_at, closed_at
+      `SELECT id, equipamento, descricao, tipo, status,
+              ${prioridadeExpr} AS prioridade,
+              ${createdExpr} AS created_at,
+              ${startedExpr} AS started_at,
+              ${closedExpr} AS closed_at
        FROM os
        ORDER BY id DESC
        LIMIT 300`
