@@ -108,54 +108,59 @@
 </head>
 
 <body>
-  <div class="app" id="appRoot">
-    <%- include("partials/sidebar") %>
+  <% const authFullscreen = !!(typeof locals !== 'undefined' && locals.authFullscreen); %>
+  <% if (authFullscreen) { %>
+    <%- body %>
+  <% } else { %>
+    <div class="app" id="appRoot">
+      <%- include("partials/sidebar") %>
 
-    <main class="main">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Mostrar/ocultar menu">☰</button>
-          <div>
-            <div class="topbar-title">Manutenção Campo do Gado</div>
-            <div class="topbar-sub">Sistema Industrial V2</div>
+      <main class="main">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button type="button" class="sidebar-toggle" id="sidebarToggle" aria-label="Mostrar/ocultar menu">☰</button>
+            <div>
+              <div class="topbar-title">Manutenção Campo do Gado</div>
+              <div class="topbar-sub">Sistema Industrial V2</div>
+            </div>
           </div>
-        </div>
 
-        <div style="display:flex; align-items:center;">
-          <% if (user) { %>
-            <% if (user.photo_path) { %>
-              <img class="user-avatar" src="<%= user.photo_path %>" alt="Foto do usuário" />
+          <div style="display:flex; align-items:center;">
+            <% if (user) { %>
+              <% if (user.photo_path) { %>
+                <img class="user-avatar" src="<%= user.photo_path %>" alt="Foto do usuário" />
+              <% } %>
+              <div class="pill"><%= user.name %> • <%= String(user.role || '').toUpperCase() %></div>
+              <form action="/auth/logout" method="POST" style="margin:0;"><button class="btn-ghost" type="submit">Sair</button></form>
             <% } %>
-            <div class="pill"><%= user.name %> • <%= String(user.role || '').toUpperCase() %></div>
-            <form action="/auth/logout" method="POST" style="margin:0;"><button class="btn-ghost" type="submit">Sair</button></form>
-          <% } %>
-        </div>
-      </header>
+          </div>
+        </header>
 
-      <section class="flash"><%- include("partials/alerts") %></section>
-      <section class="content"><%- body %></section>
-      <footer class="footer"><div>Manutenção Industrial • Campo do Gado</div><div>© <%= new Date().getFullYear() %> • Sistema V2</div></footer>
-    </main>
-  </div>
+        <section class="flash"><%- include("partials/alerts") %></section>
+        <section class="content"><%- body %></section>
+        <footer class="footer"><div>Manutenção Industrial • Campo do Gado</div><div>© <%= new Date().getFullYear() %> • Sistema V2</div></footer>
+      </main>
+    </div>
 
-  <script>
-    (function () {
-      const app = document.getElementById('appRoot');
-      const btn = document.getElementById('sidebarToggle');
-      if (!app || !btn) return;
+    <script>
+      (function () {
+        const app = document.getElementById('appRoot');
+        const btn = document.getElementById('sidebarToggle');
+        if (!app || !btn) return;
 
-      function isMobile() {
-        return window.matchMedia('(max-width: 900px)').matches;
-      }
-
-      btn.addEventListener('click', function () {
-        if (isMobile()) {
-          app.classList.toggle('mobile-sidebar-open');
-          return;
+        function isMobile() {
+          return window.matchMedia('(max-width: 900px)').matches;
         }
-        app.classList.toggle('sidebar-collapsed');
-      });
-    })();
-  </script>
+
+        btn.addEventListener('click', function () {
+          if (isMobile()) {
+            app.classList.toggle('mobile-sidebar-open');
+            return;
+          }
+          app.classList.toggle('sidebar-collapsed');
+        });
+      })();
+    </script>
+  <% } %>
 </body>
 </html>
