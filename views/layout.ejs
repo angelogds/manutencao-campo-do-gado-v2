@@ -15,6 +15,7 @@
     }
 
     body{ margin:0; font-family: Arial, Helvetica, sans-serif; background:#f3f4f6; }
+
     .app{ display:flex; min-height:100vh; }
 
     .sidebar{
@@ -108,17 +109,7 @@
 </head>
 
 <body>
-  <%
-    const u = user || null;
-    const uName = u ? (u.nome || u.name || u.usuario || "Usuário") : "";
-    const uRoleRaw = u ? (u.funcao || u.Função || u.role || u.perfil || u.cargo || "") : "";
-    const uRole = String(uRoleRaw || "").trim();
-    const uRoleLabel = uRole ? uRole.toUpperCase() : "SEM PERFIL";
-    const uPhoto = u ? (u.photo_path || u.foto_path || u.foto || u.photo || "") : "";
-  %>
-
   <div class="app" id="appRoot">
-    <!-- ✅ CAMINHO CERTO: views/partials/sidebar.ejs -->
     <%- include("partials/sidebar") %>
 
     <main class="main">
@@ -132,27 +123,19 @@
         </div>
 
         <div style="display:flex; align-items:center;">
-          <% if (u) { %>
-            <% if (uPhoto) { %>
-              <img class="user-avatar" src="<%= uPhoto %>" alt="Foto do usuário" />
+          <% if (user) { %>
+            <% if (user.photo_path) { %>
+              <img class="user-avatar" src="<%= user.photo_path %>" alt="Foto do usuário" />
             <% } %>
-            <div class="pill"><%= uName %> • <%= uRoleLabel %></div>
-            <form action="/auth/logout" method="POST" style="margin:0;">
-              <button class="btn-ghost" type="submit">Sair</button>
-            </form>
+            <div class="pill"><%= user.name %> • <%= String(user.role || '').toUpperCase() %></div>
+            <form action="/auth/logout" method="POST" style="margin:0;"><button class="btn-ghost" type="submit">Sair</button></form>
           <% } %>
         </div>
       </header>
 
-      <!-- ✅ CAMINHO CERTO: views/partials/alerts.ejs -->
       <section class="flash"><%- include("partials/alerts") %></section>
-
       <section class="content"><%- body %></section>
-
-      <footer class="footer">
-        <div>Manutenção Industrial • Campo do Gado</div>
-        <div>© <%= new Date().getFullYear() %> • Sistema V2</div>
-      </footer>
+      <footer class="footer"><div>Manutenção Industrial • Campo do Gado</div><div>© <%= new Date().getFullYear() %> • Sistema V2</div></footer>
     </main>
   </div>
 
