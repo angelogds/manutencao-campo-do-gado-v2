@@ -25,6 +25,7 @@
     <% } %>
 
     <form action="/auth/login" method="POST">
+      <input type="hidden" name="next" value="<%= next || "" %>" />
       <label>Email</label>
       <input
         type="email"

@@ -264,9 +264,10 @@ function getOSPainel(page = 1, pageSize = 10) {
     const itens = db
       .prepare(
         `
-          SELECT o.id, o.equipamento, o.descricao, o.tipo, o.status, o.opened_at, COALESCE(o.prioridade,'MEDIA') AS prioridade, ${grauExpr} AS grau, COALESCE(e.setor,'-') AS setor
+          SELECT o.id, COALESCE(e.nome, o.equipamento_manual, o.equipamento) AS equipamento, o.descricao, o.tipo, o.status, o.opened_at, COALESCE(o.prioridade,'MEDIA') AS prioridade, ${grauExpr} AS grau, COALESCE(e.setor,'-') AS setor, COALESCE(u.name,'-') AS solicitante
           FROM os o
           LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+          LEFT JOIN users u ON u.id = o.opened_by
           ORDER BY
             CASE UPPER(COALESCE(prioridade,'MEDIA'))
               WHEN 'EMERGENCIAL' THEN 1
@@ -523,10 +524,11 @@ function getOSEmAndamento() {
   return safeGet(() => {
     const grauExpr = resolveOSGrauExpression();
     return db.prepare(`
-      SELECT o.id, o.equipamento, ${grauExpr} AS grau, o.status, o.opened_at,
+      SELECT o.id, COALESCE(e.nome, o.equipamento_manual, o.equipamento) AS equipamento, ${grauExpr} AS grau, o.status, o.opened_at,
              COALESCE(u.name, 'Não atribuído') AS mecanico,
              ex.iniciado_em
       FROM os o
+      LEFT JOIN equipamentos e ON e.id = o.equipamento_id
       LEFT JOIN os_execucoes ex ON ex.os_id = o.id AND ex.finalizado_em IS NULL
       LEFT JOIN users u ON u.id = ex.mecanico_user_id
       WHERE UPPER(COALESCE(o.status,'')) IN ('ANDAMENTO','EM_ANDAMENTO')

@@ -7,7 +7,7 @@ const ctrl = require('./dashboard.controller');
 
 // padrão igual aos outros módulos (auth/compras/estoque/etc)
 // + já marca o menu ativo do dashboard
-const safe = (fn, name) =>
+const wrap = (fn, name) =>
   typeof fn === 'function'
     ? (req, res, next) => {
         res.locals.activeMenu = 'dashboard';
@@ -22,11 +22,11 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-router.get('/', requireLogin, safe(ctrl.index, 'index'));
-router.post('/avisos', requireLogin, safe(ctrl.createAviso, 'createAviso'));
+router.get('/', requireLogin, wrap(ctrl.index, 'index'));
+router.post('/avisos', requireLogin, wrap(ctrl.createAviso, 'createAviso'));
 
-router.get('/alertas/stream', requireLogin, safe(ctrl.sse, 'sse'));
-router.post('/alertas/reconhecer', requireLogin, safe(ctrl.reconhecerAlerta, 'reconhecerAlerta'));
-router.post('/push/subscribe', requireLogin, safe(ctrl.subscribePush, 'subscribePush'));
+router.get('/alertas/stream', requireLogin, wrap(ctrl.sse, 'sse'));
+router.post('/alertas/reconhecer', requireLogin, wrap(ctrl.reconhecerAlerta, 'reconhecerAlerta'));
+router.post('/push/subscribe', requireLogin, wrap(ctrl.subscribePush, 'subscribePush'));
 
 module.exports = router;

@@ -1,145 +1,106 @@
 <% layout('layout') %>
 
 <style>
-  .card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
-    padding: 24px;
-  }
-
-  .form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .form-group label {
-    font-weight: 600;
-    font-size: 14px;
-  }
-
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    padding: 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
-    font-size: 14px;
-  }
-
-  .form-group textarea {
-    min-height: 110px;
-    resize: vertical;
-  }
-
-  .form-full {
-    grid-column: span 2;
-  }
-
-  .form-actions {
-    margin-top: 20px;
-    display: flex;
-    gap: 10px;
-  }
-
-  .btn-primary {
-    background: #16a34a;
-    color: white;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .btn-primary:hover {
-    background: #15803d;
-  }
-
-  .btn-cancel {
-    background: #f3f4f6;
-    border: 1px solid #d1d5db;
-    padding: 10px 18px;
-    border-radius: 10px;
-    text-decoration: none;
-    color: #374151;
-    font-weight: 600;
-  }
-
-  .muted {
-    font-size: 13px;
-    color: #6b7280;
-    margin-bottom: 12px;
-  }
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:24px; }
+  .form-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-full { grid-column:span 2; }
+  .input, textarea, select { padding:10px; border:1px solid #d1d5db; border-radius:10px; font-size:14px; width:100%; }
+  textarea { min-height:120px; resize:vertical; }
+  .muted { color:#64748b; font-size:13px; }
+  .actions { display:flex; align-items:center; justify-content:space-between; margin-top:16px; }
+  .camera-btn { border:1px solid #d1d5db; background:#fff; border-radius:10px; padding:10px 12px; cursor:pointer; }
+  .camera-btn:hover { background:#eff6ff; border-color:#93c5fd; }
+  .preview { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .preview-item { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:4px 8px; font-size:12px; }
+  @media(max-width:900px){ .form-grid { grid-template-columns:1fr; } .form-full { grid-column:span 1; } }
 </style>
 
 <div class="card">
   <h1>Nova Ordem de Serviço</h1>
-  <div class="muted">
-    Selecione um equipamento cadastrado ou informe manualmente.
-  </div>
+  <div class="muted">Selecione equipamento cadastrado ou informe manual. Pelo menos um dos dois é obrigatório.</div>
 
-  <form method="POST" action="/os">
+  <form method="POST" action="/os" enctype="multipart/form-data" id="os-form">
     <div class="form-grid">
-
-      <!-- Equipamento select -->
       <div class="form-group">
         <label>Equipamento (cadastro)</label>
-        <select name="equipamento_id">
+        <select name="equipamento_id" id="equipamento_id">
           <option value="">Selecione...</option>
-          <% equipamentos.forEach(e => { %>
-            <option value="<%= e.id %>">
-              <%= e.codigo ? e.codigo + ' - ' : '' %><%= e.nome %>
-            </option>
+          <% (equipamentos || []).forEach(e => { %>
+            <option value="<%= e.id %>" <%= String(prefillEquipamentoId||'')===String(e.id)?'selected':'' %>><%= e.codigo ? e.codigo + ' - ' : '' %><%= e.nome %></option>
           <% }) %>
         </select>
       </div>
 
-      <!-- Equipamento texto -->
       <div class="form-group">
         <label>Equipamento (manual)</label>
-        <input type="text" name="equipamento_texto" placeholder="Ex: Digestor Laranja" />
+        <input class="input" type="text" name="equipamento_manual" id="equipamento_manual" placeholder="Ex.: Digestor sem cadastro" />
       </div>
 
-      <!-- Tipo -->
       <div class="form-group">
-        <label>Tipo</label>
-        <select name="tipo">
+        <label>Tipo da OS</label>
+        <select name="tipo" class="input" required>
           <option value="CORRETIVA">Corretiva</option>
           <option value="PREVENTIVA">Preventiva</option>
-          <option value="NR12">NR12</option>
-          <option value="OUTRA">Outra</option>
+          <option value="NRS">NRs (não conformidades)</option>
+          <option value="OUTROS">Outros</option>
         </select>
       </div>
 
-
       <div class="form-group">
-        <label>Grau da OS</label>
-        <select name="grau">
-          <% (graus || ['BAIXO','MEDIO','ALTO','CRITICO']).forEach(function(g){ %>
-            <option value="<%= g %>"><%= g %></option>
+        <label>Grau</label>
+        <select name="grau" class="input" required>
+          <% (graus || ['BAIXA','MEDIA','ALTA','CRITICA']).forEach(g => { %>
+            <option value="<%= g %>"><%= g === 'MEDIA' ? 'Média' : (g === 'CRITICA' ? 'Crítica' : g.charAt(0) + g.slice(1).toLowerCase()) %></option>
           <% }) %>
         </select>
       </div>
 
-      <!-- Descrição -->
+      
+
+
       <div class="form-group form-full">
-        <label>Descrição do serviço</label>
-        <textarea name="descricao" placeholder="Descreva o serviço realizado..."></textarea>
+        <label>Descrição do serviço *</label>
+        <textarea name="descricao" class="input" required placeholder="Descreva o problema encontrado"></textarea>
       </div>
 
+      <div class="form-group form-full">
+        <label>Fotos de abertura (opcional)</label>
+        <input id="abertura_fotos" type="file" name="abertura_fotos" accept="image/*" multiple style="display:none" />
+        <div>
+          <button type="button" class="camera-btn" onclick="document.getElementById('abertura_fotos').click()">📷 Adicionar fotos</button>
+          <span class="muted">Registro visual do estado inicial.</span>
+        </div>
+        <div class="preview" id="preview-abertura"></div>
+      </div>
     </div>
 
-    <div class="form-actions">
-      <button type="submit" class="btn-primary">Salvar OS</button>
-      <a href="/os" class="btn-cancel">Cancelar</a>
+    <div class="actions">
+      <a href="/os" class="btn btn-ghost">Cancelar</a>
+      <button type="submit" class="btn btn-green">Salvar OS</button>
     </div>
   </form>
 </div>
+
+<script>
+  const fileInput = document.getElementById('abertura_fotos');
+  const preview = document.getElementById('preview-abertura');
+  fileInput.addEventListener('change', function(){
+    preview.innerHTML = '';
+    Array.from(fileInput.files || []).forEach(f => {
+      const el = document.createElement('span');
+      el.className = 'preview-item';
+      el.textContent = f.name;
+      preview.appendChild(el);
+    });
+  });
+
+  document.getElementById('os-form').addEventListener('submit', function(e){
+    const id = document.getElementById('equipamento_id').value.trim();
+    const manual = document.getElementById('equipamento_manual').value.trim();
+    if (!id && !manual) {
+      e.preventDefault();
+      alert('Informe um equipamento cadastrado ou manual.');
+    }
+  });
+</script>
