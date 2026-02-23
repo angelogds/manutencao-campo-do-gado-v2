@@ -23,11 +23,11 @@ const wrap = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-router.get('/', requireLogin, requireRole(ACCESS.painel_operacional), wrap(ctrl.index, 'index'));
-router.post('/avisos', requireLogin, requireRole(ACCESS.avisos_manage), wrap(ctrl.createAviso, 'createAviso'));
+router.get('/', requireLogin, wrap(ctrl.index, 'index'));
+router.post('/avisos', requireLogin, wrap(ctrl.createAviso, 'createAviso'));
 
-router.get('/alertas/stream', requireLogin, requireRole(ACCESS.painel_operacional), wrap(ctrl.sse, 'sse'));
-router.post('/alertas/reconhecer', requireLogin, requireRole(ACCESS.painel_operacional), wrap(ctrl.reconhecerAlerta, 'reconhecerAlerta'));
-router.post('/push/subscribe', requireLogin, requireRole(ACCESS.painel_operacional), wrap(ctrl.subscribePush, 'subscribePush'));
+router.get('/alertas/stream', requireLogin, wrap(ctrl.sse, 'sse'));
+router.post('/alertas/reconhecer', requireLogin, wrap(ctrl.reconhecerAlerta, 'reconhecerAlerta'));
+router.post('/push/subscribe', requireLogin, wrap(ctrl.subscribePush, 'subscribePush'));
 
 module.exports = router;

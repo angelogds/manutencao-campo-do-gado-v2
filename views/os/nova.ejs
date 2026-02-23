@@ -56,8 +56,10 @@
         </select>
       </div>
 
-      
-
+      <div class="form-group form-full">
+        <label>Solicitante (usuário logado)</label>
+        <input class="input" type="text" readonly value="<%= user?.name || '-' %>" />
+      </div>
 
       <div class="form-group form-full">
         <label>Descrição do serviço *</label>

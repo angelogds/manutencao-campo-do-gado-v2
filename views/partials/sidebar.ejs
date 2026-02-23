@@ -1,5 +1,6 @@
 <!-- views/partials/sidebar.ejs -->
 <%
+  const { canAccessModule, normalizeRole } = require(process.cwd() + '/config/rbac');
   const role = normalizeRole(user?.role || '');
   const canPainel = canAccessModule(role, 'painel_operacional');
   const canPCM = canAccessModule(role, 'pcm');

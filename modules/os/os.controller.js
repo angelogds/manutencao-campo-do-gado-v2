@@ -32,11 +32,6 @@ function osCreate(req, res) {
   try {
     const { equipamento_id, equipamento_manual, descricao, tipo, grau } = req.body;
 
-    if (!req.session?.user?.id) {
-      req.flash("error", "Sessão inválida. Faça login novamente para abrir a OS.");
-      return res.redirect(`/auth/login?next=${encodeURIComponent("/os/nova")}`);
-    }
-
     const id = service.createOS({
       equipamento_id: equipamento_id ? Number(equipamento_id) : null,
       equipamento_manual,
