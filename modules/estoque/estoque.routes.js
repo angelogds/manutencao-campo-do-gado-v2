@@ -3,13 +3,14 @@ const express = require("express");
 const router = express.Router();
 
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
+const { ACCESS } = require("../../config/rbac");
 
 // Permissões Estoque:
 // - ALMOXARIFADO: controla entradas/saídas
 // - MECANICO: consulta (se quiser)
 // - DIRETORIA: consulta
 // - ADMIN: tudo (admin passa automaticamente no requireRole, se seu middleware faz isso)
-const ESTOQUE_ACCESS = ["ALMOXARIFADO", "MECANICO", "DIRETORIA", "almoxarifado", "mecanico", "diretoria"];
+const ESTOQUE_ACCESS = ACCESS.estoque_view;
 
 let ctrl = {};
 try {
@@ -48,7 +49,7 @@ router.get("/", requireLogin, requireRole(ESTOQUE_ACCESS), safe(ctrl.estoqueInde
 router.get(
   "/novo",
   requireLogin,
-  requireRole(["ALMOXARIFADO", "DIRETORIA", "almoxarifado", "diretoria"]),
+  requireRole(ACCESS.estoque_manage),
   safe(ctrl.estoqueNewForm, "estoqueNewForm")
 );
 
@@ -56,7 +57,7 @@ router.get(
 router.post(
   "/",
   requireLogin,
-  requireRole(["ALMOXARIFADO", "DIRETORIA", "almoxarifado", "diretoria"]),
+  requireRole(ACCESS.estoque_manage),
   safe(ctrl.estoqueCreate, "estoqueCreate")
 );
 
@@ -67,7 +68,7 @@ router.get("/:id", requireLogin, requireRole(ESTOQUE_ACCESS), safe(ctrl.estoqueS
 router.post(
   "/:id/mov",
   requireLogin,
-  requireRole(["ALMOXARIFADO", "DIRETORIA", "almoxarifado", "diretoria"]),
+  requireRole(ACCESS.estoque_manage),
   safe(ctrl.estoqueMovCreate, "estoqueMovCreate")
 );
 

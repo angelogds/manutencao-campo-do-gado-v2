@@ -5,6 +5,7 @@ const multer = require("multer");
 const router = express.Router();
 
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
+const { ACCESS } = require("../../config/rbac");
 
 let ctrl = {};
 try {
@@ -35,7 +36,7 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-const USERS_ACCESS = ["ADMIN", "DIRECAO", "DIRETORIA", "RH", "admin", "direcao", "diretoria", "rh"];
+const USERS_ACCESS = ACCESS.usuarios;
 
 router.get("/", requireLogin, requireRole(USERS_ACCESS), safe(ctrl.list, "list"));
 router.get("/usuarios", requireLogin, requireRole(USERS_ACCESS), safe(ctrl.list, "list"));

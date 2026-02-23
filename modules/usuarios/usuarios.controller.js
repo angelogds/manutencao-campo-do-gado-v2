@@ -4,15 +4,15 @@ const fs = require("fs");
 const service = require("./usuarios.service");
 
 const ROLES = [
-  { key: "ADMIN", label: "Admin" },
-  { key: "DIRECAO", label: "Direção" },
-  { key: "RH", label: "RH" },
-  { key: "ENCARREGADO_PRODUCAO", label: "Encarregado de Produção" },
-  { key: "PRODUCAO", label: "Produção" },
-  { key: "MECANICO", label: "Mecânico" },
-  { key: "ALMOXARIFE", label: "Almoxarife" },
-  { key: "COMPRAS", label: "Compras" },
-  { key: "MANUTENCAO", label: "Manutenção (Supervisor)" },
+  { key: "ADMIN", label: "admin" },
+  { key: "DIRETORIA", label: "diretoria" },
+  { key: "RH", label: "rh" },
+  { key: "ENCARREGADO_PRODUCAO", label: "encarregado_producao" },
+  { key: "PRODUCAO", label: "producao" },
+  { key: "MECANICO", label: "mecanico" },
+  { key: "ALMOXARIFADO", label: "almoxarifado" },
+  { key: "COMPRAS", label: "compras" },
+  { key: "MANUTENCAO_SUPERVISOR", label: "manutencao_supervisor" },
 ];
 
 function ensureUploadDir() {

@@ -2,8 +2,9 @@ const express = require("express");
 const router = express.Router();
 
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
+const { ACCESS } = require("../../config/rbac");
 
-const COMPRAS_ACCESS = ["compras", "diretoria", "ADMIN"];
+const COMPRAS_ACCESS = ACCESS.compras;
 
 let ctrl = {};
 try {

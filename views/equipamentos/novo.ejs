@@ -1,138 +1,22 @@
 <% layout('layout') %>
 
-<style>
-  .card {
-    background: #fff;
-    border: 1px solid #e5e7eb;
-    border-radius: 16px;
-    padding: 24px;
-  }
-
-  .muted {
-    font-size: 13px;
-    color: #6b7280;
-    margin-bottom: 12px;
-  }
-
-  .form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-  }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .form-group label {
-    font-weight: 600;
-    font-size: 14px;
-  }
-
-  .form-group input,
-  .form-group select,
-  .form-group textarea {
-    padding: 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
-    font-size: 14px;
-  }
-
-  .form-group textarea {
-    min-height: 110px;
-    resize: vertical;
-  }
-
-  .form-full {
-    grid-column: span 2;
-  }
-
-  .form-actions {
-    margin-top: 20px;
-    display: flex;
-    gap: 10px;
-  }
-
-  .btn-primary {
-    background: #16a34a;
-    color: white;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-weight: 700;
-    cursor: pointer;
-  }
-  .btn-primary:hover { background: #15803d; }
-
-  .btn-cancel {
-    background: #f3f4f6;
-    border: 1px solid #d1d5db;
-    padding: 10px 18px;
-    border-radius: 10px;
-    text-decoration: none;
-    color: #374151;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-  }
-</style>
-
 <div class="card">
   <h1>Novo Equipamento</h1>
-  <div class="muted">Cadastre um equipamento da planta.</div>
-
-  <form action="/equipamentos" method="POST">
-    <div class="form-grid">
-
-      <div class="form-group">
-        <label for="codigo">Código</label>
-        <input id="codigo" name="codigo" placeholder="Ex.: DIG-LAR, CAL-01" />
-      </div>
-
-      <div class="form-group">
-        <label for="ativo">Ativo</label>
-        <select id="ativo" name="ativo">
-          <option value="1" selected>SIM</option>
-          <option value="0">NÃO</option>
-        </select>
-      </div>
-
-      <div class="form-group form-full">
-        <label for="nome">Nome *</label>
-        <input id="nome" name="nome" required placeholder="Ex.: Digestor Laranja" />
-      </div>
-
-      <div class="form-group">
-        <label for="setor">Setor</label>
-        <input id="setor" name="setor" placeholder="Ex.: Digestores, Caldeiras, Prensas" />
-      </div>
-
-      <div class="form-group">
-        <label for="tipo">Tipo</label>
-        <input id="tipo" name="tipo" placeholder="Ex.: digestor, caldeira, prensa" />
-      </div>
-
-      <div class="form-group">
-        <label for="criticidade">Criticidade</label>
-        <select id="criticidade" name="criticidade">
-          <option value="baixa">baixa</option>
-          <option value="media" selected>média</option>
-          <option value="alta">alta</option>
-        </select>
-      </div>
-
-      <div class="form-group form-full">
-        <label for="observacao">Observação</label>
-        <textarea id="observacao" name="observacao" placeholder="Informações adicionais..."></textarea>
-      </div>
-
-    </div>
-
-    <div class="form-actions">
-      <button class="btn-primary" type="submit">Salvar</button>
-      <a class="btn-cancel" href="/equipamentos">Cancelar</a>
-    </div>
+  <form action="/equipamentos" method="POST" enctype="multipart/form-data" class="form-grid">
+    <input class="input" name="codigo" placeholder="Código interno / tag" />
+    <input class="input" name="nome" placeholder="Nome do equipamento" required />
+    <input class="input" name="setor" placeholder="Setor / área" />
+    <input class="input" name="tipo" placeholder="Tipo (digestor, moinho...)" />
+    <input class="input" name="fabricante" placeholder="Fabricante" />
+    <input class="input" name="ano_fabricacao" type="number" placeholder="Ano fabricação" />
+    <input class="input" name="ano_instalacao" type="number" placeholder="Ano instalação" />
+    <input class="input" name="capacidade" placeholder="Capacidade" />
+    <input class="input" name="pressao_trabalho" placeholder="Pressão de trabalho" />
+    <select class="input" name="criticidade"><option value="baixa">Baixa</option><option value="media" selected>Média</option><option value="alta">Alta</option></select>
+    <select class="input" name="status_operacional"><option value="ATIVO">Ativo</option><option value="EM MANUTENCAO">Em manutenção</option><option value="PARADO">Parado</option></select>
+    <select class="input" name="ativo"><option value="1">Ativo no cadastro</option><option value="0">Inativo no cadastro</option></select>
+    <div class="full"><label>Foto</label><input class="input" type="file" name="foto" accept="image/*" /></div>
+    <textarea class="input full" name="observacao" placeholder="Observações"></textarea>
+    <div class="full"><button class="btn btn-green">Salvar</button></div>
   </form>
 </div>

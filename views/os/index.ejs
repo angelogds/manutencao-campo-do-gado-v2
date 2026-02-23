@@ -138,8 +138,10 @@
           <th style="width:70px;">#</th>
           <th>Equipamento</th>
           <th>Descrição</th>
-          <th style="width:140px;">Tipo</th>
+          <th style="width:120px;">Tipo</th>
+          <th style="width:110px;">Grau</th>
           <th style="width:140px;">Status</th>
+          <th style="width:160px;">Solicitante</th>
           <th style="width:170px;">Aberta em</th>
           <th style="width:140px; text-align:right;">Ações</th>
         </tr>
@@ -148,7 +150,7 @@
       <tbody>
         <% if (!lista || !lista.length) { %>
           <tr>
-            <td colspan="7" style="padding:18px; color:#6b7280; text-align:center;">
+            <td colspan="9" style="padding:18px; color:#6b7280; text-align:center;">
               Nenhuma OS cadastrada.
             </td>
           </tr>
@@ -168,6 +170,8 @@
               <span class="pill pill-blue"><%= (o.tipo || "-").toUpperCase() %></span>
             </td>
 
+            <td><span class="pill pill-gray"><%= (o.grau || "-") %></span></td>
+
             <td>
               <% const st = (o.status || "").toUpperCase(); %>
               <% if (st === "ABERTA") { %>
@@ -182,6 +186,8 @@
                 <span class="pill pill-gray"><%= st || "-" %></span>
               <% } %>
             </td>
+
+            <td><%= o.solicitante || "-" %></td>
 
             <td><%= o.opened_at ? fmtBR(o.opened_at) : "-" %></td>
 
