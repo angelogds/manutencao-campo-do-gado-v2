@@ -137,12 +137,12 @@
         <tr>
           <th style="width:70px;">#</th>
           <th>Equipamento</th>
-          <th>Descrição</th>
-          <th style="width:120px;">Tipo</th>
+          <th style="width:130px;">Tipo</th>
           <th style="width:110px;">Grau</th>
           <th style="width:140px;">Status</th>
-          <th style="width:160px;">Solicitante</th>
-          <th style="width:170px;">Aberta em</th>
+          <th style="width:180px;">Solicitante</th>
+          <th style="width:170px;">Abertura</th>
+          <th style="width:170px;">Fechamento</th>
           <th style="width:140px; text-align:right;">Ações</th>
         </tr>
       </thead>
@@ -150,7 +150,7 @@
       <tbody>
         <% if (!lista || !lista.length) { %>
           <tr>
-            <td colspan="9" style="padding:18px; color:#6b7280; text-align:center;">
+            <td colspan="10" style="padding:18px; color:#6b7280; text-align:center;">
               Nenhuma OS cadastrada.
             </td>
           </tr>
@@ -162,10 +162,6 @@
 
             <td><%= o.equipamento || "-" %></td>
 
-            <td class="td-clip" title="<%= o.descricao || '' %>">
-              <%= o.descricao || "-" %>
-            </td>
-
             <td>
               <span class="pill pill-blue"><%= (o.tipo || "-").toUpperCase() %></span>
             </td>
@@ -176,12 +172,14 @@
               <% const st = (o.status || "").toUpperCase(); %>
               <% if (st === "ABERTA") { %>
                 <span class="pill pill-amber">ABERTA</span>
-              <% } else if (st === "ANDAMENTO") { %>
+              <% } else if (st === "ANDAMENTO" || st === "EM_ANDAMENTO") { %>
                 <span class="pill pill-sky">ANDAMENTO</span>
               <% } else if (st === "PAUSADA") { %>
                 <span class="pill pill-gray">PAUSADA</span>
-              <% } else if (st === "CONCLUIDA" || st === "FINALIZADA") { %>
+              <% } else if (st === "CONCLUIDA" || st === "FINALIZADA" || st === "FECHADA") { %>
                 <span class="pill pill-green">FINALIZADA</span>
+              <% } else if (st === "CANCELADA") { %>
+                <span class="pill pill-gray">CANCELADA</span>
               <% } else { %>
                 <span class="pill pill-gray"><%= st || "-" %></span>
               <% } %>
@@ -190,6 +188,8 @@
             <td><%= o.solicitante || "-" %></td>
 
             <td><%= o.opened_at ? fmtBR(o.opened_at) : "-" %></td>
+
+            <td><%= o.closed_at ? fmtBR(o.closed_at) : "-" %></td>
 
             <td style="text-align:right;">
               <a class="btn-sm" href="/os/<%= o.id %>">Abrir</a>
