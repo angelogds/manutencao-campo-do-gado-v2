@@ -15,24 +15,15 @@ const flash = require("connect-flash");
 const engine = require("ejs-mate");
 
 const dateUtil = require("./utils/date");
-const { canAccessModule, normalizeRole } = require("./config/rbac");
 const fmtBR =
   typeof dateUtil.fmtBR === "function" ? dateUtil.fmtBR : (v) => String(v ?? "-");
 const TZ = dateUtil.TZ || "America/Sao_Paulo";
 
+// ✅ RBAC helpers (para usar no EJS sem require)
+const { canAccessModule, normalizeRole } = require("./config/rbac");
+
 const app = express();
 app.set("trust proxy", 1);
-
-function mountRoute(basePath, routeModulePath) {
-  try {
-    app.use(basePath, require(routeModulePath));
-  } catch (err) {
-    console.error(`❌ [routes] Falha ao carregar ${routeModulePath}:`, err.message || err);
-    app.use(basePath, (_req, res) => {
-      res.status(503).send(`Módulo temporariamente indisponível: ${basePath}`);
-    });
-  }
-}
 
 // ===== View engine =====
 app.engine("ejs", engine);
@@ -64,8 +55,6 @@ app.use(flash());
 // ===== Globals (views) =====
 app.locals.TZ = TZ;
 app.locals.fmtBR = fmtBR;
-app.locals.canAccessModule = canAccessModule;
-app.locals.normalizeRole = normalizeRole;
 
 app.use((req, res, next) => {
   res.locals.user = req.session?.user || null;
@@ -75,13 +64,16 @@ app.use((req, res, next) => {
   };
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
+
+  // ✅ RBAC helpers disponíveis no EJS (sem require no template)
   res.locals.canAccessModule = canAccessModule;
   res.locals.normalizeRole = normalizeRole;
 
   // evita crash no layout
   res.locals.activeMenu = res.locals.activeMenu || "";
+  res.locals.activePcmSection = res.locals.activePcmSection || "";
 
-  // compatibilidade com layouts antigos que esperam variáveis globais
+  // compatibilidade com layouts antigos
   res.locals.resumoOS = res.locals.resumoOS || {
     abertas: 0,
     andamento: 0,
@@ -115,7 +107,7 @@ app.use("/escala", require("./modules/escala/escala.routes"));
 app.use("/avisos", require("./modules/avisos/avisos.routes"));
 app.use("/usuarios", require("./modules/usuarios/usuarios.routes"));
 app.use("/demandas", require("./modules/demandas/demandas.routes"));
-app.use("/motores", require("./modules/motores/motores.routes")); // ✅ motores
+app.use("/motores", require("./modules/motores/motores.routes"));
 
 // ===== Home =====
 app.get("/", (req, res) => {
@@ -123,9 +115,9 @@ app.get("/", (req, res) => {
   return res.redirect("/auth/login");
 });
 
-app.get('/painel-operacional', (req, res) => {
-  if (!req.session?.user) return res.redirect('/auth/login');
-  return res.redirect('/dashboard');
+app.get("/painel-operacional", (req, res) => {
+  if (!req.session?.user) return res.redirect("/auth/login");
+  return res.redirect("/dashboard");
 });
 
 // ===== Health =====
