@@ -1,15 +1,25 @@
-// modules/os/os.routes.js
 const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 const router = express.Router();
 
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
 const ctrl = require("./os.controller");
 
-// Perfis que podem abrir/acessar OS (ADMIN passa sempre no middleware)
-const OS_ACCESS = ["MANUTENCAO", "MECANICO", "PRODUCAO", "ENCARREGADO"];
+const OS_ACCESS = ["MANUTENCAO", "MECANICO", "PRODUCAO", "ENCARREGADO", "DIRECAO"];
 
-// wrapper padrão para evitar quebra geral e manter menu ativo
-const safe = (fn, name) =>
+const uploadDir = path.join(__dirname, "../../public/uploads/os");
+fs.mkdirSync(uploadDir, { recursive: true });
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadDir),
+    filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s+/g, "-")}`),
+  }),
+});
+
+const wrap = (fn, name) =>
   typeof fn === "function"
     ? (req, res, next) => {
         res.locals.activeMenu = "os";
@@ -24,11 +34,27 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// ✅ ROTAS (prefixo /os já é aplicado no server.js)
-router.get("/", requireLogin, requireRole(OS_ACCESS), safe(ctrl.osIndex, "osIndex"));
-router.get("/nova", requireLogin, requireRole(OS_ACCESS), safe(ctrl.osNewForm, "osNewForm"));
-router.post("/", requireLogin, requireRole(OS_ACCESS), safe(ctrl.osCreate, "osCreate"));
-router.get("/:id", requireLogin, requireRole(OS_ACCESS), safe(ctrl.osShow, "osShow"));
-router.post("/:id/status", requireLogin, requireRole(OS_ACCESS), safe(ctrl.osUpdateStatus, "osUpdateStatus"));
+router.get("/", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osIndex, "osIndex"));
+router.get("/nova", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osNewForm, "osNewForm"));
+router.post(
+  "/",
+  requireLogin,
+  requireRole(OS_ACCESS),
+  upload.fields([{ name: "abertura_fotos", maxCount: 10 }]),
+  wrap(ctrl.osCreate, "osCreate")
+);
+
+router.get("/:id", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osShow, "osShow"));
+router.post("/:id/iniciar", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osIniciar, "osIniciar"));
+router.post("/:id/pausar", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osPausar, "osPausar"));
+router.post(
+  "/:id/concluir",
+  requireLogin,
+  requireRole(OS_ACCESS),
+  upload.fields([{ name: "fechamento_fotos", maxCount: 10 }]),
+  wrap(ctrl.osConcluir, "osConcluir")
+);
+
+router.post("/:id/status", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osUpdateStatus, "osUpdateStatus"));
 
 module.exports = router;

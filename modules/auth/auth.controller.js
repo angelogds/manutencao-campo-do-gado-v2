@@ -11,6 +11,7 @@ exports.showLogin = (req, res) => {
     lockout: null,
     attemptsLeft: null,
     rememberedEmail: "",
+    next: String(req.query?.next || "").trim(),
   });
 };
 
@@ -57,6 +58,8 @@ exports.doLogin = (req, res) => {
         req.flash("error", "Erro ao salvar sessão. Tente novamente.");
         return res.redirect("/auth/login");
       }
+      const nextUrl = String(req.body?.next || "").trim();
+      if (nextUrl && nextUrl.startsWith("/")) return res.redirect(nextUrl);
       return res.redirect("/dashboard");
     });
   });
