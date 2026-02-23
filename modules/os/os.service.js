@@ -169,8 +169,8 @@ function createOS({ equipamento_id, equipamento_manual, descricao, tipo, opened_
   const desc = String(descricao || "").trim();
   if (!desc) throw new Error("Descrição obrigatória.");
 
-  const openedByRequested = Number(opened_by || 0) || null;
-  const openedBy = hasLegacyUsersOldFK() ? null : openedByRequested;
+  const openedBy = hasLegacyUsersOldFK() ? null : Number(opened_by || 0);
+  if (!openedBy) throw new Error("Usuário logado obrigatório para abrir OS.");
 
   let equipId = equipamento_id ? Number(equipamento_id) : null;
   let equipManual = String(equipamento_manual || "").trim() || null;
