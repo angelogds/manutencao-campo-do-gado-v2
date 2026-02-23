@@ -8,6 +8,31 @@ function getOSColumns() {
   return db.prepare(`PRAGMA table_info(os)`).all().map((c) => c.name);
 }
 
+function tableExists(name) {
+  try {
+    const row = db
+      .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`)
+      .get(String(name || ""));
+    return !!row;
+  } catch (_e) {
+    return false;
+  }
+}
+
+function getTableColumns(tableName) {
+  try {
+    return db.prepare(`PRAGMA table_info(${tableName})`).all().map((c) => c.name);
+  } catch (_e) {
+    return [];
+  }
+}
+
+function resolveAnexosTable() {
+  if (tableExists("os_anexos")) return "os_anexos";
+  if (tableExists("anexos")) return "anexos";
+  return null;
+}
+
 function resolveGrauColumn(columns) {
   if (columns.includes("grau")) return "grau";
   if (columns.includes("grau_dificuldade")) return "grau_dificuldade";
@@ -48,14 +73,39 @@ function listGrauOptions() {
 
 function listAnexos(osId, tipo) {
   try {
+    const table = resolveAnexosTable();
+    if (!table) return [];
+
+    const t = String(tipo || "").toUpperCase();
+
+    if (table === "os_anexos") {
+      return db
+        .prepare(
+          `SELECT id, os_id, tipo, path, legenda, created_at
+           FROM os_anexos
+           WHERE os_id = ? AND tipo = ?
+           ORDER BY id DESC`
+        )
+        .all(osId, t);
+    }
+
     return db
       .prepare(
-        `SELECT id, os_id, tipo, path, legenda, created_at
-         FROM os_anexos
-         WHERE os_id = ? AND tipo = ?
+        `SELECT id,
+                owner_id AS os_id,
+                UPPER(CASE
+                  WHEN filename LIKE '%fechamento%' THEN 'FECHAMENTO'
+                  ELSE 'ABERTURA'
+                END) AS tipo,
+                filepath AS path,
+                filename AS legenda,
+                uploaded_at AS created_at
+         FROM anexos
+         WHERE owner_type = 'os' AND owner_id = ?
          ORDER BY id DESC`
       )
-      .all(osId, String(tipo || "").toUpperCase());
+      .all(osId)
+      .filter((row) => row.tipo === t);
   } catch (_e) {
     return [];
   }
@@ -227,16 +277,44 @@ function addFotosAberturaFechamento({ osId, files = [], tipo, userId }) {
   const t = String(tipo || "").toUpperCase();
   if (!["ABERTURA", "FECHAMENTO"].includes(t)) return;
 
-  const insert = db.prepare(
-    `INSERT INTO os_anexos (os_id, tipo, path, legenda, created_by, created_at)
-     VALUES (?, ?, ?, ?, ?, datetime('now'))`
-  );
+  const table = resolveAnexosTable();
+  if (!table) return;
 
   const tx = db.transaction(() => {
+    if (table === "os_anexos") {
+      const insert = db.prepare(
+        `INSERT INTO os_anexos (os_id, tipo, path, legenda, created_by, created_at)
+         VALUES (?, ?, ?, ?, ?, datetime('now'))`
+      );
+
+      for (const f of files || []) {
+        const pathPublic = f.pathPublic || f.path || null;
+        if (!pathPublic) continue;
+        insert.run(osId, t, pathPublic, null, userId || null);
+      }
+      return;
+    }
+
+    const anexosCols = getTableColumns("anexos");
+    const hasUploadedBy = anexosCols.includes("uploaded_by");
+
+    const insertLegacy = hasUploadedBy
+      ? db.prepare(
+          `INSERT INTO anexos (owner_type, owner_id, filename, filepath, uploaded_by, uploaded_at)
+           VALUES ('os', ?, ?, ?, ?, datetime('now'))`
+        )
+      : db.prepare(
+          `INSERT INTO anexos (owner_type, owner_id, filename, filepath, uploaded_at)
+           VALUES ('os', ?, ?, ?, datetime('now'))`
+        );
+
     for (const f of files || []) {
       const pathPublic = f.pathPublic || f.path || null;
       if (!pathPublic) continue;
-      insert.run(osId, t, pathPublic, null, userId || null);
+      const filename = `${t.toLowerCase()}-${f.originalname || 'foto'}`;
+
+      if (hasUploadedBy) insertLegacy.run(osId, filename, pathPublic, userId || null);
+      else insertLegacy.run(osId, filename, pathPublic);
     }
   });
   tx();
