@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="pt-br">
 <head>
@@ -110,8 +109,19 @@
 </head>
 
 <body>
+  <%
+    // ===== Normalização do usuário (não quebra se os campos mudarem) =====
+    const u = user || null;
+    const uName = u ? (u.nome || u.name || u.usuario || "Usuário") : "";
+    const uRoleRaw = u ? (u.funcao || u.Função || u.role || u.perfil || u.cargo || "") : "";
+    const uRole = String(uRoleRaw || "").trim();
+    const uRoleLabel = uRole ? uRole.toUpperCase() : "SEM PERFIL";
+    const uPhoto = u ? (u.photo_path || u.foto_path || u.foto || u.photo || "") : "";
+  %>
+
   <div class="app" id="appRoot">
-    <%- include("partials/sidebar") %>
+    <!-- ✅ Ajustado para o padrão pt-BR -->
+    <%- include("parciais/sidebar") %>
 
     <main class="main">
       <header class="topbar">
@@ -124,19 +134,27 @@
         </div>
 
         <div style="display:flex; align-items:center;">
-          <% if (user) { %>
-            <% if (user.photo_path) { %>
-              <img class="user-avatar" src="<%= user.photo_path %>" alt="Foto do usuário" />
+          <% if (u) { %>
+            <% if (uPhoto) { %>
+              <img class="user-avatar" src="<%= uPhoto %>" alt="Foto do usuário" />
             <% } %>
-            <div class="pill"><%= user.name %> • <%= user.role.toUpperCase() %></div>
-            <form action="/auth/logout" method="POST" style="margin:0;"><button class="btn-ghost" type="submit">Sair</button></form>
+            <div class="pill"><%= uName %> • <%= uRoleLabel %></div>
+            <form action="/auth/logout" method="POST" style="margin:0;">
+              <button class="btn-ghost" type="submit">Sair</button>
+            </form>
           <% } %>
         </div>
       </header>
 
-      <section class="flash"><%- include("partials/alerts") %></section>
+      <!-- ✅ Ajustado para o padrão pt-BR -->
+      <section class="flash"><%- include("parciais/alerts") %></section>
+
       <section class="content"><%- body %></section>
-      <footer class="footer"><div>Manutenção Industrial • Campo do Gado</div><div>© <%= new Date().getFullYear() %> • Sistema V2</div></footer>
+
+      <footer class="footer">
+        <div>Manutenção Industrial • Campo do Gado</div>
+        <div>© <%= new Date().getFullYear() %> • Sistema V2</div>
+      </footer>
     </main>
   </div>
 
