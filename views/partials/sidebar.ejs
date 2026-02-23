@@ -1,110 +1,112 @@
-<!-- views/partials/sidebar.ejs -->
+<!-- views/parciais/sidebar.ejs -->
 <%
-  const { canAccessModule, normalizeRole } = require(process.cwd() + '/config/rbac');
-  const role = normalizeRole(user?.role || '');
-  const canPainel = canAccessModule(role, 'painel_operacional');
-  const canPCM = canAccessModule(role, 'pcm');
-  const canEquipamentos = canAccessModule(role, 'equipamentos');
-  const canOS = canAccessModule(role, 'os_view');
-  const canPreventivas = canAccessModule(role, 'preventivas_view');
-  const canDemandas = canAccessModule(role, 'demandas_view');
-  const canSolicitacoes = canAccessModule(role, 'solicitacoes');
-  const canCompras = canAccessModule(role, 'compras');
-  const canAlmoxarifado = canAccessModule(role, 'almoxarifado');
-  const canEstoque = canAccessModule(role, 'estoque_view');
-  const canMotores = canAccessModule(role, 'motores');
-  const canAvisos = canAccessModule(role, 'avisos_view');
-  const canUsuarios = canAccessModule(role, 'usuarios');
-  const canEscala = canAccessModule(role, 'escala');
-  const currentPcmSection = typeof activePcmSection !== 'undefined' ? activePcmSection : '';
+  // NÃO usar require aqui.
+  // canAccessModule e normalizeRole vêm do server.js via app.locals/res.locals
+
+  const getRoleValue = () => {
+    return (user?.funcao || user?.Função || user?.role || user?.perfil || user?.cargo || '').toString();
+  };
+
+  const role = (typeof normalizeRole === 'function')
+    ? normalizeRole(getRoleValue())
+    : getRoleValue();
+
+  const can = (mod) => {
+    if (typeof canAccessModule !== 'function') return true; // fallback: não quebra layout
+    try { return canAccessModule(role, mod); } catch (_e) { return true; }
+  };
+
+  const canPainel   = can('painel_operacional');
+  const canOS       = can('os');
+  const canPCM      = can('pcm');
+  const canPrevent  = can('preventivas');
+  const canEstoque  = can('estoque');
+  const canCompras  = can('compras');
+  const canEscala   = can('escala');
+  const canMotores  = can('motores');
+  const canUsers    = can('usuarios');
+  const canDemandas = can('demandas');
 %>
 
 <aside class="sidebar">
-  <div class="brand">
-    <div class="brand-badge">CG</div>
-    <div class="brand-text">
-      <div class="brand-title">Campo do Gado</div>
-      <div class="brand-sub">V2 • Gestão Industrial</div>
-    </div>
+  <div class="sidebar-brand">
+    <a href="/" class="brand">
+      <img src="/img/logo_menu_256.png" alt="Campo do Gado" style="height:40px;">
+      <div class="brand-text">
+        <div class="brand-title">Manutenção</div>
+        <div class="brand-sub">Campo do Gado</div>
+      </div>
+    </a>
   </div>
 
-  <nav class="nav">
-    <% if (canPainel) { %>
-      <a class="nav-item <%= activeMenu === 'dashboard' ? 'active' : '' %>" href="/dashboard">Painel Operacional</a>
-    <% } %>
-
-    <% if (canEquipamentos) { %>
-      <a class="nav-item <%= activeMenu === 'equipamentos' ? 'active' : '' %>" href="/equipamentos">Equipamentos</a>
-    <% } %>
-
-    <% if (canOS) { %>
-      <a class="nav-item <%= activeMenu === 'os' ? 'active' : '' %>" href="/os">Ordens de Serviço</a>
-    <% } %>
-
-    <% if (canPreventivas) { %>
-      <a class="nav-item <%= activeMenu === 'preventivas' ? 'active' : '' %>" href="/preventivas">Preventivas</a>
-    <% } %>
-
-    <% if (canDemandas) { %>
-      <a class="nav-item <%= activeMenu === 'demandas' ? 'active' : '' %>" href="/demandas">Demandas</a>
-    <% } %>
-
-    <% if (canSolicitacoes) { %>
-      <a class="nav-item <%= activeMenu === 'solicitacoes' ? 'active' : '' %>" href="/solicitacoes">Solicitações</a>
-    <% } %>
-
-    <% if (canCompras) { %>
-      <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">Compras</a>
-    <% } %>
-
-    <% if (canAlmoxarifado) { %>
-      <a class="nav-item <%= activeMenu === 'almoxarifado' ? 'active' : '' %>" href="/almoxarifado">Almoxarifado</a>
-    <% } %>
-
-    <% if (canEstoque) { %>
-      <a class="nav-item <%= activeMenu === 'estoque' ? 'active' : '' %>" href="/estoque">Estoque</a>
-    <% } %>
-
-    <% if (canMotores) { %>
-      <a class="nav-item <%= activeMenu === 'motores' ? 'active' : '' %>" href="/motores">Motores</a>
-    <% } %>
-
-    <% if (canEscala) { %>
-      <a class="nav-item <%= activeMenu === 'escala' ? 'active' : '' %>" href="/escala">Escala</a>
-    <% } %>
-
-    <% if (canAvisos) { %>
-      <a class="nav-item <%= activeMenu === 'avisos' ? 'active' : '' %>" href="/avisos">Avisos</a>
-    <% } %>
-
-    <% if (canPCM) { %>
-      <a class="nav-item <%= activeMenu === 'pcm' ? 'active' : '' %>" href="/pcm">PCM – Planejamento e Controle da Manutenção</a>
-      <% if (activeMenu === 'pcm') { %>
-        <div style="margin:6px 0 10px 10px; display:grid; gap:4px;">
-          <a class="nav-item <%= currentPcmSection === 'visao-geral' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm">• Visão Geral</a>
-          <a class="nav-item <%= currentPcmSection === 'planejamento' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/planejamento">• Planejamento</a>
-          <a class="nav-item <%= currentPcmSection === 'falhas' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/falhas">• Falhas</a>
-          <a class="nav-item <%= currentPcmSection === 'engenharia' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/engenharia">• Engenharia</a>
-          <a class="nav-item <%= currentPcmSection === 'criticidade' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/criticidade">• Criticidade</a>
-          <a class="nav-item <%= currentPcmSection === 'lubrificacao' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/lubrificacao">• Lubrificação</a>
-          <a class="nav-item <%= currentPcmSection === 'pecas-criticas' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/pecas-criticas">• Peças Críticas</a>
-          <a class="nav-item <%= currentPcmSection === 'programacao-semanal' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/programacao-semanal">• Programação Semanal</a>
-          <a class="nav-item <%= currentPcmSection === 'backlog' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/backlog">• Backlog</a>
-          <a class="nav-item <%= currentPcmSection === 'rotas-inspecao' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/rotas-inspecao">• Rotas de Inspeção</a>
-          <a class="nav-item <%= currentPcmSection === 'relatorios-avancados' ? 'active' : '' %>" style="font-size:13px;padding:7px 10px;" href="/pcm/relatorios-avancados">• Relatórios Avançados</a>
-        </div>
+  <nav class="sidebar-nav">
+    <ul>
+      <% if (canPainel) { %>
+        <li class="<%= (activeMenu === 'dashboard' || activeMenu === 'painel') ? 'active' : '' %>">
+          <a href="/dashboard">Painel Operacional</a>
+        </li>
       <% } %>
-    <% } %>
 
-    <div class="nav-divider"></div>
+      <% if (canOS) { %>
+        <li class="<%= activeMenu === 'os' ? 'active' : '' %>">
+          <a href="/os">Ordens de Serviço</a>
+        </li>
+      <% } %>
 
-    <% if (canUsuarios) { %>
-      <div class="nav-section">ADMIN</div>
-      <a class="nav-item <%= activeMenu === 'usuarios' ? 'active' : '' %>" href="/usuarios">Gerenciar Usuários</a>
-    <% } %>
+      <% if (canDemandas) { %>
+        <li class="<%= activeMenu === 'demandas' ? 'active' : '' %>">
+          <a href="/demandas">Demandas</a>
+        </li>
+      <% } %>
+
+      <% if (canPCM) { %>
+        <li class="<%= activeMenu === 'pcm' ? 'active' : '' %>">
+          <a href="/pcm">PCM</a>
+        </li>
+      <% } %>
+
+      <% if (canPrevent) { %>
+        <li class="<%= activeMenu === 'preventivas' ? 'active' : '' %>">
+          <a href="/preventivas">Preventivas</a>
+        </li>
+      <% } %>
+
+      <% if (canEstoque) { %>
+        <li class="<%= activeMenu === 'estoque' ? 'active' : '' %>">
+          <a href="/estoque">Estoque</a>
+        </li>
+      <% } %>
+
+      <% if (canCompras) { %>
+        <li class="<%= activeMenu === 'compras' ? 'active' : '' %>">
+          <a href="/compras">Compras</a>
+        </li>
+      <% } %>
+
+      <% if (canEscala) { %>
+        <li class="<%= activeMenu === 'escala' ? 'active' : '' %>">
+          <a href="/escala">Escala</a>
+        </li>
+      <% } %>
+
+      <% if (canMotores) { %>
+        <li class="<%= activeMenu === 'motores' ? 'active' : '' %>">
+          <a href="/motores">Motores</a>
+        </li>
+      <% } %>
+
+      <% if (canUsers) { %>
+        <li class="<%= activeMenu === 'usuarios' ? 'active' : '' %>">
+          <a href="/usuarios">Usuários</a>
+        </li>
+      <% } %>
+    </ul>
   </nav>
 
   <div class="sidebar-footer">
-    <small>© <%= new Date().getFullYear() %> Campo do Gado</small>
+    <div class="user-box">
+      <div class="user-name"><%= user?.nome || 'Usuário' %></div>
+      <div class="user-role"><%= role || '-' %></div>
+    </div>
   </div>
 </aside>
