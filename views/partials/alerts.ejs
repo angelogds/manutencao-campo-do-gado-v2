@@ -1,17 +1,11 @@
-<%
-  const flashData = flash || {};
-  const errors = Array.isArray(flashData.error) ? flashData.error : [];
-  const success = Array.isArray(flashData.success) ? flashData.success : [];
-%>
-
-<% if (errors.length) { %>
-  <% errors.forEach((msg) => { %>
+<% if (flash?.error?.length) { %>
+  <% flash.error.forEach((msg) => { %>
     <div class="alert alert-error"><%= msg %></div>
   <% }) %>
 <% } %>
 
-<% if (success.length) { %>
-  <% success.forEach((msg) => { %>
+<% if (flash?.success?.length) { %>
+  <% flash.success.forEach((msg) => { %>
     <div class="alert alert-success"><%= msg %></div>
   <% }) %>
 <% } %>
