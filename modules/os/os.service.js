@@ -148,10 +148,13 @@ function getOSById(id) {
 function listOS() {
   const cols = getOSColumns();
 
-  const prioridadeExpr = cols.includes("prioridade") ? "prioridade" : "NULL";
-  const createdExpr = cols.includes("created_at")
-    ? "created_at"
-    : (cols.includes("opened_at") ? "opened_at" : "NULL");
+  const grauColumn = resolveGrauColumn(cols);
+  const grauExpr = grauColumn
+    ? grauColumn
+    : (cols.includes("prioridade") ? "prioridade" : "NULL");
+  const openedExpr = cols.includes("opened_at")
+    ? "opened_at"
+    : (cols.includes("created_at") ? "created_at" : "NULL");
   const startedExpr = cols.includes("started_at")
     ? "started_at"
     : (cols.includes("data_inicio") ? "data_inicio" : "NULL");
@@ -161,13 +164,18 @@ function listOS() {
 
   return db
     .prepare(
-      `SELECT id, equipamento, descricao, tipo, status,
-              ${prioridadeExpr} AS prioridade,
-              ${createdExpr} AS created_at,
+      `SELECT o.id,
+              o.equipamento,
+              o.tipo,
+              o.status,
+              ${grauExpr} AS grau,
+              ${openedExpr} AS opened_at,
               ${startedExpr} AS started_at,
-              ${closedExpr} AS closed_at
-       FROM os
-       ORDER BY id DESC
+              ${closedExpr} AS closed_at,
+              COALESCE(u.name, u.email, '-') AS solicitante
+       FROM os o
+       LEFT JOIN users u ON u.id = o.opened_by
+       ORDER BY o.id ASC
        LIMIT 300`
     )
     .all();

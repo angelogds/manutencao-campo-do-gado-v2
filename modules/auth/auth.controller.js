@@ -8,6 +8,7 @@ exports.showLogin = (req, res) => {
   // mantém esses campos pra sua view atualizada
   return res.render("auth/login", {
     title: "Login",
+    authFullscreen: true,
     lockout: null,
     attemptsLeft: null,
     rememberedEmail: "",
