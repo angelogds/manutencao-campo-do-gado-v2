@@ -14,8 +14,8 @@
   }
 
   .area-os { grid-area: os; }
-  .area-mural { grid-area: mural; min-height: 260px; }
-  .area-preventivas { grid-area: preventivas; min-height: 210px; }
+  .area-mural { grid-area: mural; }
+  .area-preventivas { grid-area: preventivas; }
   .area-escala { grid-area: escala; }
   .area-andamento { grid-area: andamento; }
   .area-demandas { grid-area: demandas; }
@@ -66,7 +66,7 @@
   .os-row-leve { background:#f8fafc; }
 
   @media (max-width: 1200px) {
-    .tv-grid { grid-template-columns: 1fr; grid-template-areas: "os" "mural" "preventivas" "escala" "andamento" "demandas" "quick"; }
+    .tv-grid { grid-template-columns: 1fr; grid-template-areas: "os" "mural" "preventivas" "andamento" "escala" "demandas" "quick"; }
     .alerta-tv__title { font-size:22px; }
   }
 
@@ -197,16 +197,14 @@
   <section class="dashboard-card area-andamento">
     <div class="dashboard-title">OS em andamento (por mecânico)</div>
     <div class="table-wrap"><table class="table compact">
-      <thead><tr><th>OS</th><th>Equipamento</th><th>Grau</th><th>Mecânico</th><th>Início</th></tr></thead>
+      <thead><tr><th>OS</th><th>Equipamento</th><th>Mecânico</th></tr></thead>
       <tbody>
-        <% if (osAndamento.length === 0) { %><tr><td colspan="5" class="muted-xs">Nenhuma OS em andamento agora.</td></tr><% } %>
+        <% if (osAndamento.length === 0) { %><tr><td colspan="3" class="muted-xs">Nenhuma OS em andamento agora.</td></tr><% } %>
         <% osAndamento.forEach(function(o){ %>
           <tr>
             <td><a href="/os/<%= o.id %>">#<%= o.id %></a></td>
             <td><%= o.equipamento || '-' %></td>
-            <td><span class="pill-prioridade"><%= o.grau || '-' %></span></td>
             <td><%= o.mecanico || '-' %></td>
-            <td><%= o.iniciado_em ? fmtBR(o.iniciado_em) : '-' %></td>
           </tr>
         <% }) %>
       </tbody>
