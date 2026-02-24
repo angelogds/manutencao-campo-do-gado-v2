@@ -55,6 +55,7 @@ async function equipShow(req, res) {
   const pecas = service.listPecasByEquipamento(id);
   const catalogoPecas = service.listPecasCatalogo();
   const documentos = service.listDocumentos(id);
+  const editItemId = Number(req.query.editar_item) || null;
   const qr = service.getQrByEquipamento(id);
   const qrUrl = qr ? `${req.protocol}://${req.get("host")}/equipamentos/qrcode/${qr.token}` : "";
   const qrImage = qrUrl ? await QRCode.toDataURL(qrUrl) : "";
@@ -70,6 +71,7 @@ async function equipShow(req, res) {
     pecas,
     catalogoPecas,
     documentos,
+    editItemId,
     qr,
     qrUrl,
     qrImage,

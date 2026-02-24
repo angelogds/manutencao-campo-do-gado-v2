@@ -92,6 +92,12 @@ function safeInt(v) {
   return Number.isFinite(n) ? Math.trunc(n) : null;
 }
 
+function normalizeUnidadeMedida(unidade) {
+  const raw = String(unidade || "UNIDADE").trim().toUpperCase();
+  if (["UNIDADE", "CAIXA", "LITRO"].includes(raw)) return raw;
+  return "UNIDADE";
+}
+
 function listHistoricoOS(equipamentoId, filtros = {}) {
   const where = ["o.equipamento_id = @equipamento_id"];
   const params = { equipamento_id: Number(equipamentoId) };
