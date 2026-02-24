@@ -49,8 +49,8 @@ function osCreate(req, res) {
       userId: req.session?.user?.id || null,
     });
 
-    req.flash("success", "OS criada com sucesso.");
-    return res.redirect(`/os/${id}`);
+    req.flash("success", `OS #${id} criada com sucesso.`);
+    return res.redirect("/os");
   } catch (err) {
     console.error("❌ osCreate:", err);
     req.flash("error", err.message || "Erro ao salvar a OS.");
