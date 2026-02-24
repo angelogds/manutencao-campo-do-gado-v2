@@ -175,7 +175,7 @@ function listOS() {
               COALESCE(u.name, u.email, '-') AS solicitante
        FROM os o
        LEFT JOIN users u ON u.id = o.opened_by
-       ORDER BY o.id ASC
+       ORDER BY o.id DESC
        LIMIT 300`
     )
     .all();
