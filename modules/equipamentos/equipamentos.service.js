@@ -188,7 +188,6 @@ function listPecasByEquipamento(equipamentoId) {
     SELECT ep.id,
            ep.aplicacao,
            COALESCE(ep.quantidade, 1) AS quantidade,
-           COALESCE(ep.unidade_medida, 'UNIDADE') AS unidade_medida,
            ep.descricao_item,
            p.id AS peca_id,
            p.tipo,
@@ -220,26 +219,23 @@ function addPecaToEquipamento(equipamentoId, data) {
   }
 
   db.prepare(`
-    INSERT INTO equipamento_pecas (equipamento_id, peca_id, aplicacao, quantidade, unidade_medida, descricao_item)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO equipamento_pecas (equipamento_id, peca_id, aplicacao, quantidade, descricao_item)
+    VALUES (?, ?, ?, ?, ?)
   `).run(
     Number(equipamentoId),
     Number(pecaId),
     String(data.aplicacao || "").trim() || null,
     Math.max(safeInt(data.quantidade) || 1, 1),
-    normalizeUnidadeMedida(data.unidade_medida),
     String(data.descricao_item || "").trim() || null
   );
 }
 
 function updatePecaAssociacao(associacaoId, data) {
-  const assocId = Number(associacaoId);
-
-  db.prepare(`UPDATE equipamento_pecas SET quantidade=?, unidade_medida=?, descricao_item=? WHERE id=?`).run(
+  db.prepare(`UPDATE equipamento_pecas SET aplicacao=?, quantidade=?, descricao_item=? WHERE id=?`).run(
+    String(data.aplicacao || "").trim() || null,
     Math.max(safeInt(data.quantidade) || 1, 1),
-    normalizeUnidadeMedida(data.unidade_medida),
     String(data.descricao_item || "").trim() || null,
-    assocId
+    Number(associacaoId)
   );
 
   if (data.modelo_descricao && String(data.modelo_descricao).trim()) {
