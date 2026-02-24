@@ -6,9 +6,9 @@
     grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
     grid-template-areas:
       "os mural"
-      "preventivas escala"
-      "andamento quick"
-      "demandas quick";
+      "preventivas quick"
+      "andamento escala"
+      "demandas escala";
     gap: 10px;
     align-items: start;
   }
@@ -128,15 +128,13 @@
     </div>
     <div class="table-wrap">
       <table class="table compact">
-        <thead><tr><th>#</th><th>Equipamento</th><th>Setor</th><th>Descrição</th><th>Grau</th><th>Status</th><th>Abertura</th><th style="text-align:right;">Ações</th></tr></thead>
+        <thead><tr><th>#</th><th>Equipamento</th><th>Grau</th><th>Status</th><th>Abertura</th><th>Fechamento</th><th style="text-align:right;">Ações</th></tr></thead>
         <tbody>
-          <% if (osItems.length === 0) { %><tr><td colspan="8" style="text-align:center; color:#6b7280;">Nenhuma OS cadastrada.</td></tr><% } %>
+          <% if (osItems.length === 0) { %><tr><td colspan="7" style="text-align:center; color:#6b7280;">Nenhuma OS cadastrada.</td></tr><% } %>
           <% osItems.forEach(function(o) { var prio = String(o.grau || o.prioridade || 'MEDIA').toUpperCase(); var rowClass = (prio === 'CRITICO' || prio === 'CRÍTICO' || prio === 'ALTO' || prio === 'EMERGENCIAL') ? 'os-row-critico' : ((prio === 'MEDIO' || prio === 'MÉDIO' || prio === 'MEDIA') ? 'os-row-medio' : 'os-row-leve'); %>
             <tr class="<%= rowClass %>">
               <td><%= o.id %></td>
               <td><strong><%= o.equipamento || '-' %></strong></td>
-              <td><%= o.setor || '-' %></td>
-              <td><%= o.descricao || '-' %></td>
               <td><span class="pill-prioridade <%= (prio === 'CRITICO' || prio === 'CRÍTICO' || prio === 'EMERGENCIAL') ? 'emergencial' : ((prio === 'ALTO' || prio === 'ALTA' || prio === 'MEDIO' || prio === 'MÉDIO' || prio === 'MEDIA') ? 'alta' : '') %>"><%= prio %></span></td>
               <td>
                 <% var statusOs = String(o.status || '').toUpperCase(); %>
@@ -148,6 +146,7 @@
                 <% } else { %><span class="pill-tag pill-gray pill-status"><%= statusOs || '-' %></span><% } %>
               </td>
               <td><%= o.opened_at ? fmtBR(o.opened_at) : '-' %></td>
+              <td><%= o.closed_at ? fmtBR(o.closed_at) : '-' %></td>
               <td style="text-align:right;">
                 <% if (statusOs === 'ABERTA') { %>
                   <form method="POST" action="/os/<%= o.id %>/status" style="display:inline;"><input type="hidden" name="status" value="ANDAMENTO"><button class="btn-inline" type="submit">Iniciar</button></form>
