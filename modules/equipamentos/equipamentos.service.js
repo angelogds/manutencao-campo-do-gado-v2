@@ -191,7 +191,7 @@ function listPecasByEquipamento(equipamentoId) {
     FROM equipamento_pecas ep
     INNER JOIN pecas p ON p.id = ep.peca_id
     WHERE ep.equipamento_id = ?
-    ORDER BY p.tipo, p.modelo_descricao
+    ORDER BY ep.id ASC
   `).all(Number(equipamentoId));
 }
 
@@ -231,6 +231,16 @@ function updatePecaAssociacao(associacaoId, data) {
     String(data.descricao_item || "").trim() || null,
     Number(associacaoId)
   );
+
+  if (data.modelo_descricao && String(data.modelo_descricao).trim()) {
+    db.prepare(`
+      UPDATE pecas
+      SET modelo_descricao=?, updated_at=datetime('now')
+      WHERE id = (
+        SELECT peca_id FROM equipamento_pecas WHERE id=?
+      )
+    `).run(String(data.modelo_descricao).trim(), assocId);
+  }
 }
 
 function removePecaAssociacao(associacaoId) {
