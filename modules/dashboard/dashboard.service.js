@@ -264,28 +264,20 @@ function getOSPainel(page = 1, pageSize = 10) {
     const itens = db
       .prepare(
         `
-          SELECT o.id, COALESCE(e.nome, o.equipamento_manual, o.equipamento) AS equipamento, o.descricao, o.tipo, o.status, o.opened_at, COALESCE(o.prioridade,'MEDIA') AS prioridade, ${grauExpr} AS grau, COALESCE(e.setor,'-') AS setor, COALESCE(u.name,'-') AS solicitante
+          SELECT o.id,
+                 COALESCE(e.nome, o.equipamento_manual, o.equipamento) AS equipamento,
+                 o.tipo,
+                 o.status,
+                 o.opened_at,
+                 o.closed_at,
+                 COALESCE(o.prioridade,'MEDIA') AS prioridade,
+                 ${grauExpr} AS grau,
+                 COALESCE(e.setor,'-') AS setor,
+                 COALESCE(u.name,'-') AS solicitante
           FROM os o
           LEFT JOIN equipamentos e ON e.id = o.equipamento_id
           LEFT JOIN users u ON u.id = o.opened_by
-          ORDER BY
-            CASE UPPER(COALESCE(prioridade,'MEDIA'))
-              WHEN 'EMERGENCIAL' THEN 1
-              WHEN 'ALTA' THEN 2
-              WHEN 'MEDIA' THEN 3
-              WHEN 'BAIXA' THEN 4
-              ELSE 5
-            END,
-            CASE o.status
-              WHEN 'ABERTA' THEN 1
-              WHEN 'ANDAMENTO' THEN 2
-              WHEN 'PAUSADA' THEN 3
-              WHEN 'CONCLUIDA' THEN 4
-              WHEN 'CANCELADA' THEN 5
-              ELSE 6
-            END,
-            datetime(o.opened_at) DESC,
-            o.id DESC
+          ORDER BY o.id ASC
           LIMIT ? OFFSET ?
         `
       )
