@@ -46,8 +46,8 @@ async function equipShow(req, res) {
   const filtros = {
     data_inicio: req.query.data_inicio || "",
     data_fim: req.query.data_fim || "",
-    tipo: req.query.tipo || "",
-    grau: req.query.grau || "",
+    tipo: String(req.query.tipo || "").trim().toUpperCase(),
+    grau: String(req.query.grau || "").trim().toUpperCase(),
   };
 
   const historicoOS = service.listHistoricoOS(id, filtros);
@@ -138,10 +138,26 @@ function addDocumento(req, res) {
     return res.redirect(`/equipamentos/${id}?tab=documentos`);
   }
 
-  service.createDocumento(id, {
+  const tipoDocumento = String(req.body.tipo_documento || "").trim().toLowerCase();
+  if (!["manual", "laudo"].includes(tipoDocumento)) {
+    req.flash("error", "Selecione um tipo de documento válido: manual ou laudo.");
+    return res.redirect(`/equipamentos/${id}?tab=documentos`);
+  }
+
+  if (tipoDocumento === "laudo" && (!req.body.data_emissao || !req.body.validade)) {
+    req.flash("error", "Para laudo, informe a data de emissão e a validade.");
+    return res.redirect(`/equipamentos/${id}?tab=documentos`);
+  }
+
+  const payload = {
     ...req.body,
+    tipo_documento: tipoDocumento,
+    data_emissao: tipoDocumento === "laudo" ? req.body.data_emissao : null,
+    validade: tipoDocumento === "laudo" ? req.body.validade : null,
     caminho_arquivo: `/uploads/equipamentos/documentos/${req.file.filename}`,
-  });
+  };
+
+  service.createDocumento(id, payload);
 
   req.flash("success", "Documento anexado.");
   return res.redirect(`/equipamentos/${id}?tab=documentos`);
