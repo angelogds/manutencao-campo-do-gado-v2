@@ -94,7 +94,7 @@ function safeInt(v) {
 
 function normalizeUnidadeMedida(unidade) {
   const raw = String(unidade || "UNIDADE").trim().toUpperCase();
-  if (["UNIDADE", "CAIXA", "LITRO"].includes(raw)) return raw;
+  if (["UNIDADE", "CAIXA", "QUILO", "LITRO", "METRO"].includes(raw)) return raw;
   return "UNIDADE";
 }
 
@@ -189,6 +189,7 @@ function listPecasByEquipamento(equipamentoId) {
            ep.aplicacao,
            COALESCE(ep.quantidade, 1) AS quantidade,
            ep.descricao_item,
+           ep.unidade_medida,
            p.id AS peca_id,
            p.tipo,
            p.modelo_descricao,
@@ -219,22 +220,24 @@ function addPecaToEquipamento(equipamentoId, data) {
   }
 
   db.prepare(`
-    INSERT INTO equipamento_pecas (equipamento_id, peca_id, aplicacao, quantidade, descricao_item)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO equipamento_pecas (equipamento_id, peca_id, aplicacao, quantidade, descricao_item, unidade_medida)
+    VALUES (?, ?, ?, ?, ?, ?)
   `).run(
     Number(equipamentoId),
     Number(pecaId),
     String(data.aplicacao || "").trim() || null,
     Math.max(safeInt(data.quantidade) || 1, 1),
-    String(data.descricao_item || "").trim() || null
+    String(data.descricao_item || "").trim() || null,
+    normalizeUnidadeMedida(data.unidade_medida)
   );
 }
 
 function updatePecaAssociacao(associacaoId, data) {
-  db.prepare(`UPDATE equipamento_pecas SET aplicacao=?, quantidade=?, descricao_item=? WHERE id=?`).run(
+  db.prepare(`UPDATE equipamento_pecas SET aplicacao=?, quantidade=?, descricao_item=?, unidade_medida=? WHERE id=?`).run(
     String(data.aplicacao || "").trim() || null,
     Math.max(safeInt(data.quantidade) || 1, 1),
     String(data.descricao_item || "").trim() || null,
+    normalizeUnidadeMedida(data.unidade_medida),
     Number(associacaoId)
   );
 
@@ -245,7 +248,7 @@ function updatePecaAssociacao(associacaoId, data) {
       WHERE id = (
         SELECT peca_id FROM equipamento_pecas WHERE id=?
       )
-    `).run(String(data.modelo_descricao).trim(), assocId);
+    `).run(String(data.modelo_descricao).trim(), Number(associacaoId));
   }
 }
 
