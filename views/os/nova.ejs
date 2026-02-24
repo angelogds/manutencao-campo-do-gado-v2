@@ -40,10 +40,9 @@
       <div class="form-group">
         <label>Tipo da OS</label>
         <select name="tipo" class="input" required>
-          <option value="CORRETIVA">Corretiva</option>
-          <option value="PREVENTIVA">Preventiva</option>
-          <option value="NRS">NRs (não conformidades)</option>
-          <option value="OUTROS">Outros</option>
+          <% (tipos || ['CORRETIVA','PREVENTIVA','ELETRICA','NRS','OUTROS']).forEach(t => { %>
+            <option value="<%= t %>"><%= t === 'NRS' ? 'NRs (não conformidades)' : (t === 'ELETRICA' ? 'Elétrica' : t.charAt(0) + t.slice(1).toLowerCase()) %></option>
+          <% }) %>
         </select>
       </div>
 
