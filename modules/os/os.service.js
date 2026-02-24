@@ -43,7 +43,7 @@ function resolveGrauColumn(columns) {
 function normalizeTipoOS(tipo) {
   const raw = String(tipo || "CORRETIVA").trim().toUpperCase();
   if (raw === "NR12") return "NRS";
-  if (["CORRETIVA", "PREVENTIVA", "NRS", "OUTROS"].includes(raw)) return raw;
+  if (["CORRETIVA", "PREVENTIVA", "ELETRICA", "NRS", "OUTROS"].includes(raw)) return raw;
   return "OUTROS";
 }
 
@@ -64,7 +64,7 @@ function listEquipamentosAtivos() {
 }
 
 function listTipoOptions() {
-  return ["CORRETIVA", "PREVENTIVA", "NRS", "OUTROS"];
+  return ["CORRETIVA", "PREVENTIVA", "ELETRICA", "NRS", "OUTROS"];
 }
 
 function listGrauOptions() {
