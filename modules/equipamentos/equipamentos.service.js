@@ -225,12 +225,11 @@ function addPecaToEquipamento(equipamentoId, data) {
 }
 
 function updatePecaAssociacao(associacaoId, data) {
-  const assocId = Number(associacaoId);
-
-  db.prepare(`UPDATE equipamento_pecas SET quantidade=?, descricao_item=? WHERE id=?`).run(
+  db.prepare(`UPDATE equipamento_pecas SET aplicacao=?, quantidade=?, descricao_item=? WHERE id=?`).run(
+    String(data.aplicacao || "").trim() || null,
     Math.max(safeInt(data.quantidade) || 1, 1),
     String(data.descricao_item || "").trim() || null,
-    assocId
+    Number(associacaoId)
   );
 
   if (data.modelo_descricao && String(data.modelo_descricao).trim()) {
