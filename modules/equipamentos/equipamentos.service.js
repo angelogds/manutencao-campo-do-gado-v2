@@ -181,6 +181,8 @@ function listPecasByEquipamento(equipamentoId) {
   return db.prepare(`
     SELECT ep.id,
            ep.aplicacao,
+           COALESCE(ep.quantidade, 1) AS quantidade,
+           ep.descricao_item,
            p.id AS peca_id,
            p.tipo,
            p.modelo_descricao,
@@ -211,14 +213,22 @@ function addPecaToEquipamento(equipamentoId, data) {
   }
 
   db.prepare(`
-    INSERT INTO equipamento_pecas (equipamento_id, peca_id, aplicacao)
-    VALUES (?, ?, ?)
-  `).run(Number(equipamentoId), Number(pecaId), String(data.aplicacao || "").trim() || null);
+    INSERT INTO equipamento_pecas (equipamento_id, peca_id, aplicacao, quantidade, descricao_item)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(
+    Number(equipamentoId),
+    Number(pecaId),
+    String(data.aplicacao || "").trim() || null,
+    Math.max(safeInt(data.quantidade) || 1, 1),
+    String(data.descricao_item || "").trim() || null
+  );
 }
 
 function updatePecaAssociacao(associacaoId, data) {
-  db.prepare(`UPDATE equipamento_pecas SET aplicacao=? WHERE id=?`).run(
+  db.prepare(`UPDATE equipamento_pecas SET aplicacao=?, quantidade=?, descricao_item=? WHERE id=?`).run(
     String(data.aplicacao || "").trim() || null,
+    Math.max(safeInt(data.quantidade) || 1, 1),
+    String(data.descricao_item || "").trim() || null,
     Number(associacaoId)
   );
 }
