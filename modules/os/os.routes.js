@@ -9,6 +9,7 @@ const { ACCESS } = require("../../config/rbac");
 const ctrl = require("./os.controller");
 
 const OS_ACCESS = ["MANUTENCAO", "MECANICO", "PRODUCAO", "ENCARREGADO", "DIRECAO"];
+const OS_DETALHE_ACCESS = ["MANUTENCAO", "MECANICO"];
 
 const uploadDir = path.join(__dirname, "../../public/uploads/os");
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -45,17 +46,17 @@ router.post(
   wrap(ctrl.osCreate, "osCreate")
 );
 
-router.get("/:id", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osShow, "osShow"));
-router.post("/:id/iniciar", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osIniciar, "osIniciar"));
-router.post("/:id/pausar", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osPausar, "osPausar"));
+router.get("/:id", requireLogin, requireRole(OS_DETALHE_ACCESS), wrap(ctrl.osShow, "osShow"));
+router.post("/:id/iniciar", requireLogin, requireRole(OS_DETALHE_ACCESS), wrap(ctrl.osIniciar, "osIniciar"));
+router.post("/:id/pausar", requireLogin, requireRole(OS_DETALHE_ACCESS), wrap(ctrl.osPausar, "osPausar"));
 router.post(
   "/:id/concluir",
   requireLogin,
-  requireRole(OS_ACCESS),
+  requireRole(OS_DETALHE_ACCESS),
   upload.fields([{ name: "fechamento_fotos", maxCount: 10 }]),
   wrap(ctrl.osConcluir, "osConcluir")
 );
 
-router.post("/:id/status", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osUpdateStatus, "osUpdateStatus"));
+router.post("/:id/status", requireLogin, requireRole(OS_DETALHE_ACCESS), wrap(ctrl.osUpdateStatus, "osUpdateStatus"));
 
 module.exports = router;
