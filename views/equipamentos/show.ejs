@@ -38,7 +38,26 @@
 
     <div class="card">
       <% if (tab === 'historico') { %>
-        <form class="grid-4" method="GET"><input type="hidden" name="tab" value="historico"/><input class="input" type="date" name="data_inicio" value="<%= filtros.data_inicio %>"/><input class="input" type="date" name="data_fim" value="<%= filtros.data_fim %>"/><input class="input" name="tipo" placeholder="Tipo" value="<%= filtros.tipo %>"/><input class="input" name="grau" placeholder="Grau" value="<%= filtros.grau %>"/><button class="btn">Filtrar</button></form>
+        <form class="grid-4" method="GET">
+          <input type="hidden" name="tab" value="historico"/>
+          <input class="input" type="date" name="data_inicio" value="<%= filtros.data_inicio %>"/>
+          <input class="input" type="date" name="data_fim" value="<%= filtros.data_fim %>"/>
+          <select class="input" name="tipo">
+            <option value="">Tipo da ordem</option>
+            <option value="CORRETIVA" <%= filtros.tipo === 'CORRETIVA' ? 'selected' : '' %>>Corretiva</option>
+            <option value="PREVENTIVA" <%= filtros.tipo === 'PREVENTIVA' ? 'selected' : '' %>>Preventiva</option>
+            <option value="NRS" <%= filtros.tipo === 'NRS' ? 'selected' : '' %>>NR12</option>
+            <option value="OUTROS" <%= filtros.tipo === 'OUTROS' ? 'selected' : '' %>>Outras</option>
+          </select>
+          <select class="input" name="grau">
+            <option value="">Grau</option>
+            <option value="BAIXA" <%= filtros.grau === 'BAIXA' ? 'selected' : '' %>>Baixo</option>
+            <option value="MEDIA" <%= filtros.grau === 'MEDIA' ? 'selected' : '' %>>Médio</option>
+            <option value="ALTA" <%= filtros.grau === 'ALTA' ? 'selected' : '' %>>Alto</option>
+            <option value="CRITICA" <%= filtros.grau === 'CRITICA' ? 'selected' : '' %>>Crítico</option>
+          </select>
+          <button class="btn">Filtrar</button>
+        </form>
         <h3>OS do equipamento</h3>
         <div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>Abertura</th><th>Fechamento</th><th>Tipo</th><th>Grau</th><th>Descrição</th><th>Parada (h)</th><th>Custo</th></tr></thead><tbody><% if(!historicoOS.length){ %><tr><td colspan="8">Sem OS no período.</td></tr><% } %><% historicoOS.forEach(o=>{ %><tr><td><%= o.id %></td><td><%= fmtBR(o.opened_at) %></td><td><%= fmtBR(o.closed_at) %></td><td><%= o.tipo %></td><td><%= o.grau %></td><td><%= o.descricao %></td><td><%= o.tempo_parada_horas || '-' %></td><td>R$ <%= Number(o.custo_total||0).toFixed(2) %></td></tr><% }) %></tbody></table></div>
         <h3 style="margin-top:12px;">Preventivas executadas</h3>

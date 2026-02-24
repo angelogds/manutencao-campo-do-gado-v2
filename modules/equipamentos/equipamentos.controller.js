@@ -46,8 +46,8 @@ async function equipShow(req, res) {
   const filtros = {
     data_inicio: req.query.data_inicio || "",
     data_fim: req.query.data_fim || "",
-    tipo: req.query.tipo || "",
-    grau: req.query.grau || "",
+    tipo: String(req.query.tipo || "").trim().toUpperCase(),
+    grau: String(req.query.grau || "").trim().toUpperCase(),
   };
 
   const historicoOS = service.listHistoricoOS(id, filtros);
