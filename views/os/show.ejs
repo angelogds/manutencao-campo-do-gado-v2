@@ -1,8 +1,20 @@
 <% layout('layout') %>
 
 <style>
-  .top{display:grid;grid-template-columns:2fr 1fr;gap:12px}.card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px}.muted{color:#64748b;font-size:13px}.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.status{font-weight:700}.g-baixa{color:#15803d}.g-media{color:#b45309}.g-alta{color:#b91c1c}.g-critica{color:#7f1d1d}.thumbs{display:flex;flex-wrap:wrap;gap:8px}.thumbs a{display:block}.thumbs img{width:96px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0}.actions{display:flex;gap:8px;flex-wrap:wrap}.camera-btn{border:1px solid #d1d5db;background:#fff;border-radius:10px;padding:10px 12px;cursor:pointer}.pecas-grid{display:grid;grid-template-columns:1fr 140px;gap:8px;margin-top:8px}.peca-row{display:contents}
-  @media(max-width:900px){.top{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}}
+  .top{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px}
+  .muted{color:#64748b;font-size:13px}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .status{font-weight:700}.g-baixa{color:#15803d}.g-media{color:#b45309}.g-alta{color:#b91c1c}.g-critica{color:#7f1d1d}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .camera-btn{border:1px solid #d1d5db;background:#fff;border-radius:10px;padding:10px 12px;cursor:pointer}
+  .pecas-grid{display:grid;grid-template-columns:1fr 140px;gap:8px;margin-top:8px}.peca-row{display:contents}
+  .galeria{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:8px}
+  .foto-card{display:block;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#f8fafc;text-decoration:none}
+  .foto-card img{display:block;width:100%;height:140px;object-fit:cover;background:#e5e7eb}
+  .foto-card span{display:block;padding:6px 8px;font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .resumo-exec{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:900px){.top{grid-template-columns:1fr}.grid2{grid-template-columns:1fr}.resumo-exec{grid-template-columns:1fr}}
 </style>
 
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
@@ -49,12 +61,32 @@
 </div>
 
 <div class="card" style="margin-top:12px;">
-  <div class="muted">Fotos de abertura</div>
-  <div class="thumbs">
+  <h3 style="margin:0;">Fotos de abertura da OS</h3>
+  <div class="muted">Registro visual inicial do equipamento.</div>
+  <div class="galeria">
     <% if (!(os.fotos_abertura||[]).length) { %><span class="muted">Sem fotos de abertura.</span><% } %>
-    <% (os.fotos_abertura||[]).forEach(f => { %>
-      <a href="<%= f.filepath %>" target="_blank"><img src="<%= f.filepath %>" alt="foto abertura"/></a>
+    <% (os.fotos_abertura||[]).forEach((f, idx) => { const src = f.pathPublic || f.path || f.filepath; %>
+      <% if (src) { %><a class="foto-card" href="<%= src %>" target="_blank"><img src="<%= src %>" alt="foto abertura <%= idx + 1 %>"/><span>Abertura <%= idx + 1 %></span></a><% } %>
     <% }) %>
+  </div>
+</div>
+
+<div class="card" style="margin-top:12px;">
+  <h3 style="margin-top:0;">Resumo técnico da OS</h3>
+  <div class="resumo-exec">
+    <div><b>Diagnóstico encontrado:</b><br/><%= os.diagnostico || '-' %></div>
+    <div><b>O que foi feito:</b><br/><%= os.acao_executada || '-' %></div>
+  </div>
+  <div style="margin-top:10px;">
+    <b>Peças utilizadas</b>
+    <div class="muted" style="margin-top:4px;">
+      <% if (!(os.pecas_utilizadas||[]).length) { %>Sem peças registradas.<% } %>
+    </div>
+    <% if ((os.pecas_utilizadas||[]).length) { %>
+      <div class="table-wrap" style="margin-top:8px;"><table class="table"><thead><tr><th>Peça</th><th>Qtd</th></tr></thead><tbody>
+        <% (os.pecas_utilizadas||[]).forEach(pp => { %><tr><td><%= pp.peca_descricao %></td><td><%= pp.quantidade %></td></tr><% }) %>
+      </tbody></table></div>
+    <% } %>
   </div>
 </div>
 
@@ -98,11 +130,12 @@
 </div>
 
 <div class="card" style="margin-top:12px;">
-  <div class="muted">Fotos de fechamento</div>
-  <div class="thumbs">
+  <h3 style="margin:0;">Fotos de fechamento</h3>
+  <div class="muted">Registro visual após execução.</div>
+  <div class="galeria">
     <% if (!(os.fotos_fechamento||[]).length) { %><span class="muted">Sem fotos de fechamento.</span><% } %>
-    <% (os.fotos_fechamento||[]).forEach(f => { %>
-      <a href="<%= f.filepath %>" target="_blank"><img src="<%= f.filepath %>" alt="foto fechamento"/></a>
+    <% (os.fotos_fechamento||[]).forEach((f, idx) => { const src = f.pathPublic || f.path || f.filepath; %>
+      <% if (src) { %><a class="foto-card" href="<%= src %>" target="_blank"><img src="<%= src %>" alt="foto fechamento <%= idx + 1 %>"/><span>Fechamento <%= idx + 1 %></span></a><% } %>
     <% }) %>
   </div>
 </div>
