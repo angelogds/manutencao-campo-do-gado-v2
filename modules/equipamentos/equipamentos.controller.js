@@ -46,8 +46,8 @@ async function equipShow(req, res) {
   const filtros = {
     data_inicio: req.query.data_inicio || "",
     data_fim: req.query.data_fim || "",
-    tipo: req.query.tipo || "",
-    grau: req.query.grau || "",
+    tipo: String(req.query.tipo || "").trim().toUpperCase(),
+    grau: String(req.query.grau || "").trim().toUpperCase(),
   };
 
   const historicoOS = service.listHistoricoOS(id, filtros);
@@ -55,6 +55,7 @@ async function equipShow(req, res) {
   const pecas = service.listPecasByEquipamento(id);
   const catalogoPecas = service.listPecasCatalogo();
   const documentos = service.listDocumentos(id);
+  const editItemId = Number(req.query.editar_item) || null;
   const qr = service.getQrByEquipamento(id);
   const qrUrl = qr ? `${req.protocol}://${req.get("host")}/equipamentos/qrcode/${qr.token}` : "";
   const qrImage = qrUrl ? await QRCode.toDataURL(qrUrl) : "";
@@ -70,6 +71,7 @@ async function equipShow(req, res) {
     pecas,
     catalogoPecas,
     documentos,
+    editItemId,
     qr,
     qrUrl,
     qrImage,
@@ -138,10 +140,26 @@ function addDocumento(req, res) {
     return res.redirect(`/equipamentos/${id}?tab=documentos`);
   }
 
-  service.createDocumento(id, {
+  const tipoDocumento = String(req.body.tipo_documento || "").trim().toLowerCase();
+  if (!["manual", "laudo"].includes(tipoDocumento)) {
+    req.flash("error", "Selecione um tipo de documento válido: manual ou laudo.");
+    return res.redirect(`/equipamentos/${id}?tab=documentos`);
+  }
+
+  if (tipoDocumento === "laudo" && (!req.body.data_emissao || !req.body.validade)) {
+    req.flash("error", "Para laudo, informe a data de emissão e a validade.");
+    return res.redirect(`/equipamentos/${id}?tab=documentos`);
+  }
+
+  const payload = {
     ...req.body,
+    tipo_documento: tipoDocumento,
+    data_emissao: tipoDocumento === "laudo" ? req.body.data_emissao : null,
+    validade: tipoDocumento === "laudo" ? req.body.validade : null,
     caminho_arquivo: `/uploads/equipamentos/documentos/${req.file.filename}`,
-  });
+  };
+
+  service.createDocumento(id, payload);
 
   req.flash("success", "Documento anexado.");
   return res.redirect(`/equipamentos/${id}?tab=documentos`);

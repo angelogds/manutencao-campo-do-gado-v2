@@ -1,6 +1,7 @@
 <% layout('layout') %>
 <style>
 .equip-layout{display:grid;grid-template-columns:360px 1fr;gap:16px}.foto-col .card{position:sticky;top:12px}.foto-box{aspect-ratio:4/3;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;background:#f8fafc;display:flex;align-items:center;justify-content:center}.foto-box img{width:100%;height:100%;object-fit:cover}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.tab{padding:8px 12px;border-radius:999px;border:1px solid #d1d5db;text-decoration:none;color:#111827;font-weight:700}.tab.active{background:#166534;color:#fff;border-color:#166534}.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.badge{padding:3px 10px;border-radius:999px;background:#eef2ff}.crit-alta{background:#fee2e2}.crit-media{background:#fef3c7}.crit-baixa{background:#dcfce7}@media(max-width:900px){.equip-layout{grid-template-columns:1fr}}
+.hidden{display:none}
 </style>
 
 <div class="equip-layout">
@@ -37,32 +38,99 @@
 
     <div class="card">
       <% if (tab === 'historico') { %>
-        <form class="grid-4" method="GET"><input type="hidden" name="tab" value="historico"/><input class="input" type="date" name="data_inicio" value="<%= filtros.data_inicio %>"/><input class="input" type="date" name="data_fim" value="<%= filtros.data_fim %>"/><input class="input" name="tipo" placeholder="Tipo" value="<%= filtros.tipo %>"/><input class="input" name="grau" placeholder="Grau" value="<%= filtros.grau %>"/><button class="btn">Filtrar</button></form>
+        <form class="grid-4" method="GET">
+          <input type="hidden" name="tab" value="historico"/>
+          <input class="input" type="date" name="data_inicio" value="<%= filtros.data_inicio %>"/>
+          <input class="input" type="date" name="data_fim" value="<%= filtros.data_fim %>"/>
+          <select class="input" name="tipo">
+            <option value="">Tipo da ordem</option>
+            <option value="CORRETIVA" <%= filtros.tipo === 'CORRETIVA' ? 'selected' : '' %>>Corretiva</option>
+            <option value="PREVENTIVA" <%= filtros.tipo === 'PREVENTIVA' ? 'selected' : '' %>>Preventiva</option>
+            <option value="NRS" <%= filtros.tipo === 'NRS' ? 'selected' : '' %>>NR12</option>
+            <option value="OUTROS" <%= filtros.tipo === 'OUTROS' ? 'selected' : '' %>>Outras</option>
+          </select>
+          <select class="input" name="grau">
+            <option value="">Grau</option>
+            <option value="BAIXA" <%= filtros.grau === 'BAIXA' ? 'selected' : '' %>>Baixo</option>
+            <option value="MEDIA" <%= filtros.grau === 'MEDIA' ? 'selected' : '' %>>Médio</option>
+            <option value="ALTA" <%= filtros.grau === 'ALTA' ? 'selected' : '' %>>Alto</option>
+            <option value="CRITICA" <%= filtros.grau === 'CRITICA' ? 'selected' : '' %>>Crítico</option>
+          </select>
+          <button class="btn">Filtrar</button>
+        </form>
         <h3>OS do equipamento</h3>
         <div class="table-wrap"><table class="table"><thead><tr><th>#</th><th>Abertura</th><th>Fechamento</th><th>Tipo</th><th>Grau</th><th>Descrição</th><th>Parada (h)</th><th>Custo</th></tr></thead><tbody><% if(!historicoOS.length){ %><tr><td colspan="8">Sem OS no período.</td></tr><% } %><% historicoOS.forEach(o=>{ %><tr><td><%= o.id %></td><td><%= fmtBR(o.opened_at) %></td><td><%= fmtBR(o.closed_at) %></td><td><%= o.tipo %></td><td><%= o.grau %></td><td><%= o.descricao %></td><td><%= o.tempo_parada_horas || '-' %></td><td>R$ <%= Number(o.custo_total||0).toFixed(2) %></td></tr><% }) %></tbody></table></div>
         <h3 style="margin-top:12px;">Preventivas executadas</h3>
         <div class="table-wrap"><table class="table"><thead><tr><th>Atividade</th><th>Execução</th><th>Responsável</th><th>Observações</th></tr></thead><tbody><% if(!historicoPreventivas.length){ %><tr><td colspan="4">Sem preventivas.</td></tr><% } %><% historicoPreventivas.forEach(p=>{ %><tr><td><%= p.atividade %></td><td><%= p.data_execucao || '-' %></td><td><%= p.responsavel || '-' %></td><td><%= p.observacao || '-' %></td></tr><% }) %></tbody></table></div>
       <% } else if (tab === 'pecas') { %>
-        <form method="POST" action="/equipamentos/<%= equip.id %>/pecas" class="grid-3">
-          <select name="peca_id" class="input"><option value="">Selecionar peça catálogo</option><% catalogoPecas.forEach(c=>{ %><option value="<%= c.id %>"><%= c.tipo %> - <%= c.modelo_descricao %></option><% }) %></select>
-          <input class="input" name="aplicacao" placeholder="Aplicação no equipamento"/>
-          <button class="btn btn-green">+ Adicionar peça ao equipamento</button>
-          <input class="input" name="tipo" placeholder="(nova) Tipo"/>
-          <input class="input" name="modelo_descricao" placeholder="(nova) Modelo/descrição"/>
-          <input class="input" name="codigo_interno" placeholder="(nova) Código interno"/>
-          <input class="input" name="fabricante" placeholder="(nova) Fabricante"/>
+        <form method="POST" action="/equipamentos/<%= equip.id %>/pecas" class="grid-4">
+          <input class="input" name="modelo_descricao" placeholder="Item (ex.: Rolamento)" required/>
+          <input class="input" name="descricao_item" placeholder="Descrição / Medida (ex.: 130 interno x 200 externo x 30 largura)"/>
+          <select class="input" name="unidade_medida">
+            <option value="UNIDADE">Unidade</option>
+            <option value="CAIXA">Caixa</option>
+            <option value="LITRO">Litro</option>
+          </select>
+          <input class="input" type="number" min="1" name="quantidade" placeholder="Quantidade" value="1" required/>
+          <button class="btn btn-green">+ Adicionar novo item</button>
         </form>
-        <div class="table-wrap"><table class="table"><thead><tr><th>Tipo</th><th>Modelo</th><th>Código</th><th>Fabricante</th><th>Aplicação</th><th>Ações</th></tr></thead><tbody><% if(!pecas.length){ %><tr><td colspan="6">Nenhuma peça associada.</td></tr><% } %><% pecas.forEach(p=>{ %><tr><td><%= p.tipo %></td><td><%= p.modelo_descricao %></td><td><%= p.codigo_interno || '-' %></td><td><%= p.fabricante || '-' %></td><td><form method="POST" action="/equipamentos/<%= equip.id %>/pecas/<%= p.id %>"><input class="input" name="aplicacao" value="<%= p.aplicacao || '' %>"/><button class="btn">Salvar</button></form></td><td><form method="POST" action="/equipamentos/<%= equip.id %>/pecas/<%= p.id %>/remover"><button class="btn btn-red">Remover</button></form></td></tr><% }) %></tbody></table></div>
+
+        <div class="table-wrap"><table class="table"><thead><tr><th>Item</th><th>Descrição / Medida</th><th>Unidade</th><th>Quantidade</th><th>Ação</th></tr></thead><tbody><% if(!pecas.length){ %><tr><td colspan="5">Nenhum item cadastrado.</td></tr><% } %><% pecas.forEach((p, idx)=>{ %><tr><td><%= p.modelo_descricao || ('Item ' + (idx + 1)) %></td><td><%= p.descricao_item || '-' %></td><td><%= p.unidade_medida || 'UNIDADE' %></td><td><%= p.quantidade || 1 %></td><td><a class="btn" href="?tab=pecas&editar_item=<%= p.id %>" title="Editar item">✏️</a><form method="POST" action="/equipamentos/<%= equip.id %>/pecas/<%= p.id %>/remover" style="display:inline;"><button class="btn btn-red" title="Remover item">🗑️</button></form></td></tr><% }) %></tbody></table></div>
+
+        <% const itemEmEdicao = editItemId ? pecas.find((p) => p.id === editItemId) : null; %>
+        <% if (itemEmEdicao) { %>
+          <form method="POST" action="/equipamentos/<%= equip.id %>/pecas/<%= itemEmEdicao.id %>" class="grid-4" style="margin-top:10px;">
+            <input class="input" name="modelo_descricao" value="<%= itemEmEdicao.modelo_descricao || '' %>" placeholder="Item" required/>
+            <input class="input" name="descricao_item" value="<%= itemEmEdicao.descricao_item || '' %>" placeholder="Descrição / Medida"/>
+            <select class="input" name="unidade_medida">
+              <option value="UNIDADE" <%= itemEmEdicao.unidade_medida === 'UNIDADE' ? 'selected' : '' %>>Unidade</option>
+              <option value="CAIXA" <%= itemEmEdicao.unidade_medida === 'CAIXA' ? 'selected' : '' %>>Caixa</option>
+              <option value="LITRO" <%= itemEmEdicao.unidade_medida === 'LITRO' ? 'selected' : '' %>>Litro</option>
+            </select>
+            <input class="input" type="number" min="1" name="quantidade" value="<%= itemEmEdicao.quantidade || 1 %>" required/>
+            <button class="btn">Salvar edição</button>
+          </form>
+        <% } %>
       <% } else if (tab === 'documentos') { %>
         <form method="POST" action="/equipamentos/<%= equip.id %>/documentos" enctype="multipart/form-data" class="grid-3">
-          <input class="input" name="tipo_documento" placeholder="Tipo (manual, laudo...)" required/>
+          <select class="input" name="tipo_documento" id="tipo_documento" required>
+            <option value="">Selecione o tipo do documento</option>
+            <option value="manual">Manual</option>
+            <option value="laudo">Laudo</option>
+          </select>
           <input class="input" name="descricao" placeholder="Descrição"/>
           <input class="input" type="file" name="arquivo" required/>
-          <input class="input" type="date" name="data_emissao"/>
-          <input class="input" type="date" name="validade"/>
+          <input class="input" type="date" name="data_emissao" id="data_emissao"/>
+          <input class="input" type="date" name="validade" id="validade"/>
           <input class="input" name="responsavel" placeholder="Responsável"/>
           <button class="btn btn-green">Anexar documento</button>
         </form>
+        <script>
+          (() => {
+            const tipoSelect = document.getElementById("tipo_documento");
+            const dataEmissao = document.getElementById("data_emissao");
+            const validade = document.getElementById("validade");
+
+            if (!tipoSelect || !dataEmissao || !validade) return;
+
+            function atualizarCamposDeData() {
+              const ehLaudo = tipoSelect.value === "laudo";
+
+              dataEmissao.required = ehLaudo;
+              validade.required = ehLaudo;
+              dataEmissao.classList.toggle("hidden", !ehLaudo);
+              validade.classList.toggle("hidden", !ehLaudo);
+
+              if (!ehLaudo) {
+                dataEmissao.value = "";
+                validade.value = "";
+              }
+            }
+
+            tipoSelect.addEventListener("change", atualizarCamposDeData);
+            atualizarCamposDeData();
+          })();
+        </script>
         <div class="table-wrap"><table class="table"><thead><tr><th>Tipo</th><th>Descrição</th><th>Emissão</th><th>Validade</th><th>Responsável</th><th>Ações</th></tr></thead><tbody><% if(!documentos.length){ %><tr><td colspan="6">Sem documentos anexados.</td></tr><% } %><% documentos.forEach(d=>{ %><tr><td><%= d.tipo_documento %></td><td><%= d.descricao || '-' %></td><td><%= d.data_emissao || '-' %></td><td><%= d.validade || '-' %></td><td><%= d.responsavel || '-' %></td><td><a class="btn" href="<%= d.caminho_arquivo %>" download>Baixar</a><form method="POST" action="/equipamentos/<%= equip.id %>/documentos/<%= d.id %>/remover" style="display:inline;"><button class="btn btn-red">Remover</button></form></td></tr><% }) %></tbody></table></div>
       <% } else if (tab === 'qrcode') { %>
         <% if (qrImage) { %><img src="<%= qrImage %>" style="max-width:260px;"/><p><a href="<%= qrUrl %>" target="_blank"><%= qrUrl %></a></p><a class="btn" href="/equipamentos/<%= equip.id %>/qrcode/print" target="_blank">Imprimir QR Code</a><% } else { %><p>Ainda sem QR Code. Use o botão de gerar.</p><% } %>
