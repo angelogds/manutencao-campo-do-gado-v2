@@ -93,6 +93,25 @@
 <% } %>
 
 <div class="card" style="margin-top:12px;">
+  <h3 style="margin-top:0;">Resumo técnico da OS</h3>
+  <div class="resumo-exec">
+    <div><b>Diagnóstico encontrado:</b><br/><%= os.diagnostico || '-' %></div>
+    <div><b>O que foi feito:</b><br/><%= os.acao_executada || '-' %></div>
+  </div>
+  <div style="margin-top:10px;">
+    <b>Peças utilizadas</b>
+    <div class="muted" style="margin-top:4px;">
+      <% if (!(os.pecas_utilizadas||[]).length) { %>Sem peças registradas.<% } %>
+    </div>
+    <% if ((os.pecas_utilizadas||[]).length) { %>
+      <div class="table-wrap" style="margin-top:8px;"><table class="table"><thead><tr><th>Peça</th><th>Qtd</th></tr></thead><tbody>
+        <% (os.pecas_utilizadas||[]).forEach(pp => { %><tr><td><%= pp.peca_descricao %></td><td><%= pp.quantidade %></td></tr><% }) %>
+      </tbody></table></div>
+    <% } %>
+  </div>
+</div>
+
+<div class="card" style="margin-top:12px;">
   <h3>Concluir OS</h3>
   <form method="POST" action="/os/<%= os.id %>/concluir" enctype="multipart/form-data" id="form-concluir">
     <div class="grid2">
