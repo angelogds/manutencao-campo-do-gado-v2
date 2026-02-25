@@ -4,6 +4,7 @@ const fs = require('node:fs');
 
 test('inspecao view has standardized top action buttons', () => {
   const view = fs.readFileSync('views/inspecao/index.ejs', 'utf8');
+  assert.ok(view.includes('/css/inspecao.css'));
   assert.ok(view.includes('class="top-actions"'));
   assert.ok(view.includes('← Voltar'));
   assert.ok(view.includes('Atualizar Sistema'));
