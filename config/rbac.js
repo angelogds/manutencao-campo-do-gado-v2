@@ -40,6 +40,17 @@ const ACCESS = {
   compras: [ROLE.ADMIN, ROLE.COMPRAS],
   usuarios: [ROLE.ADMIN],
   escala: [ROLE.ADMIN, ROLE.RH, ROLE.ENCARREGADO_PRODUCAO, ROLE.MANUTENCAO_SUPERVISOR],
+  inspecao_view: [
+    ROLE.ADMIN,
+    ROLE.MANUTENCAO_SUPERVISOR,
+    ROLE.MECANICO,
+    ROLE.DIRETORIA,
+    ROLE.PRODUCAO,
+    ROLE.COMPRAS,
+    ROLE.ALMOXARIFADO,
+    ROLE.RH,
+  ],
+  inspecao_edit: [ROLE.ADMIN, ROLE.MANUTENCAO_SUPERVISOR],
 };
 
 function canAccessModule(role, moduleKey) {
