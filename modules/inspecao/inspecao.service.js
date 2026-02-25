@@ -1,41 +1,8 @@
 const db = require("../../database/db");
 
-const DEFAULT_EQUIPAMENTOS = [
-  "Caldeira 1",
-  "Caldeira 2",
-  "Caldeira 3",
-  "Rosca da tolva 1",
-  "Rosca da tolva 2",
-  "Triturador 1",
-  "Triturador 2",
-  "Digestor 1",
-  "Digestor 2",
-  "Digestor 3",
-  "Digestor 4",
-  "Percoladora",
-  "Roscas transportadoras",
-  "Tanque mexedor de sebo",
-  "Borreira",
-  "Prensa 1",
-  "Prensa 2",
-  "Esterilizador",
-  "Moegas",
-  "Moinho",
-  "Ensacadeira de farinha de carne e ossos",
-  "Tanque intermediário",
-  "Tanque clarificador",
-  "Tanques de armazenamento de sebo",
-  "Decanter 1",
-  "Decanter 2",
-  "Tanque de recebimento de sangue",
-  "Digestor de sangue",
-  "Ensacadeira de farinha de sangue",
-];
-
 const NC_KEYWORDS = [
-  "quebrou", "quebrado", "falha", "rolamento", "mancal", "trincou", "parou", "travou",
-  "vazamento", "superaquecimento", "correia arrebentou", "nao conforme", "não conforme", "avaria",
-  "defeito", "pane", "quebra",
+  "quebrou", "quebrado", "falha", "queimou", "queimado", "rolamento", "mancal", "travou", "parou",
+  "vazamento", "superaquecimento", "correia arrebentou", "motor", "bomba", "induzido", "redutor", "curto", "estourou", "quebra",
 ];
 
 function normalizeText(value) {
@@ -46,415 +13,432 @@ function normalizeText(value) {
     .trim();
 }
 
-function daysInMonth(year, month) {
-  return new Date(year, month, 0).getDate();
+function daysInMonth(ano, mes) {
+  return new Date(ano, mes, 0).getDate();
 }
 
-function dayFromDate(value) {
+function dateOnly(value) {
   if (!value) return null;
-  const iso = String(value).slice(0, 10);
+  return String(value).slice(0, 10);
+}
+
+function dateToDay(value) {
+  const iso = dateOnly(value);
+  if (!iso) return null;
   const dt = new Date(`${iso}T00:00:00`);
   if (Number.isNaN(dt.getTime())) return null;
   return dt.getDate();
 }
 
-function monthYearFromDate(value) {
-  const dt = new Date(`${String(value).slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(dt.getTime())) return null;
-  return { mes: dt.getMonth() + 1, ano: dt.getFullYear() };
+function monthRange(ano, mes) {
+  const start = new Date(ano, mes - 1, 1);
+  const end = new Date(ano, mes, 1);
+  return {
+    start: start.toISOString().slice(0, 10),
+    end: end.toISOString().slice(0, 10),
+  };
 }
 
-function tableExists(name) {
-  const row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name);
+function findFirstColumn(columns, candidates) {
+  return candidates.find((column) => columns.includes(column)) || null;
+}
+
+function tableColumns(table) {
+  return db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name);
+}
+
+function hasTable(name) {
+  const row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name);
   return !!row;
 }
 
-function hasInspecaoTables() {
-  return tableExists("inspecoes_pac01") && tableExists("inspecao_pac01_itens") && tableExists("inspecao_pac01_nao_conformidades");
-}
-
-function getOSColumns() {
-  return db.prepare("PRAGMA table_info(os)").all().map((c) => c.name);
-}
-
-function findFirstColumn(cols, list) {
-  return list.find((c) => cols.includes(c)) || null;
-}
-
-function buildPeriodoISO(ano, mes) {
-  const mm = String(mes).padStart(2, "0");
-  return { start: `${ano}-${mm}-01`, end: `${ano}-${mm}-${String(daysInMonth(ano, mes)).padStart(2, "0")}` };
+function getOSFieldMap() {
+  const cols = tableColumns("os");
+  return {
+    id: "id",
+    status: findFirstColumn(cols, ["status"]),
+    equipamentoId: findFirstColumn(cols, ["equipamento_id"]),
+    equipamentoNome: findFirstColumn(cols, ["equipamento", "equipamento_manual", "equipamento_nome"]),
+    descricaoProblema: findFirstColumn(cols, ["descricao_problema", "descricao", "solicitacao", "relato"]),
+    resumoTecnico: findFirstColumn(cols, ["resumo_tecnico", "relatorio_tecnico", "execucao", "servico_realizado", "acao_executada"]),
+    causaDiagnostico: findFirstColumn(cols, ["causa", "diagnostico", "observacao_causa", "preventiva"]),
+    dataInicio: findFirstColumn(cols, ["data_inicio", "opened_at", "created_at"]),
+    dataFim: findFirstColumn(cols, ["data_fim", "data_conclusao", "closed_at", "fechado_em"]),
+    naoConforme: findFirstColumn(cols, ["nao_conforme", "is_nao_conforme"]),
+    semProducao: findFirstColumn(cols, ["sem_producao"]),
+    tipo: findFirstColumn(cols, ["tipo"]),
+  };
 }
 
 function getOrCreateInspecao(mes, ano, user) {
-  if (!hasInspecaoTables()) throw new Error("Tabelas de inspeção não encontradas. Rode migrations.");
-  let row = db.prepare("SELECT * FROM inspecoes_pac01 WHERE mes = ? AND ano = ?").get(mes, ano);
-  if (!row) {
-    const info = db.prepare(
-      `INSERT INTO inspecoes_pac01 (mes, ano, frequencia, monitor_nome, verificador_nome, criado_por)
-       VALUES (?, ?, 'Diária', NULL, NULL, ?)`
-    ).run(mes, ano, user?.id || null);
-    row = db.prepare("SELECT * FROM inspecoes_pac01 WHERE id = ?").get(info.lastInsertRowid);
+  let inspecao = db.prepare("SELECT * FROM inspecoes_pac01 WHERE mes = ? AND ano = ?").get(mes, ano);
+  if (inspecao) return inspecao;
+
+  const cols = tableColumns("inspecoes_pac01");
+  const ownerCol = cols.includes("created_by") ? "created_by" : (cols.includes("criado_por") ? "criado_por" : null);
+
+  const fields = ["mes", "ano", "frequencia", "monitor_nome", "verificador_nome"];
+  const values = [mes, ano, "Diária", null, null];
+  if (ownerCol) {
+    fields.push(ownerCol);
+    values.push(user?.id || null);
   }
-  return row;
+
+  const info = db.prepare(
+    `INSERT INTO inspecoes_pac01 (${fields.join(",")}) VALUES (${fields.map(() => "?").join(",")})`
+  ).run(...values);
+
+  inspecao = db.prepare("SELECT * FROM inspecoes_pac01 WHERE id = ?").get(info.lastInsertRowid);
+  return inspecao;
 }
 
 function listEquipamentosAtivos() {
-  const list = db.prepare("SELECT id, nome FROM equipamentos WHERE ativo = 1 ORDER BY nome").all();
-  if (list.length) return list.map((item) => ({ id: item.id, nome: item.nome, chave: normalizeText(item.nome) }));
-  return DEFAULT_EQUIPAMENTOS.map((nome) => ({ id: null, nome, chave: normalizeText(nome) }));
-}
-
-function fetchOSByMonth(mes, ano) {
-  const cols = getOSColumns();
-  const dataInicioCol = findFirstColumn(cols, ["data_inicio", "started_at", "opened_at", "created_at"]);
-  const dataFimCol = findFirstColumn(cols, ["data_conclusao", "closed_at", "data_fim"]);
-  const descCol = findFirstColumn(cols, ["descricao", "diagnostico", "acao_executada"]);
-  const causaCol = findFirstColumn(cols, ["causa_parada", "causa", "motivo", "diagnostico"]);
-  const ncCol = findFirstColumn(cols, ["is_nao_conforme", "nao_conforme"]);
-  const acaoCol = findFirstColumn(cols, ["acao_executada", "acao", "solucao"]);
-  const diagCol = findFirstColumn(cols, ["diagnostico", "causa", "motivo"]);
-
-  if (!dataInicioCol) return [];
-  const { start, end } = buildPeriodoISO(ano, mes);
-
+  const cols = tableColumns("equipamentos");
+  const itemExpr = cols.includes("codigo") ? "NULLIF(TRIM(codigo),'')" : "NULL";
   return db.prepare(
-    `SELECT
-      o.id,
-      ${cols.includes("equipamento_id") ? "o.equipamento_id" : "NULL"} AS equipamento_id,
-      ${cols.includes("equipamento") ? "o.equipamento" : "NULL"} AS equipamento_nome,
-      ${cols.includes("status") ? "o.status" : "''"} AS status,
-      ${descCol ? `o.${descCol}` : "''"} AS descricao,
-      ${causaCol ? `o.${causaCol}` : "''"} AS causa,
-      ${acaoCol ? `o.${acaoCol}` : "''"} AS acao_executada,
-      ${diagCol ? `o.${diagCol}` : "''"} AS diagnostico,
-      ${dataInicioCol ? `o.${dataInicioCol}` : "NULL"} AS data_inicio,
-      ${dataFimCol ? `o.${dataFimCol}` : "NULL"} AS data_fim,
-      ${ncCol ? `o.${ncCol}` : "0"} AS is_nao_conforme,
-      ${cols.includes("tipo") ? "o.tipo" : "''"} AS tipo
-     FROM os o
-     WHERE substr(o.${dataInicioCol},1,10) BETWEEN ? AND ?`
-  ).all(start, end);
+    `SELECT id, nome, ${itemExpr} AS item_codigo
+     FROM equipamentos
+     WHERE COALESCE(ativo, 1) = 1
+     ORDER BY nome`
+  ).all().map((eq) => ({
+    ...eq,
+    chave: normalizeText(eq.nome),
+    item: eq.item_codigo || String(eq.id),
+  }));
 }
 
-function fetchOSById(osId) {
-  const cols = getOSColumns();
-  const dataInicioCol = findFirstColumn(cols, ["data_inicio", "started_at", "opened_at", "created_at"]);
-  const dataFimCol = findFirstColumn(cols, ["data_conclusao", "closed_at", "data_fim"]);
-  if (!dataInicioCol) return null;
+function getOSByMonth(mes, ano) {
+  const map = getOSFieldMap();
+  if (!map.dataInicio) return [];
 
-  return db.prepare(
-    `SELECT
+  const { start, end } = monthRange(ano, mes);
+  const cols = tableColumns("os");
+  const dateCandidates = [map.dataInicio, "opened_at", "created_at"].filter((c) => c && cols.includes(c));
+  const dateExpr = dateCandidates.length ? `COALESCE(${dateCandidates.map((c) => `o.${c}`).join(", ")})` : `o.${map.dataInicio}`;
+
+  const sql = `
+    SELECT
       o.id,
-      ${cols.includes("equipamento_id") ? "o.equipamento_id" : "NULL"} AS equipamento_id,
-      ${cols.includes("equipamento") ? "o.equipamento" : "NULL"} AS equipamento_nome,
-      ${cols.includes("status") ? "o.status" : "''"} AS status,
-      ${cols.includes("descricao") ? "o.descricao" : "''"} AS descricao,
-      ${findFirstColumn(cols, ["causa_parada", "causa", "motivo", "diagnostico"]) ? `o.${findFirstColumn(cols, ["causa_parada", "causa", "motivo", "diagnostico"])}` : "''"} AS causa,
-      ${findFirstColumn(cols, ["acao_executada", "acao", "solucao"]) ? `o.${findFirstColumn(cols, ["acao_executada", "acao", "solucao"])}` : "''"} AS acao_executada,
-      ${findFirstColumn(cols, ["diagnostico", "causa", "motivo"]) ? `o.${findFirstColumn(cols, ["diagnostico", "causa", "motivo"])}` : "''"} AS diagnostico,
-      ${dataInicioCol ? `o.${dataInicioCol}` : "NULL"} AS data_inicio,
-      ${dataFimCol ? `o.${dataFimCol}` : "NULL"} AS data_fim,
-      ${findFirstColumn(cols, ["is_nao_conforme", "nao_conforme"]) ? `o.${findFirstColumn(cols, ["is_nao_conforme", "nao_conforme"])}` : "0"} AS is_nao_conforme,
-      ${cols.includes("tipo") ? "o.tipo" : "''"} AS tipo
-     FROM os o WHERE o.id = ?`
-  ).get(osId);
+      ${map.status ? `o.${map.status}` : "NULL"} AS status,
+      ${map.dataInicio ? `o.${map.dataInicio}` : "NULL"} AS data_inicio,
+      ${map.dataFim ? `o.${map.dataFim}` : "NULL"} AS data_fim,
+      ${map.descricaoProblema ? `o.${map.descricaoProblema}` : "NULL"} AS texto_problema,
+      ${map.resumoTecnico ? `o.${map.resumoTecnico}` : "NULL"} AS resumo_tecnico,
+      ${map.causaDiagnostico ? `o.${map.causaDiagnostico}` : "NULL"} AS causa_diagnostico,
+      ${map.equipamentoId ? `o.${map.equipamentoId}` : "NULL"} AS equipamento_id,
+      ${map.equipamentoNome ? `o.${map.equipamentoNome}` : "NULL"} AS equipamento_nome,
+      ${map.naoConforme ? `o.${map.naoConforme}` : "0"} AS nao_conforme,
+      ${map.semProducao ? `o.${map.semProducao}` : "0"} AS sem_producao,
+      ${map.tipo ? `o.${map.tipo}` : "NULL"} AS tipo
+    FROM os o
+    WHERE date(${dateExpr}) >= date(?)
+      AND date(${dateExpr}) < date(?)
+    ORDER BY date(${dateExpr}), o.id
+  `;
+
+  return db.prepare(sql).all(start, end);
 }
 
-function detectNC(os) {
-  if (!os) return false;
-  if (Number(os.is_nao_conforme || 0) === 1) return true;
+function mapOSToEquipamento(osRow, equipamentos, equipById, equipByName) {
+  if (!osRow) return null;
 
-  const text = normalizeText(`${os.descricao || ""} ${os.causa || ""}`);
+  if (osRow.equipamento_id && equipById.has(Number(osRow.equipamento_id))) {
+    return equipById.get(Number(osRow.equipamento_id));
+  }
+
+  const key = normalizeText(osRow.equipamento_nome);
+  if (key && equipByName.has(key)) return equipByName.get(key);
+
+  for (const [nameKey, eq] of equipByName.entries()) {
+    if (!key || !nameKey) continue;
+    if (nameKey.includes(key) || key.includes(nameKey)) return eq;
+  }
+
+  const fallback = equipamentos.find((eq) => normalizeText(eq.item) === key);
+  return fallback || null;
+}
+
+function isNC(osRow) {
+  if (!osRow) return false;
+  if (Number(osRow.nao_conforme || 0) === 1) return true;
+
+  const status = normalizeText(osRow.status);
+  if (status.includes("quebra") || status.includes("parada")) return true;
+
+  const text = normalizeText(`${osRow.texto_problema || ""} ${osRow.causa_diagnostico || ""} ${osRow.tipo || ""}`);
   return NC_KEYWORDS.some((kw) => text.includes(normalizeText(kw)));
 }
 
-function detectSP(os) {
-  const joined = normalizeText(`${os.descricao || ""} ${os.causa || ""}`);
-  return joined.includes("sem producao") || joined.includes("sem produção");
+function isEA(osRow) {
+  const status = normalizeText(osRow?.status);
+  return status.includes("aberta") || status.includes("andamento") || status.includes("em andamento") || status.includes("pausada");
+}
+
+function isSP(osRow) {
+  if (!osRow) return false;
+  if (Number(osRow.sem_producao || 0) === 1) return true;
+  const text = normalizeText(`${osRow.texto_problema || ""} ${osRow.causa_diagnostico || ""}`);
+  return text.includes("sem producao") || text.includes("sem produção");
 }
 
 function statusPriority(status) {
-  const map = { C: 0, SP: 1, EA: 2, NC: 3 };
-  return map[status] ?? -1;
+  const p = { C: 0, SP: 1, EA: 2, NC: 3 };
+  return p[status] ?? -1;
 }
 
-function buildEquipmentMap(equipamentos) {
-  const map = new Map();
+function buildMonthlyGrid(inspecao, equipamentos, osList) {
+  const diasMes = daysInMonth(inspecao.ano, inspecao.mes);
+  const equipById = new Map(equipamentos.map((eq) => [eq.id, eq]));
+  const equipByName = new Map(equipamentos.map((eq) => [eq.chave, eq]));
+  const gridMap = new Map();
+
   for (const eq of equipamentos) {
-    map.set(eq.chave, eq);
-  }
-  return map;
-}
-
-function resolveEquipamentoFromOS(os, equipamentoMap) {
-  if (!os) return null;
-
-  if (os.equipamento_id) {
-    const found = db.prepare("SELECT id, nome FROM equipamentos WHERE id = ?").get(os.equipamento_id);
-    if (found?.nome) return { id: found.id, nome: found.nome, chave: normalizeText(found.nome) };
+    const line = Array.from({ length: 31 }, (_, idx) => ({
+      dia: idx + 1,
+      status: idx + 1 <= diasMes ? "C" : "-",
+      os_id: null,
+      observacao: null,
+    }));
+    gridMap.set(eq.id, line);
   }
 
-  const key = normalizeText(os.equipamento_nome || "");
-  if (equipamentoMap.has(key)) return equipamentoMap.get(key);
+  const osByEquipDay = new Map();
 
-  for (const [mapKey, eq] of equipamentoMap.entries()) {
-    if (!mapKey || !key) continue;
-    if (mapKey.includes(key) || key.includes(mapKey)) return eq;
-  }
+  for (const osRow of osList) {
+    const eq = mapOSToEquipamento(osRow, equipamentos, equipById, equipByName);
+    if (!eq) continue;
 
-  return null;
-}
+    const dia = dateToDay(osRow.data_inicio);
+    if (!dia || dia > diasMes) continue;
 
-function upsertGradeItem(inspecaoId, equipamento, dia, status, osId, observacao, isManual = 0) {
-  const exists = db
-    .prepare(
-      `SELECT id, status, is_manual
-       FROM inspecao_pac01_itens
-       WHERE inspecao_id = ? AND equipamento_nome = ? AND dia = ?`
-    )
-    .get(inspecaoId, equipamento.nome, dia);
+    const key = `${eq.id}:${dia}`;
+    if (!osByEquipDay.has(key)) osByEquipDay.set(key, []);
+    osByEquipDay.get(key).push(osRow);
 
-  if (!exists) {
-    db.prepare(
-      `INSERT INTO inspecao_pac01_itens
-      (inspecao_id, equipamento_id, equipamento_nome, dia, status, os_id, observacao, is_manual)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      inspecaoId,
-      equipamento.id || null,
-      equipamento.nome,
-      dia,
-      status,
-      osId || null,
-      observacao || null,
-      Number(isManual || 0)
-    );
-    return;
-  }
-
-  if (Number(exists.is_manual || 0) === 1 && Number(isManual || 0) === 0) {
-    return;
-  }
-
-  db.prepare(
-    `UPDATE inspecao_pac01_itens
-     SET status = ?,
-         os_id = ?,
-         observacao = COALESCE(?, observacao),
-         is_manual = ?,
-         updated_at = datetime('now')
-     WHERE id = ?`
-  ).run(status, osId || null, observacao || null, Number(isManual || 0), exists.id);
-}
-
-function upsertNaoConformidade(inspecaoId, equipamento, dataOcorrencia, dadosOS, textos = {}) {
-  if (!dataOcorrencia) return;
-  const osId = dadosOS?.id || null;
-
-  const existing = db
-    .prepare(
-      `SELECT *
-       FROM inspecao_pac01_nao_conformidades
-       WHERE inspecao_id = ? AND equipamento_nome = ? AND data_ocorrencia = ? AND COALESCE(os_id,0) = COALESCE(?,0)`
-    )
-    .get(inspecaoId, equipamento.nome, dataOcorrencia, osId);
-
-  const ncTexto = textos.nao_conformidade || dadosOS?.descricao || dadosOS?.causa || "Não conformidade detectada";
-  const causaParada = dadosOS?.causa || dadosOS?.descricao || null;
-
-  if (!existing) {
-    db.prepare(
-      `INSERT INTO inspecao_pac01_nao_conformidades
-      (inspecao_id, equipamento_id, equipamento_nome, data_ocorrencia, nao_conformidade, acao_corretiva, acao_preventiva, data_correcao, os_id, os_data_inicio, os_data_fim, causa_parada)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      inspecaoId,
-      equipamento.id || null,
-      equipamento.nome,
-      dataOcorrencia,
-      ncTexto,
-      textos.acao_corretiva || null,
-      textos.acao_preventiva || null,
-      textos.data_correcao || null,
-      osId,
-      dadosOS?.data_inicio || null,
-      dadosOS?.data_fim || null,
-      causaParada
-    );
-    return;
-  }
-
-  db.prepare(
-    `UPDATE inspecao_pac01_nao_conformidades
-     SET nao_conformidade = COALESCE(NULLIF(?, ''), nao_conformidade),
-         acao_corretiva = COALESCE(NULLIF(acao_corretiva, ''), NULLIF(?, ''), acao_corretiva),
-         acao_preventiva = COALESCE(NULLIF(acao_preventiva, ''), NULLIF(?, ''), acao_preventiva),
-         data_correcao = COALESCE(data_correcao, ?),
-         os_data_inicio = COALESCE(os_data_inicio, ?),
-         os_data_fim = COALESCE(os_data_fim, ?),
-         causa_parada = COALESCE(NULLIF(causa_parada, ''), ?),
-         updated_at = datetime('now')
-     WHERE id = ?`
-  ).run(
-    ncTexto,
-    textos.acao_corretiva || null,
-    textos.acao_preventiva || null,
-    textos.data_correcao || null,
-    dadosOS?.data_inicio || null,
-    dadosOS?.data_fim || null,
-    causaParada,
-    existing.id
-  );
-}
-
-function computeGrade(inspecaoId, equipamentos, osList, ano, mes) {
-  const dias = daysInMonth(ano, mes);
-  const equipamentoMap = buildEquipmentMap(equipamentos);
-
-  const matrix = new Map();
-  for (const eq of equipamentos) {
-    matrix.set(eq.nome, new Map());
-    for (let dia = 1; dia <= dias; dia += 1) {
-      matrix.get(eq.nome).set(dia, { status: "C", os: null, obs: null });
-    }
-  }
-
-  for (const os of osList) {
-    const equipamento = resolveEquipamentoFromOS(os, equipamentoMap);
-    if (!equipamento) continue;
-
-    const dia = dayFromDate(os.data_inicio);
-    if (!dia || dia > dias) continue;
-
-    const row = matrix.get(equipamento.nome);
-    if (!row) continue;
-
-    const statusNorm = normalizeText(os.status);
     let candidate = "C";
-    if (detectNC(os)) candidate = "NC";
-    else if (statusNorm.includes("aberta") || statusNorm.includes("andamento") || statusNorm.includes("em_andamento")) candidate = "EA";
-    else if (detectSP(os)) candidate = "SP";
+    if (isNC(osRow)) candidate = "NC";
+    else if (isEA(osRow)) candidate = "EA";
+    else if (isSP(osRow)) candidate = "SP";
 
-    const current = row.get(dia) || { status: "C", os: null };
-    if (statusPriority(candidate) >= statusPriority(current.status)) {
-      row.set(dia, {
-        status: candidate,
-        os,
-        obs: candidate === "NC" ? "Detectado por OS" : null,
-      });
+    const cell = gridMap.get(eq.id)[dia - 1];
+    if (statusPriority(candidate) >= statusPriority(cell.status)) {
+      cell.status = candidate;
+      cell.os_id = osRow.id;
+      cell.observacao = candidate === "NC" ? "Gerado automaticamente via OS" : null;
     }
   }
 
-  const tx = db.transaction(() => {
-    for (const eq of equipamentos) {
-      const row = matrix.get(eq.nome);
-      for (let dia = 1; dia <= dias; dia += 1) {
-        const item = row.get(dia) || { status: "C", os: null, obs: null };
-        upsertGradeItem(inspecaoId, eq, dia, item.status, item.os?.id || null, item.obs || null, 0);
-
-        if (item.status === "NC" && item.os) {
-          const dataOcorrencia = String(item.os.data_inicio || "").slice(0, 10);
-          upsertNaoConformidade(inspecaoId, eq, dataOcorrencia, item.os, {
-            nao_conformidade: item.os.causa || item.os.descricao || "Não conformidade detectada",
-          });
-        }
-      }
-    }
-  });
-
-  tx();
+  return { gridMap, osByEquipDay };
 }
 
-function recalculate(inspecaoId) {
+function buildNCList(inspecao, equipamentos, osList) {
+  const equipById = new Map(equipamentos.map((eq) => [eq.id, eq]));
+  const equipByName = new Map(equipamentos.map((eq) => [eq.chave, eq]));
+
+  const ncList = [];
+  for (const osRow of osList) {
+    if (!isNC(osRow)) continue;
+    const eq = mapOSToEquipamento(osRow, equipamentos, equipById, equipByName);
+    if (!eq) continue;
+
+    const dataOcorrencia = dateOnly(osRow.data_inicio);
+    if (!dataOcorrencia) continue;
+
+    ncList.push({
+      equipamento_id: eq.id,
+      item: eq.item,
+      data_ocorrencia: dataOcorrencia,
+      nao_conformidade: String(osRow.texto_problema || "").trim() || "Não conformidade detectada via OS",
+      acao_corretiva: String(osRow.resumo_tecnico || "").trim() || null,
+      acao_preventiva: String(osRow.causa_diagnostico || "").trim() || null,
+      data_correcao: dateOnly(osRow.data_fim),
+      os_id: osRow.id,
+    });
+  }
+
+  return ncList;
+}
+
+function recalculate(inspecaoId, mes, ano) {
   const inspecao = db.prepare("SELECT * FROM inspecoes_pac01 WHERE id = ?").get(inspecaoId);
   if (!inspecao) throw new Error("Inspeção não encontrada.");
 
   const equipamentos = listEquipamentosAtivos();
-  const osList = fetchOSByMonth(inspecao.mes, inspecao.ano);
+  const osList = getOSByMonth(Number(mes || inspecao.mes), Number(ano || inspecao.ano));
+  const { gridMap } = buildMonthlyGrid(inspecao, equipamentos, osList);
+  const ncList = buildNCList(inspecao, equipamentos, osList);
 
-  computeGrade(inspecao.id, equipamentos, osList, inspecao.ano, inspecao.mes);
+  const tx = db.transaction(() => {
+    db.prepare("DELETE FROM inspecao_pac01_grade WHERE inspecao_id = ?").run(inspecao.id);
 
-  db.prepare("UPDATE inspecoes_pac01 SET updated_at = datetime('now') WHERE id = ?").run(inspecao.id);
+    const insertGrade = db.prepare(
+      `INSERT INTO inspecao_pac01_grade (inspecao_id, equipamento_id, dia, status, os_id, observacao, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    );
+
+    for (const eq of equipamentos) {
+      const line = gridMap.get(eq.id) || [];
+      for (const cell of line) {
+        if (cell.status === "-") continue;
+        insertGrade.run(inspecao.id, eq.id, cell.dia, cell.status, cell.os_id || null, cell.observacao || null);
+      }
+    }
+
+    const keys = new Set();
+    const upsertNC = db.prepare(
+      `INSERT INTO inspecao_pac01_nc (
+        inspecao_id, equipamento_id, data_ocorrencia, nao_conformidade,
+        acao_corretiva, acao_preventiva, data_correcao, os_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      ON CONFLICT(inspecao_id, equipamento_id, data_ocorrencia, os_id)
+      DO UPDATE SET
+        nao_conformidade = excluded.nao_conformidade,
+        acao_corretiva = COALESCE(NULLIF(inspecao_pac01_nc.acao_corretiva, ''), excluded.acao_corretiva),
+        acao_preventiva = COALESCE(NULLIF(inspecao_pac01_nc.acao_preventiva, ''), excluded.acao_preventiva),
+        data_correcao = COALESCE(inspecao_pac01_nc.data_correcao, excluded.data_correcao),
+        updated_at = datetime('now')`
+    );
+
+    for (const nc of ncList) {
+      keys.add(`${nc.equipamento_id}:${nc.data_ocorrencia}:${nc.os_id || 0}`);
+      upsertNC.run(
+        inspecao.id,
+        nc.equipamento_id,
+        nc.data_ocorrencia,
+        nc.nao_conformidade,
+        nc.acao_corretiva,
+        nc.acao_preventiva,
+        nc.data_correcao,
+        nc.os_id || null
+      );
+    }
+
+    const existingNC = db.prepare("SELECT id, equipamento_id, data_ocorrencia, os_id FROM inspecao_pac01_nc WHERE inspecao_id = ?").all(inspecao.id);
+    const delNC = db.prepare("DELETE FROM inspecao_pac01_nc WHERE id = ?");
+    for (const row of existingNC) {
+      const key = `${row.equipamento_id}:${row.data_ocorrencia}:${row.os_id || 0}`;
+      if (!keys.has(key)) delNC.run(row.id);
+    }
+
+    db.prepare("UPDATE inspecoes_pac01 SET updated_at = datetime('now') WHERE id = ?").run(inspecao.id);
+  });
+
+  tx();
+
   return { inspecao, equipamentos, osCount: osList.length };
 }
 
 function buildMatrix(inspecaoId, ano, mes, equipamentos) {
   const diasMes = daysInMonth(ano, mes);
-  const itens = db
-    .prepare(
-      `SELECT equipamento_nome, dia, status, os_id, observacao, is_manual
-       FROM inspecao_pac01_itens
-       WHERE inspecao_id = ?
-       ORDER BY equipamento_nome, dia`
-    )
-    .all(inspecaoId);
+  const grade = db.prepare(
+    `SELECT g.*, e.nome AS equipamento_nome, e.codigo AS equipamento_codigo
+     FROM inspecao_pac01_grade g
+     JOIN equipamentos e ON e.id = g.equipamento_id
+     WHERE g.inspecao_id = ?
+     ORDER BY e.nome, g.dia`
+  ).all(inspecaoId);
 
-  const byEquip = new Map();
+  const matrix = new Map();
   for (const eq of equipamentos) {
-    byEquip.set(eq.nome, Array.from({ length: 31 }, (_, idx) => ({
+    matrix.set(eq.id, Array.from({ length: 31 }, (_, idx) => ({
       dia: idx + 1,
       status: idx + 1 <= diasMes ? "C" : "-",
       os_id: null,
       observacao: null,
-      is_manual: 0,
     })));
   }
 
-  for (const item of itens) {
-    if (!byEquip.has(item.equipamento_nome)) continue;
-    const arr = byEquip.get(item.equipamento_nome);
-    arr[item.dia - 1] = {
-      dia: item.dia,
-      status: item.status,
-      os_id: item.os_id,
-      observacao: item.observacao,
-      is_manual: item.is_manual,
+  for (const row of grade) {
+    if (!matrix.has(row.equipamento_id)) continue;
+    matrix.get(row.equipamento_id)[row.dia - 1] = {
+      dia: row.dia,
+      status: row.status,
+      os_id: row.os_id,
+      observacao: row.observacao,
     };
   }
 
-  return byEquip;
+  return matrix;
 }
 
 function listNC(inspecaoId) {
-  return db
-    .prepare(
-      `SELECT *
-       FROM inspecao_pac01_nao_conformidades
-       WHERE inspecao_id = ?
-       ORDER BY data_ocorrencia DESC, equipamento_nome ASC`
-    )
-    .all(inspecaoId);
+  return db.prepare(
+    `SELECT nc.*, e.nome AS equipamento_nome, e.codigo AS equipamento_codigo
+     FROM inspecao_pac01_nc nc
+     JOIN equipamentos e ON e.id = nc.equipamento_id
+     WHERE nc.inspecao_id = ?
+     ORDER BY nc.data_ocorrencia DESC, e.nome ASC`
+  ).all(inspecaoId).map((row) => ({
+    ...row,
+    item: row.equipamento_codigo || String(row.equipamento_id),
+  }));
 }
 
-function updateGradeManual(inspecaoId, { equipamento_nome, dia, status, observacao, os_id }) {
-  const equipamento = { id: null, nome: equipamento_nome };
-  upsertGradeItem(inspecaoId, equipamento, Number(dia), status, os_id ? Number(os_id) : null, observacao || null, 1);
+function listOSDetailsByInspecao(inspecaoId, mes, ano) {
+  const equipamentos = listEquipamentosAtivos();
+  const osList = getOSByMonth(mes, ano);
+  const equipById = new Map(equipamentos.map((eq) => [eq.id, eq]));
+  const equipByName = new Map(equipamentos.map((eq) => [eq.chave, eq]));
+  const details = {};
+
+  for (const osRow of osList) {
+    const eq = mapOSToEquipamento(osRow, equipamentos, equipById, equipByName);
+    if (!eq) continue;
+    const dia = dateToDay(osRow.data_inicio);
+    if (!dia) continue;
+    const key = `${eq.id}-${dia}`;
+    if (!details[key]) details[key] = [];
+    details[key].push({
+      id: osRow.id,
+      status: osRow.status,
+      problema: osRow.texto_problema,
+      resumo_tecnico: osRow.resumo_tecnico,
+      causa_diagnostico: osRow.causa_diagnostico,
+      data_inicio: dateOnly(osRow.data_inicio),
+      data_fim: dateOnly(osRow.data_fim),
+      is_nc: isNC(osRow),
+    });
+  }
+
+  const observacoes = hasTable("inspecao_pac01_grade")
+    ? db.prepare("SELECT equipamento_id, dia, observacao FROM inspecao_pac01_grade WHERE inspecao_id = ? AND observacao IS NOT NULL").all(inspecaoId)
+    : [];
+
+  for (const row of observacoes) {
+    const key = `${row.equipamento_id}-${row.dia}`;
+    if (!details[key]) details[key] = [];
+    details[key].observacao = row.observacao;
+  }
+
+  return details;
 }
 
 function saveNC(inspecaoId, payload) {
   const id = Number(payload.id || 0);
-  if (!id) throw new Error("ID de NC inválido.");
-
-  const nc = db
-    .prepare("SELECT * FROM inspecao_pac01_nao_conformidades WHERE id = ? AND inspecao_id = ?")
-    .get(id, inspecaoId);
-
-  if (!nc) throw new Error("Não conformidade não encontrada.");
+  if (!id) throw new Error("Não conformidade inválida.");
 
   db.prepare(
-    `UPDATE inspecao_pac01_nao_conformidades
+    `UPDATE inspecao_pac01_nc
      SET acao_corretiva = ?,
          acao_preventiva = ?,
          data_correcao = ?,
          updated_at = datetime('now')
-     WHERE id = ?`
+     WHERE id = ? AND inspecao_id = ?`
   ).run(
     String(payload.acao_corretiva || "").trim() || null,
     String(payload.acao_preventiva || "").trim() || null,
     payload.data_correcao || null,
-    id
+    id,
+    inspecaoId
   );
+}
+
+function updateObservation(inspecaoId, { equipamento_id, dia, observacao }) {
+  db.prepare(
+    `UPDATE inspecao_pac01_grade
+     SET observacao = ?, updated_at = datetime('now')
+     WHERE inspecao_id = ? AND equipamento_id = ? AND dia = ?`
+  ).run(String(observacao || "").trim() || null, inspecaoId, Number(equipamento_id), Number(dia));
 }
 
 function updateHeader(inspecaoId, payload) {
@@ -473,21 +457,45 @@ function updateHeader(inspecaoId, payload) {
   );
 }
 
+function syncFromOS(osId) {
+  if (!osId) return { synced: false, reason: "os_id_missing" };
+  const cols = tableColumns("os");
+  const parts = ["id"];
+  if (cols.includes("data_inicio")) parts.push("data_inicio");
+  if (cols.includes("opened_at")) parts.push("opened_at");
+  if (cols.includes("created_at")) parts.push("created_at");
+  const row = db.prepare(`SELECT ${parts.join(",")} FROM os WHERE id = ?`).get(osId);
+  if (!row) return { synced: false, reason: "os_not_found" };
+
+  const data = row.data_inicio || row.opened_at || row.created_at;
+  if (!data) return { synced: false, reason: "os_or_data_missing" };
+
+  const dt = new Date(`${dateOnly(data)}T00:00:00`);
+  if (Number.isNaN(dt.getTime())) return { synced: false, reason: "invalid_date" };
+
+  const mes = dt.getMonth() + 1;
+  const ano = dt.getFullYear();
+  const inspecao = getOrCreateInspecao(mes, ano, null);
+  recalculate(inspecao.id, mes, ano);
+  return { synced: true, inspecao_id: inspecao.id, mes, ano };
+}
+
 module.exports = {
-  DEFAULT_EQUIPAMENTOS,
   normalizeText,
   daysInMonth,
   getOrCreateInspecao,
   listEquipamentosAtivos,
-  fetchOSByMonth,
-  detectNC,
-  computeGrade,
-  upsertGradeItem,
-  upsertNaoConformidade,
+  getOSByMonth,
+  mapOSToEquipamento,
+  buildMonthlyGrid,
+  computeGrade: buildMonthlyGrid,
+  buildNCList,
   recalculate,
   buildMatrix,
   listNC,
-  updateGradeManual,
+  listOSDetailsByInspecao,
   saveNC,
   updateHeader,
+  updateObservation,
+  syncFromOS,
 };
