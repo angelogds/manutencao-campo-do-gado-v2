@@ -14,11 +14,11 @@
   </div>
   <div class="top-actions">
     <div class="inspecao-top-actions">
-    <a class="btn action-btn" href="<%= backUrl %>">← Voltar</a>
-    <a class="btn action-btn" href="/inspecao/<%= prevAno %>/<%= prevMes %>">◀ Mês anterior</a>
-    <a class="btn action-btn" href="/inspecao/<%= nextAno %>/<%= nextMes %>">Próximo mês ▶</a>
-    <a class="btn action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/pdf">Exportar PDF</a>
-    <a class="btn action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/csv">Exportar CSV</a>
+      <a class="btn btn-outline action-btn" href="<%= backUrl %>">← Voltar</a>
+      <a class="btn btn-outline action-btn" href="/inspecao/<%= prevAno %>/<%= prevMes %>">◀ Mês anterior</a>
+      <a class="btn btn-outline action-btn" href="/inspecao/<%= nextAno %>/<%= nextMes %>">Próximo mês ▶</a>
+      <a class="btn btn-outline action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/pdf">Exportar PDF</a>
+      <a class="btn btn-primary action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/csv">Exportar CSV</a>
     </div>
   </div>
 </div>
@@ -85,7 +85,7 @@
   </table>
 </div>
 
-<div class="card" style="margin-top:16px;">
+<div class="card inspecao-nc-card">
   <h3>Não Conformidades (geradas automaticamente via OS)</h3>
   <div class="table-wrap">
     <table class="table nc-table">
