@@ -24,13 +24,10 @@
 </div>
 
 <div class="card">
-  <form method="POST" action="/inspecao/<%= ano %>/<%= mes %>/recalcular" class="inspecao-header-form">
+  <form method="POST" action="/inspecao/<%= ano %>/<%= mes %>/recalcular" class="inspecao-header-form" id="inspecaoHeaderForm">
     <input type="text" name="monitor_nome" placeholder="Monitor" value="<%= inspecao.monitor_nome || '' %>" <%= canEdit ? '' : 'readonly' %> />
     <input type="text" name="verificador_nome" placeholder="Verificador" value="<%= inspecao.verificador_nome || '' %>" <%= canEdit ? '' : 'readonly' %> />
     <input type="text" name="frequencia" placeholder="Frequência" value="<%= inspecao.frequencia || 'Diária' %>" <%= canEdit ? '' : 'readonly' %> />
-    <% if (canEdit) { %>
-      <button class="btn btn-primary" type="submit">Atualizar Sistema</button>
-    <% } %>
   </form>
 
   <div class="legend">
