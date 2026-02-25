@@ -143,6 +143,7 @@ mount("/avisos", "./modules/avisos/avisos.routes");
 mount("/usuarios", "./modules/usuarios/usuarios.routes");
 mount("/demandas", "./modules/demandas/demandas.routes");
 mount("/motores", "./modules/motores/motores.routes");
+mount("/inspecao", "./modules/inspecao/inspecao.routes");
 
 // ===== Home =====
 app.get("/", (req, res) => {
