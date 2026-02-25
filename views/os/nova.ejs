@@ -61,12 +61,6 @@
       </div>
      
       <div class="form-group form-full">
-        <label for="descricao">Descrição do serviço <span style="color:#b91c1c;">*</span></label>
-        <textarea class="input" name="descricao" id="descricao" rows="5" required placeholder="Descreva o problema, sintoma ou solicitação da OS..."><%= typeof old !== 'undefined' && old?.descricao ? old.descricao : '' %></textarea>
-        <div class="muted">Este texto será usado no histórico da OS e no preenchimento automático de não conformidades da inspeção.</div>
-      </div>
-
-      <div class="form-group form-full">
         <label>Fotos de abertura (opcional)</label>
         <input id="abertura_fotos" type="file" name="abertura_fotos" accept="image/*" multiple style="display:none" />
         <div>
