@@ -369,7 +369,11 @@ function iniciarOS(id, userId) {
   db.prepare(`UPDATE os SET ${sets.join(", ")} WHERE id = ?`).run(...args);
 
   emitOSEvents(id, "status");
-  syncInspecaoFromOS(id);
+  if (inspecaoService?.syncFromOS) {
+    try {
+      inspecaoService.syncFromOS(id);
+    } catch (_e) {}
+  }
 }
 
 function pausarOS(id) {
@@ -378,7 +382,11 @@ function pausarOS(id) {
 
   db.prepare(`UPDATE os SET status = 'PAUSADA' WHERE id = ?`).run(id);
   emitOSEvents(id, "status");
-  syncInspecaoFromOS(id);
+  if (inspecaoService?.syncFromOS) {
+    try {
+      inspecaoService.syncFromOS(id);
+    } catch (_e) {}
+  }
 }
 
 function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas }) {
@@ -416,7 +424,11 @@ function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas }) {
 
   tx();
   emitOSEvents(id, "status");
-  syncInspecaoFromOS(id);
+  if (inspecaoService?.syncFromOS) {
+    try {
+      inspecaoService.syncFromOS(id);
+    } catch (_e) {}
+  }
 }
 
 function updateStatus(id, status) {
@@ -425,7 +437,11 @@ function updateStatus(id, status) {
 
   db.prepare(`UPDATE os SET status = ? WHERE id = ?`).run(st, id);
   emitOSEvents(id, "status");
-  syncInspecaoFromOS(id);
+  if (inspecaoService?.syncFromOS) {
+    try {
+      inspecaoService.syncFromOS(id);
+    } catch (_e) {}
+  }
 }
 
 module.exports = {
