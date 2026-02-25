@@ -1,0 +1,145 @@
+<style>
+  .inspecao-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+  .inspecao-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin-bottom:14px}
+  .inspecao-grid-wrap{overflow:auto;border:1px solid #e5e7eb;border-radius:12px;background:#fff}
+  .inspecao-grid{border-collapse:collapse;min-width:1200px;width:100%}
+  .inspecao-grid th,.inspecao-grid td{border:1px solid #e5e7eb;padding:6px;font-size:12px;text-align:center}
+  .inspecao-grid th:first-child,.inspecao-grid td:first-child{position:sticky;left:0;background:#fff;text-align:left;min-width:250px;z-index:2}
+  .inspecao-grid thead th{position:sticky;top:0;background:#f8fafc;z-index:3}
+  .badge-status{display:inline-block;padding:4px 6px;border-radius:999px;font-weight:700;min-width:26px}
+  .st-C{background:#dcfce7;color:#166534}
+  .st-NC{background:#fee2e2;color:#b91c1c}
+  .st-EA{background:#fef9c3;color:#a16207}
+  .st-SP{background:#e5e7eb;color:#374151}
+  .st--{background:#f3f4f6;color:#9ca3af}
+  .form-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .form-inline input,.form-inline select{padding:8px;border:1px solid #d1d5db;border-radius:8px}
+  .btn-green{background:#16A34A;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;text-decoration:none;display:inline-block}
+  .btn-light{background:#fff;border:1px solid #d1d5db;padding:8px 12px;border-radius:8px;cursor:pointer;text-decoration:none;color:#111827}
+  .nc-table{width:100%;border-collapse:collapse}
+  .nc-table th,.nc-table td{border:1px solid #e5e7eb;padding:8px;font-size:12px;vertical-align:top}
+  .nc-table th{background:#f9fafb}
+  .small{font-size:11px;color:#6b7280}
+</style>
+
+<%
+  const prevMes = mes === 1 ? 12 : mes - 1;
+  const prevAno = mes === 1 ? ano - 1 : ano;
+  const nextMes = mes === 12 ? 1 : mes + 1;
+  const nextAno = mes === 12 ? ano + 1 : ano;
+  const canEdit = canAccessModule(normalizeRole(user?.role), 'inspecao_edit');
+%>
+
+<div class="inspecao-card">
+  <h2 style="margin:0 0 8px 0;color:#166534">PAC 01 – MANUTENÇÃO (Inspeção)</h2>
+  <div class="inspecao-toolbar">
+    <a class="btn-light" href="/inspecao/<%= prevAno %>/<%= prevMes %>">◀ Anterior</a>
+    <strong>Mês/Ano: <%= String(mes).padStart(2,'0') %>/<%= ano %></strong>
+    <a class="btn-light" href="/inspecao/<%= nextAno %>/<%= nextMes %>">Próximo ▶</a>
+    <a class="btn-light" href="/inspecao/<%= ano %>/<%= mes %>/export/pdf">Exportar PDF</a>
+    <a class="btn-light" href="/inspecao/<%= ano %>/<%= mes %>/export/xls">Exportar Excel/CSV</a>
+  </div>
+
+  <% if (canEdit) { %>
+    <form method="POST" action="/inspecao/<%= ano %>/<%= mes %>/recalcular" class="form-inline">
+      <input type="text" name="monitor_nome" value="<%= inspecao.monitor_nome || '' %>" placeholder="Monitor" />
+      <input type="text" name="verificador_nome" value="<%= inspecao.verificador_nome || '' %>" placeholder="Verificador" />
+      <input type="text" name="frequencia" value="<%= inspecao.frequencia || 'Diária' %>" placeholder="Frequência" />
+      <button class="btn-green" type="submit">Recalcular / Atualizar do Sistema</button>
+    </form>
+  <% } %>
+
+  <div style="margin-top:10px" class="small">
+    <strong>Legenda:</strong>
+    <span class="badge-status st-C">C</span> Conforme
+    <span class="badge-status st-NC">NC</span> Não Conforme
+    <span class="badge-status st-EA">EA</span> Em Andamento
+    <span class="badge-status st-SP">SP</span> Sem Produção
+  </div>
+</div>
+
+<div class="inspecao-grid-wrap">
+  <table class="inspecao-grid">
+    <thead>
+      <tr>
+        <th>Equipamento</th>
+        <% for (let d=1; d<=31; d++) { %>
+          <th><%= d %></th>
+        <% } %>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (const eq of equipamentos) { const linha = matrix.get(eq.nome) || []; %>
+        <tr>
+          <td><strong><%= eq.nome %></strong></td>
+          <% for (let i=0; i<31; i++) { const c = linha[i] || {status:'-'}; %>
+            <td>
+              <div class="badge-status st-<%= c.status %>"><%= c.status %></div>
+              <% if (canEdit && c.status !== '-') { %>
+                <form method="POST" action="/inspecao/<%= ano %>/<%= mes %>/editar" style="margin-top:4px">
+                  <input type="hidden" name="equipamento_nome" value="<%= eq.nome %>" />
+                  <input type="hidden" name="dia" value="<%= i+1 %>" />
+                  <select name="status" style="font-size:11px;padding:2px">
+                    <% ['C','NC','EA','SP'].forEach((st)=> { %>
+                      <option value="<%= st %>" <%= c.status === st ? 'selected' : '' %>><%= st %></option>
+                    <% }) %>
+                  </select>
+                  <button type="submit" style="font-size:11px">OK</button>
+                </form>
+              <% } %>
+            </td>
+          <% } %>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<div class="inspecao-card" style="margin-top:16px">
+  <h3 style="margin-top:0;color:#166534">Não Conformidades do mês</h3>
+  <table class="nc-table">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Data</th>
+        <th>Não Conformidade</th>
+        <th>Ação corretiva</th>
+        <th>Ação preventiva</th>
+        <th>Data correção</th>
+        <th>OS</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!ncList.length) { %>
+        <tr><td colspan="7">Sem não conformidades registradas no período.</td></tr>
+      <% } %>
+      <% for (const nc of ncList) { %>
+        <tr>
+          <td><%= nc.equipamento_nome %></td>
+          <td><%= nc.data_ocorrencia %></td>
+          <td><%= nc.nao_conformidade %><br/><span class="small">Causa: <%= nc.causa_parada || '-' %></span></td>
+          <td colspan="3">
+            <% if (canEdit) { %>
+              <form method="POST" action="/inspecao/<%= ano %>/<%= mes %>/nc/salvar" class="form-inline">
+                <input type="hidden" name="id" value="<%= nc.id %>" />
+                <input type="text" name="acao_corretiva" value="<%= nc.acao_corretiva || '' %>" placeholder="Ação corretiva" style="min-width:180px"/>
+                <input type="text" name="acao_preventiva" value="<%= nc.acao_preventiva || '' %>" placeholder="Ação preventiva" style="min-width:180px"/>
+                <input type="date" name="data_correcao" value="<%= nc.data_correcao || '' %>"/>
+                <button class="btn-green" type="submit">Salvar</button>
+              </form>
+            <% } else { %>
+              <div><strong>Corretiva:</strong> <%= nc.acao_corretiva || '-' %></div>
+              <div><strong>Preventiva:</strong> <%= nc.acao_preventiva || '-' %></div>
+              <div><strong>Data correção:</strong> <%= nc.data_correcao || '-' %></div>
+            <% } %>
+          </td>
+          <td>
+            <% if (nc.os_id) { %>
+              <a class="btn-light" href="/os/<%= nc.os_id %>">Ver OS</a>
+            <% } else { %>-<% } %>
+          </td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
