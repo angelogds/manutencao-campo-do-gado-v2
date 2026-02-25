@@ -58,93 +58,107 @@ function dayFromDate(value) {
   return dt.getDate();
 }
 
+function monthYearFromDate(value) {
+  const dt = new Date(`${String(value).slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(dt.getTime())) return null;
+  return { mes: dt.getMonth() + 1, ano: dt.getFullYear() };
+}
+
+function tableExists(name) {
+  const row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name);
+  return !!row;
+}
+
+function hasInspecaoTables() {
+  return tableExists("inspecoes_pac01") && tableExists("inspecao_pac01_itens") && tableExists("inspecao_pac01_nao_conformidades");
+}
+
 function getOSColumns() {
   return db.prepare("PRAGMA table_info(os)").all().map((c) => c.name);
 }
 
 function findFirstColumn(cols, list) {
-  for (const name of list) {
-    if (cols.includes(name)) return name;
-  }
-  return null;
+  return list.find((c) => cols.includes(c)) || null;
 }
 
 function buildPeriodoISO(ano, mes) {
   const mm = String(mes).padStart(2, "0");
-  const start = `${ano}-${mm}-01`;
-  const end = `${ano}-${mm}-${String(daysInMonth(ano, mes)).padStart(2, "0")}`;
-  return { start, end };
+  return { start: `${ano}-${mm}-01`, end: `${ano}-${mm}-${String(daysInMonth(ano, mes)).padStart(2, "0")}` };
 }
 
 function getOrCreateInspecao(mes, ano, user) {
-  let row = db
-    .prepare("SELECT * FROM inspecoes_pac01 WHERE mes = ? AND ano = ?")
-    .get(mes, ano);
-
+  if (!hasInspecaoTables()) throw new Error("Tabelas de inspeção não encontradas. Rode migrations.");
+  let row = db.prepare("SELECT * FROM inspecoes_pac01 WHERE mes = ? AND ano = ?").get(mes, ano);
   if (!row) {
-    const info = db
-      .prepare(
-        `INSERT INTO inspecoes_pac01 (mes, ano, frequencia, monitor_nome, verificador_nome, criado_por)
-         VALUES (?, ?, 'Diária', ?, ?, ?)`
-      )
-      .run(
-        mes,
-        ano,
-        user?.name || null,
-        user?.name || null,
-        user?.id || null
-      );
-
+    const info = db.prepare(
+      `INSERT INTO inspecoes_pac01 (mes, ano, frequencia, monitor_nome, verificador_nome, criado_por)
+       VALUES (?, ?, 'Diária', NULL, NULL, ?)`
+    ).run(mes, ano, user?.id || null);
     row = db.prepare("SELECT * FROM inspecoes_pac01 WHERE id = ?").get(info.lastInsertRowid);
   }
-
   return row;
 }
 
 function listEquipamentosAtivos() {
-  const list = db
-    .prepare("SELECT id, nome FROM equipamentos WHERE ativo = 1 ORDER BY nome")
-    .all();
-
-  if (list.length) {
-    return list.map((item) => ({ id: item.id, nome: item.nome, chave: normalizeText(item.nome) }));
-  }
-
+  const list = db.prepare("SELECT id, nome FROM equipamentos WHERE ativo = 1 ORDER BY nome").all();
+  if (list.length) return list.map((item) => ({ id: item.id, nome: item.nome, chave: normalizeText(item.nome) }));
   return DEFAULT_EQUIPAMENTOS.map((nome) => ({ id: null, nome, chave: normalizeText(nome) }));
 }
 
 function fetchOSByMonth(mes, ano) {
   const cols = getOSColumns();
-  const equipamentoExpr = cols.includes("equipamento") ? "o.equipamento" : "NULL";
-  const equipamentoIdExpr = cols.includes("equipamento_id") ? "o.equipamento_id" : "NULL";
-  const statusExpr = cols.includes("status") ? "o.status" : "''";
-
   const dataInicioCol = findFirstColumn(cols, ["data_inicio", "started_at", "opened_at", "created_at"]);
   const dataFimCol = findFirstColumn(cols, ["data_conclusao", "closed_at", "data_fim"]);
   const descCol = findFirstColumn(cols, ["descricao", "diagnostico", "acao_executada"]);
   const causaCol = findFirstColumn(cols, ["causa_parada", "causa", "motivo", "diagnostico"]);
   const ncCol = findFirstColumn(cols, ["is_nao_conforme", "nao_conforme"]);
+  const acaoCol = findFirstColumn(cols, ["acao_executada", "acao", "solucao"]);
+  const diagCol = findFirstColumn(cols, ["diagnostico", "causa", "motivo"]);
 
   if (!dataInicioCol) return [];
-
   const { start, end } = buildPeriodoISO(ano, mes);
 
-  return db
-    .prepare(
-      `SELECT
-        o.id,
-        ${equipamentoIdExpr} AS equipamento_id,
-        ${equipamentoExpr} AS equipamento_nome,
-        ${statusExpr} AS status,
-        ${descCol ? `o.${descCol}` : "''"} AS descricao,
-        ${causaCol ? `o.${causaCol}` : "''"} AS causa,
-        ${dataInicioCol ? `o.${dataInicioCol}` : "NULL"} AS data_inicio,
-        ${dataFimCol ? `o.${dataFimCol}` : "NULL"} AS data_fim,
-        ${ncCol ? `o.${ncCol}` : "0"} AS is_nao_conforme
-       FROM os o
-       WHERE substr(${dataInicioCol ? `o.${dataInicioCol}` : "''"},1,10) BETWEEN ? AND ?`
-    )
-    .all(start, end);
+  return db.prepare(
+    `SELECT
+      o.id,
+      ${cols.includes("equipamento_id") ? "o.equipamento_id" : "NULL"} AS equipamento_id,
+      ${cols.includes("equipamento") ? "o.equipamento" : "NULL"} AS equipamento_nome,
+      ${cols.includes("status") ? "o.status" : "''"} AS status,
+      ${descCol ? `o.${descCol}` : "''"} AS descricao,
+      ${causaCol ? `o.${causaCol}` : "''"} AS causa,
+      ${acaoCol ? `o.${acaoCol}` : "''"} AS acao_executada,
+      ${diagCol ? `o.${diagCol}` : "''"} AS diagnostico,
+      ${dataInicioCol ? `o.${dataInicioCol}` : "NULL"} AS data_inicio,
+      ${dataFimCol ? `o.${dataFimCol}` : "NULL"} AS data_fim,
+      ${ncCol ? `o.${ncCol}` : "0"} AS is_nao_conforme,
+      ${cols.includes("tipo") ? "o.tipo" : "''"} AS tipo
+     FROM os o
+     WHERE substr(o.${dataInicioCol},1,10) BETWEEN ? AND ?`
+  ).all(start, end);
+}
+
+function fetchOSById(osId) {
+  const cols = getOSColumns();
+  const dataInicioCol = findFirstColumn(cols, ["data_inicio", "started_at", "opened_at", "created_at"]);
+  const dataFimCol = findFirstColumn(cols, ["data_conclusao", "closed_at", "data_fim"]);
+  if (!dataInicioCol) return null;
+
+  return db.prepare(
+    `SELECT
+      o.id,
+      ${cols.includes("equipamento_id") ? "o.equipamento_id" : "NULL"} AS equipamento_id,
+      ${cols.includes("equipamento") ? "o.equipamento" : "NULL"} AS equipamento_nome,
+      ${cols.includes("status") ? "o.status" : "''"} AS status,
+      ${cols.includes("descricao") ? "o.descricao" : "''"} AS descricao,
+      ${findFirstColumn(cols, ["causa_parada", "causa", "motivo", "diagnostico"]) ? `o.${findFirstColumn(cols, ["causa_parada", "causa", "motivo", "diagnostico"])}` : "''"} AS causa,
+      ${findFirstColumn(cols, ["acao_executada", "acao", "solucao"]) ? `o.${findFirstColumn(cols, ["acao_executada", "acao", "solucao"])}` : "''"} AS acao_executada,
+      ${findFirstColumn(cols, ["diagnostico", "causa", "motivo"]) ? `o.${findFirstColumn(cols, ["diagnostico", "causa", "motivo"])}` : "''"} AS diagnostico,
+      ${dataInicioCol ? `o.${dataInicioCol}` : "NULL"} AS data_inicio,
+      ${dataFimCol ? `o.${dataFimCol}` : "NULL"} AS data_fim,
+      ${findFirstColumn(cols, ["is_nao_conforme", "nao_conforme"]) ? `o.${findFirstColumn(cols, ["is_nao_conforme", "nao_conforme"])}` : "0"} AS is_nao_conforme,
+      ${cols.includes("tipo") ? "o.tipo" : "''"} AS tipo
+     FROM os o WHERE o.id = ?`
+  ).get(osId);
 }
 
 function detectNC(os) {
