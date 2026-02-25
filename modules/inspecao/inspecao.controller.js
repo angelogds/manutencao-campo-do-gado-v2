@@ -7,30 +7,36 @@ function parseMesAno(req) {
   return { ano, mes };
 }
 
-function normalizeStatus(value) {
-  const s = String(value || "").toUpperCase();
-  if (["C", "NC", "EA", "SP"].includes(s)) return s;
-  return "C";
-}
-
-function ensureMonthData(req) {
+function loadPageData(req) {
   const { ano, mes } = parseMesAno(req);
   const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
+  service.recalculate(inspecao.id, mes, ano);
+
   const equipamentos = service.listEquipamentosAtivos();
-  service.recalculate(inspecao.id);
   const matrix = service.buildMatrix(inspecao.id, ano, mes, equipamentos);
   const ncList = service.listNC(inspecao.id);
-  const diasMes = service.daysInMonth(ano, mes);
-  return { ano, mes, inspecao, equipamentos, matrix, ncList, diasMes };
+  const osDetailsByCell = service.listOSDetailsByInspecao(inspecao.id, mes, ano);
+
+  return {
+    ano,
+    mes,
+    inspecao,
+    equipamentos,
+    matrix,
+    ncList,
+    osDetailsByCell,
+    diasMes: service.daysInMonth(ano, mes),
+    backUrl: req.get("Referrer") || "/dashboard",
+  };
 }
 
-function index(req, res) {
-  const d = new Date();
-  return res.redirect(`/inspecao/${d.getFullYear()}/${d.getMonth() + 1}`);
+function index(_req, res) {
+  const now = new Date();
+  return res.redirect(`/inspecao/${now.getFullYear()}/${now.getMonth() + 1}`);
 }
 
 function viewMonth(req, res) {
-  const data = ensureMonthData(req);
+  const data = loadPageData(req);
   return res.render("inspecao/index", {
     layout: "layout",
     title: "PAC 01 – Manutenção (Inspeção)",
@@ -43,42 +49,34 @@ function recalculate(req, res) {
   const { ano, mes } = parseMesAno(req);
   const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
   service.updateHeader(inspecao.id, req.body || {});
-  const result = service.recalculate(inspecao.id);
+  const result = service.recalculate(inspecao.id, mes, ano);
   req.flash("success", `Inspeção recalculada com ${result.osCount} OS processadas.`);
-  return res.redirect(`/inspecao/${ano}/${mes}`);
-}
-
-function editStatus(req, res) {
-  const { ano, mes } = parseMesAno(req);
-  const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
-
-  service.updateGradeManual(inspecao.id, {
-    equipamento_nome: req.body.equipamento_nome,
-    dia: Number(req.body.dia),
-    status: normalizeStatus(req.body.status),
-    observacao: req.body.observacao,
-    os_id: req.body.os_id,
-  });
-
-  req.flash("success", "Status atualizado manualmente.");
   return res.redirect(`/inspecao/${ano}/${mes}`);
 }
 
 function saveNC(req, res) {
   const { ano, mes } = parseMesAno(req);
   const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
-  service.saveNC(inspecao.id, req.body);
+  service.saveNC(inspecao.id, req.body || {});
   req.flash("success", "Não conformidade atualizada.");
   return res.redirect(`/inspecao/${ano}/${mes}`);
 }
 
+function saveObservation(req, res) {
+  const { ano, mes } = parseMesAno(req);
+  const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
+  service.updateObservation(inspecao.id, req.body || {});
+  req.flash("success", "Observação salva.");
+  return res.redirect(`/inspecao/${ano}/${mes}`);
+}
+
 function exportPDF(req, res) {
-  const data = ensureMonthData(req);
+  const data = loadPageData(req);
   return renderPDF({ res, ...data });
 }
 
-function exportXLS(req, res) {
-  const data = ensureMonthData(req);
+function exportCSV(req, res) {
+  const data = loadPageData(req);
   const csv = buildCSV(data);
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader(
@@ -88,12 +86,22 @@ function exportXLS(req, res) {
   return res.send(`\uFEFF${csv}`);
 }
 
+
+function editStatus(req, res) {
+  return saveObservation(req, res);
+}
+
+function exportXLS(req, res) {
+  return exportCSV(req, res);
+}
 module.exports = {
   index,
   viewMonth,
   recalculate,
   editStatus,
   saveNC,
+  saveObservation,
   exportPDF,
+  exportCSV,
   exportXLS,
 };
