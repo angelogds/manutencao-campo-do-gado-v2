@@ -14,23 +14,23 @@
   </div>
   <div class="top-actions">
     <div class="inspecao-top-actions">
-    <a class="btn action-btn" href="<%= backUrl %>">← Voltar</a>
-    <a class="btn action-btn" href="/inspecao/<%= prevAno %>/<%= prevMes %>">◀ Mês anterior</a>
-    <a class="btn action-btn" href="/inspecao/<%= nextAno %>/<%= nextMes %>">Próximo mês ▶</a>
-    <a class="btn action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/pdf">Exportar PDF</a>
-    <a class="btn action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/csv">Exportar CSV</a>
+      <a class="btn btn-outline action-btn" href="<%= backUrl %>">← Voltar</a>
+      <a class="btn btn-outline action-btn" href="/inspecao/<%= prevAno %>/<%= prevMes %>">◀ Mês anterior</a>
+      <a class="btn btn-outline action-btn" href="/inspecao/<%= nextAno %>/<%= nextMes %>">Próximo mês ▶</a>
+      <a class="btn btn-outline action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/pdf">Exportar PDF</a>
+      <a class="btn btn-outline action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/csv">Exportar CSV</a>
+      <% if (canEdit) { %>
+        <button class="btn btn-primary action-btn" type="submit" form="inspecaoHeaderForm">Atualizar Sistema</button>
+      <% } %>
     </div>
   </div>
 </div>
 
 <div class="card">
-  <form method="POST" action="/inspecao/<%= ano %>/<%= mes %>/recalcular" class="inspecao-header-form">
+  <form method="POST" action="/inspecao/<%= ano %>/<%= mes %>/recalcular" class="inspecao-header-form" id="inspecaoHeaderForm">
     <input type="text" name="monitor_nome" placeholder="Monitor" value="<%= inspecao.monitor_nome || '' %>" <%= canEdit ? '' : 'readonly' %> />
     <input type="text" name="verificador_nome" placeholder="Verificador" value="<%= inspecao.verificador_nome || '' %>" <%= canEdit ? '' : 'readonly' %> />
     <input type="text" name="frequencia" placeholder="Frequência" value="<%= inspecao.frequencia || 'Diária' %>" <%= canEdit ? '' : 'readonly' %> />
-    <% if (canEdit) { %>
-      <button class="btn btn-primary" type="submit">Atualizar Sistema</button>
-    <% } %>
   </form>
 
   <div class="legend">
@@ -59,24 +59,9 @@
           <td class="equip-col"><strong><%= eq.nome %></strong><small>Item: <%= eq.item %></small></td>
           <% for (let i = 0; i < 31; i++) {
             const cell = line[i] || { status: '-' };
-            const modalKey = `${eq.id}-${i + 1}`;
-            const dayRows = osDetailsByCell[modalKey] || [];
           %>
             <td class="status-cell <%= cell.status === '-' ? 'disabled' : '' %>">
-              <button
-                type="button"
-                class="status-badge-btn"
-                data-equipamento="<%= eq.nome %>"
-                data-item="<%= eq.item %>"
-                data-equipamento-id="<%= eq.id %>"
-                data-dia="<%= i + 1 %>"
-                data-status="<%= cell.status %>"
-                data-observacao="<%= cell.observacao || '' %>"
-                data-os='<%- JSON.stringify(dayRows) %>'
-                <%= cell.status === '-' ? 'disabled' : '' %>
-              >
-                <span class="status-badge <%= cell.status %>"><%= cell.status %></span>
-              </button>
+              <span class="status-badge <%= cell.status %>"><%= cell.status %></span>
             </td>
           <% } %>
         </tr>
@@ -85,7 +70,7 @@
   </table>
 </div>
 
-<div class="card" style="margin-top:16px;">
+<div class="card inspecao-nc-card">
   <h3>Não Conformidades (geradas automaticamente via OS)</h3>
   <div class="table-wrap">
     <table class="table nc-table">
@@ -137,86 +122,3 @@
     </table>
   </div>
 </div>
-
-<div class="inspecao-modal" id="cellModal" hidden>
-  <div class="inspecao-modal-content">
-    <div class="inspecao-modal-head">
-      <h4 id="modalTitle">Detalhes do dia</h4>
-      <button type="button" class="btn" id="closeModal">Fechar</button>
-    </div>
-
-    <div id="modalStatus" class="muted"></div>
-    <ul id="modalOSList" class="modal-os-list"></ul>
-
-    <% if (canEdit) { %>
-      <form method="POST" action="/inspecao/<%= ano %>/<%= mes %>/observacao/salvar" class="modal-observacao-form">
-        <input type="hidden" name="equipamento_id" id="obsEquipId" />
-        <input type="hidden" name="dia" id="obsDia" />
-        <textarea name="observacao" id="obsTexto" rows="3" placeholder="Observação manual (opcional)"></textarea>
-        <button class="btn btn-primary" type="submit">Salvar observação</button>
-      </form>
-    <% } %>
-  </div>
-</div>
-
-<script>
-  (() => {
-    const modal = document.getElementById('cellModal');
-    const closeBtn = document.getElementById('closeModal');
-    const statusDiv = document.getElementById('modalStatus');
-    const list = document.getElementById('modalOSList');
-    const title = document.getElementById('modalTitle');
-    const obsEquipId = document.getElementById('obsEquipId');
-    const obsDia = document.getElementById('obsDia');
-    const obsTexto = document.getElementById('obsTexto');
-
-    function openModal(btn) {
-      const equipamento = btn.dataset.equipamento;
-      const item = btn.dataset.item;
-      const dia = btn.dataset.dia;
-      const status = btn.dataset.status;
-      const obs = btn.dataset.observacao || '';
-      const osRows = JSON.parse(btn.dataset.os || '[]');
-
-      title.textContent = `${equipamento} (Item ${item}) - dia ${dia}`;
-      statusDiv.textContent = `Status do dia: ${status}`;
-      list.innerHTML = '';
-
-      if (!osRows.length) {
-        const li = document.createElement('li');
-        li.textContent = 'Sem OS vinculadas neste dia.';
-        list.appendChild(li);
-      } else {
-        osRows.forEach((os) => {
-          const li = document.createElement('li');
-          li.innerHTML = `<strong>OS #${os.id}</strong> • ${os.status || '-'} • ${os.problema || '-'} <a href="/os/${os.id}">Ver OS</a>`;
-          list.appendChild(li);
-        });
-      }
-
-      if (obsEquipId) obsEquipId.value = btn.dataset.equipamentoId;
-      if (obsDia) obsDia.value = dia;
-      if (obsTexto) obsTexto.value = obs;
-
-      modal.hidden = false;
-    }
-
-    function closeModal() {
-      modal.hidden = true;
-    }
-
-    document.querySelectorAll('.status-badge-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        if (btn.disabled) return;
-        openModal(btn);
-      });
-    });
-
-    if (closeBtn) closeBtn.addEventListener('click', closeModal);
-    if (modal) {
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-      });
-    }
-  })();
-</script>
