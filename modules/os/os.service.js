@@ -203,6 +203,19 @@ function emitOSEvents(osId, eventHint) {
   }
 }
 
+function syncInspecaoFromOS(osId) {
+  if (!inspecaoService?.syncFromOS) return;
+  try {
+    const result = inspecaoService.syncFromOS(osId);
+    if (result && result.synced === false) {
+      if (result.reason === "os_or_data_missing") return;
+      console.warn(`⚠️ [inspecao] syncFromOS não sincronizou OS #${osId}: ${result.reason || "motivo não informado"}`);
+    }
+  } catch (err) {
+    console.warn(`⚠️ [inspecao] erro ao sincronizar OS #${osId}:`, err.message || err);
+  }
+}
+
 function createOS({ equipamento_id, equipamento_manual, descricao, tipo, opened_by, grau }) {
   const desc = String(descricao || "").trim();
   if (!desc) throw new Error("Descrição obrigatória.");
@@ -271,6 +284,7 @@ function createOS({ equipamento_id, equipamento_manual, descricao, tipo, opened_
   const osId = Number(info.lastInsertRowid);
 
   emitOSEvents(osId, "create");
+  syncInspecaoFromOS(osId);
 
   webPushService
     .sendOSPushNotifications({
@@ -336,13 +350,23 @@ function iniciarOS(id, userId) {
   const os = getOSById(id);
   if (!os) throw new Error("OS não encontrada.");
 
-  db.prepare(
-    `UPDATE os
-     SET status = 'ANDAMENTO',
-         started_at = COALESCE(started_at, datetime('now')),
-         started_by = COALESCE(started_by, ?)
-     WHERE id = ?`
-  ).run(userId || null, id);
+  const cols = getOSColumns();
+  const sets = ["status = 'ANDAMENTO'"];
+  const args = [];
+
+  if (cols.includes("started_at")) {
+    sets.push("started_at = COALESCE(started_at, datetime('now'))");
+  }
+  if (cols.includes("started_by")) {
+    sets.push("started_by = COALESCE(started_by, ?)");
+    args.push(userId || null);
+  }
+  if (cols.includes("data_inicio")) {
+    sets.push("data_inicio = COALESCE(data_inicio, datetime('now'))");
+  }
+
+  args.push(id);
+  db.prepare(`UPDATE os SET ${sets.join(", ")} WHERE id = ?`).run(...args);
 
   emitOSEvents(id, "status");
   if (inspecaoService?.syncFromOS) {
