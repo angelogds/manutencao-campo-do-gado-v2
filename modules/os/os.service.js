@@ -3,6 +3,10 @@ const { classifyOSPriority } = require("./os-priority.service");
 const alertsHub = require("../alerts/alerts.hub");
 const alertsService = require("../alerts/alerts.service");
 const webPushService = require("../notifications/webpush.service");
+let inspecaoService = null;
+try {
+  inspecaoService = require("../inspecao/inspecao.service");
+} catch (_e) {}
 
 function getOSColumns() {
   return db.prepare(`PRAGMA table_info(os)`).all().map((c) => c.name);
@@ -199,6 +203,18 @@ function emitOSEvents(osId, eventHint) {
   }
 }
 
+function syncInspecaoFromOS(osId) {
+  if (!inspecaoService?.syncFromOS) return;
+  try {
+    const result = inspecaoService.syncFromOS(osId);
+    if (result && result.synced === false) {
+      console.warn(`⚠️ [inspecao] syncFromOS não sincronizou OS #${osId}: ${result.reason || "motivo não informado"}`);
+    }
+  } catch (err) {
+    console.warn(`⚠️ [inspecao] erro ao sincronizar OS #${osId}:`, err.message || err);
+  }
+}
+
 function createOS({ equipamento_id, equipamento_manual, descricao, tipo, opened_by, grau }) {
   const desc = String(descricao || "").trim();
   if (!desc) throw new Error("Descrição obrigatória.");
@@ -341,6 +357,7 @@ function iniciarOS(id, userId) {
   ).run(userId || null, id);
 
   emitOSEvents(id, "status");
+  syncInspecaoFromOS(id);
 }
 
 function pausarOS(id) {
@@ -349,23 +366,27 @@ function pausarOS(id) {
 
   db.prepare(`UPDATE os SET status = 'PAUSADA' WHERE id = ?`).run(id);
   emitOSEvents(id, "status");
+  syncInspecaoFromOS(id);
 }
 
-function concluirOS(id, { closedBy, diagnostico, pecas }) {
+function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas }) {
   const os = getOSById(id);
   if (!os) throw new Error("OS não encontrada.");
 
   const diag = String(diagnostico || "").trim() || null;
+  const acao = String(acaoExecutada || "").trim() || null;
 
   const tx = db.transaction(() => {
     db.prepare(
       `UPDATE os
        SET status = 'FECHADA',
            closed_at = datetime('now'),
+           data_conclusao = COALESCE(data_conclusao, datetime('now')),
            closed_by = ?,
-           diagnostico = ?
+           diagnostico = ?,
+           acao_executada = COALESCE(?, acao_executada)
        WHERE id = ?`
-    ).run(closedBy || null, diag, id);
+    ).run(closedBy || null, diag, acao, id);
 
     if (Array.isArray(pecas) && pecas.length) {
       const ins = db.prepare(
@@ -383,6 +404,7 @@ function concluirOS(id, { closedBy, diagnostico, pecas }) {
 
   tx();
   emitOSEvents(id, "status");
+  syncInspecaoFromOS(id);
 }
 
 function updateStatus(id, status) {
@@ -391,6 +413,7 @@ function updateStatus(id, status) {
 
   db.prepare(`UPDATE os SET status = ? WHERE id = ?`).run(st, id);
   emitOSEvents(id, "status");
+  syncInspecaoFromOS(id);
 }
 
 module.exports = {
