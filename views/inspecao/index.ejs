@@ -1,0 +1,146 @@
+<link rel="stylesheet" href="/css/inspecao.css" />
+
+<%
+  const canEdit = canAccessModule(normalizeRole(user?.role), 'inspecao_edit');
+  const mesAno = `${String(mes).padStart(2, '0')}/${ano}`;
+%>
+
+<section class="page-head">
+  <div>
+    <h1 class="title">PAC 01 – MANUTENÇÃO (Inspeção)</h1>
+    <div class="muted">Mês de referência: <strong><%= mesAno %></strong> • preenchimento automático via OS + ajustes manuais.</div>
+  </div>
+
+  <div class="top-actions">
+    <a class="btn action-btn" href="/dashboard">← Voltar</a>
+
+    <% if (canEdit) { %>
+      <form method="POST" action="/inspecao/<%= ano %>/<%= mes %>/recalcular">
+        <button class="btn btn-primary action-btn" type="submit">Atualizar Sistema</button>
+      </form>
+    <% } else { %>
+      <span></span>
+    <% } %>
+
+    <a class="btn action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/pdf">Exportar PDF</a>
+    <a class="btn action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/xls">Exportar CSV</a>
+  </div>
+</section>
+
+<section class="card">
+  <div class="sheet">
+    <table>
+      <tr>
+        <td style="width:130px;text-align:center;font-weight:900">CAMPO DO GADO</td>
+        <td class="h-main">PROGRAMA DE AUTO CONTROLE • PAC 01 – MANUTENÇÃO</td>
+        <td style="width:80px;text-align:center">PAC. 01</td>
+        <td style="width:80px;text-align:center">OG. 02</td>
+      </tr>
+      <tr>
+        <td>Monitor: ____________________</td>
+        <td>Verificador: ____________________</td>
+        <td colspan="2">Frequência: Diária • Mês/Ano: <strong><%= mesAno %></strong></td>
+      </tr>
+    </table>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="2" style="min-width:220px">EQUIPAMENTO</th>
+            <th colspan="31">DIAS</th>
+          </tr>
+          <tr>
+            <% for (let d = 1; d <= 31; d++) { %>
+              <th style="min-width:22px"><%= d %></th>
+            <% } %>
+          </tr>
+        </thead>
+
+        <tbody>
+          <% for (const eq of equipamentos) { const linha = matrix.get(eq.nome) || []; %>
+            <tr>
+              <td><%= eq.nome %></td>
+
+              <% for (let i = 0; i < 31; i++) { const c = linha[i] || { status: '-' }; %>
+                <td>
+                  <% if (c.status === '-') { %>
+                    <span class="status-empty">-</span>
+                  <% } else { %>
+                    <span class="status <%= c.status %>"><%= c.status %></span>
+                  <% } %>
+
+                  <% if (canEdit && c.status !== '-') { %>
+                    <form method="POST" action="/inspecao/<%= ano %>/<%= mes %>/editar" class="cell-actions">
+                      <input type="hidden" name="equipamento_nome" value="<%= eq.nome %>" />
+                      <input type="hidden" name="dia" value="<%= i + 1 %>" />
+                      <select name="status">
+                        <% ['C', 'NC', 'EA', 'SP'].forEach((st) => { %>
+                          <option value="<%= st %>" <%= c.status === st ? 'selected' : '' %>><%= st %></option>
+                        <% }) %>
+                      </select>
+                      <button type="submit" style="font-size:10px">OK</button>
+                    </form>
+                  <% } %>
+                </td>
+              <% } %>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="legend">LEGENDA — C: Conforme • NC: Não Conforme • EA: Em Andamento • SP: Sem Produção</div>
+
+    <table class="nc-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Data</th>
+          <th>Não Conformidade</th>
+          <th>Ação corretiva</th>
+          <th>Ação preventiva</th>
+          <th>Data correção</th>
+          <th>OS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!ncList.length) { %>
+          <tr><td colspan="7">Sem não conformidades registradas no período.</td></tr>
+        <% } %>
+
+        <% ncList.forEach((nc) => { %>
+          <tr>
+            <td><%= nc.equipamento_nome %></td>
+            <td><%= nc.data_ocorrencia %></td>
+            <td><%= nc.nao_conformidade %></td>
+
+            <% if (canEdit) { %>
+              <td colspan="3">
+                <form class="nc-form" method="POST" action="/inspecao/<%= ano %>/<%= mes %>/nc/salvar">
+                  <input type="hidden" name="id" value="<%= nc.id %>" />
+                  <input name="acao_corretiva" value="<%= nc.acao_corretiva || '' %>" placeholder="Ação corretiva" />
+                  <input name="acao_preventiva" value="<%= nc.acao_preventiva || '' %>" placeholder="Ação preventiva" />
+                  <input type="date" name="data_correcao" value="<%= nc.data_correcao || '' %>" />
+                  <button class="btn btn-primary" type="submit" style="padding:6px 9px">Salvar</button>
+                </form>
+              </td>
+            <% } else { %>
+              <td><%= nc.acao_corretiva || '-' %></td>
+              <td><%= nc.acao_preventiva || '-' %></td>
+              <td><%= nc.data_correcao || '-' %></td>
+            <% } %>
+
+            <td>
+              <% if (nc.os_id) { %>
+                <a class="btn" style="padding:6px 9px" href="/os/<%= nc.os_id %>">Ver OS</a>
+              <% } else { %>
+                -
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
