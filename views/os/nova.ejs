@@ -56,15 +56,10 @@
       </div>
 
       <div class="form-group form-full">
-        <label>Solicitante (usuário logado)</label>
+        <label>Solicitante</label>
         <input class="input" type="text" readonly value="<%= user?.name || '-' %>" />
       </div>
-
-      <div class="form-group form-full">
-        <label>Descrição do serviço *</label>
-        <textarea name="descricao" class="input" required placeholder="Descreva o problema encontrado"></textarea>
-      </div>
-
+     
       <div class="form-group form-full">
         <label>Fotos de abertura (opcional)</label>
         <input id="abertura_fotos" type="file" name="abertura_fotos" accept="image/*" multiple style="display:none" />
