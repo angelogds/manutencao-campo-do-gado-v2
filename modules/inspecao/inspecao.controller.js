@@ -6,6 +6,9 @@ function parseMesAno(req) {
     ano: Number(req.params.ano || new Date().getFullYear()),
     mes: Number(req.params.mes || new Date().getMonth() + 1),
   };
+  const ano = Number(req.params.ano || new Date().getFullYear());
+  const mes = Number(req.params.mes || new Date().getMonth() + 1);
+  return { ano, mes };
 }
 
 function normalizeStatus(value) {
@@ -22,6 +25,15 @@ function ensureMonthData(req, { forceRecalc = false } = {}) {
   const hasAnyFilled = Array.from(maybeRows.values()).some((row) => row.some((cell) => cell.status !== "C" && cell.status !== "-"));
   if (forceRecalc || !hasAnyFilled) service.recalculate(inspecao.id);
 
+  if (["C", "NC", "EA", "SP"].includes(s)) return s;
+  return "C";
+}
+
+function ensureMonthData(req) {
+  const { ano, mes } = parseMesAno(req);
+  const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
+  const equipamentos = service.listEquipamentosAtivos();
+  service.recalculate(inspecao.id);
   const matrix = service.buildMatrix(inspecao.id, ano, mes, equipamentos);
   const ncList = service.listNC(inspecao.id);
   const diasMes = service.daysInMonth(ano, mes);
@@ -29,6 +41,7 @@ function ensureMonthData(req, { forceRecalc = false } = {}) {
 }
 
 function index(_req, res) {
+function index(req, res) {
   const d = new Date();
   return res.redirect(`/inspecao/${d.getFullYear()}/${d.getMonth() + 1}`);
 }
@@ -46,6 +59,7 @@ function viewMonth(req, res) {
 function recalculate(req, res) {
   const { ano, mes } = parseMesAno(req);
   const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
+  service.updateHeader(inspecao.id, req.body || {});
   const result = service.recalculate(inspecao.id);
   req.flash("success", `Inspeção recalculada com ${result.osCount} OS processadas.`);
   return res.redirect(`/inspecao/${ano}/${mes}`);
@@ -54,6 +68,7 @@ function recalculate(req, res) {
 function editStatus(req, res) {
   const { ano, mes } = parseMesAno(req);
   const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
+
   service.updateGradeManual(inspecao.id, {
     equipamento_nome: req.body.equipamento_nome,
     dia: Number(req.body.dia),
@@ -61,6 +76,7 @@ function editStatus(req, res) {
     observacao: req.body.observacao,
     os_id: req.body.os_id,
   });
+
   req.flash("success", "Status atualizado manualmente.");
   return res.redirect(`/inspecao/${ano}/${mes}`);
 }
@@ -87,3 +103,19 @@ function exportXLS(req, res) {
 }
 
 module.exports = { index, viewMonth, recalculate, editStatus, saveNC, exportPDF, exportXLS };
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename=inspecao-pac01-${data.ano}-${String(data.mes).padStart(2, "0")}.csv`
+  );
+  return res.send(`\uFEFF${csv}`);
+}
+
+module.exports = {
+  index,
+  viewMonth,
+  recalculate,
+  editStatus,
+  saveNC,
+  exportPDF,
+  exportXLS,
+};
