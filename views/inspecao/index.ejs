@@ -18,10 +18,7 @@
       <a class="btn btn-outline action-btn" href="/inspecao/<%= prevAno %>/<%= prevMes %>">◀ Mês anterior</a>
       <a class="btn btn-outline action-btn" href="/inspecao/<%= nextAno %>/<%= nextMes %>">Próximo mês ▶</a>
       <a class="btn btn-outline action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/pdf">Exportar PDF</a>
-      <a class="btn btn-outline action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/csv">Exportar CSV</a>
-      <% if (canEdit) { %>
-        <button class="btn btn-primary action-btn" type="submit" form="inspecaoHeaderForm">Atualizar Sistema</button>
-      <% } %>
+      <a class="btn btn-primary action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/csv">Exportar CSV</a>
     </div>
   </div>
 </div>
