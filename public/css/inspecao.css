@@ -18,10 +18,18 @@
 .inspecao-grid thead th{position:sticky;top:0;background:#f8fafc;z-index:3}
 .inspecao-grid .equip-col small{display:block;color:#6b7280;font-weight:600}
 .status-cell{padding:4px}
+.status-badge-btn{border:none;background:transparent;cursor:pointer;padding:0}
+.status-cell.disabled .status-badge-btn{cursor:not-allowed}
 .inspecao-nc-card{margin-top:16px}
 .nc-table th,.nc-table td{vertical-align:top}
 .nc-edit-form{display:grid;grid-template-columns:2fr 2fr 1fr auto;gap:8px}
 .nc-edit-form input{border:1px solid var(--border);border-radius:10px;padding:8px}
+.inspecao-modal{position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+.inspecao-modal-content{width:min(720px,95vw);background:#fff;border-radius:16px;padding:16px}
+.inspecao-modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.modal-os-list{padding-left:18px}
+.modal-os-list li{margin:8px 0}
+.modal-observacao-form textarea{width:100%;border:1px solid var(--border);border-radius:10px;padding:10px;margin:8px 0}
 @media (max-width:1200px){
   .top-actions{grid-template-columns:repeat(3,minmax(140px,1fr))}
 }
