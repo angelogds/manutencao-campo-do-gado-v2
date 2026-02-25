@@ -3,6 +3,10 @@ const { classifyOSPriority } = require("./os-priority.service");
 const alertsHub = require("../alerts/alerts.hub");
 const alertsService = require("../alerts/alerts.service");
 const webPushService = require("../notifications/webpush.service");
+let inspecaoService = null;
+try {
+  inspecaoService = require("../inspecao/inspecao.service");
+} catch (_e) {}
 
 function getOSColumns() {
   return db.prepare(`PRAGMA table_info(os)`).all().map((c) => c.name);
@@ -341,6 +345,11 @@ function iniciarOS(id, userId) {
   ).run(userId || null, id);
 
   emitOSEvents(id, "status");
+  if (inspecaoService?.syncFromOS) {
+    try {
+      inspecaoService.syncFromOS(id);
+    } catch (_e) {}
+  }
 }
 
 function pausarOS(id) {
@@ -349,23 +358,31 @@ function pausarOS(id) {
 
   db.prepare(`UPDATE os SET status = 'PAUSADA' WHERE id = ?`).run(id);
   emitOSEvents(id, "status");
+  if (inspecaoService?.syncFromOS) {
+    try {
+      inspecaoService.syncFromOS(id);
+    } catch (_e) {}
+  }
 }
 
-function concluirOS(id, { closedBy, diagnostico, pecas }) {
+function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas }) {
   const os = getOSById(id);
   if (!os) throw new Error("OS não encontrada.");
 
   const diag = String(diagnostico || "").trim() || null;
+  const acao = String(acaoExecutada || "").trim() || null;
 
   const tx = db.transaction(() => {
     db.prepare(
       `UPDATE os
        SET status = 'FECHADA',
            closed_at = datetime('now'),
+           data_conclusao = COALESCE(data_conclusao, datetime('now')),
            closed_by = ?,
-           diagnostico = ?
+           diagnostico = ?,
+           acao_executada = COALESCE(?, acao_executada)
        WHERE id = ?`
-    ).run(closedBy || null, diag, id);
+    ).run(closedBy || null, diag, acao, id);
 
     if (Array.isArray(pecas) && pecas.length) {
       const ins = db.prepare(
@@ -383,6 +400,11 @@ function concluirOS(id, { closedBy, diagnostico, pecas }) {
 
   tx();
   emitOSEvents(id, "status");
+  if (inspecaoService?.syncFromOS) {
+    try {
+      inspecaoService.syncFromOS(id);
+    } catch (_e) {}
+  }
 }
 
 function updateStatus(id, status) {
@@ -391,6 +413,11 @@ function updateStatus(id, status) {
 
   db.prepare(`UPDATE os SET status = ? WHERE id = ?`).run(st, id);
   emitOSEvents(id, "status");
+  if (inspecaoService?.syncFromOS) {
+    try {
+      inspecaoService.syncFromOS(id);
+    } catch (_e) {}
+  }
 }
 
 module.exports = {

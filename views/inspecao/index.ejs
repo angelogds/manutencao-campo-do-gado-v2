@@ -1,0 +1,135 @@
+<style>
+  .sheet{background:#fff;border:1px solid #d1d5db}
+  .sheet table{width:100%;border-collapse:collapse}
+  .sheet td,.sheet th{border:1px solid #9ca3af;padding:4px;font-size:11px}
+  .title-main{font-weight:700;text-align:center;font-size:12px}
+  .title-sub{font-weight:700;text-align:center;font-size:11px}
+  .meta{font-size:10px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .btn{border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:7px 10px;text-decoration:none;color:#111827;font-size:12px;cursor:pointer}
+  .btn.primary{background:#166534;color:#fff;border-color:#166534}
+  .grid-wrap{overflow:auto;max-height:560px}
+  .status{display:inline-block;padding:2px 5px;border-radius:999px;font-weight:700;font-size:10px}
+  .C{background:#dcfce7;color:#166534}.NC{background:#fee2e2;color:#b91c1c}.EA{background:#fef3c7;color:#92400e}.SP{background:#e5e7eb;color:#374151}.X{color:#9ca3af}
+  .nc-form input{width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px;font-size:11px}
+  .legend{font-size:10px;padding:6px 0}
+</style>
+
+<%
+  const prevMes = mes === 1 ? 12 : mes - 1;
+  const prevAno = mes === 1 ? ano - 1 : ano;
+  const nextMes = mes === 12 ? 1 : mes + 1;
+  const nextAno = mes === 12 ? ano + 1 : ano;
+  const canEdit = canAccessModule(normalizeRole(user?.role), 'inspecao_edit');
+%>
+
+<div class="toolbar">
+  <a class="btn" href="/inspecao/<%= prevAno %>/<%= prevMes %>">◀ Anterior</a>
+  <a class="btn" href="/inspecao/<%= nextAno %>/<%= nextMes %>">Próximo ▶</a>
+  <a class="btn" href="/inspecao/<%= ano %>/<%= mes %>/export/pdf">Exportar PDF</a>
+  <a class="btn" href="/inspecao/<%= ano %>/<%= mes %>/export/xls">Exportar CSV</a>
+  <% if (canEdit) { %>
+    <form action="/inspecao/<%= ano %>/<%= mes %>/recalcular" method="POST" style="display:flex;gap:6px;flex-wrap:wrap">
+      <input name="monitor_nome" value="<%= inspecao.monitor_nome || '' %>" placeholder="Monitor" class="btn" style="padding:6px 8px"/>
+      <input name="verificador_nome" value="<%= inspecao.verificador_nome || '' %>" placeholder="Verificador" class="btn" style="padding:6px 8px"/>
+      <input name="frequencia" value="<%= inspecao.frequencia || 'Diária' %>" placeholder="Frequência" class="btn" style="padding:6px 8px"/>
+      <button class="btn primary" type="submit">Recalcular / Atualizar do Sistema</button>
+    </form>
+  <% } %>
+</div>
+
+<div class="sheet">
+  <table>
+    <tr>
+      <td style="width:140px;text-align:center;font-weight:700">CAMPO DO GADO</td>
+      <td class="title-main">PROGRAMA DE AUTO CONTROLE<br/>PAC 01 – MANUTENÇÃO (INSTALAÇÕES, EQUIPAMENTOS INDUSTRIAIS, CALIBRAÇÃO E AFERIÇÃO)</td>
+      <td style="width:70px;text-align:center" class="meta">PAC. 01</td>
+      <td style="width:70px;text-align:center" class="meta">OG. 02</td>
+    </tr>
+    <tr>
+      <td class="meta">Monitor: <strong><%= inspecao.monitor_nome || '-' %></strong></td>
+      <td class="meta">Verificador: <strong><%= inspecao.verificador_nome || '-' %></strong></td>
+      <td class="meta" colspan="2">Frequência: <strong><%= inspecao.frequencia || 'Diária' %></strong> &nbsp;&nbsp; Mês/Ano: <strong><%= String(mes).padStart(2,'0') %>/<%= ano %></strong></td>
+    </tr>
+  </table>
+
+  <div class="grid-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th rowspan="2" style="min-width:220px">EQUIPAMENTO</th>
+          <th colspan="31">DIAS</th>
+        </tr>
+        <tr>
+          <% for(let d=1; d<=31; d++){ %><th style="min-width:20px"><%= d %></th><% } %>
+        </tr>
+      </thead>
+      <tbody>
+        <% for (const eq of equipamentos) { const linha = matrix.get(eq.nome) || []; %>
+          <tr>
+            <td><%= eq.nome %></td>
+            <% for (let i=0;i<31;i++){ const c = linha[i] || {status:'-'}; const st = c.status === '-' ? 'X' : c.status; %>
+              <td>
+                <% if (c.status === '-') { %>
+                  <span class="status X">-</span>
+                <% } else { %>
+                  <span class="status <%= st %>"><%= c.status %></span>
+                <% } %>
+                <% if (canEdit && c.status !== '-') { %>
+                  <form action="/inspecao/<%= ano %>/<%= mes %>/editar" method="POST" style="margin-top:2px;display:flex;gap:2px">
+                    <input type="hidden" name="equipamento_nome" value="<%= eq.nome %>" />
+                    <input type="hidden" name="dia" value="<%= i+1 %>" />
+                    <select name="status" style="font-size:10px"><% ['C','NC','EA','SP'].forEach(v=> { %><option value="<%= v %>" <%= c.status===v ? 'selected':'' %>><%= v %></option><% }) %></select>
+                    <button type="submit" style="font-size:10px">✓</button>
+                  </form>
+                <% } %>
+              </td>
+            <% } %>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="legend">LEGENDA - C: Conforme · NC: Não Conforme · EA: Em Andamento · SP: Sem Produção</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Data</th>
+        <th>Não Conformidade (descrição abertura OS)</th>
+        <th>Ação corretiva (o que foi feito)</th>
+        <th>Ação preventiva (diagnóstico/causa)</th>
+        <th>Data da correção</th>
+        <th>OS</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!ncList.length) { %><tr><td colspan="7">Sem não conformidades no mês.</td></tr><% } %>
+      <% ncList.forEach(nc => { %>
+        <tr>
+          <td><%= nc.equipamento_nome %></td>
+          <td><%= nc.data_ocorrencia %></td>
+          <td><%= nc.nao_conformidade %></td>
+          <% if (canEdit) { %>
+            <td colspan="3">
+              <form class="nc-form" action="/inspecao/<%= ano %>/<%= mes %>/nc/salvar" method="POST" style="display:grid;grid-template-columns:2fr 2fr 1fr auto;gap:6px;align-items:center">
+                <input type="hidden" name="id" value="<%= nc.id %>" />
+                <input name="acao_corretiva" value="<%= nc.acao_corretiva || '' %>" placeholder="Ação corretiva" />
+                <input name="acao_preventiva" value="<%= nc.acao_preventiva || '' %>" placeholder="Ação preventiva" />
+                <input type="date" name="data_correcao" value="<%= nc.data_correcao || '' %>" />
+                <button class="btn primary" type="submit" style="padding:4px 8px;font-size:11px">Salvar</button>
+              </form>
+            </td>
+          <% } else { %>
+            <td><%= nc.acao_corretiva || '-' %></td>
+            <td><%= nc.acao_preventiva || '-' %></td>
+            <td><%= nc.data_correcao || '-' %></td>
+          <% } %>
+          <td><% if (nc.os_id) { %><a class="btn" style="padding:4px 8px;font-size:11px" href="/os/<%= nc.os_id %>">Ver OS</a><% } else { %>-<% } %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

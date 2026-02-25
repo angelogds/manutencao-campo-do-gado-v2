@@ -23,6 +23,7 @@
   const canAvisos = can('avisos_view');
   const canUsuarios = can('usuarios');
   const canEscala = can('escala');
+  const canInspecao = can('inspecao_view');
 
   const currentPcmSection = (typeof activePcmSection !== 'undefined' ? activePcmSection : '');
 %>
@@ -79,6 +80,10 @@
 
     <% if (canEscala) { %>
       <a class="nav-item <%= activeMenu === 'escala' ? 'active' : '' %>" href="/escala">Escala</a>
+    <% } %>
+
+    <% if (canInspecao) { %>
+      <a class="nav-item <%= activeMenu === 'inspecao' ? 'active' : '' %>" href="/inspecao">Inspeção (PAC 01)</a>
     <% } %>
 
     <% if (canAvisos) { %>
