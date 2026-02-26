@@ -168,6 +168,10 @@ function isNC(osRow) {
   if (!osRow) return false;
   if (Number(osRow.nao_conforme || 0) === 1) return true;
 
+  const tipo = normalizeText(osRow.tipo);
+  const problema = String(osRow.texto_problema || "").trim();
+  if (tipo === "corretiva" && problema) return true;
+
   const status = normalizeText(osRow.status);
   if (status.includes("quebra") || status.includes("parada")) return true;
 
@@ -411,10 +415,10 @@ function listNC(inspecaoId) {
      FROM ${ncTable} nc
      JOIN equipamentos e ON e.id = nc.equipamento_id
      WHERE nc.inspecao_id = ?
-     ORDER BY nc.data_ocorrencia DESC, e.nome ASC`
+     ORDER BY nc.data_ocorrencia DESC, COALESCE(e.nome, nc.equipamento_nome, '') ASC`
   ).all(inspecaoId).map((row) => ({
     ...row,
-    item: row.equipamento_codigo || String(row.equipamento_id),
+    item: row.equipamento_codigo || String(row.equipamento_id || row.equipamento_nome || "-"),
   }));
 }
 
@@ -435,7 +439,7 @@ function listOSDetailsByInspecao(inspecaoId, mes, ano) {
     details[key].push({
       id: osRow.id,
       status: osRow.status,
-      problema: osRow.texto_problema,
+      nao_conformidade: osRow.texto_problema,
       resumo_tecnico: osRow.resumo_tecnico,
       causa_diagnostico: osRow.causa_diagnostico,
       data_inicio: dateOnly(osRow.data_inicio),
