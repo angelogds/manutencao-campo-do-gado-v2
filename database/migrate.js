@@ -49,6 +49,22 @@ function ensureEstoqueCategoriaColumn() {
   }
 }
 
+function ensureOSInspectionColumns() {
+  if (!tableExists("os")) return;
+  const needed = [
+    ["resumo_tecnico", "TEXT"],
+    ["causa_diagnostico", "TEXT"],
+    ["data_fim", "TEXT"],
+  ];
+
+  for (const [col, type] of needed) {
+    if (!columnExists("os", col)) {
+      console.log(`🛠️ Hotfix: adicionando coluna '${col}' em os...`);
+      db.exec(`ALTER TABLE os ADD COLUMN ${col} ${type};`);
+    }
+  }
+}
+
 function applyOne(filename) {
   const full = path.join(__dirname, "migrations", filename);
   const sql = fs.readFileSync(full, "utf8");
@@ -61,6 +77,9 @@ function applyOne(filename) {
     // ✅ antes da 080, garante coluna categoria (corrige banco já existente)
     if (filename === "080_estoque_core.sql") {
       ensureEstoqueCategoriaColumn();
+    }
+    if (filename === "104_os_inspecao_auto_fields.sql") {
+      ensureOSInspectionColumns();
     }
 
     if (needsNoTx) {

@@ -52,6 +52,11 @@ function hasTable(name) {
   return !!row;
 }
 
+function resolveNCTable() {
+  if (hasTable("inspecao_pac01_nc")) return "inspecao_pac01_nc";
+  return "inspecao_pac01_nao_conformidades";
+}
+
 function getOSFieldMap() {
   const cols = tableColumns("os");
   return {
@@ -285,36 +290,55 @@ function recalculate(inspecaoId, mes, ano) {
     }
 
     const keys = new Set();
-    const upsertNC = db.prepare(
-      `INSERT INTO inspecao_pac01_nc (
+    const ncTable = resolveNCTable();
+    const insertNC = db.prepare(
+      `INSERT INTO ${ncTable} (
         inspecao_id, equipamento_id, data_ocorrencia, nao_conformidade,
         acao_corretiva, acao_preventiva, data_correcao, os_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      ON CONFLICT(inspecao_id, equipamento_id, data_ocorrencia, os_id)
-      DO UPDATE SET
-        nao_conformidade = excluded.nao_conformidade,
-        acao_corretiva = COALESCE(NULLIF(inspecao_pac01_nc.acao_corretiva, ''), excluded.acao_corretiva),
-        acao_preventiva = COALESCE(NULLIF(inspecao_pac01_nc.acao_preventiva, ''), excluded.acao_preventiva),
-        data_correcao = COALESCE(inspecao_pac01_nc.data_correcao, excluded.data_correcao),
-        updated_at = datetime('now')`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    );
+    const selectNC = db.prepare(
+      `SELECT id, acao_corretiva, acao_preventiva, data_correcao
+       FROM ${ncTable}
+       WHERE inspecao_id = ? AND equipamento_id = ? AND data_ocorrencia = ? AND COALESCE(os_id, 0) = COALESCE(?, 0)`
+    );
+    const updateNC = db.prepare(
+      `UPDATE ${ncTable}
+       SET nao_conformidade = ?,
+           acao_corretiva = COALESCE(NULLIF(acao_corretiva, ''), ?),
+           acao_preventiva = COALESCE(NULLIF(acao_preventiva, ''), ?),
+           data_correcao = COALESCE(data_correcao, ?),
+           updated_at = datetime('now')
+       WHERE id = ?`
     );
 
     for (const nc of ncList) {
       keys.add(`${nc.equipamento_id}:${nc.data_ocorrencia}:${nc.os_id || 0}`);
-      upsertNC.run(
-        inspecao.id,
-        nc.equipamento_id,
-        nc.data_ocorrencia,
-        nc.nao_conformidade,
-        nc.acao_corretiva,
-        nc.acao_preventiva,
-        nc.data_correcao,
-        nc.os_id || null
-      );
+      const existing = selectNC.get(inspecao.id, nc.equipamento_id, nc.data_ocorrencia, nc.os_id || null);
+      if (existing) {
+        updateNC.run(
+          nc.nao_conformidade,
+          nc.acao_corretiva,
+          nc.acao_preventiva,
+          nc.data_correcao,
+          existing.id
+        );
+      } else {
+        insertNC.run(
+          inspecao.id,
+          nc.equipamento_id,
+          nc.data_ocorrencia,
+          nc.nao_conformidade,
+          nc.acao_corretiva,
+          nc.acao_preventiva,
+          nc.data_correcao,
+          nc.os_id || null
+        );
+      }
     }
 
-    const existingNC = db.prepare("SELECT id, equipamento_id, data_ocorrencia, os_id FROM inspecao_pac01_nc WHERE inspecao_id = ?").all(inspecao.id);
-    const delNC = db.prepare("DELETE FROM inspecao_pac01_nc WHERE id = ?");
+    const existingNC = db.prepare(`SELECT id, equipamento_id, data_ocorrencia, os_id FROM ${ncTable} WHERE inspecao_id = ?`).all(inspecao.id);
+    const delNC = db.prepare(`DELETE FROM ${ncTable} WHERE id = ?`);
     for (const row of existingNC) {
       const key = `${row.equipamento_id}:${row.data_ocorrencia}:${row.os_id || 0}`;
       if (!keys.has(key)) delNC.run(row.id);
@@ -362,9 +386,10 @@ function buildMatrix(inspecaoId, ano, mes, equipamentos) {
 }
 
 function listNC(inspecaoId) {
+  const ncTable = resolveNCTable();
   return db.prepare(
     `SELECT nc.*, e.nome AS equipamento_nome, e.codigo AS equipamento_codigo
-     FROM inspecao_pac01_nc nc
+     FROM ${ncTable} nc
      JOIN equipamentos e ON e.id = nc.equipamento_id
      WHERE nc.inspecao_id = ?
      ORDER BY nc.data_ocorrencia DESC, e.nome ASC`
@@ -416,9 +441,10 @@ function listOSDetailsByInspecao(inspecaoId, mes, ano) {
 function saveNC(inspecaoId, payload) {
   const id = Number(payload.id || 0);
   if (!id) throw new Error("Não conformidade inválida.");
+  const ncTable = resolveNCTable();
 
   db.prepare(
-    `UPDATE inspecao_pac01_nc
+    `UPDATE ${ncTable}
      SET acao_corretiva = ?,
          acao_preventiva = ?,
          data_correcao = ?,

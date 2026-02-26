@@ -30,12 +30,26 @@ function osNewForm(req, res) {
 
 function osCreate(req, res) {
   try {
-    const { equipamento_id, equipamento_manual, descricao, tipo, grau } = req.body;
+    const {
+      equipamento_id,
+      equipamento_manual,
+      descricao,
+      resumo_tecnico,
+      causa_diagnostico,
+      data_inicio,
+      data_fim,
+      tipo,
+      grau,
+    } = req.body;
 
     const id = service.createOS({
       equipamento_id: equipamento_id ? Number(equipamento_id) : null,
       equipamento_manual,
       descricao,
+      resumo_tecnico,
+      causa_diagnostico,
+      data_inicio,
+      data_fim,
       tipo,
       grau,
       opened_by: req.session?.user?.id || null,
@@ -117,9 +131,10 @@ function osConcluir(req, res) {
 
     service.concluirOS(id, {
       closedBy: req.session?.user?.id || null,
-      diagnostico: req.body.diagnostico,
-      acaoExecutada: req.body.acao_executada,
+      diagnostico: req.body.diagnostico || req.body.causa_diagnostico,
+      acaoExecutada: req.body.acao_executada || req.body.resumo_tecnico,
       pecas: normalizePecasBody(req.body),
+      dataFim: req.body.data_fim,
     });
 
     req.flash("success", "OS concluída com sucesso.");
