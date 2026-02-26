@@ -23,7 +23,37 @@ function normalizeText(v) {
   return String(v || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
+    .toLowerCase()
+    .trim();
+}
+
+function normalizeStatus(v) {
+  const raw = normalizeText(v);
+  if (raw.includes("finaliz") || raw.includes("fechad") || raw.includes("conclu")) return "FECHADA";
+  if (raw.includes("andamento") || raw.includes("em_andamento")) return "EM_ANDAMENTO";
+  if (raw.includes("aberta")) return "ABERTA";
+  return String(v || "").toUpperCase();
+}
+
+function normalizeDate(value) {
+  if (!value) return null;
+  const str = String(value).trim();
+  if (!str) return null;
+  const iso = str.includes("T") ? str : str.replace(" ", "T");
+  const dt = new Date(iso);
+  if (!Number.isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+  const m = str.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : null;
+}
+
+function parseDate(value) {
+  const date = normalizeDate(value);
+  if (!date) return null;
+  return new Date(`${date}T00:00:00`);
+}
+
+function formatDate(value) {
+  return normalizeDate(value) || "";
 }
 
 function normalizeDate(value) {
@@ -126,6 +156,14 @@ function updateHeader(inspecaoId, data = {}) {
 
 function isNC(osRow) {
   if (!osRow) return false;
+  if (Number(getColumnValue(osRow, ["nao_conforme"])) === 1) return true;
+
+  const tipo = normalizeText(getColumnValue(osRow, ["tipo"]));
+  const ncText = String(
+    getColumnValue(osRow, ["descricao_problema", "descricao", "solicitacao", "relato", "texto_problema"]) || ""
+  ).trim();
+
+  if (tipo.includes("corretiva") && ncText) return true;
 
   if (Number(getColumnValue(osRow, ["nao_conforme"])) === 1) return true;
 
