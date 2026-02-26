@@ -102,12 +102,7 @@ function saveObservation(req, res) {
 function exportPDF(req, res) {
   return withInspecaoErrorHandling(req, res, () => {
     const data = loadPageData(req);
-    return renderPDF({
-      res,
-      ...data,
-      monitorNome: req.session?.user?.name || data.inspecao?.monitor_nome,
-      dataVerificacao: req.query?.data_verificacao || new Date().toLocaleDateString("pt-BR"),
-    });
+    return renderPDF({ res, ...data });
   });
 }
 
