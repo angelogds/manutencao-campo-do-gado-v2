@@ -205,14 +205,20 @@ function emitOSEvents(osId, eventHint) {
 
 function syncInspecaoFromOS(osId) {
   if (!inspecaoService?.syncFromOS) return;
+  console.log("[INSPECAO_SYNC] syncFromOS disparado", { osId });
   try {
     const result = inspecaoService.syncFromOS(osId);
     if (result && result.synced === false) {
-      if (result.reason === "os_or_data_missing") return;
+      if (result.reason === "os_or_data_missing") {
+        console.warn("[INSPECAO_SYNC] syncFromOS sem data válida", { osId, reason: result.reason });
+        return;
+      }
       console.warn(`⚠️ [inspecao] syncFromOS não sincronizou OS #${osId}: ${result.reason || "motivo não informado"}`);
+      return;
     }
+    console.log("[INSPECAO_SYNC] syncFromOS concluído", { osId, result });
   } catch (err) {
-    console.warn(`⚠️ [inspecao] erro ao sincronizar OS #${osId}:`, err.message || err);
+    console.error("[INSPECAO_SYNC][ERROR]", err);
   }
 }
 
@@ -428,6 +434,13 @@ function pausarOS(id) {
 function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas, dataFim }) {
   const os = getOSById(id);
   if (!os) throw new Error("OS não encontrada.");
+  console.log("[OS_CLOSE] concluirOS:start", {
+    osId: id,
+    status_atual: os.status,
+    tipo: os.tipo,
+    data_inicio: os.data_inicio || os.opened_at || null,
+    data_fim_atual: os.data_fim || os.data_conclusao || os.closed_at || null,
+  });
 
   const diag = String(diagnostico || "").trim() || null;
   const acao = String(acaoExecutada || "").trim() || null;
@@ -479,15 +492,25 @@ function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas, dataFim }
 
   tx();
   emitOSEvents(id, "status");
+  let syncResult = null;
   if (inspecaoService?.syncFromClosedOS) {
     try {
-      inspecaoService.syncFromClosedOS(id);
-    } catch (_e) {}
+      console.log("[INSPECAO_SYNC] syncFromClosedOS disparado", { osId: id });
+      syncResult = inspecaoService.syncFromClosedOS(id);
+      console.log("[INSPECAO_SYNC] syncFromClosedOS retorno", { osId: id, syncResult });
+    } catch (err) {
+      console.error("[INSPECAO_SYNC][ERROR]", err);
+    }
   } else if (inspecaoService?.syncFromOS) {
     try {
-      inspecaoService.syncFromOS(id);
-    } catch (_e) {}
+      console.log("[INSPECAO_SYNC] fallback syncFromOS disparado", { osId: id });
+      syncResult = inspecaoService.syncFromOS(id);
+      console.log("[INSPECAO_SYNC] fallback syncFromOS retorno", { osId: id, syncResult });
+    } catch (err) {
+      console.error("[INSPECAO_SYNC][ERROR]", err);
+    }
   }
+  return syncResult;
 }
 
 function updateStatus(id, status) {

@@ -132,6 +132,12 @@ function normalizePecasBody(body) {
 
 function osClose(req, res) {
   const id = Number(req.params.id);
+  console.log("[OS_CLOSE] Iniciando fechamento", {
+    osId: id,
+    userId: req.session?.user?.id || null,
+    data_fim_payload: req.body?.data_fim || null,
+  });
+
   try {
     if (!String(req.body.resumo_tecnico || "").trim() || !String(req.body.causa_diagnostico || "").trim()) {
       throw new Error("Resumo técnico e causa/diagnóstico são obrigatórios para fechar a OS.");
@@ -145,7 +151,7 @@ function osClose(req, res) {
       userId: req.session?.user?.id || null,
     });
 
-    service.concluirOS(id, {
+    const syncResult = service.concluirOS(id, {
       closedBy: req.session?.user?.id || null,
       diagnostico: req.body.diagnostico || req.body.causa_diagnostico,
       acaoExecutada: req.body.acao_executada || req.body.resumo_tecnico,
@@ -153,8 +159,10 @@ function osClose(req, res) {
       dataFim: req.body.data_fim,
     });
 
+    console.log("[OS_CLOSE] Fechamento concluído", { osId: id, syncResult });
     req.flash("success", "OS concluída com sucesso.");
   } catch (err) {
+    console.error("[OS_CLOSE][ERROR]", err);
     req.flash("error", err.message || "Não foi possível concluir a OS.");
   }
   return res.redirect(`/os/${id}`);

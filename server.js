@@ -144,6 +144,7 @@ mount("/usuarios", "./modules/usuarios/usuarios.routes");
 mount("/demandas", "./modules/demandas/demandas.routes");
 mount("/motores", "./modules/motores/motores.routes");
 mount("/inspecao", "./modules/inspecao/inspecao.routes");
+mount("/inspection", "./modules/inspection/inspecao.routes");
 
 // ===== Home =====
 app.get("/", (req, res) => {
