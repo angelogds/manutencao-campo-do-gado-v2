@@ -1,5 +1,17 @@
 const PDFDocument = require("pdfkit");
 
+const COLOR = {
+  greenPrimary: "#0b6b3a",
+  greenSecondary: "#16A34A",
+  line: "#444444",
+  light: "#f8f9fa",
+  text: "#111827",
+  muted: "#6b7280",
+  nc: "#dc2626",
+  ea: "#f59e0b",
+  sp: "#9ca3af",
+};
+
 function csvEscape(value) {
   const s = String(value ?? "");
   if (s.includes(";") || s.includes("\n") || s.includes('"')) return `"${s.replace(/"/g, '""')}"`;
@@ -36,133 +48,243 @@ function buildCSV({ equipamentos, matrix, ncList }) {
   return `${lines.join("\n")}\n`;
 }
 
-function drawHeader(doc, inspecao) {
-  doc.rect(32, 24, 531, 46).fill("#16A34A");
-  doc.fillColor("#fff").fontSize(16).text("PAC 01 – MANUTENÇÃO", 44, 34);
-  doc.fontSize(10).text("Campo do Gado", 44, 52);
-
-  doc.fillColor("#111827").fontSize(9);
-  doc.text(`Mês/Ano: ${String(inspecao.mes).padStart(2, "0")}/${inspecao.ano}`, 32, 78);
-  doc.text(`Frequência: ${inspecao.frequencia || "Diária"}`, 180, 78);
-  doc.text(`Monitor: ${inspecao.monitor_nome || "-"}`, 32, 92);
-  doc.text(`Verificador: ${inspecao.verificador_nome || "-"}`, 180, 92);
+function drawStatusCell(doc, x, y, w, h, status) {
+  const s = String(status || "").toUpperCase();
+  const fill = s === "C" ? COLOR.greenSecondary : s === "NC" ? COLOR.nc : s === "EA" ? COLOR.ea : COLOR.sp;
+  doc.rect(x, y, w, h).fillAndStroke(fill, COLOR.line);
+  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(7).text(s || "SP", x, y + 4, { width: w, align: "center" });
 }
 
-function drawFooter(doc) {
-  const y = doc.page.height - 22;
-  doc.fontSize(8).fillColor("#4b5563").text("Campo do Gado • Sistema de Manutenção", 32, y);
-  doc.text(`Página ${doc.bufferedPageRange().count}`, 500, y, { width: 60, align: "right" });
+function drawOfficialHeader(doc) {
+  const left = doc.page.margins.left;
+  const right = doc.page.width - doc.page.margins.right;
+  const fullWidth = right - left;
+
+  doc.rect(left, 28, fullWidth, 74).stroke(COLOR.line);
+
+  doc.rect(left + 1, 29, 120, 72).fill("#ffffff");
+  doc.rect(left + 1, 29, 120, 72).stroke(COLOR.line);
+  doc.fillColor(COLOR.greenPrimary).font("Helvetica-Bold").fontSize(14).text("CAMPO", left + 20, 49);
+  doc.fillColor(COLOR.greenSecondary).font("Helvetica-Bold").fontSize(14).text("DO GADO", left + 20, 66);
+
+  doc.fillColor(COLOR.text).font("Helvetica-Bold").fontSize(12).text("PROGRAMA DE AUTO CONTROLE", left + 130, 41, {
+    width: fullWidth - 220,
+    align: "center",
+  });
+  doc.font("Helvetica").fontSize(8).text(
+    "PAC 01 – MANUTENÇÃO (INSTALAÇÕES, EQUIPAMENTOS INDUSTRIAIS, CALIBRAÇÃO E AFERIÇÃO)",
+    left + 130,
+    60,
+    { width: fullWidth - 220, align: "center" }
+  );
+
+  doc.rect(right - 89, 29, 88, 72).stroke(COLOR.line);
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(COLOR.text).text("PAC.01", right - 70, 49);
+  doc.text("CQ.02", right - 67, 68);
+
+  doc.moveTo(left, 108).lineTo(right, 108).lineWidth(1).stroke(COLOR.line);
 }
 
-function renderPDF({ res, inspecao, equipamentos, matrix, ncList, diasMes }) {
+function drawIdentificationBlock(doc, { inspecao, mes, ano, monitorNome, dataVerificacao }) {
+  const left = doc.page.margins.left;
+  const width = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const top = 116;
+  const labelW = 105;
+  const valueW = width - labelW;
+  const rowH = 18;
+
+  const fields = [
+    ["Monitor", monitorNome || inspecao.monitor_nome || "Administrador"],
+    ["Verificador", inspecao.verificador_nome || "-"],
+    ["Data da verificação", dataVerificacao],
+    ["Frequência", inspecao.frequencia || "Diária"],
+    ["Mês / Ano", `${String(mes).padStart(2, "0")}/${ano}`],
+  ];
+
+  doc.font("Helvetica").fontSize(8);
+  fields.forEach(([k, v], idx) => {
+    const y = top + idx * rowH;
+    doc.rect(left, y, labelW, rowH).fillAndStroke(COLOR.light, COLOR.line);
+    doc.fillColor(COLOR.text).font("Helvetica-Bold").text(`${k}:`, left + 4, y + 5, { width: labelW - 8 });
+
+    doc.rect(left + labelW, y, valueW, rowH).fillAndStroke("#ffffff", COLOR.line);
+    doc.fillColor(COLOR.text).font("Helvetica").text(String(v || "-"), left + labelW + 4, y + 5, { width: valueW - 8 });
+  });
+
+  return top + fields.length * rowH + 14;
+}
+
+function drawChecklistTable(doc, { equipamentos, matrix, diasMes, startY, inspecao }) {
+  const left = doc.page.margins.left;
+  const usableW = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const equipW = 155;
+  const dayW = (usableW - equipW) / 31;
+  const rowH = 13;
+
+  let y = startY;
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(COLOR.greenPrimary).text("Checklist Manutenção de Equipamentos", left, y);
+  y += 16;
+
+  const drawHeaderRow = () => {
+    doc.rect(left, y, equipW, rowH).fillAndStroke(COLOR.light, COLOR.line);
+    doc.fillColor(COLOR.text).font("Helvetica-Bold").fontSize(7).text("EQUIPAMENTO", left + 4, y + 3, { width: equipW - 8 });
+
+    for (let d = 1; d <= 31; d += 1) {
+      const x = left + equipW + (d - 1) * dayW;
+      doc.rect(x, y, dayW, rowH).fillAndStroke(COLOR.light, COLOR.line);
+      doc.fillColor(COLOR.text).font("Helvetica-Bold").fontSize(6).text(String(d), x, y + 3, { width: dayW, align: "center" });
+    }
+    y += rowH;
+  };
+
+  drawHeaderRow();
+
+  for (const eq of equipamentos) {
+    if (y + rowH > doc.page.height - doc.page.margins.bottom - 80) {
+      doc.addPage({ size: "A4", layout: "landscape", margin: 24 });
+      drawOfficialHeader(doc);
+      y = drawIdentificationBlock(doc, {
+        inspecao,
+        mes: inspecao.mes,
+        ano: inspecao.ano,
+        monitorNome: inspecao.monitor_nome,
+        dataVerificacao: new Date().toISOString().slice(0, 10).split("-").reverse().join("/"),
+      });
+      doc.font("Helvetica-Bold").fontSize(10).fillColor(COLOR.greenPrimary).text("Checklist Manutenção de Equipamentos", left, y);
+      y += 16;
+      drawHeaderRow();
+    }
+
+    const row = matrix.get(eq.id) || [];
+    doc.rect(left, y, equipW, rowH).fillAndStroke("#ffffff", COLOR.line);
+    doc.fillColor(COLOR.text).font("Helvetica").fontSize(6.5).text(eq.nome || `Eq #${eq.id}`, left + 3, y + 3, {
+      width: equipW - 6,
+      ellipsis: true,
+    });
+
+    for (let d = 1; d <= 31; d += 1) {
+      const x = left + equipW + (d - 1) * dayW;
+      const status = d > diasMes ? "SP" : row[d - 1]?.status || "SP";
+      drawStatusCell(doc, x, y, dayW, rowH, status);
+    }
+
+    y += rowH;
+  }
+
+  y += 6;
+  doc.font("Helvetica-Bold").fontSize(8).fillColor(COLOR.text).text("LEGENDA:", left, y);
+  doc.font("Helvetica").text("C: Conforme    NC: Não Conforme    EA: Em Andamento    SP: Sem Produção", left + 50, y);
+}
+
+function drawNCBlock(doc, ncList) {
+  const left = doc.page.margins.left;
+  const cols = [80, 55, 160, 120, 120, 70];
+  const headers = ["Item", "Data", "Não Conformidade", "Ação corretiva", "Ação preventiva", "Data da correção"];
+
+  let y = 118;
+  doc.font("Helvetica-Bold").fontSize(10).fillColor(COLOR.greenPrimary).text("Não Conformidades", left, y);
+  y += 14;
+
+  let x = left;
+  headers.forEach((h, i) => {
+    doc.rect(x, y, cols[i], 18).fillAndStroke(COLOR.light, COLOR.line);
+    doc.font("Helvetica-Bold").fontSize(7).fillColor(COLOR.text).text(h, x + 3, y + 5, { width: cols[i] - 6 });
+    x += cols[i];
+  });
+  y += 18;
+
+  if (!ncList.length) {
+    const w = cols.reduce((a, b) => a + b, 0);
+    doc.rect(left, y, w, 20).stroke(COLOR.line);
+    doc.font("Helvetica").fontSize(8).fillColor(COLOR.muted).text("Nenhuma não conformidade registrada no período.", left + 5, y + 6);
+    return;
+  }
+
+  for (const nc of ncList) {
+    const rowH = 34;
+    if (y + rowH > doc.page.height - doc.page.margins.bottom) {
+      doc.addPage({ size: "A4", layout: "landscape", margin: 24 });
+      drawOfficialHeader(doc);
+      y = 118;
+      doc.font("Helvetica-Bold").fontSize(10).fillColor(COLOR.greenPrimary).text("Não Conformidades", left, y);
+      y += 14;
+      let hx = left;
+      headers.forEach((h, i) => {
+        doc.rect(hx, y, cols[i], 18).fillAndStroke(COLOR.light, COLOR.line);
+        doc.font("Helvetica-Bold").fontSize(7).fillColor(COLOR.text).text(h, hx + 3, y + 5, { width: cols[i] - 6 });
+        hx += cols[i];
+      });
+      y += 18;
+    }
+
+    const values = [
+      nc.item || "-",
+      nc.data_ocorrencia || "-",
+      nc.nao_conformidade || "-",
+      nc.acao_corretiva || "-",
+      nc.acao_preventiva || "-",
+      nc.data_correcao || "-",
+    ];
+
+    let cx = left;
+    values.forEach((v, i) => {
+      doc.rect(cx, y, cols[i], rowH).stroke(COLOR.line);
+      doc.font("Helvetica").fontSize(7).fillColor(COLOR.text).text(String(v), cx + 3, y + 4, {
+        width: cols[i] - 6,
+        height: rowH - 6,
+        ellipsis: true,
+      });
+      cx += cols[i];
+    });
+
+    y += rowH;
+  }
+}
+
+function drawFooter(doc, page, total) {
+  const y = doc.page.height - 18;
+  doc.font("Helvetica").fontSize(7).fillColor(COLOR.muted).text("Campo do Gado V2 • PAC 01", 24, y);
+  doc.text(`Página ${page}/${total}`, doc.page.width - 80, y, { width: 56, align: "right" });
+}
+
+function generatePAC01PDF(inspecaoId, { res, inspecao, equipamentos, matrix, ncList, diasMes, monitorNome, dataVerificacao } = {}) {
+  if (!res) throw new Error("Resposta HTTP (res) é obrigatória para gerar o PDF.");
   const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 24, bufferPages: true });
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader(
     "Content-Disposition",
-    `inline; filename=inspecao-pac01-${inspecao.ano}-${String(inspecao.mes).padStart(2, "0")}.pdf`
+    `inline; filename=inspecao-pac01-${inspecao?.ano || ""}-${String(inspecao?.mes || "").padStart(2, "0")}.pdf`
   );
-
   doc.pipe(res);
 
-  drawHeader(doc, inspecao);
-  doc.moveDown(2.8);
-
-  const left = 24;
-  const equipCol = 160;
-  const dayCol = 18;
-  const headerY = 126;
-
-  doc.fontSize(8).fillColor("#111827").text("Equipamento", left + 2, headerY + 3, { width: equipCol - 4 });
-  for (let d = 1; d <= 31; d += 1) {
-    const x = left + equipCol + (d - 1) * dayCol;
-    doc.rect(x, headerY, dayCol, 16).stroke("#d1d5db");
-    doc.text(String(d), x, headerY + 4, { width: dayCol, align: "center" });
-  }
-
-  let y = headerY + 16;
-  for (const eq of equipamentos) {
-    if (y > 530) {
-      doc.addPage();
-      drawHeader(doc, inspecao);
-      y = 126;
-    }
-
-    doc.rect(left, y, equipCol, 16).stroke("#e5e7eb");
-    doc.fontSize(7).fillColor("#111827").text(eq.nome, left + 3, y + 4, { width: equipCol - 6, ellipsis: true });
-
-    const row = matrix.get(eq.id) || [];
-    for (let d = 1; d <= 31; d += 1) {
-      const x = left + equipCol + (d - 1) * dayCol;
-      doc.rect(x, y, dayCol, 16).stroke("#e5e7eb");
-      const status = d > diasMes ? "-" : (row[d - 1]?.status || "C");
-      let color = "#166534";
-      if (status === "NC") color = "#b91c1c";
-      if (status === "EA") color = "#92400e";
-      if (status === "SP") color = "#374151";
-      if (status === "-") color = "#9ca3af";
-      doc.fillColor(color).fontSize(7).text(status, x, y + 4, { width: dayCol, align: "center" });
-    }
-
-    y += 16;
-  }
-
-  doc.addPage({ layout: "portrait" });
-  drawHeader(doc, inspecao);
-  doc.fontSize(11).fillColor("#166534").text("Não Conformidades", 32, 126);
-
-  const columns = [50, 70, 170, 120, 120, 70, 40];
-  const headers = ["Item", "Data", "Não Conformidade", "Ação corretiva", "Ação preventiva", "Correção", "OS"];
-
-  let yNc = 144;
-  let x = 32;
-  doc.fontSize(8).fillColor("#111827");
-  headers.forEach((h, i) => {
-    doc.rect(x, yNc, columns[i], 16).stroke("#d1d5db");
-    doc.text(h, x + 2, yNc + 4, { width: columns[i] - 4 });
-    x += columns[i];
+  drawOfficialHeader(doc);
+  const yStart = drawIdentificationBlock(doc, {
+    inspecao,
+    mes: inspecao?.mes,
+    ano: inspecao?.ano,
+    monitorNome,
+    dataVerificacao: dataVerificacao || new Date().toLocaleDateString("pt-BR"),
   });
 
-  yNc += 16;
-  for (const nc of ncList) {
-    const row = [
-      nc.item,
-      nc.data_ocorrencia,
-      nc.nao_conformidade,
-      nc.acao_corretiva || "-",
-      nc.acao_preventiva || "-",
-      nc.data_correcao || "-",
-      nc.os_id || "-",
-    ];
+  drawChecklistTable(doc, { equipamentos, matrix, diasMes, startY: yStart, inspecao });
 
-    const rowHeight = 30;
-    if (yNc > 780) {
-      doc.addPage();
-      drawHeader(doc, inspecao);
-      yNc = 126;
-    }
+  doc.addPage({ size: "A4", layout: "landscape", margin: 24 });
+  drawOfficialHeader(doc);
+  drawNCBlock(doc, ncList || []);
 
-    let xx = 32;
-    row.forEach((value, idx) => {
-      doc.rect(xx, yNc, columns[idx], rowHeight).stroke("#e5e7eb");
-      doc.fontSize(7).fillColor("#111827").text(String(value), xx + 2, yNc + 4, {
-        width: columns[idx] - 4,
-        height: rowHeight - 6,
-        ellipsis: true,
-      });
-      xx += columns[idx];
-    });
-
-    yNc += rowHeight;
-  }
-
-  const pages = doc.bufferedPageRange();
-  for (let i = 0; i < pages.count; i += 1) {
+  const range = doc.bufferedPageRange();
+  for (let i = 0; i < range.count; i += 1) {
     doc.switchToPage(i);
-    drawFooter(doc);
+    drawFooter(doc, i + 1, range.count);
   }
 
   doc.end();
+  return inspecaoId;
 }
 
-module.exports = { buildCSV, renderPDF };
+function renderPDF(payload) {
+  return generatePAC01PDF(payload?.inspecao?.id, payload);
+}
+
+module.exports = { buildCSV, renderPDF, generatePAC01PDF };
