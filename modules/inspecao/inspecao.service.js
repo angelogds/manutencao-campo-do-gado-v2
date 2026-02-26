@@ -193,7 +193,6 @@ function getOSRowsByMonth(ano, mes) {
   const m = String(mes).padStart(2, "0");
   const whereByStart = dataInicio ? `strftime('%Y', ${dataInicio}) = ? AND strftime('%m', ${dataInicio}) = ?` : "1=1";
 
-  console.log("[INSPECAO_SQL] getOSRowsByMonth", { osTable, ano, mes, dataInicio, dataFim });
   const rows = db
     .prepare(
       `SELECT ${idCol} AS id, ${equipExpr},
@@ -214,13 +213,10 @@ function getOSRowsByMonth(ano, mes) {
     )
     .all(...(dataInicio ? [y, m] : []));
 
-  const filtered = rows.filter((row) => Number(row.equipamento_id || 0) > 0 && normalizeDate(row.data_inicio));
-  console.log("[INSPECAO_SQL] getOSRowsByMonth:result", { total: rows.length, validas: filtered.length, ano, mes });
-  return filtered;
+  return rows.filter((row) => Number(row.equipamento_id || 0) > 0 && normalizeDate(row.data_inicio));
 }
 
 function recalculate(inspecaoId, mes, ano) {
-  console.log("[INSPECAO_RECALC] Início", { inspecaoId, mes, ano });
   const gradeTable = resolveGradeTable();
   const ncTable = resolveNCTable();
   const equipamentos = listEquipamentosAtivos();
@@ -303,79 +299,47 @@ function recalculate(inspecaoId, mes, ano) {
     const hasEquipNome = ncCols.includes("equipamento_nome");
     const insertNc = hasEquipNome
       ? db.prepare(
-          `INSERT INTO ${ncTable}
+          `INSERT OR REPLACE INTO ${ncTable}
           (inspecao_id, equipamento_id, equipamento_nome, data_ocorrencia, nao_conformidade, acao_corretiva, acao_preventiva, data_correcao, os_id, updated_at)
-          VALUES (?, ?, (SELECT nome FROM equipamentos WHERE id = ?), ?, ?, ?, ?, ?, ?, datetime('now'))
-          ON CONFLICT(inspecao_id, equipamento_id, data_ocorrencia, os_id)
-          DO UPDATE SET
-            nao_conformidade = excluded.nao_conformidade,
-            acao_corretiva = excluded.acao_corretiva,
-            acao_preventiva = excluded.acao_preventiva,
-            data_correcao = excluded.data_correcao,
-            updated_at = datetime('now')`
+          VALUES (?, ?, (SELECT nome FROM equipamentos WHERE id = ?), ?, ?, ?, ?, ?, ?, datetime('now'))`
         )
       : db.prepare(
-          `INSERT INTO ${ncTable}
+          `INSERT OR REPLACE INTO ${ncTable}
           (inspecao_id, equipamento_id, data_ocorrencia, nao_conformidade, acao_corretiva, acao_preventiva, data_correcao, os_id, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-          ON CONFLICT(inspecao_id, equipamento_id, data_ocorrencia, os_id)
-          DO UPDATE SET
-            nao_conformidade = excluded.nao_conformidade,
-            acao_corretiva = excluded.acao_corretiva,
-            acao_preventiva = excluded.acao_preventiva,
-            data_correcao = excluded.data_correcao,
-            updated_at = datetime('now')`
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
         );
 
-    let ncUpsertChanges = 0;
     for (const nc of ncRows) {
-      try {
-        let info;
-        if (hasEquipNome) {
-          info = insertNc.run(
-            inspecaoId,
-            nc.equipamento_id,
-            nc.equipamento_id,
-            nc.data_ocorrencia,
-            nc.nao_conformidade,
-            nc.acao_corretiva,
-            nc.acao_preventiva,
-            nc.data_correcao,
-            nc.os_id
-          );
-        } else {
-          info = insertNc.run(
-            inspecaoId,
-            nc.equipamento_id,
-            nc.data_ocorrencia,
-            nc.nao_conformidade,
-            nc.acao_corretiva,
-            nc.acao_preventiva,
-            nc.data_correcao,
-            nc.os_id
-          );
-        }
-        ncUpsertChanges += Number(info?.changes || 0);
-      } catch (err) {
-        console.error("[INSPECAO_SQL][ERROR] Falha UPSERT NC", { inspecaoId, nc, err });
+      if (hasEquipNome) {
+        insertNc.run(
+          inspecaoId,
+          nc.equipamento_id,
+          nc.equipamento_id,
+          nc.data_ocorrencia,
+          nc.nao_conformidade,
+          nc.acao_corretiva,
+          nc.acao_preventiva,
+          nc.data_correcao,
+          nc.os_id
+        );
+      } else {
+        insertNc.run(
+          inspecaoId,
+          nc.equipamento_id,
+          nc.data_ocorrencia,
+          nc.nao_conformidade,
+          nc.acao_corretiva,
+          nc.acao_preventiva,
+          nc.data_correcao,
+          nc.os_id
+        );
       }
     }
 
-    console.log("[INSPECAO_RECALC] Resultado parcial", {
-      inspecaoId,
-      mes,
-      ano,
-      osCount: osRows.length,
-      ncCount: ncRows.length,
-      ncUpsertChanges,
-    });
-
-    return { osCount: osRows.length, ncCount: ncRows.length, ncUpsertChanges, osByCell };
+    return { osCount: osRows.length, ncCount: ncRows.length, osByCell };
   });
 
-  const result = tx();
-  console.log("[INSPECAO_RECALC] Fim", { inspecaoId, mes, ano, ...result });
-  return result;
+  return tx();
 }
 
 function buildMatrix(inspecaoId, ano, mes, equipamentos = []) {
@@ -508,10 +472,8 @@ function listOSDetailsByInspecao(inspecaoId, mes, ano) {
 }
 
 function syncFromClosedOS(osId) {
-  console.log("[INSPECAO_SYNC] syncFromClosedOS:start", { osId });
-  try {
-    const osTable = resolveOSTable();
-    const cols = tableColumns(osTable);
+  const osTable = resolveOSTable();
+  const cols = tableColumns(osTable);
   const statusCol = cols.includes("status") ? "status" : "''";
   const dataInicioCol = cols.includes("data_inicio") ? "data_inicio" : (cols.includes("opened_at") ? "opened_at" : "NULL");
   const dataFimCol = cols.includes("data_fim") ? "data_fim" : (cols.includes("data_conclusao") ? "data_conclusao" : (cols.includes("closed_at") ? "closed_at" : "NULL"));
@@ -524,73 +486,33 @@ function syncFromClosedOS(osId) {
     )
     .get(osId);
 
-  if (!os) {
-    console.warn("[INSPECAO_SYNC] OS não encontrada", { osId });
-    return { synced: false, reason: "os_not_found" };
-  }
-  if (!normalizeDate(os.data_inicio_normalized)) {
-    console.warn("[INSPECAO_SYNC] OS sem data_inicio válida", {
-      osId,
-      data_inicio: os.data_inicio_normalized,
-      status: os.status_normalized,
-      tipo: os.tipo,
-    });
-    return { synced: false, reason: "os_or_data_missing" };
-  }
+  if (!os) return { synced: false, reason: "os_not_found" };
+  if (!normalizeDate(os.data_inicio_normalized)) return { synced: false, reason: "os_or_data_missing" };
 
   const status = normalizeText(os.status_normalized);
-  if (status !== "fechada" && status !== "concluida") {
-    console.warn("[INSPECAO_SYNC] OS ainda não fechada", { osId, status: os.status_normalized });
-    return { synced: false, reason: "os_not_closed" };
-  }
+  if (status !== "fechada" && status !== "concluida") return { synced: false, reason: "os_not_closed" };
 
   const data = parseDate(os.data_inicio_normalized);
   const mes = data.getMonth() + 1;
   const ano = data.getFullYear();
-  console.log("[INSPECAO_SYNC] mês/ano calculado", {
-    osId,
-    mes,
-    ano,
-    status: os.status_normalized,
-    tipo: os.tipo,
-    data_inicio: os.data_inicio_normalized,
-    data_fim: os.data_fim_normalized,
-  });
   const inspecao = getOrCreateInspecao(mes, ano, os.closed_by || os.opened_by || null);
   const result = recalculate(inspecao.id, mes, ano);
-    const payload = { synced: true, inspecaoId: inspecao.id, ...result };
-    console.log("[INSPECAO_SYNC] syncFromClosedOS:done", { osId, payload });
-    return payload;
-  } catch (err) {
-    console.error("[INSPECAO_SYNC][ERROR]", err);
-    return { synced: false, reason: "sync_exception", error: err.message || String(err) };
-  }
+  return { synced: true, inspecaoId: inspecao.id, ...result };
 }
 
 function syncFromOS(osId) {
-  console.log("[INSPECAO_SYNC] syncFromOS:start", { osId });
-  try {
-    const osTable = resolveOSTable();
+  const osTable = resolveOSTable();
   const cols = tableColumns(osTable);
   const dataInicioCol = cols.includes("data_inicio") ? "data_inicio" : (cols.includes("opened_at") ? "opened_at" : "NULL");
   const os = db.prepare(`SELECT id, ${dataInicioCol} AS data_inicio FROM ${osTable} WHERE id = ?`).get(osId);
-  if (!os || !normalizeDate(os.data_inicio)) {
-    console.warn("[INSPECAO_SYNC] syncFromOS sem data_inicio", { osId, data_inicio: os?.data_inicio || null });
-    return { synced: false, reason: "os_or_data_missing" };
-  }
+  if (!os || !normalizeDate(os.data_inicio)) return { synced: false, reason: "os_or_data_missing" };
 
   const dt = parseDate(os.data_inicio);
   const mes = dt.getMonth() + 1;
   const ano = dt.getFullYear();
   const inspecao = getOrCreateInspecao(mes, ano, null);
   const result = recalculate(inspecao.id, mes, ano);
-    const payload = { synced: true, inspecaoId: inspecao.id, ...result };
-    console.log("[INSPECAO_SYNC] syncFromOS:done", { osId, payload });
-    return payload;
-  } catch (err) {
-    console.error("[INSPECAO_SYNC][ERROR]", err);
-    return { synced: false, reason: "sync_exception", error: err.message || String(err) };
-  }
+  return { synced: true, inspecaoId: inspecao.id, ...result };
 }
 
 function computeGrade(inspecaoId, mes, ano) {
