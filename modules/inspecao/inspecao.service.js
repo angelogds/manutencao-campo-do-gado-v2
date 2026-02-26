@@ -2,7 +2,7 @@ const db = require("../../database/db");
 
 const NC_KEYWORDS = [
   "quebrou", "quebrado", "falha", "queimou", "queimado", "rolamento", "mancal", "travou", "parou",
-  "vazamento", "superaquecimento", "correia arrebentou", "motor", "bomba", "induzido", "redutor", "curto", "estourou", "quebra",
+  "vazamento", "superaquecimento", "correia arrebentou", "correia", "motor", "bomba", "induzido", "redutor", "curto", "estourou", "quebra",
 ];
 
 function normalizeText(value) {
@@ -83,7 +83,7 @@ function getOrCreateInspecao(mes, ano, user) {
   const ownerCol = cols.includes("created_by") ? "created_by" : (cols.includes("criado_por") ? "criado_por" : null);
 
   const fields = ["mes", "ano", "frequencia", "monitor_nome", "verificador_nome"];
-  const values = [mes, ano, "Diária", null, null];
+  const values = [mes, ano, "Diária", user?.name || null, null];
   if (ownerCol) {
     fields.push(ownerCol);
     values.push(user?.id || null);
@@ -100,13 +100,14 @@ function getOrCreateInspecao(mes, ano, user) {
 function listEquipamentosAtivos() {
   const cols = tableColumns("equipamentos");
   const itemExpr = cols.includes("codigo") ? "NULLIF(TRIM(codigo),'')" : "NULL";
+  const ativoExpr = cols.includes("ativo") ? "COALESCE(ativo,1)" : "1";
   return db.prepare(
-    `SELECT id, nome, ${itemExpr} AS item_codigo
+    `SELECT id, nome, ${itemExpr} AS item_codigo, ${ativoExpr} AS ativo
      FROM equipamentos
-     WHERE COALESCE(ativo, 1) = 1
      ORDER BY nome`
   ).all().map((eq) => ({
     ...eq,
+    ativo: Number(eq.ativo || 0) === 1,
     chave: normalizeText(eq.nome),
     item: eq.item_codigo || String(eq.id),
   }));
@@ -176,7 +177,7 @@ function isNC(osRow) {
 
 function isEA(osRow) {
   const status = normalizeText(osRow?.status);
-  return status.includes("aberta") || status.includes("andamento") || status.includes("em andamento") || status.includes("pausada");
+  return status.includes("aberta") || status.includes("andamento") || status.includes("em andamento") || status.includes("pausada") || status.includes("em_andamento");
 }
 
 function isSP(osRow) {
@@ -200,7 +201,7 @@ function buildMonthlyGrid(inspecao, equipamentos, osList) {
   for (const eq of equipamentos) {
     const line = Array.from({ length: 31 }, (_, idx) => ({
       dia: idx + 1,
-      status: idx + 1 <= diasMes ? "C" : "-",
+      status: idx + 1 <= diasMes ? (eq.ativo ? "C" : "SP") : "-",
       os_id: null,
       observacao: null,
     }));
@@ -213,23 +214,39 @@ function buildMonthlyGrid(inspecao, equipamentos, osList) {
     const eq = mapOSToEquipamento(osRow, equipamentos, equipById, equipByName);
     if (!eq) continue;
 
-    const dia = dateToDay(osRow.data_inicio);
-    if (!dia || dia > diasMes) continue;
+    const startDay = dateToDay(osRow.data_inicio);
+    if (!startDay || startDay > diasMes) continue;
 
-    const key = `${eq.id}:${dia}`;
-    if (!osByEquipDay.has(key)) osByEquipDay.set(key, []);
-    osByEquipDay.get(key).push(osRow);
+    const endDayRaw = dateToDay(osRow.data_fim);
+    const endDay = endDayRaw && endDayRaw <= diasMes ? endDayRaw : diasMes;
 
-    let candidate = "C";
-    if (isNC(osRow)) candidate = "NC";
-    else if (isEA(osRow)) candidate = "EA";
-    else if (isSP(osRow)) candidate = "SP";
+    const addDetailKey = `${eq.id}:${startDay}`;
+    if (!osByEquipDay.has(addDetailKey)) osByEquipDay.set(addDetailKey, []);
+    osByEquipDay.get(addDetailKey).push(osRow);
 
-    const cell = gridMap.get(eq.id)[dia - 1];
-    if (statusPriority(candidate) >= statusPriority(cell.status)) {
-      cell.status = candidate;
-      cell.os_id = osRow.id;
-      cell.observacao = candidate === "NC" ? "Gerado automaticamente via OS" : null;
+    const markCell = (day, status, observacao = null) => {
+      if (day < 1 || day > diasMes) return;
+      const cell = gridMap.get(eq.id)[day - 1];
+      if (statusPriority(status) >= statusPriority(cell.status)) {
+        cell.status = status;
+        cell.os_id = osRow.id;
+        cell.observacao = observacao;
+      }
+    };
+
+    if (isNC(osRow)) {
+      markCell(startDay, "NC", "Gerado automaticamente via OS");
+    }
+
+    if (isEA(osRow)) {
+      const eaStart = Math.min(startDay + 1, diasMes);
+      for (let day = eaStart; day <= endDay; day += 1) {
+        markCell(day, "EA", "OS em andamento");
+      }
+    }
+
+    if (!isNC(osRow) && !isEA(osRow) && isSP(osRow)) {
+      markCell(startDay, "SP", "Sem produção");
     }
   }
 
@@ -269,7 +286,9 @@ function recalculate(inspecaoId, mes, ano) {
   if (!inspecao) throw new Error("Inspeção não encontrada.");
 
   const equipamentos = listEquipamentosAtivos();
-  const osList = getOSByMonth(Number(mes || inspecao.mes), Number(ano || inspecao.ano));
+  const currentMes = Number(mes || inspecao.mes);
+  const currentAno = Number(ano || inspecao.ano);
+  const osList = getOSByMonth(currentMes, currentAno);
   const { gridMap } = buildMonthlyGrid(inspecao, equipamentos, osList);
   const ncList = buildNCList(inspecao, equipamentos, osList);
 
@@ -506,6 +525,29 @@ function syncFromOS(osId) {
   return { synced: true, inspecao_id: inspecao.id, mes, ano };
 }
 
+function syncFromClosedOS(osId) {
+  if (!osId) return { synced: false, reason: "os_id_missing" };
+  const map = getOSFieldMap();
+  const dateCol = map.dataInicio || "created_at";
+  const closeCol = map.dataFim || "closed_at";
+  const statusCol = map.status || "status";
+  const row = db.prepare(
+    `SELECT id, ${statusCol} AS status, ${dateCol} AS data_inicio, ${closeCol} AS data_fim FROM os WHERE id = ?`
+  ).get(osId);
+  if (!row) return { synced: false, reason: "os_not_found" };
+  if (normalizeText(row.status) !== "fechada") return { synced: false, reason: "os_not_closed" };
+  if (!row.data_inicio) return { synced: false, reason: "os_or_data_missing" };
+
+  const dt = new Date(`${dateOnly(row.data_inicio)}T00:00:00`);
+  if (Number.isNaN(dt.getTime())) return { synced: false, reason: "invalid_date" };
+
+  const mes = dt.getMonth() + 1;
+  const ano = dt.getFullYear();
+  const inspecao = getOrCreateInspecao(mes, ano, null);
+  recalculate(inspecao.id, mes, ano);
+  return { synced: true, inspecao_id: inspecao.id, mes, ano };
+}
+
 module.exports = {
   normalizeText,
   daysInMonth,
@@ -524,4 +566,5 @@ module.exports = {
   updateHeader,
   updateObservation,
   syncFromOS,
+  syncFromClosedOS,
 };

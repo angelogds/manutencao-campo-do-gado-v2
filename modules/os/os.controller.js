@@ -18,7 +18,7 @@ function osNewForm(req, res) {
   const equipamentos = service.listEquipamentosAtivos();
   const graus = service.listGrauOptions();
   const tipos = service.listTipoOptions();
-  return res.render("os/nova", {
+  return res.render("os/new", {
     title: "Nova OS",
     equipamentos,
     graus,
@@ -68,7 +68,7 @@ function osCreate(req, res) {
   } catch (err) {
     console.error("❌ osCreate:", err);
     req.flash("error", err.message || "Erro ao salvar a OS.");
-    return res.redirect("/os/nova");
+    return res.redirect("/os/novo");
   }
 }
 
@@ -81,6 +81,18 @@ function osShow(req, res) {
 
   return res.render("os/show", {
     title: `OS #${id}`,
+    os,
+    user: req.session?.user || null,
+  });
+}
+
+function osCloseForm(req, res) {
+  res.locals.activeMenu = "os";
+  const id = Number(req.params.id);
+  const os = service.getOSById(id);
+  if (!os) return res.status(404).render("errors/404", { title: "Não encontrado" });
+  return res.render("os/close", {
+    title: `Fechar OS #${id}`,
     os,
     user: req.session?.user || null,
   });
@@ -118,9 +130,13 @@ function normalizePecasBody(body) {
   }));
 }
 
-function osConcluir(req, res) {
+function osClose(req, res) {
   const id = Number(req.params.id);
   try {
+    if (!String(req.body.resumo_tecnico || "").trim() || !String(req.body.causa_diagnostico || "").trim()) {
+      throw new Error("Resumo técnico e causa/diagnóstico são obrigatórios para fechar a OS.");
+    }
+
     const fotosFechamento = mapFilesToPublic(req.files?.fechamento_fotos || []);
     service.addFotosAberturaFechamento({
       osId: id,
@@ -164,8 +180,9 @@ module.exports = {
   osNewForm,
   osCreate,
   osShow,
+  osCloseForm,
   osIniciar,
   osPausar,
-  osConcluir,
+  osClose,
   osUpdateStatus,
 };

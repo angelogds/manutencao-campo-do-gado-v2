@@ -29,7 +29,7 @@
         <label class="label">Tipo da OS</label>
         <select name="tipo" class="input" required>
           <% (tipos || ['CORRETIVA','PREVENTIVA','ELETRICA','NRS','OUTROS']).forEach(t => { %>
-            <option value="<%= t %>"><%= t === 'NRS' ? 'NRs (não conformidades)' : (t === 'ELETRICA' ? 'Elétrica' : t.charAt(0) + t.slice(1).toLowerCase()) %></option>
+            <option value="<%= t %>"><%= t %></option>
           <% }) %>
         </select>
       </div>
@@ -38,7 +38,7 @@
         <label class="label">Grau</label>
         <select name="grau" class="input" required>
           <% (graus || ['BAIXA','MEDIA','ALTA','CRITICA']).forEach(g => { %>
-            <option value="<%= g %>"><%= g === 'MEDIA' ? 'Média' : (g === 'CRITICA' ? 'Crítica' : g.charAt(0) + g.slice(1).toLowerCase()) %></option>
+            <option value="<%= g %>"><%= g %></option>
           <% }) %>
         </select>
       </div>

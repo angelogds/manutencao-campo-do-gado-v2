@@ -479,7 +479,11 @@ function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas, dataFim }
 
   tx();
   emitOSEvents(id, "status");
-  if (inspecaoService?.syncFromOS) {
+  if (inspecaoService?.syncFromClosedOS) {
+    try {
+      inspecaoService.syncFromClosedOS(id);
+    } catch (_e) {}
+  } else if (inspecaoService?.syncFromOS) {
     try {
       inspecaoService.syncFromOS(id);
     } catch (_e) {}
