@@ -165,20 +165,6 @@ function isNC(osRow) {
 
   if (tipo.includes("corretiva") && ncText) return true;
 
-  if (Number(getColumnValue(osRow, ["nao_conforme"])) === 1) return true;
-
-  const tipo = normalizeText(getColumnValue(osRow, ["tipo"]));
-  const naoConformidade = getColumnValue(osRow, [
-    "descricao_problema",
-    "descricao",
-    "solicitacao",
-    "relato",
-    "texto_problema",
-  ]);
-  const ncText = String(naoConformidade || "").trim();
-
-  if (tipo.includes("corretiva") && ncText) return true;
-
   const fallback = normalizeText(
     `${ncText} ${getColumnValue(osRow, ["causa_diagnostico", "causa", "diagnostico"]) || ""}`
   );
