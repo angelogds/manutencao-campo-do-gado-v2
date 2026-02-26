@@ -30,6 +30,9 @@ const wrap = (fn) => (req, res, next) => {
 router.get("/", requireLogin, requireRole(VIEW_ACCESS), wrap(ctrl.index));
 router.get("/:ano/:mes", requireLogin, requireRole(VIEW_ACCESS), wrap(ctrl.viewMonth));
 
+router.post("/recalcular", requireLogin, requireRole(EDIT_ACCESS), wrap(ctrl.recalculateCurrent));
+router.post("/atualizar", requireLogin, requireRole(EDIT_ACCESS), wrap(ctrl.recalculateCurrent));
+
 router.post("/:ano/:mes/recalcular", requireLogin, requireRole(EDIT_ACCESS), wrap(ctrl.recalculate));
 router.post("/:ano/:mes/nc/salvar", requireLogin, requireRole(EDIT_ACCESS), wrap(ctrl.saveNC));
 router.post("/:ano/:mes/observacao/salvar", requireLogin, requireRole(EDIT_ACCESS), wrap(ctrl.saveObservation));
