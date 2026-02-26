@@ -1,29 +1,17 @@
 <% layout('layout') %>
 
-<style>
-  .card { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:24px; }
-  .form-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
-  .form-group { display:flex; flex-direction:column; gap:6px; }
-  .form-full { grid-column:span 2; }
-  .input, textarea, select { padding:10px; border:1px solid #d1d5db; border-radius:10px; font-size:14px; width:100%; }
-  textarea { min-height:120px; resize:vertical; }
-  .muted { color:#64748b; font-size:13px; }
-  .actions { display:flex; align-items:center; justify-content:space-between; margin-top:16px; }
-  .camera-btn { border:1px solid #d1d5db; background:#fff; border-radius:10px; padding:10px 12px; cursor:pointer; }
-  .camera-btn:hover { background:#eff6ff; border-color:#93c5fd; }
-  .preview { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-  .preview-item { background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:4px 8px; font-size:12px; }
-  @media(max-width:900px){ .form-grid { grid-template-columns:1fr; } .form-full { grid-column:span 1; } }
-</style>
-
 <div class="card">
-  <h1>Nova Ordem de Serviço</h1>
-  <div class="muted">Selecione equipamento cadastrado ou informe manual. Pelo menos um dos dois é obrigatório.</div>
+  <div class="page-head" style="margin-top:0;">
+    <div>
+      <h1 style="font-size:28px;">Nova Ordem de Serviço</h1>
+      <p class="muted">Informe o problema do solicitante e os dados técnicos para alimentar automaticamente a Inspeção PAC 01.</p>
+    </div>
+  </div>
 
   <form method="POST" action="/os" enctype="multipart/form-data" id="os-form">
-    <div class="form-grid">
-      <div class="form-group">
-        <label>Equipamento (cadastro)</label>
+    <div class="grid-2">
+      <div>
+        <label class="label">Equipamento (cadastro)</label>
         <select name="equipamento_id" id="equipamento_id">
           <option value="">Selecione...</option>
           <% (equipamentos || []).forEach(e => { %>
@@ -32,13 +20,13 @@
         </select>
       </div>
 
-      <div class="form-group">
-        <label>Equipamento (manual)</label>
+      <div>
+        <label class="label">Equipamento (manual)</label>
         <input class="input" type="text" name="equipamento_manual" id="equipamento_manual" placeholder="Ex.: Digestor sem cadastro" />
       </div>
 
-      <div class="form-group">
-        <label>Tipo da OS</label>
+      <div>
+        <label class="label">Tipo da OS</label>
         <select name="tipo" class="input" required>
           <% (tipos || ['CORRETIVA','PREVENTIVA','ELETRICA','NRS','OUTROS']).forEach(t => { %>
             <option value="<%= t %>"><%= t === 'NRS' ? 'NRs (não conformidades)' : (t === 'ELETRICA' ? 'Elétrica' : t.charAt(0) + t.slice(1).toLowerCase()) %></option>
@@ -46,8 +34,8 @@
         </select>
       </div>
 
-      <div class="form-group">
-        <label>Grau</label>
+      <div>
+        <label class="label">Grau</label>
         <select name="grau" class="input" required>
           <% (graus || ['BAIXA','MEDIA','ALTA','CRITICA']).forEach(g => { %>
             <option value="<%= g %>"><%= g === 'MEDIA' ? 'Média' : (g === 'CRITICA' ? 'Crítica' : g.charAt(0) + g.slice(1).toLowerCase()) %></option>
@@ -55,25 +43,48 @@
         </select>
       </div>
 
-      <div class="form-group form-full">
-        <label>Solicitante</label>
+      <div>
+        <label class="label">Data de início</label>
+        <input class="input" type="date" name="data_inicio" />
+      </div>
+
+      <div>
+        <label class="label">Data de fim (se já concluída)</label>
+        <input class="input" type="date" name="data_fim" />
+      </div>
+
+      <div style="grid-column:1 / -1;">
+        <label class="label">Descrição do problema (solicitante)</label>
+        <textarea name="descricao" class="input" required placeholder="Descreva o que está acontecendo no equipamento"></textarea>
+      </div>
+
+      <div>
+        <label class="label">Resumo técnico / Ação corretiva</label>
+        <textarea name="resumo_tecnico" class="input" placeholder="Relate o que foi feito na execução"></textarea>
+      </div>
+
+      <div>
+        <label class="label">Causa / Diagnóstico / Ação preventiva</label>
+        <textarea name="causa_diagnostico" class="input" placeholder="Explique a causa e como evitar recorrência"></textarea>
+      </div>
+
+      <div style="grid-column:1 / -1;">
+        <label class="label">Solicitante</label>
         <input class="input" type="text" readonly value="<%= user?.name || '-' %>" />
       </div>
-     
-      <div class="form-group form-full">
-        <label>Fotos de abertura (opcional)</label>
+
+      <div style="grid-column:1 / -1;">
+        <label class="label">Fotos de abertura (opcional)</label>
         <input id="abertura_fotos" type="file" name="abertura_fotos" accept="image/*" multiple style="display:none" />
-        <div>
-          <button type="button" class="camera-btn" onclick="document.getElementById('abertura_fotos').click()">📷 Adicionar fotos</button>
-          <span class="muted">Registro visual do estado inicial.</span>
-        </div>
-        <div class="preview" id="preview-abertura"></div>
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('abertura_fotos').click()">📷 Adicionar fotos</button>
+        <div class="muted" style="margin-top:8px;">Registro visual do estado inicial.</div>
+        <div id="preview-abertura" style="margin-top:6px;"></div>
       </div>
     </div>
 
-    <div class="actions">
+    <div class="row" style="justify-content:space-between; margin-top:16px;">
       <a href="/os" class="btn btn-ghost">Cancelar</a>
-      <button type="submit" class="btn btn-green">Salvar OS</button>
+      <button type="submit" class="btn btn-primary">Salvar OS</button>
     </div>
   </form>
 </div>
@@ -85,7 +96,8 @@
     preview.innerHTML = '';
     Array.from(fileInput.files || []).forEach(f => {
       const el = document.createElement('span');
-      el.className = 'preview-item';
+      el.className = 'pill-tag pill-gray';
+      el.style.marginRight = '6px';
       el.textContent = f.name;
       preview.appendChild(el);
     });

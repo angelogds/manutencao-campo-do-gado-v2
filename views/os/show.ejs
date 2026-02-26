@@ -44,13 +44,13 @@
     </div>
 
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:12px 0"/>
-    <div class="muted">Descrição da abertura</div>
-    <div><%= os.descricao %></div>
+    <div class="muted">Descrição do problema (solicitante)</div>
+    <div><%= os.descricao || '-' %></div>
 
-    <% if (os.diagnostico || os.acao_executada) { %>
+    <% if (os.diagnostico || os.causa_diagnostico || os.acao_executada || os.resumo_tecnico) { %>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:12px 0"/>
-      <div><b>Diagnóstico/Causa:</b><br/><%= os.diagnostico || '-' %></div>
-      <div style="margin-top:8px;"><b>O que foi feito:</b><br/><%= os.acao_executada || '-' %></div>
+      <div><b>Causa / Diagnóstico / Ação preventiva:</b><br/><%= os.causa_diagnostico || os.diagnostico || '-' %></div>
+      <div style="margin-top:8px;"><b>Resumo técnico / Ação corretiva:</b><br/><%= os.resumo_tecnico || os.acao_executada || '-' %></div>
     <% } %>
   </div>
 
@@ -79,8 +79,8 @@
 <div class="card" style="margin-top:12px;">
   <h3 style="margin-top:0;">Resumo técnico da OS</h3>
   <div class="resumo-exec">
-    <div><b>Diagnóstico encontrado:</b><br/><%= os.diagnostico || '-' %></div>
-    <div><b>O que foi feito:</b><br/><%= os.acao_executada || '-' %></div>
+    <div><b>Causa / Diagnóstico / Ação preventiva:</b><br/><%= os.causa_diagnostico || os.diagnostico || '-' %></div>
+    <div><b>Resumo técnico / Ação corretiva:</b><br/><%= os.resumo_tecnico || os.acao_executada || '-' %></div>
   </div>
   <div style="margin-top:10px;">
     <b>Peças utilizadas</b>
@@ -101,13 +101,18 @@
     <form method="POST" action="/os/<%= os.id %>/concluir" enctype="multipart/form-data" id="form-concluir">
       <div class="grid2">
         <div>
-          <label>Diagnóstico / causa *</label>
-          <textarea class="input" name="diagnostico" required placeholder="Causa encontrada"></textarea>
+          <label>Causa / Diagnóstico / Ação preventiva *</label>
+          <textarea class="input" name="causa_diagnostico" required placeholder="Causa encontrada"></textarea>
         </div>
         <div>
-          <label>O que foi feito *</label>
-          <textarea class="input" name="acao_executada" required placeholder="Descreva a ação executada"></textarea>
+          <label>Resumo técnico / Ação corretiva *</label>
+          <textarea class="input" name="resumo_tecnico" required placeholder="Descreva a ação executada"></textarea>
         </div>
+      </div>
+
+      <div style="margin-top:8px; max-width:280px;">
+        <label>Data de fim</label>
+        <input class="input" type="date" name="data_fim" />
       </div>
 
       <div style="margin-top:8px;">
