@@ -434,7 +434,7 @@ function pausarOS(id) {
 function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas, dataFim }) {
   const os = getOSById(id);
   if (!os) throw new Error("OS não encontrada.");
-  console.log("[OS_CLOSE] concluirOS:start", {
+  console.log("[OS_CLOSE] fechando OS:", {
     osId: id,
     status_atual: os.status,
     tipo: os.tipo,
@@ -495,7 +495,7 @@ function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas, dataFim }
   let syncResult = null;
   if (inspecaoService?.syncFromClosedOS) {
     try {
-      console.log("[INSPECAO_SYNC] syncFromClosedOS disparado", { osId: id });
+      console.log("[INSPECAO_SYNC] chamando syncFromClosedOS:", id);
       syncResult = inspecaoService.syncFromClosedOS(id);
       console.log("[INSPECAO_SYNC] syncFromClosedOS retorno", { osId: id, syncResult });
     } catch (err) {
