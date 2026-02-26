@@ -34,6 +34,10 @@ function osCreate(req, res) {
       equipamento_id,
       equipamento_manual,
       descricao,
+      resumo_tecnico,
+      causa_diagnostico,
+      data_inicio,
+      data_fim,
       tipo,
       grau,
     } = req.body;
@@ -42,6 +46,10 @@ function osCreate(req, res) {
       equipamento_id: equipamento_id ? Number(equipamento_id) : null,
       equipamento_manual,
       descricao,
+      resumo_tecnico,
+      causa_diagnostico,
+      data_inicio,
+      data_fim,
       tipo,
       grau,
       opened_by: req.session?.user?.id || null,
@@ -139,10 +147,10 @@ function osClose(req, res) {
 
     service.concluirOS(id, {
       closedBy: req.session?.user?.id || null,
-      diagnostico: req.body.causa_diagnostico,
-      acaoExecutada: req.body.resumo_tecnico,
+      diagnostico: req.body.diagnostico || req.body.causa_diagnostico,
+      acaoExecutada: req.body.acao_executada || req.body.resumo_tecnico,
       pecas: normalizePecasBody(req.body),
-      isNaoConforme: req.body.is_nao_conforme,
+      dataFim: req.body.data_fim,
     });
 
     req.flash("success", "OS concluída com sucesso.");

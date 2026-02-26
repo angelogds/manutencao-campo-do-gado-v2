@@ -55,7 +55,6 @@ function ensureOSInspectionColumns() {
     ["resumo_tecnico", "TEXT"],
     ["causa_diagnostico", "TEXT"],
     ["data_fim", "TEXT"],
-    ["is_nao_conforme", "INTEGER NOT NULL DEFAULT 0"],
   ];
 
   for (const [col, type] of needed) {
@@ -80,9 +79,6 @@ function applyOne(filename) {
       ensureEstoqueCategoriaColumn();
     }
     if (filename === "104_os_inspecao_auto_fields.sql") {
-      ensureOSInspectionColumns();
-    }
-    if (filename === "105_os_is_nao_conforme.sql") {
       ensureOSInspectionColumns();
     }
 

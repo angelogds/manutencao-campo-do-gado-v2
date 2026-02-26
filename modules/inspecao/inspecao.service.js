@@ -413,9 +413,9 @@ function listNC(inspecaoId) {
   return db.prepare(
     `SELECT nc.*, e.nome AS equipamento_nome, e.codigo AS equipamento_codigo
      FROM ${ncTable} nc
-     LEFT JOIN equipamentos e ON e.id = nc.equipamento_id
+     JOIN equipamentos e ON e.id = nc.equipamento_id
      WHERE nc.inspecao_id = ?
-     ORDER BY nc.data_ocorrencia DESC, COALESCE(e.nome, '') ASC, nc.equipamento_id ASC`
+     ORDER BY nc.data_ocorrencia DESC, COALESCE(e.nome, nc.equipamento_nome, '') ASC`
   ).all(inspecaoId).map((row) => ({
     ...row,
     item: row.equipamento_codigo || String(row.equipamento_id || row.equipamento_nome || "-"),
