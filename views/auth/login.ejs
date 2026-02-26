@@ -7,15 +7,15 @@
   <style>
     :root {
       /* parâmetros fáceis para próximo ajuste */
-      --bg-overlay: rgba(15, 23, 42, 0.44);
-      --card-bg: rgba(255, 255, 255, 0.95);
+      --bg-overlay: rgba(15, 23, 42, 0.32);
+      --card-bg: rgba(255, 255, 255, 0.62);
       --card-radius: 22px;
-      --card-width: 480px;
-      --card-padding: 30px;
-      --title-size: 52px;
-      --subtitle-size: 20px;
-      --input-size: 17px;
-      --button-size: 20px;
+      --card-width: 410px;
+      --card-padding: 24px;
+      --title-size: 42px;
+      --subtitle-size: 16px;
+      --input-size: 16px;
+      --button-size: 18px;
 
       --txt-strong: #0f172a;
       --txt-soft: #475569;
@@ -46,28 +46,33 @@
       background: var(--card-bg);
       border: 1px solid rgba(255, 255, 255, 0.55);
       border-radius: var(--card-radius);
-      box-shadow: 0 25px 60px rgba(2, 6, 23, 0.38);
+      box-shadow: 0 18px 42px rgba(2, 6, 23, 0.28);
       padding: var(--card-padding);
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(8px);
     }
 
-    .login-title {
-      margin: 0;
-      color: var(--txt-strong);
-      font-size: var(--title-size);
-      font-weight: 900;
-      line-height: 1;
-      letter-spacing: -0.02em;
+    .login-logo-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    .login-logo {
+      width: min(250px, 100%);
+      height: auto;
+      object-fit: contain;
+      display: block;
     }
 
     .login-subtitle {
-      margin: 8px 0 24px;
+      margin: 0 0 18px;
       color: var(--txt-soft);
       font-size: var(--subtitle-size);
-      font-weight: 500;
+      font-weight: 600;
+      text-align: center;
     }
 
-    .login-form { display: grid; gap: 14px; }
+    .login-form { display: grid; gap: 12px; }
     .field { display: grid; gap: 6px; }
 
     .field label {
@@ -80,7 +85,7 @@
       width: 100%;
       border: 1px solid #cbd5e1;
       border-radius: 12px;
-      padding: 13px 12px;
+      padding: 11px 12px;
       font-size: var(--input-size);
       color: var(--txt-strong);
       background: #fff;
@@ -97,7 +102,7 @@
       width: 100%;
       border: none;
       border-radius: 12px;
-      padding: 14px;
+      padding: 12px;
       background: var(--brand-green);
       color: #fff;
       font-size: var(--button-size);
@@ -123,10 +128,10 @@
     @media (max-width: 640px) {
       :root {
         --card-padding: 22px;
-        --title-size: 38px;
-        --subtitle-size: 17px;
+        --title-size: 34px;
+        --subtitle-size: 15px;
         --input-size: 15px;
-        --button-size: 17px;
+        --button-size: 16px;
       }
     }
   </style>
@@ -134,7 +139,9 @@
 <body>
   <section class="login-screen">
     <div class="login-card">
-      <h1 class="login-title">Campo do Gado</h1>
+      <div class="login-logo-wrap">
+        <img class="login-logo" src="/IMG/login_campo_do_gado.png.png.png" alt="Logo manutenção" />
+      </div>
       <p class="login-subtitle">Acesse o Sistema de Manutenção Industrial</p>
 
       <% if (flash && flash.error && flash.error.length) { %>
