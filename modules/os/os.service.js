@@ -216,7 +216,14 @@ function syncInspecaoFromOS(osId) {
   }
 }
 
-function createOS({ equipamento_id, equipamento_manual, descricao, tipo, opened_by, grau }) {
+function createOS({
+  equipamento_id,
+  equipamento_manual,
+  descricao,
+  tipo,
+  opened_by,
+  grau,
+}) {
   const desc = String(descricao || "").trim();
   if (!desc) throw new Error("Descrição obrigatória.");
 
@@ -254,6 +261,19 @@ function createOS({ equipamento_id, equipamento_manual, descricao, tipo, opened_
   if (cols.includes("equipamento_manual")) {
     fields.push("equipamento_manual");
     values.push(equipManual);
+  }
+
+  if (cols.includes("data_inicio")) {
+    fields.push("data_inicio");
+    values.push(new Date().toISOString());
+  }
+  if (cols.includes("data_fim")) {
+    fields.push("data_fim");
+    values.push(null);
+  }
+  if (cols.includes("is_nao_conforme")) {
+    fields.push("is_nao_conforme");
+    values.push(0);
   }
 
   const grauColumn = resolveGrauColumn(cols);
@@ -389,24 +409,46 @@ function pausarOS(id) {
   }
 }
 
-function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas }) {
+function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas, isNaoConforme }) {
   const os = getOSById(id);
   if (!os) throw new Error("OS não encontrada.");
 
   const diag = String(diagnostico || "").trim() || null;
   const acao = String(acaoExecutada || "").trim() || null;
 
+  const cols = getOSColumns();
+
   const tx = db.transaction(() => {
-    db.prepare(
-      `UPDATE os
-       SET status = 'FECHADA',
-           closed_at = datetime('now'),
-           data_conclusao = COALESCE(data_conclusao, datetime('now')),
-           closed_by = ?,
-           diagnostico = ?,
-           acao_executada = COALESCE(?, acao_executada)
-       WHERE id = ?`
-    ).run(closedBy || null, diag, acao, id);
+    const sets = ["status = 'FECHADA'", "closed_at = datetime('now')", "closed_by = ?"];
+    const args = [closedBy || null];
+
+    if (cols.includes("data_conclusao")) sets.push("data_conclusao = COALESCE(data_conclusao, datetime('now'))");
+    if (cols.includes("diagnostico")) {
+      sets.push("diagnostico = ?");
+      args.push(diag);
+    }
+    if (cols.includes("causa_diagnostico")) {
+      sets.push("causa_diagnostico = COALESCE(?, causa_diagnostico)");
+      args.push(diag);
+    }
+    if (cols.includes("acao_executada")) {
+      sets.push("acao_executada = COALESCE(?, acao_executada)");
+      args.push(acao);
+    }
+    if (cols.includes("resumo_tecnico")) {
+      sets.push("resumo_tecnico = COALESCE(?, resumo_tecnico)");
+      args.push(acao);
+    }
+    if (cols.includes("data_fim")) {
+      sets.push("data_fim = datetime('now')");
+    }
+    if (cols.includes("is_nao_conforme")) {
+      sets.push("is_nao_conforme = ?");
+      args.push(Number(isNaoConforme ? 1 : 0));
+    }
+
+    args.push(id);
+    db.prepare(`UPDATE os SET ${sets.join(", ")} WHERE id = ?`).run(...args);
 
     if (Array.isArray(pecas) && pecas.length) {
       const ins = db.prepare(
@@ -424,7 +466,11 @@ function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas }) {
 
   tx();
   emitOSEvents(id, "status");
-  if (inspecaoService?.syncFromOS) {
+  if (inspecaoService?.syncFromClosedOS) {
+    try {
+      inspecaoService.syncFromClosedOS(id);
+    } catch (_e) {}
+  } else if (inspecaoService?.syncFromOS) {
     try {
       inspecaoService.syncFromOS(id);
     } catch (_e) {}
