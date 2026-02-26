@@ -32,8 +32,9 @@ function requireRole(roles = []) {
     if (allowed.length === 0) return next(); // sem regra -> libera
     if (allowed.includes(role)) return next();
 
-    req.flash("error", "Você não tem permissão para acessar esta área.");
-    return res.redirect("/dashboard");
+    req.flash("error", "Sem permissão para acessar esta área.");
+    if (req.accepts("html")) return res.status(403).render("errors/403", { layout: "layout", title: "Sem permissão" });
+    return res.status(403).json({ error: "Sem permissão" });
   };
 }
 
