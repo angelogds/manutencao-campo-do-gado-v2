@@ -1,4 +1,8 @@
 const PDFDocument = require("pdfkit");
+const path = require("path");
+const fs = require("fs");
+
+const PDF_LOGO_PATH = path.resolve(__dirname, "../../public/IMG/logopdf_campo_do_gado.png.png");
 
 const COLOR = {
   greenPrimary: "#0b6b3a",
@@ -64,8 +68,9 @@ function drawOfficialHeader(doc) {
 
   doc.rect(left + 1, 29, 120, 72).fill("#ffffff");
   doc.rect(left + 1, 29, 120, 72).stroke(COLOR.line);
-  doc.fillColor(COLOR.greenPrimary).font("Helvetica-Bold").fontSize(14).text("CAMPO", left + 20, 49);
-  doc.fillColor(COLOR.greenSecondary).font("Helvetica-Bold").fontSize(14).text("DO GADO", left + 20, 66);
+  if (fs.existsSync(PDF_LOGO_PATH)) {
+    doc.image(PDF_LOGO_PATH, left + 8, 34, { fit: [104, 58], align: "center", valign: "center" });
+  }
 
   doc.fillColor(COLOR.text).font("Helvetica-Bold").fontSize(12).text("PROGRAMA DE AUTO CONTROLE", left + 130, 41, {
     width: fullWidth - 220,
@@ -243,7 +248,7 @@ function drawNCBlock(doc, ncList) {
 
 function drawFooter(doc, page, total) {
   const y = doc.page.height - 18;
-  doc.font("Helvetica").fontSize(7).fillColor(COLOR.muted).text("Campo do Gado V2 • PAC 01", 24, y);
+  doc.font("Helvetica").fontSize(7).fillColor(COLOR.muted).text("PAC 01", 24, y);
   doc.text(`Página ${page}/${total}`, doc.page.width - 80, y, { width: 56, align: "right" });
 }
 
