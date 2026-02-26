@@ -37,6 +37,7 @@ const wrap = (fn, name) =>
       };
 
 router.get("/", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osIndex, "osIndex"));
+router.get("/novo", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osNewForm, "osNewForm"));
 router.get("/nova", requireLogin, requireRole(OS_ACCESS), wrap(ctrl.osNewForm, "osNewForm"));
 router.post(
   "/",
@@ -49,12 +50,21 @@ router.post(
 router.get("/:id", requireLogin, requireRole(OS_DETALHE_ACCESS), wrap(ctrl.osShow, "osShow"));
 router.post("/:id/iniciar", requireLogin, requireRole(OS_DETALHE_ACCESS), wrap(ctrl.osIniciar, "osIniciar"));
 router.post("/:id/pausar", requireLogin, requireRole(OS_DETALHE_ACCESS), wrap(ctrl.osPausar, "osPausar"));
+router.get("/:id/fechar", requireLogin, requireRole(OS_DETALHE_ACCESS), wrap(ctrl.osCloseForm, "osCloseForm"));
+router.post(
+  "/:id/fechar",
+  requireLogin,
+  requireRole(OS_DETALHE_ACCESS),
+  upload.fields([{ name: "fechamento_fotos", maxCount: 10 }]),
+  wrap(ctrl.osClose, "osClose")
+);
+
 router.post(
   "/:id/concluir",
   requireLogin,
   requireRole(OS_DETALHE_ACCESS),
   upload.fields([{ name: "fechamento_fotos", maxCount: 10 }]),
-  wrap(ctrl.osConcluir, "osConcluir")
+  wrap(ctrl.osClose, "osClose")
 );
 
 router.post("/:id/status", requireLogin, requireRole(OS_DETALHE_ACCESS), wrap(ctrl.osUpdateStatus, "osUpdateStatus"));

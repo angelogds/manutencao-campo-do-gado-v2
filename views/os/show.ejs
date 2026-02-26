@@ -44,13 +44,13 @@
     </div>
 
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:12px 0"/>
-    <div class="muted">Descrição da abertura</div>
-    <div><%= os.descricao %></div>
+    <div class="muted">Descrição do problema (solicitante)</div>
+    <div><%= os.descricao || '-' %></div>
 
-    <% if (os.diagnostico || os.acao_executada) { %>
+    <% if (os.diagnostico || os.causa_diagnostico || os.acao_executada || os.resumo_tecnico) { %>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:12px 0"/>
-      <div><b>Diagnóstico/Causa:</b><br/><%= os.diagnostico || '-' %></div>
-      <div style="margin-top:8px;"><b>O que foi feito:</b><br/><%= os.acao_executada || '-' %></div>
+      <div><b>Causa / Diagnóstico / Ação preventiva:</b><br/><%= os.causa_diagnostico || os.diagnostico || '-' %></div>
+      <div style="margin-top:8px;"><b>Resumo técnico / Ação corretiva:</b><br/><%= os.resumo_tecnico || os.acao_executada || '-' %></div>
     <% } %>
   </div>
 
@@ -59,6 +59,7 @@
       <div class="actions">
         <form method="POST" action="/os/<%= os.id %>/iniciar"><button class="btn btn-green" type="submit">Iniciar OS</button></form>
         <form method="POST" action="/os/<%= os.id %>/pausar"><button class="btn" type="submit">Pausar OS</button></form>
+        <a class="btn btn-primary" href="/os/<%= os.id %>/fechar">Ir para fechamento</a>
       </div>
     </div>
   <% } %>
@@ -79,8 +80,8 @@
 <div class="card" style="margin-top:12px;">
   <h3 style="margin-top:0;">Resumo técnico da OS</h3>
   <div class="resumo-exec">
-    <div><b>Diagnóstico encontrado:</b><br/><%= os.diagnostico || '-' %></div>
-    <div><b>O que foi feito:</b><br/><%= os.acao_executada || '-' %></div>
+    <div><b>Causa / Diagnóstico / Ação preventiva:</b><br/><%= os.causa_diagnostico || os.diagnostico || '-' %></div>
+    <div><b>Resumo técnico / Ação corretiva:</b><br/><%= os.resumo_tecnico || os.acao_executada || '-' %></div>
   </div>
   <div style="margin-top:10px;">
     <b>Peças utilizadas</b>
@@ -97,42 +98,10 @@
 
 <% if (!isOSFechada) { %>
   <div class="card" style="margin-top:12px;">
-    <h3>Concluir OS</h3>
-    <form method="POST" action="/os/<%= os.id %>/concluir" enctype="multipart/form-data" id="form-concluir">
-      <div class="grid2">
-        <div>
-          <label>Diagnóstico / causa *</label>
-          <textarea class="input" name="diagnostico" required placeholder="Causa encontrada"></textarea>
-        </div>
-        <div>
-          <label>O que foi feito *</label>
-          <textarea class="input" name="acao_executada" required placeholder="Descreva a ação executada"></textarea>
-        </div>
-      </div>
-
-      <div style="margin-top:8px;">
-        <label>Peças utilizadas</label>
-        <div id="pecas-wrap">
-          <div class="pecas-grid">
-            <input class="input" name="peca_descricao" placeholder="Peça" />
-            <input class="input" name="peca_quantidade" type="number" min="0" step="0.01" placeholder="Qtd" />
-            <input class="input" name="peca_descricao" placeholder="Peça" />
-            <input class="input" name="peca_quantidade" type="number" min="0" step="0.01" placeholder="Qtd" />
-          </div>
-        </div>
-      </div>
-
-      <div style="margin-top:10px;">
-        <label>Foto de fechamento *</label>
-        <input id="fechamento_fotos" type="file" name="fechamento_fotos" accept="image/*" multiple style="display:none" />
-        <button type="button" class="camera-btn" onclick="document.getElementById('fechamento_fotos').click()">📷 Adicionar fotos de fechamento</button>
-        <div class="thumbs" id="preview-fechamento" style="margin-top:8px;"></div>
-      </div>
-
-      <div style="margin-top:12px; display:flex; justify-content:flex-end;">
-        <button class="btn btn-green" type="submit">Concluir OS</button>
-      </div>
-    </form>
+    <div class="note">
+      O fechamento da OS é feito na etapa específica, com preenchimento obrigatório de ação corretiva e ação preventiva.
+      <a class="btn btn-primary" style="margin-top:10px;" href="/os/<%= os.id %>/fechar">Abrir etapa de fechamento</a>
+    </div>
   </div>
 <% } %>
 
@@ -147,28 +116,3 @@
   </div>
 </div>
 
-<script>
-  const fechamento = document.getElementById('fechamento_fotos');
-  const prev = document.getElementById('preview-fechamento');
-  if (fechamento && prev) {
-    fechamento.addEventListener('change', function(){
-      prev.innerHTML = '';
-      Array.from(fechamento.files || []).forEach(f => {
-        const s = document.createElement('span');
-        s.className = 'muted';
-        s.textContent = f.name;
-        prev.appendChild(s);
-      });
-    });
-  }
-
-  const formConcluir = document.getElementById('form-concluir');
-  if (formConcluir && fechamento) {
-    formConcluir.addEventListener('submit', function(e){
-      if (!fechamento.files || !fechamento.files.length) {
-        e.preventDefault();
-        alert('É obrigatório anexar pelo menos uma foto de fechamento.');
-      }
-    });
-  }
-</script>

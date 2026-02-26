@@ -2,7 +2,7 @@ const db = require("../../database/db");
 
 const NC_KEYWORDS = [
   "quebrou", "quebrado", "falha", "queimou", "queimado", "rolamento", "mancal", "travou", "parou",
-  "vazamento", "superaquecimento", "correia arrebentou", "motor", "bomba", "induzido", "redutor", "curto", "estourou", "quebra",
+  "vazamento", "superaquecimento", "correia arrebentou", "correia", "motor", "bomba", "induzido", "redutor", "curto", "estourou", "quebra",
 ];
 
 function normalizeText(value) {
@@ -52,6 +52,11 @@ function hasTable(name) {
   return !!row;
 }
 
+function resolveNCTable() {
+  if (hasTable("inspecao_pac01_nc")) return "inspecao_pac01_nc";
+  return "inspecao_pac01_nao_conformidades";
+}
+
 function getOSFieldMap() {
   const cols = tableColumns("os");
   return {
@@ -78,7 +83,7 @@ function getOrCreateInspecao(mes, ano, user) {
   const ownerCol = cols.includes("created_by") ? "created_by" : (cols.includes("criado_por") ? "criado_por" : null);
 
   const fields = ["mes", "ano", "frequencia", "monitor_nome", "verificador_nome"];
-  const values = [mes, ano, "Diária", null, null];
+  const values = [mes, ano, "Diária", user?.name || null, null];
   if (ownerCol) {
     fields.push(ownerCol);
     values.push(user?.id || null);
@@ -95,13 +100,14 @@ function getOrCreateInspecao(mes, ano, user) {
 function listEquipamentosAtivos() {
   const cols = tableColumns("equipamentos");
   const itemExpr = cols.includes("codigo") ? "NULLIF(TRIM(codigo),'')" : "NULL";
+  const ativoExpr = cols.includes("ativo") ? "COALESCE(ativo,1)" : "1";
   return db.prepare(
-    `SELECT id, nome, ${itemExpr} AS item_codigo
+    `SELECT id, nome, ${itemExpr} AS item_codigo, ${ativoExpr} AS ativo
      FROM equipamentos
-     WHERE COALESCE(ativo, 1) = 1
      ORDER BY nome`
   ).all().map((eq) => ({
     ...eq,
+    ativo: Number(eq.ativo || 0) === 1,
     chave: normalizeText(eq.nome),
     item: eq.item_codigo || String(eq.id),
   }));
@@ -171,7 +177,7 @@ function isNC(osRow) {
 
 function isEA(osRow) {
   const status = normalizeText(osRow?.status);
-  return status.includes("aberta") || status.includes("andamento") || status.includes("em andamento") || status.includes("pausada");
+  return status.includes("aberta") || status.includes("andamento") || status.includes("em andamento") || status.includes("pausada") || status.includes("em_andamento");
 }
 
 function isSP(osRow) {
@@ -195,7 +201,7 @@ function buildMonthlyGrid(inspecao, equipamentos, osList) {
   for (const eq of equipamentos) {
     const line = Array.from({ length: 31 }, (_, idx) => ({
       dia: idx + 1,
-      status: idx + 1 <= diasMes ? "C" : "-",
+      status: idx + 1 <= diasMes ? (eq.ativo ? "C" : "SP") : "-",
       os_id: null,
       observacao: null,
     }));
@@ -208,23 +214,39 @@ function buildMonthlyGrid(inspecao, equipamentos, osList) {
     const eq = mapOSToEquipamento(osRow, equipamentos, equipById, equipByName);
     if (!eq) continue;
 
-    const dia = dateToDay(osRow.data_inicio);
-    if (!dia || dia > diasMes) continue;
+    const startDay = dateToDay(osRow.data_inicio);
+    if (!startDay || startDay > diasMes) continue;
 
-    const key = `${eq.id}:${dia}`;
-    if (!osByEquipDay.has(key)) osByEquipDay.set(key, []);
-    osByEquipDay.get(key).push(osRow);
+    const endDayRaw = dateToDay(osRow.data_fim);
+    const endDay = endDayRaw && endDayRaw <= diasMes ? endDayRaw : diasMes;
 
-    let candidate = "C";
-    if (isNC(osRow)) candidate = "NC";
-    else if (isEA(osRow)) candidate = "EA";
-    else if (isSP(osRow)) candidate = "SP";
+    const addDetailKey = `${eq.id}:${startDay}`;
+    if (!osByEquipDay.has(addDetailKey)) osByEquipDay.set(addDetailKey, []);
+    osByEquipDay.get(addDetailKey).push(osRow);
 
-    const cell = gridMap.get(eq.id)[dia - 1];
-    if (statusPriority(candidate) >= statusPriority(cell.status)) {
-      cell.status = candidate;
-      cell.os_id = osRow.id;
-      cell.observacao = candidate === "NC" ? "Gerado automaticamente via OS" : null;
+    const markCell = (day, status, observacao = null) => {
+      if (day < 1 || day > diasMes) return;
+      const cell = gridMap.get(eq.id)[day - 1];
+      if (statusPriority(status) >= statusPriority(cell.status)) {
+        cell.status = status;
+        cell.os_id = osRow.id;
+        cell.observacao = observacao;
+      }
+    };
+
+    if (isNC(osRow)) {
+      markCell(startDay, "NC", "Gerado automaticamente via OS");
+    }
+
+    if (isEA(osRow)) {
+      const eaStart = Math.min(startDay + 1, diasMes);
+      for (let day = eaStart; day <= endDay; day += 1) {
+        markCell(day, "EA", "OS em andamento");
+      }
+    }
+
+    if (!isNC(osRow) && !isEA(osRow) && isSP(osRow)) {
+      markCell(startDay, "SP", "Sem produção");
     }
   }
 
@@ -264,7 +286,9 @@ function recalculate(inspecaoId, mes, ano) {
   if (!inspecao) throw new Error("Inspeção não encontrada.");
 
   const equipamentos = listEquipamentosAtivos();
-  const osList = getOSByMonth(Number(mes || inspecao.mes), Number(ano || inspecao.ano));
+  const currentMes = Number(mes || inspecao.mes);
+  const currentAno = Number(ano || inspecao.ano);
+  const osList = getOSByMonth(currentMes, currentAno);
   const { gridMap } = buildMonthlyGrid(inspecao, equipamentos, osList);
   const ncList = buildNCList(inspecao, equipamentos, osList);
 
@@ -285,36 +309,55 @@ function recalculate(inspecaoId, mes, ano) {
     }
 
     const keys = new Set();
-    const upsertNC = db.prepare(
-      `INSERT INTO inspecao_pac01_nc (
+    const ncTable = resolveNCTable();
+    const insertNC = db.prepare(
+      `INSERT INTO ${ncTable} (
         inspecao_id, equipamento_id, data_ocorrencia, nao_conformidade,
         acao_corretiva, acao_preventiva, data_correcao, os_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-      ON CONFLICT(inspecao_id, equipamento_id, data_ocorrencia, os_id)
-      DO UPDATE SET
-        nao_conformidade = excluded.nao_conformidade,
-        acao_corretiva = COALESCE(NULLIF(inspecao_pac01_nc.acao_corretiva, ''), excluded.acao_corretiva),
-        acao_preventiva = COALESCE(NULLIF(inspecao_pac01_nc.acao_preventiva, ''), excluded.acao_preventiva),
-        data_correcao = COALESCE(inspecao_pac01_nc.data_correcao, excluded.data_correcao),
-        updated_at = datetime('now')`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+    );
+    const selectNC = db.prepare(
+      `SELECT id, acao_corretiva, acao_preventiva, data_correcao
+       FROM ${ncTable}
+       WHERE inspecao_id = ? AND equipamento_id = ? AND data_ocorrencia = ? AND COALESCE(os_id, 0) = COALESCE(?, 0)`
+    );
+    const updateNC = db.prepare(
+      `UPDATE ${ncTable}
+       SET nao_conformidade = ?,
+           acao_corretiva = COALESCE(NULLIF(acao_corretiva, ''), ?),
+           acao_preventiva = COALESCE(NULLIF(acao_preventiva, ''), ?),
+           data_correcao = COALESCE(data_correcao, ?),
+           updated_at = datetime('now')
+       WHERE id = ?`
     );
 
     for (const nc of ncList) {
       keys.add(`${nc.equipamento_id}:${nc.data_ocorrencia}:${nc.os_id || 0}`);
-      upsertNC.run(
-        inspecao.id,
-        nc.equipamento_id,
-        nc.data_ocorrencia,
-        nc.nao_conformidade,
-        nc.acao_corretiva,
-        nc.acao_preventiva,
-        nc.data_correcao,
-        nc.os_id || null
-      );
+      const existing = selectNC.get(inspecao.id, nc.equipamento_id, nc.data_ocorrencia, nc.os_id || null);
+      if (existing) {
+        updateNC.run(
+          nc.nao_conformidade,
+          nc.acao_corretiva,
+          nc.acao_preventiva,
+          nc.data_correcao,
+          existing.id
+        );
+      } else {
+        insertNC.run(
+          inspecao.id,
+          nc.equipamento_id,
+          nc.data_ocorrencia,
+          nc.nao_conformidade,
+          nc.acao_corretiva,
+          nc.acao_preventiva,
+          nc.data_correcao,
+          nc.os_id || null
+        );
+      }
     }
 
-    const existingNC = db.prepare("SELECT id, equipamento_id, data_ocorrencia, os_id FROM inspecao_pac01_nc WHERE inspecao_id = ?").all(inspecao.id);
-    const delNC = db.prepare("DELETE FROM inspecao_pac01_nc WHERE id = ?");
+    const existingNC = db.prepare(`SELECT id, equipamento_id, data_ocorrencia, os_id FROM ${ncTable} WHERE inspecao_id = ?`).all(inspecao.id);
+    const delNC = db.prepare(`DELETE FROM ${ncTable} WHERE id = ?`);
     for (const row of existingNC) {
       const key = `${row.equipamento_id}:${row.data_ocorrencia}:${row.os_id || 0}`;
       if (!keys.has(key)) delNC.run(row.id);
@@ -362,9 +405,10 @@ function buildMatrix(inspecaoId, ano, mes, equipamentos) {
 }
 
 function listNC(inspecaoId) {
+  const ncTable = resolveNCTable();
   return db.prepare(
     `SELECT nc.*, e.nome AS equipamento_nome, e.codigo AS equipamento_codigo
-     FROM inspecao_pac01_nc nc
+     FROM ${ncTable} nc
      JOIN equipamentos e ON e.id = nc.equipamento_id
      WHERE nc.inspecao_id = ?
      ORDER BY nc.data_ocorrencia DESC, e.nome ASC`
@@ -416,9 +460,10 @@ function listOSDetailsByInspecao(inspecaoId, mes, ano) {
 function saveNC(inspecaoId, payload) {
   const id = Number(payload.id || 0);
   if (!id) throw new Error("Não conformidade inválida.");
+  const ncTable = resolveNCTable();
 
   db.prepare(
-    `UPDATE inspecao_pac01_nc
+    `UPDATE ${ncTable}
      SET acao_corretiva = ?,
          acao_preventiva = ?,
          data_correcao = ?,
@@ -480,6 +525,29 @@ function syncFromOS(osId) {
   return { synced: true, inspecao_id: inspecao.id, mes, ano };
 }
 
+function syncFromClosedOS(osId) {
+  if (!osId) return { synced: false, reason: "os_id_missing" };
+  const map = getOSFieldMap();
+  const dateCol = map.dataInicio || "created_at";
+  const closeCol = map.dataFim || "closed_at";
+  const statusCol = map.status || "status";
+  const row = db.prepare(
+    `SELECT id, ${statusCol} AS status, ${dateCol} AS data_inicio, ${closeCol} AS data_fim FROM os WHERE id = ?`
+  ).get(osId);
+  if (!row) return { synced: false, reason: "os_not_found" };
+  if (normalizeText(row.status) !== "fechada") return { synced: false, reason: "os_not_closed" };
+  if (!row.data_inicio) return { synced: false, reason: "os_or_data_missing" };
+
+  const dt = new Date(`${dateOnly(row.data_inicio)}T00:00:00`);
+  if (Number.isNaN(dt.getTime())) return { synced: false, reason: "invalid_date" };
+
+  const mes = dt.getMonth() + 1;
+  const ano = dt.getFullYear();
+  const inspecao = getOrCreateInspecao(mes, ano, null);
+  recalculate(inspecao.id, mes, ano);
+  return { synced: true, inspecao_id: inspecao.id, mes, ano };
+}
+
 module.exports = {
   normalizeText,
   daysInMonth,
@@ -498,4 +566,5 @@ module.exports = {
   updateHeader,
   updateObservation,
   syncFromOS,
+  syncFromClosedOS,
 };
