@@ -183,7 +183,10 @@ function drawChecklistTable(doc, { equipamentos, matrix, diasMes, startY, inspec
 
 function drawNCBlock(doc, ncList) {
   const left = doc.page.margins.left;
-  const cols = [80, 55, 160, 120, 120, 70];
+  const usableW = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const baseCols = [80, 55, 160, 120, 120, 70];
+  const baseTotal = baseCols.reduce((a, b) => a + b, 0);
+  const cols = baseCols.map((c) => (c / baseTotal) * usableW);
   const headers = ["Item", "Data", "Não Conformidade", "Ação corretiva", "Ação preventiva", "Data da correção"];
 
   let y = 118;
