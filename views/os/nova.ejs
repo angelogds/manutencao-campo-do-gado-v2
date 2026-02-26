@@ -4,7 +4,7 @@
   <div class="page-head" style="margin-top:0;">
     <div>
       <h1 style="font-size:28px;">Nova Ordem de Serviço</h1>
-      <p class="muted">Etapa de abertura (solicitante): registre apenas a não conformidade observada.</p>
+      <p class="muted">Informe o problema do solicitante e os dados técnicos para alimentar automaticamente a Inspeção PAC 01.</p>
     </div>
   </div>
 
@@ -43,15 +43,42 @@
         </select>
       </div>
 
+      <div>
+        <label class="label">Data de início</label>
+        <input class="input" type="date" name="data_inicio" />
+      </div>
+
+      <div>
+        <label class="label">Data de fim (se já concluída)</label>
+        <input class="input" type="date" name="data_fim" />
+      </div>
+
       <div style="grid-column:1 / -1;">
-        <label class="label">Descrição do problema / Não conformidade (Solicitante)</label>
-        <textarea name="descricao" class="input" required placeholder="Descreva o problema identificado"></textarea>
+        <label class="label">Descrição do problema (solicitante)</label>
+        <textarea name="descricao" class="input" required placeholder="Descreva o que está acontecendo no equipamento"></textarea>
+      </div>
+
+      <div>
+        <label class="label">Resumo técnico / Ação corretiva</label>
+        <textarea name="resumo_tecnico" class="input" placeholder="Relate o que foi feito na execução"></textarea>
+      </div>
+
+      <div>
+        <label class="label">Causa / Diagnóstico / Ação preventiva</label>
+        <textarea name="causa_diagnostico" class="input" placeholder="Explique a causa e como evitar recorrência"></textarea>
+      </div>
+
+      <div style="grid-column:1 / -1;">
+        <label class="label">Solicitante</label>
+        <input class="input" type="text" readonly value="<%= user?.name || '-' %>" />
       </div>
 
       <div style="grid-column:1 / -1;">
         <label class="label">Fotos de abertura (opcional)</label>
         <input id="abertura_fotos" type="file" name="abertura_fotos" accept="image/*" multiple style="display:none" />
         <button type="button" class="btn btn-outline" onclick="document.getElementById('abertura_fotos').click()">📷 Adicionar fotos</button>
+        <div class="muted" style="margin-top:8px;">Registro visual do estado inicial.</div>
+        <div id="preview-abertura" style="margin-top:6px;"></div>
       </div>
     </div>
 
@@ -63,6 +90,19 @@
 </div>
 
 <script>
+  const fileInput = document.getElementById('abertura_fotos');
+  const preview = document.getElementById('preview-abertura');
+  fileInput.addEventListener('change', function(){
+    preview.innerHTML = '';
+    Array.from(fileInput.files || []).forEach(f => {
+      const el = document.createElement('span');
+      el.className = 'pill-tag pill-gray';
+      el.style.marginRight = '6px';
+      el.textContent = f.name;
+      preview.appendChild(el);
+    });
+  });
+
   document.getElementById('os-form').addEventListener('submit', function(e){
     const id = document.getElementById('equipamento_id').value.trim();
     const manual = document.getElementById('equipamento_manual').value.trim();

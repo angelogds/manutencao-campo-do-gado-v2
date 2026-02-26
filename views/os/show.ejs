@@ -98,10 +98,47 @@
 
 <% if (!isOSFechada) { %>
   <div class="card" style="margin-top:12px;">
-    <div class="note">
-      O fechamento da OS é feito na etapa específica, com preenchimento obrigatório de ação corretiva e ação preventiva.
-      <a class="btn btn-primary" style="margin-top:10px;" href="/os/<%= os.id %>/fechar">Abrir etapa de fechamento</a>
-    </div>
+    <h3>Concluir OS</h3>
+    <form method="POST" action="/os/<%= os.id %>/concluir" enctype="multipart/form-data" id="form-concluir">
+      <div class="grid2">
+        <div>
+          <label>Causa / Diagnóstico / Ação preventiva *</label>
+          <textarea class="input" name="causa_diagnostico" required placeholder="Causa encontrada"></textarea>
+        </div>
+        <div>
+          <label>Resumo técnico / Ação corretiva *</label>
+          <textarea class="input" name="resumo_tecnico" required placeholder="Descreva a ação executada"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:8px; max-width:280px;">
+        <label>Data de fim</label>
+        <input class="input" type="date" name="data_fim" />
+      </div>
+
+      <div style="margin-top:8px;">
+        <label>Peças utilizadas</label>
+        <div id="pecas-wrap">
+          <div class="pecas-grid">
+            <input class="input" name="peca_descricao" placeholder="Peça" />
+            <input class="input" name="peca_quantidade" type="number" min="0" step="0.01" placeholder="Qtd" />
+            <input class="input" name="peca_descricao" placeholder="Peça" />
+            <input class="input" name="peca_quantidade" type="number" min="0" step="0.01" placeholder="Qtd" />
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <label>Foto de fechamento *</label>
+        <input id="fechamento_fotos" type="file" name="fechamento_fotos" accept="image/*" multiple style="display:none" />
+        <button type="button" class="camera-btn" onclick="document.getElementById('fechamento_fotos').click()">📷 Adicionar fotos de fechamento</button>
+        <div class="thumbs" id="preview-fechamento" style="margin-top:8px;"></div>
+      </div>
+
+      <div style="margin-top:12px; display:flex; justify-content:flex-end;">
+        <button class="btn btn-green" type="submit">Concluir OS</button>
+      </div>
+    </form>
   </div>
 <% } %>
 
