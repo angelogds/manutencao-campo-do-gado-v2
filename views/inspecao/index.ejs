@@ -126,7 +126,7 @@
       const rows = detailsByCell[key] || [];
       modalTitle.textContent = `Detalhes - ${btn.dataset.eq} (item ${btn.dataset.item}) dia ${btn.dataset.day}`;
       modalList.innerHTML = rows.length
-        ? rows.map((row) => `<li><strong>OS #${row.id}</strong> [${row.status || '-'}]<br>Não conformidade: ${row.nao_conformidade || '-'}<br>Ação corretiva: ${row.resumo_tecnico || '-'}<br>Ação preventiva: ${row.causa_diagnostico || '-'}<br>Ocorrência: ${row.data_inicio || '-'} | Correção: ${row.data_fim || '-'}</li>`).join('')
+        ? rows.map((row) => `<li><strong>OS #${row.id}</strong> [${row.status || '-'}]<br>Problema: ${row.problema || '-'}<br>Ação corretiva: ${row.resumo_tecnico || '-'}<br>Ação preventiva: ${row.causa_diagnostico || '-'}<br>Ocorrência: ${row.data_inicio || '-'} | Correção: ${row.data_fim || '-'}</li>`).join('')
         : '<li>Sem OS vinculada neste dia.</li>';
       modal.style.display = 'flex';
     });

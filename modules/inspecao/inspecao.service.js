@@ -410,17 +410,15 @@ function buildMatrix(inspecaoId, ano, mes, equipamentos) {
 
 function listNC(inspecaoId) {
   const ncTable = resolveNCTable();
-  const ncCols = tableColumns(ncTable);
-  const ncEquipNomeExpr = ncCols.includes("equipamento_nome") ? "nc.equipamento_nome" : "NULL";
   return db.prepare(
-    `SELECT nc.*, e.nome AS equipamento_nome, e.codigo AS equipamento_codigo, ${ncEquipNomeExpr} AS nc_equipamento_nome
+    `SELECT nc.*, e.nome AS equipamento_nome, e.codigo AS equipamento_codigo
      FROM ${ncTable} nc
-     LEFT JOIN equipamentos e ON e.id = nc.equipamento_id
+     JOIN equipamentos e ON e.id = nc.equipamento_id
      WHERE nc.inspecao_id = ?
-     ORDER BY nc.data_ocorrencia DESC, COALESCE(e.nome, ${ncEquipNomeExpr}, '') ASC`
+     ORDER BY nc.data_ocorrencia DESC, COALESCE(e.nome, nc.equipamento_nome, '') ASC`
   ).all(inspecaoId).map((row) => ({
     ...row,
-    item: row.equipamento_codigo || String(row.equipamento_id || row.nc_equipamento_nome || "-"),
+    item: row.equipamento_codigo || String(row.equipamento_id || row.equipamento_nome || "-"),
   }));
 }
 

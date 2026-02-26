@@ -220,6 +220,10 @@ function createOS({
   equipamento_id,
   equipamento_manual,
   descricao,
+  resumo_tecnico,
+  causa_diagnostico,
+  data_inicio,
+  data_fim,
   tipo,
   opened_by,
   grau,
@@ -263,17 +267,29 @@ function createOS({
     values.push(equipManual);
   }
 
+  if (cols.includes("resumo_tecnico")) {
+    fields.push("resumo_tecnico");
+    values.push(String(resumo_tecnico || "").trim() || null);
+  } else if (cols.includes("acao_executada")) {
+    fields.push("acao_executada");
+    values.push(String(resumo_tecnico || "").trim() || null);
+  }
+
+  if (cols.includes("causa_diagnostico")) {
+    fields.push("causa_diagnostico");
+    values.push(String(causa_diagnostico || "").trim() || null);
+  } else if (cols.includes("diagnostico")) {
+    fields.push("diagnostico");
+    values.push(String(causa_diagnostico || "").trim() || null);
+  }
+
   if (cols.includes("data_inicio")) {
     fields.push("data_inicio");
-    values.push(new Date().toISOString());
+    values.push(String(data_inicio || "").trim() || null);
   }
   if (cols.includes("data_fim")) {
     fields.push("data_fim");
-    values.push(null);
-  }
-  if (cols.includes("is_nao_conforme")) {
-    fields.push("is_nao_conforme");
-    values.push(0);
+    values.push(String(data_fim || "").trim() || null);
   }
 
   const grauColumn = resolveGrauColumn(cols);
@@ -409,7 +425,7 @@ function pausarOS(id) {
   }
 }
 
-function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas, isNaoConforme }) {
+function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas, dataFim }) {
   const os = getOSById(id);
   if (!os) throw new Error("OS não encontrada.");
 
@@ -440,11 +456,8 @@ function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas, isNaoConf
       args.push(acao);
     }
     if (cols.includes("data_fim")) {
-      sets.push("data_fim = datetime('now')");
-    }
-    if (cols.includes("is_nao_conforme")) {
-      sets.push("is_nao_conforme = ?");
-      args.push(Number(isNaoConforme ? 1 : 0));
+      sets.push("data_fim = COALESCE(?, data_fim)");
+      args.push(String(dataFim || "").trim() || null);
     }
 
     args.push(id);
