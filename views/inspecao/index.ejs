@@ -21,7 +21,7 @@
     <a class="btn btn-outline action-btn" href="<%= backUrl %>">← Voltar</a>
     <a class="btn btn-outline action-btn" href="/inspecao/<%= prevAno %>/<%= prevMes %>">◀ Mês anterior</a>
     <a class="btn btn-outline action-btn" href="/inspecao/<%= nextAno %>/<%= nextMes %>">Próximo mês ▶</a>
-    <a class="btn btn-outline action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/pdf">Exportar PDF</a>
+    <a class="btn btn-outline action-btn" href="/inspecao/<%= ano %>/<%= mes %>/pdf">Exportar PDF</a>
     <a class="btn btn-outline action-btn" href="/inspecao/<%= ano %>/<%= mes %>/export/csv">Exportar CSV</a>
     <% if (canEdit) { %>
       <form method="POST" action="/inspecao/<%= ano %>/<%= mes %>/recalcular" style="display:contents;">

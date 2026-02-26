@@ -7,6 +7,16 @@ function parseMesAno(req) {
   return { ano, mes };
 }
 
+function withInspecaoErrorHandling(req, res, action) {
+  try {
+    return action();
+  } catch (err) {
+    console.error("❌ [inspecao] Erro na requisição:", err && err.stack ? err.stack : err);
+    req.flash("error", "Erro ao carregar inspeção.");
+    return res.redirect("/dashboard");
+  }
+}
+
 function loadPageData(req) {
   const { ano, mes } = parseMesAno(req);
   const getOrCreate = service.getOrCreateInspection || service.getOrCreateInspecao;
@@ -37,57 +47,81 @@ function index(_req, res) {
 }
 
 function viewMonth(req, res) {
-  const data = loadPageData(req);
-  return res.render("inspecao/index", {
-    layout: "layout",
-    title: "PAC 01 – Manutenção (Inspeção)",
-    activeMenu: "inspecao",
-    ...data,
+  return withInspecaoErrorHandling(req, res, () => {
+    const data = loadPageData(req);
+    return res.render("inspecao/index", {
+      layout: "layout",
+      title: "PAC 01 – Manutenção (Inspeção)",
+      activeMenu: "inspecao",
+      ...data,
+    });
   });
 }
 
 function recalculate(req, res) {
-  const { ano, mes } = parseMesAno(req);
-  const getOrCreate = service.getOrCreateInspection || service.getOrCreateInspecao;
-  const inspecao = getOrCreate(mes, ano, req.session?.user?.id || req.session?.user);
-  service.updateHeader(inspecao.id, req.body || {});
-  const result = service.recalculate(inspecao.id, mes, ano);
-  req.flash("success", `Inspeção recalculada com ${result.osCount} OS processadas.`);
-  return res.redirect(`/inspecao/${ano}/${mes}`);
+  return withInspecaoErrorHandling(req, res, () => {
+    const { ano, mes } = parseMesAno(req);
+    const getOrCreate = service.getOrCreateInspection || service.getOrCreateInspecao;
+    const inspecao = getOrCreate(mes, ano, req.session?.user?.id || req.session?.user);
+    service.updateHeader(inspecao.id, req.body || {});
+    const result = service.recalculate(inspecao.id, mes, ano);
+    req.flash("success", `Inspeção recalculada com ${result.osCount} OS processadas.`);
+    return res.redirect(`/inspecao/${ano}/${mes}`);
+  });
+}
+
+function recalculateCurrent(req, res) {
+  const now = new Date();
+  req.params.ano = String(now.getFullYear());
+  req.params.mes = String(now.getMonth() + 1);
+  return recalculate(req, res);
 }
 
 function saveNC(req, res) {
-  const { ano, mes } = parseMesAno(req);
-  const getOrCreate = service.getOrCreateInspection || service.getOrCreateInspecao;
-  const inspecao = getOrCreate(mes, ano, req.session?.user?.id || req.session?.user);
-  service.saveNC(inspecao.id, req.body || {});
-  req.flash("success", "Não conformidade atualizada.");
-  return res.redirect(`/inspecao/${ano}/${mes}`);
+  return withInspecaoErrorHandling(req, res, () => {
+    const { ano, mes } = parseMesAno(req);
+    const getOrCreate = service.getOrCreateInspection || service.getOrCreateInspecao;
+    const inspecao = getOrCreate(mes, ano, req.session?.user?.id || req.session?.user);
+    service.saveNC(inspecao.id, req.body || {});
+    req.flash("success", "Não conformidade atualizada.");
+    return res.redirect(`/inspecao/${ano}/${mes}`);
+  });
 }
 
 function saveObservation(req, res) {
-  const { ano, mes } = parseMesAno(req);
-  const getOrCreate = service.getOrCreateInspection || service.getOrCreateInspecao;
-  const inspecao = getOrCreate(mes, ano, req.session?.user?.id || req.session?.user);
-  service.updateObservation(inspecao.id, req.body || {});
-  req.flash("success", "Observação salva.");
-  return res.redirect(`/inspecao/${ano}/${mes}`);
+  return withInspecaoErrorHandling(req, res, () => {
+    const { ano, mes } = parseMesAno(req);
+    const getOrCreate = service.getOrCreateInspection || service.getOrCreateInspecao;
+    const inspecao = getOrCreate(mes, ano, req.session?.user?.id || req.session?.user);
+    service.updateObservation(inspecao.id, req.body || {});
+    req.flash("success", "Observação salva.");
+    return res.redirect(`/inspecao/${ano}/${mes}`);
+  });
 }
 
 function exportPDF(req, res) {
-  const data = loadPageData(req);
-  return renderPDF({ res, ...data });
+  return withInspecaoErrorHandling(req, res, () => {
+    const data = loadPageData(req);
+    return renderPDF({
+      res,
+      ...data,
+      monitorNome: req.session?.user?.name || data.inspecao?.monitor_nome,
+      dataVerificacao: req.query?.data_verificacao || new Date().toLocaleDateString("pt-BR"),
+    });
+  });
 }
 
 function exportCSV(req, res) {
-  const data = loadPageData(req);
-  const csv = buildCSV(data);
-  res.setHeader("Content-Type", "text/csv; charset=utf-8");
-  res.setHeader(
-    "Content-Disposition",
-    `attachment; filename=inspecao-pac01-${data.ano}-${String(data.mes).padStart(2, "0")}.csv`
-  );
-  return res.send(`\uFEFF${csv}`);
+  return withInspecaoErrorHandling(req, res, () => {
+    const data = loadPageData(req);
+    const csv = buildCSV(data);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=inspecao-pac01-${data.ano}-${String(data.mes).padStart(2, "0")}.csv`
+    );
+    return res.send(`\uFEFF${csv}`);
+  });
 }
 
 
@@ -102,6 +136,7 @@ module.exports = {
   index,
   viewMonth,
   recalculate,
+  recalculateCurrent,
   editStatus,
   saveNC,
   saveObservation,

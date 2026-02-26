@@ -56,27 +56,6 @@ function formatDate(value) {
   return normalizeDate(value) || "";
 }
 
-function normalizeDate(value) {
-  if (!value) return null;
-  const str = String(value).trim();
-  if (!str) return null;
-  const iso = str.includes("T") ? str : str.replace(" ", "T");
-  const dt = new Date(iso);
-  if (!Number.isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
-  const m = str.match(/^(\d{4}-\d{2}-\d{2})/);
-  return m ? m[1] : null;
-}
-
-function parseDate(value) {
-  const date = normalizeDate(value);
-  if (!date) return null;
-  return new Date(`${date}T00:00:00`);
-}
-
-function formatDate(value) {
-  return normalizeDate(value) || "";
-}
-
 function resolveInspectionTable() {
   return "inspecoes_pac01";
 }
@@ -100,6 +79,36 @@ function getColumnValue(row, options = []) {
     const value = row?.[key];
     if (value !== undefined && value !== null && String(value).trim() !== "") return value;
   }
+  return null;
+}
+
+
+function isClosedStatus(value) {
+  return normalizeStatus(value) === "FECHADA";
+}
+
+function buildEquipamentoLookup() {
+  const byCode = new Map();
+  const byName = new Map();
+  for (const eq of listEquipamentosAtivos()) {
+    if (eq?.codigo) byCode.set(normalizeText(eq.codigo), eq.id);
+    if (eq?.nome) byName.set(normalizeText(eq.nome), eq.id);
+  }
+  return { byCode, byName };
+}
+
+function mapOSToEquipamentoId(osRow, lookup) {
+  const byId = Number(osRow?.equipamento_id || 0);
+  if (byId > 0) return byId;
+
+  const rawRefs = [osRow?.equipamento_id, osRow?.equipamento, osRow?.equipamento_manual];
+  for (const ref of rawRefs) {
+    const key = normalizeText(ref);
+    if (!key) continue;
+    if (lookup.byCode.has(key)) return lookup.byCode.get(key);
+    if (lookup.byName.has(key)) return lookup.byName.get(key);
+  }
+
   return null;
 }
 
@@ -165,20 +174,6 @@ function isNC(osRow) {
 
   if (tipo.includes("corretiva") && ncText) return true;
 
-  if (Number(getColumnValue(osRow, ["nao_conforme"])) === 1) return true;
-
-  const tipo = normalizeText(getColumnValue(osRow, ["tipo"]));
-  const naoConformidade = getColumnValue(osRow, [
-    "descricao_problema",
-    "descricao",
-    "solicitacao",
-    "relato",
-    "texto_problema",
-  ]);
-  const ncText = String(naoConformidade || "").trim();
-
-  if (tipo.includes("corretiva") && ncText) return true;
-
   const fallback = normalizeText(
     `${ncText} ${getColumnValue(osRow, ["causa_diagnostico", "causa", "diagnostico"]) || ""}`
   );
@@ -219,23 +214,24 @@ function getOSRowsByMonth(ano, mes) {
   const osTable = resolveOSTable();
   const cols = tableColumns(osTable);
 
-  const dataInicio = cols.includes("data_inicio") ? "data_inicio" : (cols.includes("opened_at") ? "opened_at" : null);
-  const dataFim = cols.includes("data_fim")
-    ? "data_fim"
-    : (cols.includes("data_conclusao") ? "data_conclusao" : (cols.includes("closed_at") ? "closed_at" : null));
+  const startCols = ["data_inicio", "opened_at", "created_at"].filter((c) => cols.includes(c));
+  const endCols = ["data_fim", "data_conclusao", "closed_at"].filter((c) => cols.includes(c));
+  const startExpr = startCols.length ? `COALESCE(${startCols.join(", ")})` : "NULL";
+  const endExpr = endCols.length ? `COALESCE(${endCols.join(", ")})` : "NULL";
 
   const equipExpr = cols.includes("equipamento_id") ? "equipamento_id" : "NULL AS equipamento_id";
+  const equipLabelExpr = cols.includes("equipamento") ? "equipamento" : "NULL AS equipamento";
+  const equipManualExpr = cols.includes("equipamento_manual") ? "equipamento_manual" : "NULL AS equipamento_manual";
   const idCol = cols.includes("id") ? "id" : "os_id";
 
   const y = String(ano);
   const m = String(mes).padStart(2, "0");
-  const whereByStart = dataInicio ? `strftime('%Y', ${dataInicio}) = ? AND strftime('%m', ${dataInicio}) = ?` : "1=1";
 
   const rows = db
     .prepare(
-      `SELECT ${idCol} AS id, ${equipExpr},
-              ${dataInicio ? `${dataInicio} AS data_inicio` : "NULL AS data_inicio"},
-              ${dataFim ? `${dataFim} AS data_fim` : "NULL AS data_fim"},
+      `SELECT ${idCol} AS id, ${equipExpr}, ${equipLabelExpr}, ${equipManualExpr},
+              ${startExpr} AS data_inicio,
+              ${endExpr} AS data_fim,
               ${cols.includes("status") ? "status" : "'' AS status"},
               ${cols.includes("tipo") ? "tipo" : "'' AS tipo"},
               ${cols.includes("descricao") ? "descricao" : "'' AS descricao"},
@@ -247,11 +243,14 @@ function getOSRowsByMonth(ano, mes) {
               ${cols.includes("causa_diagnostico") ? "causa_diagnostico" : (cols.includes("causa") ? "causa" : (cols.includes("diagnostico") ? "diagnostico" : "NULL"))} AS acao_preventiva,
               ${cols.includes("nao_conforme") ? "nao_conforme" : "0 AS nao_conforme"}
        FROM ${osTable}
-       WHERE ${whereByStart}`
+       WHERE strftime('%Y', ${startExpr}) = ? AND strftime('%m', ${startExpr}) = ?`
     )
-    .all(...(dataInicio ? [y, m] : []));
+    .all(y, m);
 
-  return rows.filter((row) => Number(row.equipamento_id || 0) > 0 && normalizeDate(row.data_inicio));
+  const lookup = buildEquipamentoLookup();
+  return rows
+    .map((row) => ({ ...row, equipamento_id: mapOSToEquipamentoId(row, lookup) }))
+    .filter((row) => Number(row.equipamento_id || 0) > 0 && normalizeDate(row.data_inicio));
 }
 
 function recalculate(inspecaoId, mes, ano) {
@@ -282,6 +281,7 @@ function recalculate(inspecaoId, mes, ano) {
     const ncRows = [];
 
     const osRows = getOSRowsByMonth(ano, mes);
+    console.log("[INSPECAO_RECALC] base", { inspecaoId, ano, mes, osCount: osRows.length });
 
     for (const os of osRows) {
       if (!isNC(os)) continue;
@@ -298,7 +298,7 @@ function recalculate(inspecaoId, mes, ano) {
       }
 
       const endRaw = parseDate(os.data_fim);
-      const closed = normalizeText(os.status) === "fechada" || normalizeText(os.status) === "concluida";
+      const closed = isClosedStatus(os.status);
       const end = endRaw || (closed ? start : null);
       const endDay = end ? Math.min(dias, end.getDate()) : dias;
 
@@ -374,6 +374,7 @@ function recalculate(inspecaoId, mes, ano) {
       }
     }
 
+    console.log("[INSPECAO_RECALC] resultado", { inspecaoId, ano, mes, osCount: osRows.length, ncCount: ncRows.length });
     return { osCount: osRows.length, ncCount: ncRows.length, osByCell };
   });
 
@@ -488,7 +489,7 @@ function listOSDetailsByInspecao(inspecaoId, mes, ano) {
 
     const startDay = start.getDate();
     const endRaw = parseDate(os.data_fim);
-    const closed = normalizeText(os.status) === "fechada" || normalizeText(os.status) === "concluida";
+    const closed = isClosedStatus(os.status);
     const endDay = endRaw ? endRaw.getDate() : (closed ? startDay : daysInMonth(ano, mes));
 
     for (let day = startDay; day <= endDay; day += 1) {
@@ -513,12 +514,14 @@ function syncFromClosedOS(osId) {
   const osTable = resolveOSTable();
   const cols = tableColumns(osTable);
   const statusCol = cols.includes("status") ? "status" : "''";
-  const dataInicioCol = cols.includes("data_inicio") ? "data_inicio" : (cols.includes("opened_at") ? "opened_at" : "NULL");
-  const dataFimCol = cols.includes("data_fim") ? "data_fim" : (cols.includes("data_conclusao") ? "data_conclusao" : (cols.includes("closed_at") ? "closed_at" : "NULL"));
+  const startCols = ["data_inicio", "opened_at", "created_at"].filter((c) => cols.includes(c));
+  const endCols = ["data_fim", "data_conclusao", "closed_at"].filter((c) => cols.includes(c));
+  const dataInicioExpr = startCols.length ? `COALESCE(${startCols.join(", ")})` : "NULL";
+  const dataFimExpr = endCols.length ? `COALESCE(${endCols.join(", ")})` : "NULL";
 
   const os = db
     .prepare(
-      `SELECT *, ${statusCol} AS status_normalized, ${dataInicioCol} AS data_inicio_normalized, ${dataFimCol} AS data_fim_normalized
+      `SELECT *, ${statusCol} AS status_normalized, ${dataInicioExpr} AS data_inicio_normalized, ${dataFimExpr} AS data_fim_normalized
        FROM ${osTable}
        WHERE id = ?`
     )
@@ -527,14 +530,21 @@ function syncFromClosedOS(osId) {
   if (!os) return { synced: false, reason: "os_not_found" };
   if (!normalizeDate(os.data_inicio_normalized)) return { synced: false, reason: "os_or_data_missing" };
 
-  const status = normalizeText(os.status_normalized);
-  if (status !== "fechada" && status !== "concluida") return { synced: false, reason: "os_not_closed" };
+  if (!isClosedStatus(os.status_normalized)) return { synced: false, reason: "os_not_closed" };
 
   const data = parseDate(os.data_inicio_normalized);
   const mes = data.getMonth() + 1;
   const ano = data.getFullYear();
   const inspecao = getOrCreateInspecao(mes, ano, os.closed_by || os.opened_by || null);
   const result = recalculate(inspecao.id, mes, ano);
+  console.log("[INSPECAO_RECALC] syncFromClosedOS", {
+    osId,
+    inspecaoId: inspecao.id,
+    ano,
+    mes,
+    osCount: result.osCount,
+    ncCount: result.ncCount,
+  });
   return { synced: true, inspecaoId: inspecao.id, ...result };
 }
 
