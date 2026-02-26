@@ -9,7 +9,8 @@ function parseMesAno(req) {
 
 function loadPageData(req) {
   const { ano, mes } = parseMesAno(req);
-  const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
+  const getOrCreate = service.getOrCreateInspection || service.getOrCreateInspecao;
+  const inspecao = getOrCreate(mes, ano, req.session?.user?.id || req.session?.user);
   service.recalculate(inspecao.id, mes, ano);
 
   const equipamentos = service.listEquipamentosAtivos();
@@ -47,7 +48,8 @@ function viewMonth(req, res) {
 
 function recalculate(req, res) {
   const { ano, mes } = parseMesAno(req);
-  const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
+  const getOrCreate = service.getOrCreateInspection || service.getOrCreateInspecao;
+  const inspecao = getOrCreate(mes, ano, req.session?.user?.id || req.session?.user);
   service.updateHeader(inspecao.id, req.body || {});
   const result = service.recalculate(inspecao.id, mes, ano);
   req.flash("success", `Inspeção recalculada com ${result.osCount} OS processadas.`);
@@ -56,7 +58,8 @@ function recalculate(req, res) {
 
 function saveNC(req, res) {
   const { ano, mes } = parseMesAno(req);
-  const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
+  const getOrCreate = service.getOrCreateInspection || service.getOrCreateInspecao;
+  const inspecao = getOrCreate(mes, ano, req.session?.user?.id || req.session?.user);
   service.saveNC(inspecao.id, req.body || {});
   req.flash("success", "Não conformidade atualizada.");
   return res.redirect(`/inspecao/${ano}/${mes}`);
@@ -64,7 +67,8 @@ function saveNC(req, res) {
 
 function saveObservation(req, res) {
   const { ano, mes } = parseMesAno(req);
-  const inspecao = service.getOrCreateInspecao(mes, ano, req.session?.user);
+  const getOrCreate = service.getOrCreateInspection || service.getOrCreateInspecao;
+  const inspecao = getOrCreate(mes, ano, req.session?.user?.id || req.session?.user);
   service.updateObservation(inspecao.id, req.body || {});
   req.flash("success", "Observação salva.");
   return res.redirect(`/inspecao/${ano}/${mes}`);
