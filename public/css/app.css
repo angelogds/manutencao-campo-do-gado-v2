@@ -94,6 +94,26 @@ a{ color:inherit; }
 .topbar-title{ font-weight:900; font-size:18px; }
 .topbar-sub{ color:var(--muted); font-size:12px; margin-top:2px; }
 
+.brand-topbar{ padding:0; gap:14px; }
+.brand-dot{ display:none; }
+.brand-subtitle{ color:var(--muted); font-size:12px; margin-top:2px; }
+.topbar-logos{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-left:6px;
+}
+.topbar-logo{
+  width:34px;
+  height:34px;
+  object-fit:contain;
+  border-radius:8px;
+  background:#fff;
+  border:1px solid var(--border);
+  padding:4px;
+}
+.topbar-logo-symbol{ padding:2px; }
+
 .topbar-right{ display:flex; align-items:center; gap:10px; }
 .topbar-right form{ margin:0; }
 
@@ -266,6 +286,9 @@ textarea{ min-height:110px; resize:vertical; }
   .app.mobile-sidebar-open .sidebar{ transform:translateX(0); }
   .topbar{ padding:12px 14px; }
   .topbar-right{ gap:6px; }
+  .brand-topbar{ gap:8px; }
+  .topbar-logos{ gap:6px; margin-left:2px; }
+  .topbar-logo{ width:28px; height:28px; padding:3px; }
   .content{ padding:14px; }
   .flash{ padding:8px 14px 0; }
   .footer{ padding:10px 14px; }
