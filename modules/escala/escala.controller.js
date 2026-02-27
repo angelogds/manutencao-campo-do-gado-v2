@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const service = require("./escala.service");
+
 const PDFDocument = require("pdfkit");
 
 const PDF_COLORS = {
@@ -178,19 +179,36 @@ exports.salvarEdicao = (req, res, next) => {
   }
 };
 
+exports.pdfSemanaAtual = (req, res, next) => {
+  try {
+    const date = String(req.query?.date || "").slice(0, 10) || isoToday();
+    const semana = service.getSemanaPorData(date);
+    if (!semana) {
+      req.flash("error", "Não existe semana cadastrada para esta data.");
+      return res.redirect(`/escala?date=${date}`);
+    }
+
+    const row = makeRowFromSemana(semana);
+
+    renderEscalaPdf({
+      res,
+      fileName: `escala-semana-${semana.semana_numero}.pdf`,
+      subtitulo: "Escala Semanal",
+      periodoLabel: `Período: ${formatDateBr(semana.data_inicio)} a ${formatDateBr(semana.data_fim)}`,
+      rows: [row],
+    });
+  } catch (e) {
+    next(e);
+  }
+};
+
 exports.pdfSemana = (req, res, next) => {
   try {
     const semanaId = Number(req.params.id);
     const semana = service.getSemanaById(semanaId);
     if (!semana) return res.status(404).send("Semana não encontrada");
 
-    const doc = new PDFDocument({ margin: 36 });
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename=escala-semana-${semana.semana_numero}.pdf`
-    );
+    const row = makeRowFromSemana(semana);
 
     doc.pipe(res);
 

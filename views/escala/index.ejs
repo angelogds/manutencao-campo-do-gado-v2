@@ -48,7 +48,7 @@
               <td><%= p.titulo %></td>
               <td><%= (p.created_at || '').slice(0,10) %></td>
               <td>
-                <a class="btn btn-sm" href="/escala/publicacoes/<%= p.id %>">Abrir</a>
+                <a class="btn btn-sm" href="/escala/publicacoes/<%= p.id %>" target="_blank" rel="noopener">Abrir</a>
               </td>
             </tr>
           <% }) %>

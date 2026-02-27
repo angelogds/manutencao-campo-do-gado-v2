@@ -56,7 +56,11 @@ router.get("/editar/:id", requireLogin, requireRole(ACCESS.escala), safe(control
 // POST /escala/editar/:id
 router.post("/editar/:id", requireLogin, requireRole(ACCESS.escala), safe(controller.salvarEdicao, "salvarEdicao"));
 
-// PDF (semana)
+// PDF (semana atual por data opcional)
+// GET /escala/pdf/semana?date=YYYY-MM-DD
+router.get("/pdf/semana", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfSemanaAtual, "pdfSemanaAtual"));
+
+// PDF (semana por id)
 // GET /escala/pdf/semana/:id
 router.get("/pdf/semana/:id", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfSemana, "pdfSemana"));
 
