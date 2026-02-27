@@ -8,12 +8,17 @@
     </p>
   </div>
 
-  <% if (semana) { %>
-    <div style="display:flex;gap:10px;align-items:center;">
-      <a class="btn btn-primary" href="/escala/pdf/semana/<%= semana.id %>">Gerar PDF da Semana</a>
-      <a class="btn" href="/dashboard">Voltar</a>
-    </div>
-  <% } %>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+    <% if (semana) { %>
+      <a class="btn btn-primary" href="/escala/pdf/semana/<%= semana.id %>" target="_blank" rel="noopener">Gerar PDF da Semana</a>
+    <% } %>
+    <form method="GET" action="/escala/pdf/periodo" target="_blank" rel="noopener" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input class="input" type="date" name="start" value="<%= pdfStart %>" required style="height:38px;">
+      <input class="input" type="date" name="end" value="<%= pdfEnd %>" required style="height:38px;">
+      <button class="btn btn-green" type="submit">Gerar PDF por Período</button>
+    </form>
+    <a class="btn" href="/dashboard">Voltar</a>
+  </div>
 </div>
 
 <!-- Publicações -->
@@ -43,7 +48,7 @@
               <td><%= p.titulo %></td>
               <td><%= (p.created_at || '').slice(0,10) %></td>
               <td>
-                <a class="btn btn-sm" href="/escala/publicacoes/<%= p.id %>">Abrir</a>
+                <a class="btn btn-sm" href="/escala/publicacoes/<%= p.id %>" target="_blank" rel="noopener">Abrir</a>
               </td>
             </tr>
           <% }) %>
@@ -120,25 +125,34 @@
   <form method="POST" action="/escala/adicionar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
     <input type="hidden" name="date" value="<%= alvo %>">
     <div style="min-width:200px;">
-      <div class="label">DATA</div>
-      <input class="input" type="date" name="date" value="<%= alvo %>">
+      <div class="label">INÍCIO</div>
+      <input class="input" type="date" name="inicio" value="<%= alvo %>" required>
+    </div>
+    <div style="min-width:200px;">
+      <div class="label">FIM</div>
+      <input class="input" type="date" name="fim" value="<%= alvo %>" required>
     </div>
     <div style="flex:1;min-width:220px;">
       <div class="label">COLABORADOR</div>
-      <input class="input" name="nome" placeholder="Ex.: Emanuel">
+      <input class="input" name="nome" placeholder="Ex.: Emanuel" required>
     </div>
     <div style="min-width:180px;">
       <div class="label">TURNO</div>
-      <select class="input" name="turno">
+      <select class="input" name="turno" required>
         <option value="">Selecione</option>
         <option value="Dia">Dia</option>
         <option value="Noite">Noite</option>
         <option value="Apoio">Apoio</option>
+        <option value="Plantão">Plantão</option>
       </select>
     </div>
-    <div style="min-width:220px;">
-      <div class="label">SETOR</div>
-      <input class="input" name="setor" value="Manutenção">
+    <div style="min-width:200px;">
+      <div class="label">FUNÇÃO</div>
+      <select class="input" name="funcao" required>
+        <option value="">Selecione</option>
+        <option value="Mecânico">Mecânico</option>
+        <option value="Auxiliar">Auxiliar</option>
+      </select>
     </div>
 
     <button class="btn btn-primary" type="submit">Salvar</button>
@@ -177,6 +191,6 @@
   </form>
 
   <div style="margin-top:14px;color:#64748b;font-weight:700;">
-    PDF por período: use <code>/escala/pdf?start=YYYY-MM-DD&end=YYYY-MM-DD</code>
+    O cadastro rápido aplica o turno/função para todo o período informado (início e fim inclusivos).
   </div>
 </div>
