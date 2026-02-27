@@ -1,16 +1,5 @@
-const fs = require("node:fs");
-const path = require("node:path");
 const service = require("./escala.service");
-
-const PDFDocument = require("pdfkit");
-
-const PDF_COLORS = {
-  green: "#15803d",
-  text: "#0f172a",
-  muted: "#475569",
-  line: "#cbd5e1",
-  light: "#f8fafc",
-};
+const { renderEscalaSemanalPdf, renderEscalaPeriodoPdf, formatDateBr } = require("../../utils/pdf/pdfEscala");
 
 function isoToday() {
   return new Date().toISOString().slice(0, 10);
@@ -20,6 +9,10 @@ function daysInclusive(start, end) {
   const s = new Date(`${start}T00:00:00Z`);
   const e = new Date(`${end}T00:00:00Z`);
   return Math.floor((e - s) / 86400000) + 1;
+}
+
+function isValidDateISO(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 exports.index = (req, res, next) => {
@@ -81,7 +74,7 @@ exports.adicionarRapido = (req, res, next) => {
       return res.redirect(`/escala?date=${inicio}`);
     }
     if (!funcao) {
-      req.flash("error", "Função inválida. Use Mecânico ou Auxiliar.");
+      req.flash("error", "Função inválida. Use Mecânico, Auxiliar ou Operacional.");
       return res.redirect(`/escala?date=${inicio}`);
     }
 
@@ -181,22 +174,15 @@ exports.salvarEdicao = (req, res, next) => {
 
 exports.pdfSemanaAtual = (req, res, next) => {
   try {
-    const date = String(req.query?.date || "").slice(0, 10) || isoToday();
-    const semana = service.getSemanaPorData(date);
-    if (!semana) {
-      req.flash("error", "Não existe semana cadastrada para esta data.");
-      return res.redirect(`/escala?date=${date}`);
-    }
+    const rows = service.getEscalaSemanalPdfData().map((s) => ({
+      semana: String(s.semana),
+      periodo: `${formatDateBr(s.data_inicio)} até ${formatDateBr(s.data_fim)}`,
+      noturno: s.noturno,
+      diurno: s.diurno,
+      apoio: s.apoio,
+    }));
 
-    const row = makeRowFromSemana(semana);
-
-    renderEscalaPdf({
-      res,
-      fileName: `escala-semana-${semana.semana_numero}.pdf`,
-      subtitulo: "Escala Semanal",
-      periodoLabel: `Período: ${formatDateBr(semana.data_inicio)} a ${formatDateBr(semana.data_fim)}`,
-      rows: [row],
-    });
+    return renderEscalaSemanalPdf(res, { rows });
   } catch (e) {
     next(e);
   }
@@ -208,24 +194,18 @@ exports.pdfSemana = (req, res, next) => {
     const semana = service.getSemanaById(semanaId);
     if (!semana) return res.status(404).send("Semana não encontrada");
 
-    const row = makeRowFromSemana(semana);
+    const consolidado = service.getEscalaSemanalPdfData().find((item) => item.semana === semana.semana_numero);
 
-    doc.pipe(res);
-
-    doc.fontSize(16).text("CAMPO DO GADO - ESCALA SEMANAL", { align: "center" });
-    doc.moveDown(0.6);
-    doc.fontSize(11).text(`Semana: ${semana.semana_numero}`);
-    doc.text(`Período: ${semana.data_inicio} até ${semana.data_fim}`);
-    doc.text("Setor: Manutenção");
-    doc.moveDown(0.8);
-
-    const linhas = service.getLinhasSemanaComStatus(semanaId);
-
-    doc.fontSize(12).text("Colaboradores da Semana", { underline: true });
-    doc.moveDown(0.4);
-
-    linhas.forEach((l) => {
-      doc.fontSize(11).text(`${l.nome}  |  ${l.turnoLabel}  |  ${l.funcaoLabel}  |  ${l.statusLabel}`);
+    return renderEscalaSemanalPdf(res, {
+      rows: [
+        {
+          semana: String(semana.semana_numero),
+          periodo: `${formatDateBr(semana.data_inicio)} até ${formatDateBr(semana.data_fim)}`,
+          noturno: consolidado?.noturno || { mecanico: [], auxiliar: [], operacional: [] },
+          diurno: consolidado?.diurno || { mecanico: [], auxiliar: [], operacional: [] },
+          apoio: consolidado?.apoio || { mecanico: [], auxiliar: [], operacional: [] },
+        },
+      ],
     });
   } catch (e) {
     next(e);
@@ -236,52 +216,23 @@ exports.pdfPeriodo = (req, res, next) => {
   try {
     const start = String(req.query?.start || "").slice(0, 10);
     const end = String(req.query?.end || "").slice(0, 10);
-    const dateRef = start || isoToday();
 
-    if (!start || !end) {
-      req.flash("error", "Informe início e fim para gerar o PDF por período.");
-      return res.redirect(`/escala?date=${dateRef}`);
-    }
-    if (start > end) {
-      req.flash("error", "A data final do PDF não pode ser menor que a inicial.");
-      return res.redirect(`/escala?date=${dateRef}`);
-    }
-    if (daysInclusive(start, end) > 365) {
-      req.flash("error", "O PDF por período permite no máximo 365 dias.");
-      return res.redirect(`/escala?date=${dateRef}`);
-    }
-
-    const linhas = service.getLinhasPeriodo(start, end);
-
-    const doc = new PDFDocument({ margin: 36 });
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `inline; filename=escala-${start}-ate-${end}.pdf`);
-    doc.pipe(res);
-
-    doc.fontSize(16).text("Escala – Período", { align: "center" });
-    doc.moveDown(0.4);
-    doc.fontSize(11).text(`Período: ${start} até ${end}`);
-    doc.text("Setor: Manutenção");
-    doc.moveDown(0.8);
-
-    if (!linhas.length) {
-      doc.fontSize(11).text("Nenhum registro encontrado para o período informado.");
-    } else {
-      doc.fontSize(11).text("Data | Colaborador | Turno | Função | Status", { underline: true });
-      doc.moveDown(0.3);
-
-      linhas.forEach((l) => {
-        if (doc.y > 760) doc.addPage();
-        doc.fontSize(10).text(
-          `${l.data_inicio} a ${l.data_fim} | ${l.nome} | ${l.turnoLabel} | ${l.funcaoLabel} | ${l.statusLabel}`
-        );
+    if (!start || !end || !isValidDateISO(start) || !isValidDateISO(end) || end < start) {
+      return res.status(400).json({
+        ok: false,
+        message: "Parâmetros inválidos. Use /escala/pdf/periodo?start=YYYY-MM-DD&end=YYYY-MM-DD com end >= start.",
       });
     }
 
-    doc.moveDown(1);
-    doc.fontSize(9).text(`Gerado em: ${new Date().toISOString()}`, { align: "right" });
+    if (daysInclusive(start, end) > 365) {
+      return res.status(400).json({
+        ok: false,
+        message: "O período máximo permitido para o PDF é de 365 dias.",
+      });
+    }
 
-    doc.end();
+    const data = service.getPeriodoCompensacaoData(start, end);
+    return renderEscalaPeriodoPdf(res, { start, end, ...data });
   } catch (e) {
     next(e);
   }
