@@ -5,11 +5,11 @@ const service = require("./escala.service");
 const PDFDocument = require("pdfkit");
 
 const PDF_COLORS = {
-  green: "#166534",
+  green: "#15803d",
   text: "#0f172a",
-  line: "#334155",
   muted: "#475569",
-  tableHeader: "#166534",
+  line: "#cbd5e1",
+  light: "#f8fafc",
 };
 
 function isoToday() {
@@ -20,207 +20,6 @@ function daysInclusive(start, end) {
   const s = new Date(`${start}T00:00:00Z`);
   const e = new Date(`${end}T00:00:00Z`);
   return Math.floor((e - s) / 86400000) + 1;
-}
-
-function formatDateBr(iso) {
-  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return String(iso || "");
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-}
-
-function aggregateSemanaTurnos(semanaId) {
-  const linhas = service.getLinhasSemanaComStatus(semanaId);
-
-  const nomes = {
-    noturno: new Set(),
-    diurno: new Set(),
-    apoio: new Set(),
-  };
-
-  for (const l of linhas) {
-    const t = String(l.tipo_turno || "").toLowerCase();
-    if (t === "noturno") nomes.noturno.add(l.nome);
-    else if (t === "diurno") nomes.diurno.add(l.nome);
-    else if (t === "apoio" || t === "plantao") nomes.apoio.add(l.nome);
-  }
-
-  const toText = (set) => {
-    const arr = [...set].sort((a, b) => a.localeCompare(b, "pt-BR"));
-    return arr.length ? arr.join(", ") : "-";
-  };
-
-  return {
-    noturno: toText(nomes.noturno),
-    diurno: toText(nomes.diurno),
-    apoio: toText(nomes.apoio),
-  };
-}
-
-function drawPdfHeader(doc, subtitulo, periodoLabel) {
-  const margin = doc.page.margins.left;
-  const usableWidth = doc.page.width - margin * 2;
-
-  doc.save();
-  doc.rect(0, 0, doc.page.width, 72).fill(PDF_COLORS.green);
-  doc.restore();
-
-  const logoPath = path.join(__dirname, "../../public/IMG/login_campo_do_gado.png.png.png");
-  if (fs.existsSync(logoPath)) {
-    try {
-      doc.image(logoPath, margin, 18, { fit: [85, 35] });
-    } catch (_e) {
-      // Não quebra o PDF se a imagem estiver inválida/corrompida
-    }
-  }
-
-  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(20)
-    .text("ESCALA – MANUTENÇÃO INDUSTRIAL", margin + 94, 18, { width: usableWidth - 94, align: "left" });
-  doc.font("Helvetica").fontSize(10)
-    .text(subtitulo, margin + 94, 46, { width: usableWidth - 94, align: "left" });
-
-  doc.moveDown(1.9);
-  doc.fillColor(PDF_COLORS.text).font("Helvetica-Bold").fontSize(12)
-    .text("Campo do Gado – Setor de Manutenção Industrial", { align: "center" });
-  doc.moveDown(0.3);
-  doc.font("Helvetica").fontSize(10).fillColor(PDF_COLORS.muted)
-    .text(periodoLabel, { align: "center" });
-  doc.moveDown(0.8);
-}
-
-function drawEscalaTable(doc, rows) {
-  const margin = doc.page.margins.left;
-  const usable = doc.page.width - margin * 2;
-
-  const cols = {
-    semana: Math.floor(usable * 0.1),
-    periodo: Math.floor(usable * 0.25),
-    noturno: Math.floor(usable * 0.22),
-    diurno: Math.floor(usable * 0.22),
-    apoio: usable - Math.floor(usable * 0.1) - Math.floor(usable * 0.25) - Math.floor(usable * 0.22) - Math.floor(usable * 0.22),
-  };
-
-  const x = {
-    semana: margin,
-    periodo: margin + cols.semana,
-    noturno: margin + cols.semana + cols.periodo,
-    diurno: margin + cols.semana + cols.periodo + cols.noturno,
-    apoio: margin + cols.semana + cols.periodo + cols.noturno + cols.diurno,
-  };
-
-  const headerH = 34;
-  const baseH = 24;
-
-  const ensureSpace = (h) => {
-    if (doc.y + h > doc.page.height - 46) {
-      doc.addPage();
-    }
-  };
-
-  const drawHeaderRow = () => {
-    ensureSpace(headerH + 2);
-    const y = doc.y;
-    doc.save();
-    doc.rect(margin, y, usable, headerH).fill(PDF_COLORS.tableHeader);
-    doc.restore();
-
-    doc.font("Helvetica-Bold").fontSize(10).fillColor("#ffffff");
-    doc.text("Semana", x.semana + 4, y + 9, { width: cols.semana - 8, align: "center" });
-    doc.text("Período (serviço)", x.periodo + 4, y + 9, { width: cols.periodo - 8, align: "center" });
-    doc.text("Turno noturno\n(19h–05h)", x.noturno + 4, y + 4, { width: cols.noturno - 8, align: "center" });
-    doc.text("Turno diurno\n(07h–17h)", x.diurno + 4, y + 4, { width: cols.diurno - 8, align: "center" });
-    doc.text("Apoio operacional\n(diurno)", x.apoio + 4, y + 4, { width: cols.apoio - 8, align: "center" });
-
-    doc.y = y + headerH;
-  };
-
-  drawHeaderRow();
-
-  if (!rows.length) {
-    ensureSpace(baseH);
-    const y = doc.y;
-    doc.rect(margin, y, usable, baseH).stroke(PDF_COLORS.line);
-    doc.font("Helvetica").fontSize(10).fillColor(PDF_COLORS.muted)
-      .text("Nenhum registro encontrado para o período selecionado.", margin + 6, y + 7, {
-        width: usable - 12,
-        align: "center",
-      });
-    doc.y = y + baseH + 8;
-    return;
-  }
-
-  doc.font("Helvetica").fontSize(10).fillColor(PDF_COLORS.text);
-
-  rows.forEach((r, idx) => {
-    const h1 = doc.heightOfString(r.periodo, { width: cols.periodo - 8 });
-    const h2 = doc.heightOfString(r.noturno, { width: cols.noturno - 8 });
-    const h3 = doc.heightOfString(r.diurno, { width: cols.diurno - 8 });
-    const h4 = doc.heightOfString(r.apoio, { width: cols.apoio - 8 });
-    const rowH = Math.max(baseH, Math.ceil(Math.max(h1, h2, h3, h4)) + 10);
-
-    if (doc.y + rowH > doc.page.height - 46) {
-      doc.addPage();
-      drawHeaderRow();
-    }
-
-    const y = doc.y;
-
-    // fundo alternado leve
-    if (idx % 2 === 1) {
-      doc.save();
-      doc.rect(margin, y, usable, rowH).fill("#f8fafc");
-      doc.restore();
-    }
-
-    doc.rect(margin, y, usable, rowH).stroke(PDF_COLORS.line);
-    doc.moveTo(x.periodo, y).lineTo(x.periodo, y + rowH).stroke(PDF_COLORS.line);
-    doc.moveTo(x.noturno, y).lineTo(x.noturno, y + rowH).stroke(PDF_COLORS.line);
-    doc.moveTo(x.diurno, y).lineTo(x.diurno, y + rowH).stroke(PDF_COLORS.line);
-    doc.moveTo(x.apoio, y).lineTo(x.apoio, y + rowH).stroke(PDF_COLORS.line);
-
-    doc.text(String(r.semana), x.semana + 4, y + 6, { width: cols.semana - 8, align: "center" });
-    doc.text(r.periodo, x.periodo + 4, y + 6, { width: cols.periodo - 8, align: "center" });
-    doc.text(r.noturno, x.noturno + 4, y + 6, { width: cols.noturno - 8, align: "center" });
-    doc.text(r.diurno, x.diurno + 4, y + 6, { width: cols.diurno - 8, align: "center" });
-    doc.text(r.apoio, x.apoio + 4, y + 6, { width: cols.apoio - 8, align: "center" });
-
-    doc.y = y + rowH;
-  });
-
-  doc.moveDown(0.8);
-}
-
-function drawPdfFooter(doc) {
-  const year = new Date().getFullYear();
-  doc.font("Helvetica").fontSize(9).fillColor(PDF_COLORS.muted)
-    .text(`Campo do Gado – Manutenção Industrial • ${year}`, doc.page.margins.left, doc.page.height - 28, {
-      width: doc.page.width - doc.page.margins.left * 2,
-      align: "center",
-    });
-}
-
-function renderEscalaPdf({ res, fileName, subtitulo, periodoLabel, rows }) {
-  const doc = new PDFDocument({ size: "A4", margin: 32 });
-
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `inline; filename=${fileName}`);
-  doc.pipe(res);
-
-  drawPdfHeader(doc, subtitulo, periodoLabel);
-  drawEscalaTable(doc, rows);
-  drawPdfFooter(doc);
-
-  doc.end();
-}
-
-function makeRowFromSemana(semana) {
-  const agg = aggregateSemanaTurnos(semana.id);
-  return {
-    semana: semana.semana_numero,
-    periodo: `${formatDateBr(semana.data_inicio)} até ${formatDateBr(semana.data_fim)}`,
-    noturno: agg.noturno,
-    diurno: agg.diurno,
-    apoio: agg.apoio,
-  };
 }
 
 exports.index = (req, res, next) => {
@@ -411,12 +210,22 @@ exports.pdfSemana = (req, res, next) => {
 
     const row = makeRowFromSemana(semana);
 
-    renderEscalaPdf({
-      res,
-      fileName: `escala-semana-${semana.semana_numero}.pdf`,
-      subtitulo: "Escala Semanal",
-      periodoLabel: `Período: ${formatDateBr(semana.data_inicio)} a ${formatDateBr(semana.data_fim)}`,
-      rows: [row],
+    doc.pipe(res);
+
+    doc.fontSize(16).text("CAMPO DO GADO - ESCALA SEMANAL", { align: "center" });
+    doc.moveDown(0.6);
+    doc.fontSize(11).text(`Semana: ${semana.semana_numero}`);
+    doc.text(`Período: ${semana.data_inicio} até ${semana.data_fim}`);
+    doc.text("Setor: Manutenção");
+    doc.moveDown(0.8);
+
+    const linhas = service.getLinhasSemanaComStatus(semanaId);
+
+    doc.fontSize(12).text("Colaboradores da Semana", { underline: true });
+    doc.moveDown(0.4);
+
+    linhas.forEach((l) => {
+      doc.fontSize(11).text(`${l.nome}  |  ${l.turnoLabel}  |  ${l.funcaoLabel}  |  ${l.statusLabel}`);
     });
   } catch (e) {
     next(e);
@@ -442,16 +251,37 @@ exports.pdfPeriodo = (req, res, next) => {
       return res.redirect(`/escala?date=${dateRef}`);
     }
 
-    const semanas = service.getSemanasNoPeriodo(start, end);
-    const rows = semanas.map((s) => makeRowFromSemana(s));
+    const linhas = service.getLinhasPeriodo(start, end);
 
-    renderEscalaPdf({
-      res,
-      fileName: `escala-${start}-ate-${end}.pdf`,
-      subtitulo: "Escala por Período",
-      periodoLabel: `Período: ${formatDateBr(start)} a ${formatDateBr(end)}`,
-      rows,
-    });
+    const doc = new PDFDocument({ margin: 36 });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=escala-${start}-ate-${end}.pdf`);
+    doc.pipe(res);
+
+    doc.fontSize(16).text("Escala – Período", { align: "center" });
+    doc.moveDown(0.4);
+    doc.fontSize(11).text(`Período: ${start} até ${end}`);
+    doc.text("Setor: Manutenção");
+    doc.moveDown(0.8);
+
+    if (!linhas.length) {
+      doc.fontSize(11).text("Nenhum registro encontrado para o período informado.");
+    } else {
+      doc.fontSize(11).text("Data | Colaborador | Turno | Função | Status", { underline: true });
+      doc.moveDown(0.3);
+
+      linhas.forEach((l) => {
+        if (doc.y > 760) doc.addPage();
+        doc.fontSize(10).text(
+          `${l.data_inicio} a ${l.data_fim} | ${l.nome} | ${l.turnoLabel} | ${l.funcaoLabel} | ${l.statusLabel}`
+        );
+      });
+    }
+
+    doc.moveDown(1);
+    doc.fontSize(9).text(`Gerado em: ${new Date().toISOString()}`, { align: "right" });
+
+    doc.end();
   } catch (e) {
     next(e);
   }
