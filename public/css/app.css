@@ -47,7 +47,6 @@ a{ color:inherit; }
 }
 
 .brand{ display:flex; align-items:center; gap:12px; padding:8px 8px 14px; }
-.brand-only-text{ justify-content:center; text-align:center; padding-top:2px; }
 .brand-logo{
   width:44px;
   height:44px;
