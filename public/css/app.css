@@ -1,7 +1,7 @@
 /* public/css/app.css */
 :root{
-  --green-900:#0a5a3f;
-  --green-800:#0e6a45;
+  --green-900:#16a34a;
+  --green-800:#15803d;
   --green-700:#138a5f;
   --green-100:#e7f5ee;
 
@@ -47,19 +47,18 @@ a{ color:inherit; }
 }
 
 .brand{ display:flex; align-items:center; gap:12px; padding:8px 8px 14px; }
-.brand-badge{
-  width:40px;
-  height:40px;
-  border-radius:14px;
-  background:rgba(255,255,255,.15);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:900;
-  letter-spacing:.02em;
+.brand-only-text{ justify-content:center; text-align:center; padding-top:2px; }
+.sidebar .brand img{ display:none !important; }
+.brand-logo{
+  width:44px;
+  height:44px;
+  border-radius:12px;
+  object-fit:cover;
+  background:rgba(255,255,255,.12);
+  padding:4px;
 }
 .brand-title{ font-weight:900; font-size:16px; }
-.brand-sub{ font-size:12px; opacity:.85; margin-top:2px; }
+.brand-sub{ font-size:12px; opacity:.95; margin-top:2px; font-weight:800; letter-spacing:.02em; }
 
 .nav{ display:flex; flex-direction:column; gap:10px; }
 .nav-item{
@@ -96,6 +95,26 @@ a{ color:inherit; }
 .topbar-left{ display:flex; align-items:center; gap:10px; }
 .topbar-title{ font-weight:900; font-size:18px; }
 .topbar-sub{ color:var(--muted); font-size:12px; margin-top:2px; }
+
+.brand-topbar{ padding:0; gap:14px; }
+.brand-dot{ display:none; }
+.brand-subtitle{ color:var(--muted); font-size:12px; margin-top:2px; }
+.topbar-logos{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-left:6px;
+}
+.topbar-logo{
+  width:34px;
+  height:34px;
+  object-fit:contain;
+  border-radius:8px;
+  background:#fff;
+  border:1px solid var(--border);
+  padding:4px;
+}
+.topbar-logo-symbol{ padding:2px; }
 
 .topbar-right{ display:flex; align-items:center; gap:10px; }
 .topbar-right form{ margin:0; }
@@ -269,6 +288,9 @@ textarea{ min-height:110px; resize:vertical; }
   .app.mobile-sidebar-open .sidebar{ transform:translateX(0); }
   .topbar{ padding:12px 14px; }
   .topbar-right{ gap:6px; }
+  .brand-topbar{ gap:8px; }
+  .topbar-logos{ gap:6px; margin-left:2px; }
+  .topbar-logo{ width:28px; height:28px; padding:3px; }
   .content{ padding:14px; }
   .flash{ padding:8px 14px 0; }
   .footer{ padding:10px 14px; }
