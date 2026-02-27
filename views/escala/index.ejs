@@ -10,9 +10,9 @@
 
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
     <% if (semana) { %>
-      <a class="btn btn-primary" href="/escala/pdf/semana?date=<%= alvo %>" target="_blank" rel="noopener">Gerar PDF da Semana</a>
+      <a class="btn btn-primary" href="/escala/pdf/semana/<%= semana.id %>">Gerar PDF da Semana</a>
     <% } %>
-    <form method="GET" action="/escala/pdf/periodo" target="_blank" rel="noopener" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <form method="GET" action="/escala/pdf" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <input class="input" type="date" name="start" value="<%= pdfStart %>" required style="height:38px;">
       <input class="input" type="date" name="end" value="<%= pdfEnd %>" required style="height:38px;">
       <button class="btn btn-green" type="submit">Gerar PDF por Período</button>

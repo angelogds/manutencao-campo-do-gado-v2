@@ -57,7 +57,7 @@ function findSemanaByDate(dateISO) {
   `).get(dateISO);
 }
 
-// ---------- publicações ----------
+// ---------- publicações (tabela já existe pela 063) ----------
 function getPublicacoes() {
   try {
     return db.prepare(`
@@ -316,61 +316,6 @@ function getSemanasNoPeriodo(start, end) {
   `).all(start, end);
 }
 
-function initTurnoFuncaoBucket() {
-  return {
-    mecanico: [],
-    auxiliar: [],
-    operacional: [],
-  };
-}
-
-function funcaoBucket(funcao) {
-  const f = normalizeFuncao(funcao);
-  if (f === "mecanico") return "mecanico";
-  if (f === "auxiliar") return "auxiliar";
-  return "operacional";
-}
-
-function getEscalaPorPeriodo(start, end) {
-  const semanas = getSemanasNoPeriodo(start, end);
-
-  return semanas.map((semana) => {
-    const linhas = getLinhasSemanaComStatus(semana.id);
-    const turnos = {
-      noturno: initTurnoFuncaoBucket(),
-      diurno: initTurnoFuncaoBucket(),
-      apoio: initTurnoFuncaoBucket(),
-    };
-
-    for (const l of linhas) {
-      const t = String(l.tipo_turno || "").toLowerCase();
-      const turno = t === "noturno" ? "noturno" : (t === "diurno" ? "diurno" : "apoio");
-      const bucket = funcaoBucket(l.funcao);
-      turnos[turno][bucket].push(l.nome);
-    }
-
-    const sortNames = (arr) => arr.sort((a, b) => a.localeCompare(b, "pt-BR"));
-    sortNames(turnos.noturno.mecanico);
-    sortNames(turnos.noturno.auxiliar);
-    sortNames(turnos.noturno.operacional);
-    sortNames(turnos.diurno.mecanico);
-    sortNames(turnos.diurno.auxiliar);
-    sortNames(turnos.diurno.operacional);
-    sortNames(turnos.apoio.mecanico);
-    sortNames(turnos.apoio.auxiliar);
-    sortNames(turnos.apoio.operacional);
-
-    return {
-      semanaId: semana.id,
-      semanaNumero: semana.semana_numero,
-      dataInicio: semana.data_inicio,
-      dataFim: semana.data_fim,
-      periodo: `${semana.data_inicio} até ${semana.data_fim}`,
-      turnos,
-    };
-  });
-}
-
 function getLinhasPeriodo(start, end) {
   const semanas = getSemanasNoPeriodo(start, end);
   const linhas = [];
@@ -409,7 +354,6 @@ module.exports = {
   getLinhasSemanaComStatus,
   getSemanasNoPeriodo,
   getLinhasPeriodo,
-  getEscalaPorPeriodo,
   normalizeTurno,
   normalizeFuncao,
 };
