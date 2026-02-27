@@ -1,5 +1,15 @@
+const fs = require("node:fs");
+const path = require("node:path");
 const service = require("./escala.service");
 const PDFDocument = require("pdfkit");
+
+const PDF_COLORS = {
+  green: "#15803d",
+  text: "#0f172a",
+  muted: "#475569",
+  line: "#cbd5e1",
+  light: "#f8fafc",
+};
 
 function isoToday() {
   return new Date().toISOString().slice(0, 10);
@@ -199,11 +209,6 @@ exports.pdfSemana = (req, res, next) => {
     linhas.forEach((l) => {
       doc.fontSize(11).text(`${l.nome}  |  ${l.turnoLabel}  |  ${l.funcaoLabel}  |  ${l.statusLabel}`);
     });
-
-    doc.moveDown(1);
-    doc.fontSize(9).text(`Gerado em: ${new Date().toISOString()}`, { align: "right" });
-
-    doc.end();
   } catch (e) {
     next(e);
   }

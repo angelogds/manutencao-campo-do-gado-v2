@@ -60,8 +60,11 @@ router.post("/editar/:id", requireLogin, requireRole(ACCESS.escala), safe(contro
 // GET /escala/pdf/semana/:id
 router.get("/pdf/semana/:id", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfSemana, "pdfSemana"));
 
-// PDF (período start/end)  ex: /escala/pdf?start=2026-01-10&end=2026-02-15
-// GET /escala/pdf
+// PDF por período (start/end)
+// GET /escala/pdf/periodo?start=2026-01-10&end=2026-02-15
+router.get("/pdf/periodo", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfPeriodo, "pdfPeriodo"));
+
+// Compatibilidade com rota anterior
 router.get("/pdf", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfPeriodo, "pdfPeriodo"));
 
 module.exports = router;
