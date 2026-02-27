@@ -5,6 +5,12 @@ function isoToday() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function daysInclusive(start, end) {
+  const s = new Date(`${start}T00:00:00Z`);
+  const e = new Date(`${end}T00:00:00Z`);
+  return Math.floor((e - s) / 86400000) + 1;
+}
+
 exports.index = (req, res, next) => {
   try {
     res.locals.activeMenu = "escala";
@@ -20,6 +26,8 @@ exports.index = (req, res, next) => {
       alvo,
       semana,
       publicacoes,
+      pdfStart: String(req.query?.start || semana?.data_inicio || alvo).slice(0, 10),
+      pdfEnd: String(req.query?.end || semana?.data_fim || alvo).slice(0, 10),
     });
   } catch (e) {
     next(e);
@@ -38,31 +46,49 @@ exports.completa = (req, res, next) => {
 
 exports.adicionarRapido = (req, res, next) => {
   try {
-    const date = String(req.body?.date || "").slice(0, 10) || isoToday();
+    const inicio = String(req.body?.inicio || "").slice(0, 10);
+    const fim = String(req.body?.fim || "").slice(0, 10);
     const nome = String(req.body?.nome || "").trim();
-    const turno = String(req.body?.turno || "").trim().toLowerCase(); // dia/noite/apoio
-    const setor = String(req.body?.setor || "Manutenção").trim();
+    const turno = service.normalizeTurno(req.body?.turno);
+    const funcao = service.normalizeFuncao(req.body?.funcao);
+    const dateRef = inicio || String(req.body?.date || "").slice(0, 10) || isoToday();
 
+    if (!inicio || !fim) {
+      req.flash("error", "Preencha início e fim do período.");
+      return res.redirect(`/escala?date=${dateRef}`);
+    }
+    if (fim < inicio) {
+      req.flash("error", "Data final não pode ser menor que data inicial.");
+      return res.redirect(`/escala?date=${inicio}`);
+    }
     if (!nome) {
       req.flash("error", "Informe o nome do colaborador.");
-      return res.redirect(`/escala?date=${date}`);
+      return res.redirect(`/escala?date=${inicio}`);
+    }
+    if (!turno) {
+      req.flash("error", "Turno inválido. Use Dia, Noite, Apoio ou Plantão.");
+      return res.redirect(`/escala?date=${inicio}`);
+    }
+    if (!funcao) {
+      req.flash("error", "Função inválida. Use Mecânico ou Auxiliar.");
+      return res.redirect(`/escala?date=${inicio}`);
     }
 
-    const tipo_turno =
-      turno === "noite" ? "noturno" :
-      turno === "dia" ? "diurno" :
-      turno === "apoio" ? "apoio" :
-      "";
+    const resultado = service.adicionarRapidoPeriodo({
+      inicio,
+      fim,
+      nome,
+      tipo_turno: turno,
+      funcao,
+    });
 
-    if (!tipo_turno) {
-      req.flash("error", "Turno inválido. Use: Dia, Noite ou Apoio.");
-      return res.redirect(`/escala?date=${date}`);
+    let msg = `Período salvo com sucesso (${resultado.semanasAfetadas} semana(s): ${resultado.inserted} inserção(ões), ${resultado.updated} atualização(ões), ${resultado.ignored} sem alterações).`;
+    if (resultado.diasSemSemana > 0) {
+      msg += ` ${resultado.diasSemSemana} dia(s) do período não possuem semana cadastrada e foram ignorados.`;
     }
 
-    service.adicionarRapido({ date, nome, tipo_turno, setor });
-
-    req.flash("success", "Adicionado com sucesso na semana do sistema.");
-    return res.redirect(`/escala?date=${date}`);
+    req.flash("success", msg);
+    return res.redirect(`/escala?date=${inicio}`);
   } catch (e) {
     next(e);
   }
@@ -72,7 +98,7 @@ exports.lancarAusencia = (req, res, next) => {
   try {
     const date = String(req.body?.date || "").slice(0, 10) || isoToday();
     const nome = String(req.body?.nome || "").trim();
-    const tipo = String(req.body?.tipo || "").trim().toLowerCase(); // folga | atestado
+    const tipo = String(req.body?.tipo || "").trim().toLowerCase();
     const inicio = String(req.body?.inicio || "").slice(0, 10);
     const fim = String(req.body?.fim || "").slice(0, 10);
     const motivo = String(req.body?.motivo || "").trim();
@@ -162,7 +188,7 @@ exports.pdfSemana = (req, res, next) => {
     doc.moveDown(0.6);
     doc.fontSize(11).text(`Semana: ${semana.semana_numero}`);
     doc.text(`Período: ${semana.data_inicio} até ${semana.data_fim}`);
-    doc.text(`Setor: Manutenção`);
+    doc.text("Setor: Manutenção");
     doc.moveDown(0.8);
 
     const linhas = service.getLinhasSemanaComStatus(semanaId);
@@ -171,7 +197,7 @@ exports.pdfSemana = (req, res, next) => {
     doc.moveDown(0.4);
 
     linhas.forEach((l) => {
-      doc.fontSize(11).text(`${l.nome}  |  ${l.turnoLabel}  |  ${l.setor}  |  ${l.statusLabel}`);
+      doc.fontSize(11).text(`${l.nome}  |  ${l.turnoLabel}  |  ${l.funcaoLabel}  |  ${l.statusLabel}`);
     });
 
     doc.moveDown(1);
@@ -187,32 +213,50 @@ exports.pdfPeriodo = (req, res, next) => {
   try {
     const start = String(req.query?.start || "").slice(0, 10);
     const end = String(req.query?.end || "").slice(0, 10);
+    const dateRef = start || isoToday();
 
     if (!start || !end) {
-      return res.status(400).send("Informe start e end (YYYY-MM-DD).");
+      req.flash("error", "Informe início e fim para gerar o PDF por período.");
+      return res.redirect(`/escala?date=${dateRef}`);
     }
-    if (start > end) return res.status(400).send("start não pode ser maior que end.");
+    if (start > end) {
+      req.flash("error", "A data final do PDF não pode ser menor que a inicial.");
+      return res.redirect(`/escala?date=${dateRef}`);
+    }
+    if (daysInclusive(start, end) > 365) {
+      req.flash("error", "O PDF por período permite no máximo 365 dias.");
+      return res.redirect(`/escala?date=${dateRef}`);
+    }
 
-    const semanas = service.getSemanasNoPeriodo(start, end);
+    const linhas = service.getLinhasPeriodo(start, end);
 
     const doc = new PDFDocument({ margin: 36 });
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename=escala-${start}-ate-${end}.pdf`);
     doc.pipe(res);
 
-    doc.fontSize(16).text("CAMPO DO GADO - ESCALA POR PERÍODO", { align: "center" });
-    doc.moveDown(0.6);
-    doc.fontSize(11).text(`Período solicitado: ${start} até ${end}`);
+    doc.fontSize(16).text("Escala – Período", { align: "center" });
+    doc.moveDown(0.4);
+    doc.fontSize(11).text(`Período: ${start} até ${end}`);
     doc.text("Setor: Manutenção");
     doc.moveDown(0.8);
 
-    semanas.forEach((semana) => {
-      doc.fontSize(12).text(`Semana ${semana.semana_numero} (${semana.data_inicio} a ${semana.data_fim})`, { underline: true });
-      const linhas = service.getLinhasSemanaComStatus(semana.id);
-      doc.moveDown(0.2);
-      linhas.forEach((l) => doc.fontSize(10).text(`- ${l.nome} | ${l.turnoLabel} | ${l.statusLabel}`));
-      doc.moveDown(0.6);
-    });
+    if (!linhas.length) {
+      doc.fontSize(11).text("Nenhum registro encontrado para o período informado.");
+    } else {
+      doc.fontSize(11).text("Data | Colaborador | Turno | Função | Status", { underline: true });
+      doc.moveDown(0.3);
+
+      linhas.forEach((l) => {
+        if (doc.y > 760) doc.addPage();
+        doc.fontSize(10).text(
+          `${l.data_inicio} a ${l.data_fim} | ${l.nome} | ${l.turnoLabel} | ${l.funcaoLabel} | ${l.statusLabel}`
+        );
+      });
+    }
+
+    doc.moveDown(1);
+    doc.fontSize(9).text(`Gerado em: ${new Date().toISOString()}`, { align: "right" });
 
     doc.end();
   } catch (e) {
