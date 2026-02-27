@@ -1,7 +1,7 @@
 /* public/css/app.css */
 :root{
-  --green-900:#0a5a3f;
-  --green-800:#0e6a45;
+  --green-900:#16a34a;
+  --green-800:#15803d;
   --green-700:#138a5f;
   --green-100:#e7f5ee;
 
@@ -47,19 +47,16 @@ a{ color:inherit; }
 }
 
 .brand{ display:flex; align-items:center; gap:12px; padding:8px 8px 14px; }
-.brand-badge{
-  width:40px;
-  height:40px;
-  border-radius:14px;
-  background:rgba(255,255,255,.15);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:900;
-  letter-spacing:.02em;
+.brand-logo{
+  width:44px;
+  height:44px;
+  border-radius:12px;
+  object-fit:cover;
+  background:rgba(255,255,255,.12);
+  padding:4px;
 }
 .brand-title{ font-weight:900; font-size:16px; }
-.brand-sub{ font-size:12px; opacity:.85; margin-top:2px; }
+.brand-sub{ font-size:12px; opacity:.95; margin-top:2px; font-weight:800; letter-spacing:.02em; }
 
 .nav{ display:flex; flex-direction:column; gap:10px; }
 .nav-item{
