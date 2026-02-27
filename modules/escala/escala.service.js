@@ -92,7 +92,6 @@ function getSemanaPorData(dateISO) {
   };
 }
 
-// lista “linhas” da semana (um por colaborador) + status (folga/atestado)
 function getLinhasSemanaComStatus(semanaId) {
   const semana = db.prepare(`
     SELECT id, data_inicio, data_fim
@@ -151,7 +150,6 @@ function getLinhasSemanaComStatus(semanaId) {
   });
 }
 
-// ---------- semana por id ----------
 function getSemanaById(id) {
   const semana = db.prepare(`
     SELECT id, semana_numero, data_inicio, data_fim
@@ -173,7 +171,6 @@ function getSemanaById(id) {
   return { ...semana, alocacoes };
 }
 
-// ---------- editar turno ----------
 function atualizarTurno(alocacaoId, tipo_turno) {
   db.prepare(`
     UPDATE escala_alocacoes
@@ -182,7 +179,6 @@ function atualizarTurno(alocacaoId, tipo_turno) {
   `).run(tipo_turno, alocacaoId);
 }
 
-// ---------- escala completa ----------
 function getEscalaCompletaComTimes() {
   const semanas = db.prepare(`
     SELECT s.id, s.semana_numero, s.data_inicio, s.data_fim
@@ -301,7 +297,6 @@ function adicionarRapidoPeriodo({ inicio, fim, nome, tipo_turno, funcao }) {
   };
 }
 
-// ---------- ausências ----------
 function lancarAusencia({ nome, tipo, inicio, fim, motivo }) {
   const colabId = ensureColaborador(nome);
   if (!colabId) throw new Error("Colaborador inválido.");
@@ -312,7 +307,6 @@ function lancarAusencia({ nome, tipo, inicio, fim, motivo }) {
   `).run(colabId, tipo, inicio, fim, motivo || null);
 }
 
-// ---------- semanas no período ----------
 function getSemanasNoPeriodo(start, end) {
   return db.prepare(`
     SELECT id, semana_numero, data_inicio, data_fim
