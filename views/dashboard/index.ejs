@@ -1,25 +1,24 @@
 <% layout('layout') %>
 
 <style>
-  .tv-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-    grid-template-areas:
-      "os mural"
-      "preventivas quick"
-      "andamento escala"
-      "demandas escala";
-    gap: 10px;
-    align-items: start;
+  .dash-grid {
+    display:grid;
+    grid-template-columns:minmax(0, 2fr) minmax(0, 1fr);
+    gap:16px;
+    align-items:start;
   }
 
-  .area-os { grid-area: os; }
-  .area-mural { grid-area: mural; }
-  .area-preventivas { grid-area: preventivas; }
-  .area-escala { grid-area: escala; }
-  .area-andamento { grid-area: andamento; }
-  .area-demandas { grid-area: demandas; }
-  .area-quick { grid-area: quick; }
+  .dash-col {
+    display:flex;
+    flex-direction:column;
+    gap:16px;
+    min-width:0;
+  }
+
+  .dash-col .dashboard-card {
+    height:auto;
+    min-height:unset;
+  }
 
   .dashboard-card { background:#fff; border:1px solid #e5e7eb; border-radius:14px; padding:12px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
   .dashboard-title { font-size:13px; font-weight:900; letter-spacing:.04em; color:#475569; text-transform:uppercase; margin-bottom:10px; }
@@ -66,7 +65,8 @@
   .os-row-leve { background:#f8fafc; }
 
   @media (max-width: 1200px) {
-    .tv-grid { grid-template-columns: 1fr; grid-template-areas: "os" "mural" "preventivas" "andamento" "escala" "demandas" "quick"; }
+    .dash-grid { grid-template-columns: 1fr; }
+    .dash-col { gap: 16px; }
     .alerta-tv__title { font-size:22px; }
   }
 
@@ -89,6 +89,7 @@
   var escalaDiurno = (safeEscala.diurno_mecanicos || []).map(function(p) { return p.nome; }).join(', ');
   var escalaApoio = (safeEscala.apoio_operacional || []).map(function(p) { return p.nome; }).join(', ');
   var escalaNoturno = (safeEscala.noturno || []).map(function(p) { return p.nome; }).join(', ');
+  var escalaFolgasAfastamentos = safeEscala.folgas_afastamentos || [];
   var safeMotoresResumo = motoresResumo || {};
   var alertaInicial = alertaAtivo || null;
 %>
@@ -118,8 +119,9 @@
 </section>
 
 
-<div class="tv-grid">
-  <section class="dashboard-card area-os">
+<div class="dash-grid">
+  <div class="dash-col">
+<section class="dashboard-card area-os">
     <div class="dashboard-title">Ordem de Serviço</div>
     <div class="kpi-grid">
       <div class="kpi-box"><div class="kpi-label">Abertas</div><div class="kpi-value"><%= safeOSResumo.abertas || 0 %></div></div>
@@ -167,13 +169,7 @@
     </div>
   </section>
 
-  <section class="dashboard-card area-mural">
-    <div class="dashboard-title">Mural</div>
-    <% if (safeAvisos.length === 0) { %><p class="muted" style="margin:0;">Sem avisos publicados.</p><% } %>
-    <% safeAvisos.slice(0, 8).forEach(function(a) { %><div class="aviso-item"><div style="font-weight:800;"><%= a.titulo %></div><div class="muted" style="margin-top:3px;"><%= a.mensagem %></div></div><% }) %>
-  </section>
-
-  <section class="dashboard-card area-preventivas">
+<section class="dashboard-card area-preventivas">
     <div class="dashboard-title">Preventivas Programadas</div>
     <% if (!preventivas || preventivas.length === 0) { %><p class="muted" style="margin:0;">Nenhuma preventiva pendente.</p><% } else { %>
       <div class="table-wrap"><table class="table compact"><thead><tr><th>Equipamento</th><th>Resp.</th><th>Data</th><th>Status</th><th>Obs</th></tr></thead><tbody>
@@ -182,19 +178,28 @@
     <% } %>
   </section>
 
-  <section class="dashboard-card area-escala">
-    <div class="dashboard-title">Escala da Semana</div>
-    <% if (escalaDiurno || escalaApoio || escalaNoturno) { %>
-      <div class="muted-xs" style="margin-bottom:8px;">Semana #<%= safeEscala.semana_numero || '-' %> • <%= safeEscala.data_inicio || '-' %> até <%= safeEscala.data_fim || '-' %></div>
-      <table class="table compact"><tbody>
-        <tr><td><strong>Dia (mecânicos)</strong></td><td><%= escalaDiurno || '-' %></td></tr>
-        <tr><td><strong>Apoio operacional</strong></td><td><%= escalaApoio || '-' %></td></tr>
-        <tr><td><strong>Noite (responsável)</strong></td><td><%= escalaNoturno || '-' %></td></tr>
-      </tbody></table>
-    <% } else { %><p class="muted" style="margin:0;">Escala não disponível.</p><% } %>
+<section class="dashboard-card area-mural">
+    <div class="dashboard-title">Mural</div>
+    <% if (safeAvisos.length === 0) { %><p class="muted" style="margin:0;">Sem avisos publicados.</p><% } %>
+    <% safeAvisos.slice(0, 8).forEach(function(a) { %><div class="aviso-item"><div style="font-weight:800;"><%= a.titulo %></div><div class="muted" style="margin-top:3px;"><%= a.mensagem %></div></div><% }) %>
   </section>
 
-  <section class="dashboard-card area-andamento">
+<section class="dashboard-card area-demandas">
+    <div class="dashboard-title">Demandas</div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+      <span class="pill-tag pill-blue">Novas: <%= safeDemandasResumo.novas || 0 %></span>
+      <span class="pill-tag pill-amber">Em andamento: <%= safeDemandasResumo.em_andamento || 0 %></span>
+      <span class="pill-tag pill-gray">Paradas: <%= safeDemandasResumo.paradas || 0 %></span>
+    </div>
+    <ul class="list-tight">
+      <% if (demandasEmTrabalho.length === 0) { %><li class="muted-xs">Nenhuma demanda em andamento.</li><% } %>
+      <% demandasEmTrabalho.slice(0, 4).forEach(function(d) { %><li><a href="/demandas/<%= d.id %>">#<%= d.id %> - <%= d.titulo %></a></li><% }) %>
+    </ul>
+  </section>
+  </div>
+
+  <div class="dash-col">
+<section class="dashboard-card area-andamento">
     <div class="dashboard-title">OS em andamento (por mecânico)</div>
     <div class="table-wrap"><table class="table compact">
       <thead><tr><th>OS</th><th>Equipamento</th><th>Mecânico</th></tr></thead>
@@ -211,22 +216,39 @@
     </table></div>
   </section>
 
-  <section class="dashboard-card area-demandas">
-    <div class="dashboard-title">Demandas</div>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-      <span class="pill-tag pill-blue">Novas: <%= safeDemandasResumo.novas || 0 %></span>
-      <span class="pill-tag pill-amber">Em andamento: <%= safeDemandasResumo.em_andamento || 0 %></span>
-      <span class="pill-tag pill-gray">Paradas: <%= safeDemandasResumo.paradas || 0 %></span>
-    </div>
-    <ul class="list-tight">
-      <% if (demandasEmTrabalho.length === 0) { %><li class="muted-xs">Nenhuma demanda em andamento.</li><% } %>
-      <% demandasEmTrabalho.slice(0, 4).forEach(function(d) { %><li><a href="/demandas/<%= d.id %>">#<%= d.id %> - <%= d.titulo %></a></li><% }) %>
-    </ul>
+<section class="dashboard-card area-escala">
+    <div class="dashboard-title">Escala da Semana</div>
+    <% if (escalaDiurno || escalaApoio || escalaNoturno || escalaFolgasAfastamentos.length) { %>
+      <div class="muted-xs" style="margin-bottom:8px;">Semana #<%= safeEscala.semana_numero || '-' %> • <%= safeEscala.data_inicio || '-' %> até <%= safeEscala.data_fim || '-' %></div>
+      <table class="table compact"><tbody>
+        <tr><td><strong>Dia (mecânicos)</strong></td><td><%= escalaDiurno || '-' %></td></tr>
+        <tr><td><strong>Apoio operacional</strong></td><td><%= escalaApoio || '-' %></td></tr>
+        <tr><td><strong>Noite (responsável)</strong></td><td><%= escalaNoturno || '-' %></td></tr>
+      </tbody></table>
+
+      <div class="dashboard-title" style="margin-top:10px; margin-bottom:6px; font-size:11px;">Folga / atestado</div>
+      <% if (escalaFolgasAfastamentos.length === 0) { %>
+        <p class="muted-xs" style="margin:0;">Sem mecânicos em folga/atestado nesta semana.</p>
+      <% } else { %>
+        <ul class="list-tight" style="margin-top:0;">
+          <% escalaFolgasAfastamentos.forEach(function(item) { %>
+            <li>
+              <strong><%= item.nome || '-' %></strong>
+              — <%= item.tipo || '-' %>
+              <% if (item.data_inicio || item.data_fim) { %>
+                (<%= item.data_inicio || '-' %> até <%= item.data_fim || '-' %>)
+              <% } %>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    <% } else { %><p class="muted" style="margin:0;">Escala não disponível.</p><% } %>
   </section>
 
-  <section class="area-quick">
+<section class="area-quick">
     <div class="dashboard-card"><div class="dashboard-title">Motores</div><div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"><span class="pill-tag pill-green">Funcionando: <%= safeMotoresResumo.em_funcionamento || 0 %></span><span class="pill-tag pill-blue">Estoque: <%= safeMotoresResumo.em_estoque || 0 %></span><span class="pill-tag pill-amber">Conserto: <%= safeMotoresResumo.em_conserto || 0 %></span></div></div>
   </section>
+  </div>
 </div>
 
 <script>
