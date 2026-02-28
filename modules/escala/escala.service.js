@@ -1,5 +1,15 @@
 const db = require("../../database/db");
 
+
+function tableExists(tableName) {
+  try {
+    const row = db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name=?`).get(tableName);
+    return !!row;
+  } catch (_e) {
+    return false;
+  }
+}
+
 function isoToday() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -483,15 +493,19 @@ function getEscalaSemanalPdfData() {
 }
 
 function getPeriodoCompensacaoData(start, end) {
-  const linhas = getLinhasPeriodo(start, end);
+  const inicio = toDateOnly(start);
+  const fim = toDateOnly(end);
+  const usePeriodo = Boolean(inicio && fim);
 
-  const ausencias = db.prepare(`
-    SELECT x.data_inicio, x.data_fim, x.tipo, x.motivo, c.nome AS colaborador
-    FROM escala_ausencias x
-    JOIN colaboradores c ON c.id = x.colaborador_id
-    WHERE NOT (x.data_fim < ? OR x.data_inicio > ?)
-    ORDER BY x.data_inicio ASC, c.nome ASC
-  `).all(start, end);
+  if (!tableExists("escala_compensacoes") || !tableExists("escala_concessoes")) {
+    return {
+      periodoTexto: usePeriodo ? `${inicio} até ${fim}` : 'Todos os registros cadastrados',
+      baseServicos: [],
+      apuracao: [],
+      registros: [],
+      descricoes: [],
+    };
+  }
 
   const baseServicos = linhas.map((l) => ({
     data: l.data_inicio,
