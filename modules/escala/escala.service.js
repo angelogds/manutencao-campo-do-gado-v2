@@ -524,6 +524,7 @@ function getPeriodoCompensacaoData(start, end) {
   });
 
   return {
+    periodoTexto: usePeriodo ? `${inicio} até ${fim}` : 'Todos os registros cadastrados',
     baseServicos,
     registros,
   };

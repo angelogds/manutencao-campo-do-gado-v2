@@ -30,8 +30,6 @@ exports.index = (req, res, next) => {
       alvo,
       semana,
       publicacoes,
-      pdfStart: String(req.query?.start || semana?.data_inicio || alvo).slice(0, 10),
-      pdfEnd: String(req.query?.end || semana?.data_fim || alvo).slice(0, 10),
     });
   } catch (e) {
     next(e);
@@ -279,20 +277,20 @@ exports.pdfSemanaById = (req, res, next) => {
 
 exports.pdfPeriodo = (req, res, next) => {
   try {
-    const start = String(req.query?.start || "").slice(0, 10);
-    const end = String(req.query?.end || "").slice(0, 10);
+    const start = String(req.query?.start || '').slice(0, 10);
+    const end = String(req.query?.end || '').slice(0, 10);
 
-    if (!start || !end || !isValidDateISO(start) || !isValidDateISO(end) || end < start) {
+    if ((start && !isValidDateISO(start)) || (end && !isValidDateISO(end))) {
       return res.status(400).json({
         ok: false,
-        message: "Parâmetros inválidos. Use /escala/pdf/periodo?start=YYYY-MM-DD&end=YYYY-MM-DD com end >= start.",
+        message: 'Parâmetros inválidos. Datas devem estar no formato YYYY-MM-DD.',
       });
     }
 
-    if (daysInclusive(start, end) > 365) {
+    if (start && end && end < start) {
       return res.status(400).json({
         ok: false,
-        message: "O período máximo permitido para o PDF é de 365 dias.",
+        message: 'Data final não pode ser menor que a inicial.',
       });
     }
 
