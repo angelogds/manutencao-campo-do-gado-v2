@@ -38,6 +38,31 @@ function funcaoLabel(funcao) {
   return String(funcao || "-");
 }
 
+
+function toDateOnly(value) {
+  return String(value || "").slice(0, 10);
+}
+
+function parseTimeToMinutes(hhmm) {
+  const [h, m] = String(hhmm || "").split(":").map((v) => Number(v));
+  if (!Number.isInteger(h) || !Number.isInteger(m)) return NaN;
+  return (h * 60) + m;
+}
+
+function calculateCompensacao(horaInicio, horaFim) {
+  const start = parseTimeToMinutes(horaInicio);
+  const end = parseTimeToMinutes(horaFim);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    throw new Error("Horário inválido para compensação.");
+  }
+
+  const minutos = end - start;
+  let concessao = "SEM_DIREITO";
+  if (minutos >= 240 && minutos < 480) concessao = "MEIA";
+  if (minutos >= 480) concessao = "INTEIRA";
+
+  return { minutos, concessao };
+}
 function eachDateInclusive(start, end, cb) {
   const cursor = new Date(`${start}T00:00:00Z`);
   const endDate = new Date(`${end}T00:00:00Z`);
@@ -118,20 +143,26 @@ function getLinhasSemanaComStatus(semanaId) {
   `).all(semanaId);
 
   const ausencias = db.prepare(`
-    SELECT x.id, x.colaborador_id, x.tipo, x.data_inicio, x.data_fim, x.motivo
+    SELECT x.colaborador_id, upper(x.tipo) AS tipo, x.data_inicio AS inicio, x.data_fim AS fim
     FROM escala_ausencias x
     WHERE NOT (x.data_fim < ? OR x.data_inicio > ?)
   `).all(semana.data_inicio, semana.data_fim);
 
+  const concessoes = db.prepare(`
+    SELECT c.colaborador_id, c.tipo, c.inicio, c.fim
+    FROM escala_concessoes c
+    WHERE NOT (c.fim < ? OR c.inicio > ?)
+  `).all(semana.data_inicio, semana.data_fim);
+
   const mapAus = new Map();
-  for (const a of ausencias) {
+  for (const a of [...ausencias, ...concessoes]) {
     if (!mapAus.has(a.colaborador_id)) mapAus.set(a.colaborador_id, a);
   }
 
   return alocs.map((a) => {
     const aus = mapAus.get(a.colaborador_id);
     const statusLabel = aus
-      ? (aus.tipo === "atestado" ? `Atestado (${aus.data_inicio} a ${aus.data_fim})` : `Folga (${aus.data_inicio} a ${aus.data_fim})`)
+      ? `${String(aus.tipo || '').toUpperCase()} (${aus.inicio} a ${aus.fim})`
       : "Trabalhando";
 
     return {
@@ -168,6 +199,12 @@ function getSemanaById(id) {
   `).all(id);
 
   return { ...semana, alocacoes };
+}
+
+
+function removerAlocacao(alocacaoId) {
+  const info = db.prepare(`DELETE FROM escala_alocacoes WHERE id=?`).run(Number(alocacaoId));
+  return info.changes > 0;
 }
 
 function atualizarTurno(alocacaoId, tipo_turno) {
@@ -252,14 +289,19 @@ function upsertAlocacaoSemana(semanaId, colabId, tipo_turno) {
 }
 
 function adicionarRapidoPeriodo({ inicio, fim, nome, tipo_turno, funcao }) {
-  const dataInicio = String(inicio || "").slice(0, 10);
-  const dataFim = String(fim || "").slice(0, 10);
+  const dataInicio = toDateOnly(inicio);
+  const dataFim = toDateOnly(fim);
 
   if (!dataInicio || !dataFim) throw new Error("Preencha início e fim.");
   if (dataInicio > dataFim) throw new Error("Data final não pode ser menor que data inicial.");
 
   const colabId = ensureColaborador(nome, funcao);
   if (!colabId) throw new Error("Colaborador inválido.");
+
+  db.prepare(`
+    INSERT INTO escala_entries (colaborador_id, funcao, turno, inicio, fim)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(colabId, normalizeFuncao(funcao) || "mecanico", normalizeTurno(tipo_turno), dataInicio, dataFim);
 
   const semanasAfetadas = new Set();
   let diasSemSemana = 0;
@@ -295,15 +337,73 @@ function adicionarRapidoPeriodo({ inicio, fim, nome, tipo_turno, funcao }) {
   };
 }
 
-function lancarAusencia({ nome, tipo, inicio, fim, motivo }) {
-  const colabId = ensureColaborador(nome);
+function lancarAusencia({
+  nome,
+  tipo,
+  inicio,
+  fim,
+  motivo,
+  dataServico,
+  horaInicio,
+  horaFim,
+  equipamento,
+  descricaoServico,
+  funcao,
+}) {
+  const colabId = ensureColaborador(nome, funcao || "mecanico");
   if (!colabId) throw new Error("Colaborador inválido.");
 
+  const tipoUpper = String(tipo || "").trim().toUpperCase();
+  const inicioIso = toDateOnly(inicio);
+  const fimIso = toDateOnly(fim);
+
+  if (!inicioIso || !fimIso || inicioIso > fimIso) {
+    throw new Error("Período inválido para concessão.");
+  }
+
+  let concessao = "NAO_APLICA";
+  let refCompensacaoId = null;
+
+  if (tipoUpper === "FOLGA" && dataServico && horaInicio && horaFim) {
+    const calculo = calculateCompensacao(horaInicio, horaFim);
+    concessao = calculo.concessao === "SEM_DIREITO" ? "MEIA" : calculo.concessao;
+
+    const info = db.prepare(`
+      INSERT INTO escala_compensacoes (
+        colaborador_id, funcao, data_servico, hora_inicio, hora_fim,
+        minutos_total, concessao_sugerida, equipamento, descricao_servico
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      colabId,
+      normalizeFuncao(funcao) || "mecanico",
+      toDateOnly(dataServico),
+      horaInicio,
+      horaFim,
+      calculo.minutos,
+      calculo.concessao,
+      equipamento || null,
+      descricaoServico || null,
+    );
+
+    refCompensacaoId = Number(info.lastInsertRowid);
+  } else if (tipoUpper === "FOLGA") {
+    concessao = "INTEIRA";
+  }
+
   db.prepare(`
-    INSERT INTO escala_ausencias (colaborador_id, tipo, data_inicio, data_fim, motivo)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(colabId, tipo, inicio, fim, motivo || null);
+    INSERT INTO escala_concessoes (colaborador_id, tipo, inicio, fim, concessao, motivo, ref_compensacao_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(colabId, tipoUpper, inicioIso, fimIso, concessao, motivo || null, refCompensacaoId);
+
+  if (tipoUpper !== "FERIAS") {
+    const tipoLegacy = tipoUpper === "ATESTADO" ? "atestado" : "folga";
+    db.prepare(`
+      INSERT INTO escala_ausencias (colaborador_id, tipo, data_inicio, data_fim, motivo)
+      VALUES (?, ?, ?, ?, ?)
+    `).run(colabId, tipoLegacy, inicioIso, fimIso, motivo || null);
+  }
 }
+
 
 function getSemanasNoPeriodo(start, end) {
   return db.prepare(`
@@ -383,61 +483,102 @@ function getEscalaSemanalPdfData() {
 }
 
 function getPeriodoCompensacaoData(start, end) {
-  const linhas = getLinhasPeriodo(start, end);
+  const inicio = toDateOnly(start);
+  const fim = toDateOnly(end);
+  const usePeriodo = Boolean(inicio && fim);
 
-  const ausencias = db.prepare(`
-    SELECT x.data_inicio, x.data_fim, x.tipo, x.motivo, c.nome AS colaborador
-    FROM escala_ausencias x
-    JOIN colaboradores c ON c.id = x.colaborador_id
-    WHERE NOT (x.data_fim < ? OR x.data_inicio > ?)
-    ORDER BY x.data_inicio ASC, c.nome ASC
-  `).all(start, end);
+  const baseQuery = `
+    SELECT cp.id, cp.data_servico, cp.hora_inicio, cp.hora_fim, cp.equipamento, cp.descricao_servico,
+           cp.minutos_total, cp.concessao_sugerida,
+           c.nome AS colaborador, c.funcao
+    FROM escala_compensacoes cp
+    JOIN colaboradores c ON c.id = cp.colaborador_id
+    ${usePeriodo ? 'WHERE cp.data_servico BETWEEN ? AND ?' : ''}
+    ORDER BY cp.data_servico ASC, c.nome ASC
+  `;
 
-  const baseServicos = linhas.map((l) => ({
-    data: l.data_inicio,
-    dia: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][new Date(`${l.data_inicio}T00:00:00Z`).getUTCDay()],
-    descricao: `${l.nome} em ${l.turnoLabel} (${l.funcaoLabel}).`,
-  }));
-
-  const compMap = new Map();
-  ausencias
-    .filter((a) => a.tipo === "folga")
-    .forEach((a) => {
-      const key = a.colaborador;
-      const atual = compMap.get(key) || { colaborador: key, dias: 0 };
-      const dias = Math.max(1, Math.floor((new Date(`${a.data_fim}T00:00:00Z`) - new Date(`${a.data_inicio}T00:00:00Z`)) / 86400000) + 1);
-      atual.dias += dias;
-      compMap.set(key, atual);
-    });
-
-  const compensacoes = Array.from(compMap.values()).map((c) => ({
-    colaborador: c.colaborador,
-    direito: c.dias === 1 ? "direito a 1 (um) dia de folga" : `direito a ${c.dias} dia(s) de folga`,
-  }));
-
-  const folgas = ausencias
-    .filter((a) => a.tipo === "folga")
-    .map((a) => ({
-      data: a.data_inicio,
-      colaborador: a.colaborador,
-      direito: a.motivo ? `${a.motivo}` : "Meio dia de folga",
+  const baseServicos = db.prepare(baseQuery)
+    .all(...(usePeriodo ? [inicio, fim] : []))
+    .map((row) => ({
+      id: row.id,
+      data: row.data_servico,
+      colaborador: row.colaborador,
+      funcao: funcaoLabel(normalizeFuncao(row.funcao) || row.funcao),
+      horaInicio: row.hora_inicio,
+      horaFim: row.hora_fim,
+      equipamento: row.equipamento || '-',
+      descricaoServico: row.descricao_servico || '-',
+      minutosTotal: row.minutos_total,
+      concessaoSugerida: row.concessao_sugerida,
     }));
 
-  const descricoes = Array.from(new Set(linhas.map((l) => l.observacao).filter(Boolean)));
+  const apuracaoMap = new Map();
+  for (const item of baseServicos) {
+    const atual = apuracaoMap.get(item.colaborador) || {
+      colaborador: item.colaborador,
+      totalMinutos: 0,
+      totalInteiras: 0,
+      totalMeias: 0,
+      saldo: 0,
+    };
+    atual.totalMinutos += item.minutosTotal;
+    if (item.concessaoSugerida === 'INTEIRA') atual.totalInteiras += 1;
+    if (item.concessaoSugerida === 'MEIA') atual.totalMeias += 1;
+    atual.saldo = atual.totalInteiras + (atual.totalMeias * 0.5);
+    apuracaoMap.set(item.colaborador, atual);
+  }
+
+  const apuracao = Array.from(apuracaoMap.values())
+    .sort((a, b) => a.colaborador.localeCompare(b.colaborador, 'pt-BR'));
+
+  const concessoesQuery = `
+    SELECT ec.inicio, ec.fim, ec.tipo, ec.concessao, ec.motivo,
+           c.nome AS colaborador, c.funcao,
+           cp.data_servico, cp.hora_inicio, cp.hora_fim, cp.equipamento, cp.descricao_servico
+    FROM escala_concessoes ec
+    JOIN colaboradores c ON c.id = ec.colaborador_id
+    LEFT JOIN escala_compensacoes cp ON cp.id = ec.ref_compensacao_id
+    ${usePeriodo ? 'WHERE NOT (ec.fim < ? OR ec.inicio > ?)' : ''}
+    ORDER BY ec.inicio ASC, c.nome ASC
+  `;
+
+  const concessoes = db.prepare(concessoesQuery).all(...(usePeriodo ? [inicio, fim] : []));
+
+  const registros = concessoes.map((item) => ({
+    colaborador: item.colaborador,
+    funcao: funcaoLabel(normalizeFuncao(item.funcao) || item.funcao),
+    tipo: item.tipo,
+    inicio: item.inicio,
+    fim: item.fim,
+    concessao: item.concessao,
+    motivo: item.motivo || '',
+    dataServico: item.data_servico || '',
+    horaInicio: item.hora_inicio || '',
+    horaFim: item.hora_fim || '',
+    equipamentoSetor: item.equipamento || '',
+    descricaoServico: item.descricao_servico || '',
+  }));
+
+  const descricoes = baseServicos
+    .filter((item) => item.descricaoServico && item.descricaoServico !== '-')
+    .map((item) => `${item.data} — ${item.colaborador}: ${item.descricaoServico}`);
 
   return {
+    periodoTexto: usePeriodo ? `${inicio} até ${fim}` : 'Todos os registros cadastrados',
     baseServicos,
-    compensacoes,
-    folgas,
+    apuracao,
+    registros,
     descricoes,
   };
 }
+
 
 module.exports = {
   getPublicacoes,
   getSemanaPorData,
   getSemanaById,
   atualizarTurno,
+  removerAlocacao,
   getEscalaCompletaComTimes,
   adicionarRapidoPeriodo,
   lancarAusencia,
