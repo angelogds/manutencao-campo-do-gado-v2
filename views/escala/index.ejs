@@ -1,5 +1,8 @@
 <%- layout('layout') -%>
 
+<% const pdfStartSafe = typeof pdfStart === 'string' ? pdfStart : ''; %>
+<% const pdfEndSafe = typeof pdfEnd === 'string' ? pdfEnd : ''; %>
+
 <div class="page-head" style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
   <div>
     <h1 style="margin:0;">Escala</h1>

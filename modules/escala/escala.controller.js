@@ -11,6 +11,17 @@ function daysInclusive(start, end) {
   return Math.floor((e - s) / 86400000) + 1;
 }
 
+
+function getCurrentMonthRangeISO() {
+  const now = new Date();
+  const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+  return {
+    start: first.toISOString().slice(0, 10),
+    end: last.toISOString().slice(0, 10),
+  };
+}
+
 function isValidDateISO(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
@@ -24,6 +35,9 @@ exports.index = (req, res, next) => {
 
     const semana = service.getSemanaPorData(alvo);
     const publicacoes = service.getPublicacoes();
+    const monthRange = getCurrentMonthRangeISO();
+    const pdfStart = String(req.query?.start || monthRange.start).slice(0, 10);
+    const pdfEnd = String(req.query?.end || monthRange.end).slice(0, 10);
 
     return res.render("escala/index", {
       title: "Escala",
