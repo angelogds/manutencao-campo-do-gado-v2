@@ -393,22 +393,43 @@ function getPeriodoCompensacaoData(start, end) {
     ORDER BY x.data_inicio ASC, c.nome ASC
   `).all(start, end);
 
-  const colaboradores = new Set(linhas.map((l) => l.nome));
-  const totalRegistros = linhas.length;
-  const baseResumo = totalRegistros
-    ? `Registros no período: ${totalRegistros} lançamento(s) envolvendo ${colaboradores.size} colaborador(es).`
-    : "Sem registros de serviço no período informado.";
-
-  const concessoes = ausencias.map((a) => ({
-    data: a.data_inicio,
-    tipo: a.tipo === "atestado" ? "Atestado" : "Folga",
-    colaborador: a.colaborador,
-    motivo: a.motivo || "",
+  const baseServicos = linhas.map((l) => ({
+    data: l.data_inicio,
+    dia: ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][new Date(`${l.data_inicio}T00:00:00Z`).getUTCDay()],
+    descricao: `${l.nome} em ${l.turnoLabel} (${l.funcaoLabel}).`,
   }));
 
+  const compMap = new Map();
+  ausencias
+    .filter((a) => a.tipo === "folga")
+    .forEach((a) => {
+      const key = a.colaborador;
+      const atual = compMap.get(key) || { colaborador: key, dias: 0 };
+      const dias = Math.max(1, Math.floor((new Date(`${a.data_fim}T00:00:00Z`) - new Date(`${a.data_inicio}T00:00:00Z`)) / 86400000) + 1);
+      atual.dias += dias;
+      compMap.set(key, atual);
+    });
+
+  const compensacoes = Array.from(compMap.values()).map((c) => ({
+    colaborador: c.colaborador,
+    direito: c.dias === 1 ? "direito a 1 (um) dia de folga" : `direito a ${c.dias} dia(s) de folga`,
+  }));
+
+  const folgas = ausencias
+    .filter((a) => a.tipo === "folga")
+    .map((a) => ({
+      data: a.data_inicio,
+      colaborador: a.colaborador,
+      direito: a.motivo ? `${a.motivo}` : "Meio dia de folga",
+    }));
+
+  const descricoes = Array.from(new Set(linhas.map((l) => l.observacao).filter(Boolean)));
+
   return {
-    baseResumo,
-    concessoes,
+    baseServicos,
+    compensacoes,
+    folgas,
+    descricoes,
   };
 }
 

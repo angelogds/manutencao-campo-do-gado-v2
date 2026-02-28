@@ -3,18 +3,14 @@ const path = require("node:path");
 const PDFDocument = require("pdfkit");
 
 const COLORS = {
-  primary: "#1F6F43",
-  primaryDark: "#1F6F43",
+  primary: "#14532d",
+  primaryDark: "#0f3f23",
   text: "#0f172a",
   muted: "#334155",
   border: "#cbd5e1",
   light: "#f8fafc",
   stripe: "#eef6f0",
 };
-
-const HEADER_HEIGHT = 74;
-const CONTENT_START_Y = 92;
-const FOOTER_Y_OFFSET = 45;
 
 const LOGO_PATH = path.resolve(process.cwd(), "public/IMG/login_campo_do_gado.png.png.png");
 
@@ -40,32 +36,33 @@ function withPdf(res, fileName) {
 }
 
 function drawHeader(doc, title, subtitle) {
-  doc.rect(0, 0, doc.page.width, HEADER_HEIGHT).fill(COLORS.primary);
+  const year = new Date().getFullYear();
+
+  doc.rect(0, 0, doc.page.width, 74).fill(COLORS.primary);
 
   if (fs.existsSync(LOGO_PATH)) {
-    doc.image(LOGO_PATH, 36, 8, { fit: [62, 62] });
+    doc.image(LOGO_PATH, 48, 10, { fit: [55, 55] });
   }
 
-  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(16).text(title, 110, 22, {
+  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(16).text(title, 110, 24, {
     align: "center",
     width: doc.page.width - 150,
   });
 
-  doc.fillColor("#e7f8ec").font("Helvetica").fontSize(10).text(subtitle, 110, 46, {
+  doc.fillColor("#e2f4e7").font("Helvetica").fontSize(10).text(subtitle, 110, 48, {
     align: "center",
     width: doc.page.width - 150,
   });
 
-  doc.y = CONTENT_START_Y;
-}
+  doc.y = 92;
 
-function drawFooter(doc, yearText = "2026") {
-  const footer = `Campo do Gado – Manutenção Industrial – ${yearText}`;
-  doc.font("Helvetica").fontSize(9).fillColor(COLORS.muted).text(footer, 40, doc.page.height - FOOTER_Y_OFFSET, {
+  const footer = `Campo do Gado – Manutenção Industrial – ${year}`;
+  doc.font("Helvetica").fontSize(9).fillColor(COLORS.muted).text(footer, 40, doc.page.height - 30, {
     align: "center",
     width: doc.page.width - 80,
-    lineBreak: false,
   });
+
+  return { topY: 92 };
 }
 
 function drawTableHeader(doc, columns, startX, y, rowHeight) {
@@ -127,9 +124,9 @@ function renderEscalaSemanalPdf(res, { rows = [] }) {
     { key: "apoio", label: "Apoio operacional (diurno)", width: 122, align: "left" },
   ];
 
-  const rowHeight = 42;
+  const rowHeight = 48;
   const startX = 40;
-  let y = 102;
+  let y = 110;
 
   drawTableHeader(doc, columns, startX, y, 26);
   y += 26;
@@ -155,15 +152,14 @@ function renderEscalaSemanalPdf(res, { rows = [] }) {
   }
 
   rows.forEach((row, index) => {
-    if (y + rowHeight > doc.page.height - 70) {
-      drawFooter(doc, "2026");
+    if (y + rowHeight > doc.page.height - 46) {
       doc.addPage();
       drawHeader(
         doc,
         "ESCALA SEMANAL – MANUTENÇÃO INDUSTRIAL",
         "Campo do Gado – Setor de Manutenção Industrial"
       );
-      y = 102;
+      y = 110;
       drawTableHeader(doc, columns, startX, y, 26);
       y += 26;
     }
@@ -187,78 +183,124 @@ function renderEscalaSemanalPdf(res, { rows = [] }) {
     y += rowHeight;
   });
 
-  drawFooter(doc, "2026");
   doc.end();
 }
 
-function renderEscalaPeriodoPdf(res, { start, end, baseResumo = "", concessoes = [] }) {
+function renderEscalaPeriodoPdf(res, { start, end, baseServicos = [], compensacoes = [], folgas = [], descricoes = [] }) {
   const doc = withPdf(res, `escala-folgas-${start}-a-${end}.pdf`);
   drawHeader(
     doc,
-    "ESCALA DE FOLGAS – MANUTENÇÃO INDUSTRIAL",
+    "ESCALA DE FOLGAS – COMPENSAÇÃO DE SERVIÇOS",
     "Campo do Gado – Manutenção Industrial"
   );
 
-  let y = 104;
+  let y = 112;
 
-  function ensurePage(space = 20, title = "ESCALA DE FOLGAS – MANUTENÇÃO INDUSTRIAL") {
-    if (y + space <= doc.page.height - 70) return;
-    drawFooter(doc, "2026");
+  function ensurePage(space = 20) {
+    if (y + space <= doc.page.height - 48) return;
     doc.addPage();
     drawHeader(
       doc,
-      title,
+      "ESCALA DE FOLGAS – COMPENSAÇÃO DE SERVIÇOS",
       "Campo do Gado – Manutenção Industrial"
     );
-    y = 104;
+    y = 112;
   }
 
   doc.font("Helvetica").fontSize(10).fillColor(COLORS.muted).text(`Período: ${formatDateBr(start)} até ${formatDateBr(end)}`, 40, y);
   y += 24;
 
-  doc.font("Helvetica-Bold").fontSize(13).fillColor(COLORS.primaryDark).text("1. Base do serviço (resumo curto)", 40, y);
+  doc.font("Helvetica-Bold").fontSize(14).fillColor(COLORS.primaryDark).text("1. Base do serviço (registro de horas)", 40, y);
   y += 18;
-  doc.font("Helvetica").fontSize(10).fillColor(COLORS.text).text(baseResumo || "Sem registros de serviço no período informado.", 40, y, {
-    width: 520,
-  });
-  y = doc.y + 16;
 
-  ensurePage(56);
-  doc.font("Helvetica-Bold").fontSize(13).fillColor(COLORS.primaryDark).text("2. Concessão (folgas e atestados)", 40, y);
-  y += 14;
+  if (!baseServicos.length) {
+    doc.font("Helvetica").fontSize(10).fillColor(COLORS.text).text("Não há registros de serviço no período informado.", 40, y);
+    y += 20;
+  } else {
+    for (const item of baseServicos) {
+      ensurePage(18);
+      const linha = `• ${formatDateBr(item.data)} (${item.dia}) — ${item.descricao}`;
+      doc.font("Helvetica").fontSize(10).fillColor(COLORS.text).text(linha, 40, y, { width: 520 });
+      y = doc.y + 4;
+    }
+  }
+
+  ensurePage(38);
+  doc.font("Helvetica-Bold").fontSize(14).fillColor(COLORS.primaryDark).text("2. Apuração de compensação (direito de folga)", 40, y);
+  y += 18;
+
+  if (!compensacoes.length) {
+    doc.font("Helvetica").fontSize(10).fillColor(COLORS.text).text("Não há apuração de compensação para o período.", 40, y);
+    y += 20;
+  } else {
+    compensacoes.forEach((c) => {
+      ensurePage(18);
+      doc.font("Helvetica").fontSize(10).fillColor(COLORS.text).text(`• ${c.colaborador} — ${c.direito}.`, 40, y, { width: 520 });
+      y = doc.y + 4;
+    });
+  }
+
+  ensurePage(70);
+  doc.font("Helvetica-Bold").fontSize(14).fillColor(COLORS.primaryDark).text("3. Concessão das folgas", 40, y);
+  y += 16;
 
   const columns = [
-    { key: "data", label: "Data", width: 95, align: "center" },
-    { key: "tipo", label: "Tipo (Folga ou Atestado)", width: 125, align: "center" },
-    { key: "colaborador", label: "Colaborador", width: 150, align: "left" },
-    { key: "motivo", label: "Motivo (opcional)", width: 180, align: "left" },
+    { key: "data", label: "Data", width: 90, align: "center" },
+    { key: "dia", label: "Dia", width: 60, align: "center" },
+    { key: "colaborador", label: "Colaborador", width: 160, align: "left" },
+    { key: "direito", label: "Direito/Concessão", width: 250, align: "left" },
   ];
 
   drawTableHeader(doc, columns, 40, y, 24);
   y += 24;
 
-  if (!concessoes.length) {
+  if (!folgas.length) {
     drawTableRow(doc, columns, 40, y, 28, {
       data: "-",
-      tipo: "-",
-      colaborador: "Sem registros de folga/atestado no período.",
-      motivo: "-",
+      dia: "-",
+      colaborador: "Sem registros de folga/compensação no período.",
+      direito: "-",
     });
-    y += 28;
+    y += 34;
   } else {
-    concessoes.forEach((f, index) => {
+    folgas.forEach((f, index) => {
       ensurePage(34);
       drawTableRow(doc, columns, 40, y, 28, {
         data: formatDateBr(f.data),
-        tipo: f.tipo,
+        dia: formatDiaSemana(f.data),
         colaborador: f.colaborador,
-        motivo: f.motivo || "-",
+        direito: f.direito,
       }, index % 2 !== 0);
       y += 28;
     });
+    y += 6;
   }
 
-  drawFooter(doc, "2026");
+  ensurePage(40);
+  doc.font("Helvetica-Bold").fontSize(14).fillColor(COLORS.primaryDark).text("4. Descrição dos serviços executados", 40, y);
+  y += 18;
+
+  if (!descricoes.length) {
+    doc.font("Helvetica").fontSize(10).fillColor(COLORS.text).text("Sem descrição de serviços para o período selecionado.", 40, y, { width: 520 });
+    y += 20;
+  } else {
+    descricoes.forEach((d) => {
+      ensurePage(20);
+      doc.font("Helvetica").fontSize(10).fillColor(COLORS.text).text(`• ${d}`, 40, y, { width: 520 });
+      y = doc.y + 4;
+    });
+  }
+
+  ensurePage(30);
+  doc.font("Helvetica-Bold").fontSize(14).fillColor(COLORS.primaryDark).text("5. Registro em OS", 40, y);
+  y += 18;
+  doc.font("Helvetica").fontSize(10).fillColor(COLORS.text).text(
+    "Todas as atividades e ocorrências relacionadas ao período devem ser registradas via OS no sistema oficial.",
+    40,
+    y,
+    { width: 520 }
+  );
+
   doc.end();
 }
 
