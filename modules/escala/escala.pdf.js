@@ -4,239 +4,203 @@ const PDFDocument = require("pdfkit");
 
 const PAGE = {
   size: "A4",
-  margin: { left: 36, right: 36, top: 28, bottom: 32 },
+  margins: { left: 36, right: 36, top: 28, bottom: 32 },
 };
 
 const COLORS = {
-  headerGreen: "#1F6F43",
+  green: "#2E8B57",
+  greenDark: "#1F6F43",
   text: "#0f172a",
   muted: "#475569",
-  border: "#cbd5e1",
-  headerText: "#ffffff",
-  tableHeaderText: "#ffffff",
-  sectionTitle: "#14532d",
+  border: "#d1d5db",
+  stripe: "#f6fbf8",
 };
 
-const HEADER_HEIGHT = 72;
-const FOOTER_HEIGHT = 28;
-const HEADER_GAP = 14;
-const TABLE_HEADER_HEIGHT = 24;
-const CELL_PADDING = 6;
-
-const LOGO_CANDIDATES = [
-  path.resolve(process.cwd(), "public/IMG/logopdf_campo_do_gado.png.png"),
-  path.resolve(process.cwd(), "public/IMG/login_campo_do_gado.png.png.png"),
-];
-
-function getLogoPath() {
-  return LOGO_CANDIDATES.find((candidate) => fs.existsSync(candidate)) || null;
-}
+const HEADER_HEIGHT = 76;
+const FOOTER_HEIGHT = 30;
+const BODY_START_GAP = 14;
+const FOOTER_TEXT = "Campo do Gado – Manutenção Industrial – 2026";
+const SIGNATURE = "Responsável técnico: Ângelo Gomes da Silva — Encarregado de Manutenção — Reciclagem Campo do Gado";
+const OS_NOTE = "Registro em OS: todas as atividades e ocorrências relacionadas ao período devem ser registradas via OS no sistema oficial: manutencao-campoLgado.app.br";
 
 function formatDateBr(dateISO) {
   if (!dateISO) return "-";
-  const [year, month, day] = String(dateISO).slice(0, 10).split("-");
-  if (!year || !month || !day) return String(dateISO);
-  return `${day}/${month}/${year}`;
+  const [y, m, d] = String(dateISO).slice(0, 10).split("-");
+  if (!y || !m || !d) return String(dateISO);
+  return `${d}/${m}/${y}`;
 }
 
 function createDoc() {
-  return new PDFDocument({ size: PAGE.size, margins: PAGE.margin, autoFirstPage: true });
+  return new PDFDocument({ size: PAGE.size, margins: PAGE.margins, autoFirstPage: true });
 }
 
-function contentStartY(doc) {
-  return PAGE.margin.top + HEADER_HEIGHT + HEADER_GAP;
+function logoPath() {
+  const target = path.resolve(process.cwd(), "public/IMG/logo_menu.png.png");
+  return fs.existsSync(target) ? target : null;
 }
 
-function contentEndY(doc) {
-  return doc.page.height - PAGE.margin.bottom - FOOTER_HEIGHT;
+function contentTop() {
+  return PAGE.margins.top + HEADER_HEIGHT + BODY_START_GAP;
 }
 
-function drawFooter(doc, { text }) {
-  const lineY = doc.page.height - PAGE.margin.bottom - FOOTER_HEIGHT;
+function contentBottom(doc) {
+  return doc.page.height - PAGE.margins.bottom - FOOTER_HEIGHT;
+}
+
+function drawHeader(doc, { title, subtitle, logoPath: lPath }) {
+  const x = PAGE.margins.left;
+  const y = PAGE.margins.top;
+  const width = doc.page.width - PAGE.margins.left - PAGE.margins.right;
+
   doc.save();
-  doc.lineWidth(0.7).strokeColor(COLORS.border)
-    .moveTo(PAGE.margin.left, lineY)
-    .lineTo(doc.page.width - PAGE.margin.right, lineY)
-    .stroke();
+  doc.roundedRect(x, y, width, HEADER_HEIGHT, 10).fill(COLORS.green);
+  if (lPath && fs.existsSync(lPath)) {
+    doc.image(lPath, x + 10, y + 9, { fit: [94, 58] });
+  }
+  doc.fillColor("#ffffff").font("Helvetica-Bold").fontSize(13)
+    .text(title, x + 110, y + 22, { width: width - 124, align: "center" });
+  doc.fillColor("#def7e8").font("Helvetica").fontSize(9.5)
+    .text(subtitle, x + 110, y + 45, { width: width - 124, align: "center" });
+  doc.restore();
+}
 
+function drawFooter(doc, { text = FOOTER_TEXT }) {
+  const lineY = doc.page.height - PAGE.margins.bottom - FOOTER_HEIGHT;
+  doc.save();
+  doc.lineWidth(0.6).strokeColor(COLORS.border)
+    .moveTo(PAGE.margins.left, lineY)
+    .lineTo(doc.page.width - PAGE.margins.right, lineY)
+    .stroke();
   doc.fillColor(COLORS.muted).font("Helvetica").fontSize(8.5).text(
     text,
-    PAGE.margin.left,
-    lineY + 8,
-    { width: doc.page.width - PAGE.margin.left - PAGE.margin.right, align: "center" }
+    PAGE.margins.left,
+    lineY + 9,
+    { width: doc.page.width - PAGE.margins.left - PAGE.margins.right, align: "center" },
   );
   doc.restore();
 }
 
-function drawHeader(doc, { title, subtitle, logoPath }) {
-  const x = PAGE.margin.left;
-  const y = PAGE.margin.top;
-  const width = doc.page.width - PAGE.margin.left - PAGE.margin.right;
-
-  doc.save();
-  doc.roundedRect(x, y, width, HEADER_HEIGHT, 8).fill(COLORS.headerGreen);
-
-  if (logoPath && fs.existsSync(logoPath)) {
-    doc.image(logoPath, x + 10, y + 8, { fit: [86, 56], align: "left", valign: "center" });
-  }
-
-  doc.fillColor(COLORS.headerText).font("Helvetica-Bold").fontSize(13).text(
-    title,
-    x + 110,
-    y + 20,
-    { width: width - 130, align: "center" }
-  );
-
-  doc.font("Helvetica").fontSize(9.5).text(
-    subtitle,
-    x + 110,
-    y + 42,
-    { width: width - 130, align: "center" }
-  );
-
-  doc.restore();
-}
-
-function addStyledPage(doc, meta) {
-  if (doc.bufferedPageRange().count > 0) doc.addPage();
+function setupPage(doc, meta, isNewPage = false) {
+  if (isNewPage) doc.addPage();
   drawHeader(doc, meta);
-  drawFooter(doc, { text: "Campo do Gado – Manutenção Industrial – 2026" });
-  doc.y = contentStartY(doc);
+  drawFooter(doc, { text: FOOTER_TEXT });
+  doc.y = contentTop();
 }
 
 function ensureSpace(doc, neededHeight, meta) {
-  if (doc.y + neededHeight <= contentEndY(doc)) return;
-  addStyledPage(doc, meta);
+  if (doc.y + neededHeight <= contentBottom(doc)) return;
+  setupPage(doc, meta, true);
 }
 
-function measureCellHeight(doc, text, width) {
-  const value = text || "-";
-  return doc.heightOfString(value, { width: width - (CELL_PADDING * 2), align: "left" }) + (CELL_PADDING * 2);
+function tableRowHeight(doc, row, columns) {
+  const pad = 5;
+  return Math.max(...columns.map((col) => {
+    const text = String(row[col.key] || "-");
+    return doc.heightOfString(text, { width: col.width - (pad * 2), align: col.align || "left" }) + (pad * 2);
+  }));
 }
 
-function drawTable(doc, {
-  columns,
-  rows,
-  meta,
-  emptyRow,
-}) {
+function drawTable(doc, { columns, rows, meta, emptyRow }) {
+  const x = PAGE.margins.left;
   const tableWidth = columns.reduce((sum, col) => sum + col.width, 0);
-  const startX = PAGE.margin.left;
+  const headerH = 24;
 
   const drawHeaderRow = () => {
-    ensureSpace(doc, TABLE_HEADER_HEIGHT, meta);
+    ensureSpace(doc, headerH, meta);
+    const top = doc.y;
     doc.save();
-    doc.rect(startX, doc.y, tableWidth, TABLE_HEADER_HEIGHT).fill(COLORS.headerGreen);
-    doc.font("Helvetica-Bold").fontSize(8.2).fillColor(COLORS.tableHeaderText);
-
-    let x = startX;
-    for (const column of columns) {
-      doc.text(column.label, x + 4, doc.y + 7, {
-        width: column.width - 8,
-        align: "center",
-      });
-      x += column.width;
+    doc.rect(x, top, tableWidth, headerH).fill(COLORS.greenDark);
+    doc.fillColor("#fff").font("Helvetica-Bold").fontSize(8.2);
+    let cursor = x;
+    for (const col of columns) {
+      doc.text(col.label, cursor + 3, top + 7, { width: col.width - 6, align: "center" });
+      cursor += col.width;
     }
     doc.restore();
-    doc.y += TABLE_HEADER_HEIGHT;
+    doc.y = top + headerH;
   };
 
-  const drawBodyRow = (row) => {
-    doc.font("Helvetica").fontSize(8.8).fillColor(COLORS.text);
+  const drawRow = (row, index) => {
+    const h = tableRowHeight(doc, row, columns);
+    ensureSpace(doc, h, meta);
+    const top = doc.y;
+    const pad = 5;
 
-    const rowHeight = Math.max(
-      ...columns.map((column) => measureCellHeight(doc, row[column.key], column.width))
-    );
-
-    ensureSpace(doc, rowHeight, meta);
-
-    const rowTop = doc.y;
     doc.save();
-    doc.rect(startX, rowTop, tableWidth, rowHeight).lineWidth(0.7).strokeColor(COLORS.border).stroke();
-
-    let x = startX;
-    for (const column of columns) {
-      const text = row[column.key] || "-";
-      doc.moveTo(x, rowTop).lineTo(x, rowTop + rowHeight).strokeColor(COLORS.border).stroke();
-      doc.text(text, x + CELL_PADDING, rowTop + CELL_PADDING, {
-        width: column.width - (CELL_PADDING * 2),
-        align: column.align || "left",
-      });
-      x += column.width;
+    if (index % 2 === 1) {
+      doc.rect(x, top, tableWidth, h).fill(COLORS.stripe);
     }
+    doc.rect(x, top, tableWidth, h).lineWidth(0.6).strokeColor(COLORS.border).stroke();
 
-    doc.moveTo(x, rowTop).lineTo(x, rowTop + rowHeight).strokeColor(COLORS.border).stroke();
+    let cursor = x;
+    doc.fillColor(COLORS.text).font("Helvetica").fontSize(8.6);
+    for (const col of columns) {
+      doc.moveTo(cursor, top).lineTo(cursor, top + h).strokeColor(COLORS.border).stroke();
+      doc.text(String(row[col.key] || "-"), cursor + pad, top + pad, {
+        width: col.width - (pad * 2),
+        align: col.align || "left",
+      });
+      cursor += col.width;
+    }
+    doc.moveTo(cursor, top).lineTo(cursor, top + h).strokeColor(COLORS.border).stroke();
     doc.restore();
-
-    doc.y = rowTop + rowHeight;
+    doc.y = top + h;
   };
 
   drawHeaderRow();
 
   if (!rows.length) {
-    drawBodyRow(emptyRow);
+    drawRow(emptyRow, 0);
     return;
   }
 
-  for (const row of rows) {
-    drawBodyRow(row);
-  }
+  rows.forEach((row, i) => {
+    if (i > 0 && doc.y + 14 > contentBottom(doc)) {
+      setupPage(doc, meta, true);
+      drawHeaderRow();
+    }
+    drawRow(row, i);
+  });
 }
 
-function groupRoles(value) {
-  if (!value) return "-";
-  const partes = [];
-  partes.push(value?.mecanico?.length ? `Mecânico: ${value.mecanico.join(", ")}` : "Mecânico: -");
-  if (value?.auxiliar?.length) partes.push(`Auxiliar: ${value.auxiliar.join(", ")}`);
-  if (value?.operacional?.length) partes.push(`Operacional: ${value.operacional.join(", ")}`);
-  return partes.join("\n");
+function roleText(group) {
+  if (!group) return "-";
+  const out = [];
+  out.push(group.mecanico?.length ? `Mecânico: ${group.mecanico.join(", ")}` : "Mecânico: -");
+  if (group.auxiliar?.length) out.push(`Auxiliar: ${group.auxiliar.join(", ")}`);
+  if (group.operacional?.length) out.push(`Operacional: ${group.operacional.join(", ")}`);
+  return out.join("\n");
 }
 
-function normalizeApoio(item) {
-  if (Array.isArray(item.apoioOperacionalDiurno)) {
-    return { mecanico: [], auxiliar: [], operacional: item.apoioOperacionalDiurno };
-  }
-
-  if (item.apoioOperacionalDiurno && typeof item.apoioOperacionalDiurno === "object") {
-    return item.apoioOperacionalDiurno;
-  }
-
-  if (item.apoio && typeof item.apoio === "object") {
-    return item.apoio;
-  }
-
-  return { mecanico: [], auxiliar: [], operacional: item.diurno?.operacional || [] };
-}
-
-function generateWeeklyPDF(data = {}) {
+function generateWeeklyPDF({ rows = [] } = {}) {
   const doc = createDoc();
   const meta = {
     title: "ESCALA SEMANAL – MANUTENÇÃO INDUSTRIAL",
-    subtitle: "Campo do Gado – Setor de Manutenção Industrial",
-    logoPath: getLogoPath(),
+    subtitle: "Campo do Gado – Manutenção Industrial",
+    logoPath: logoPath(),
   };
 
   process.nextTick(() => {
-    addStyledPage(doc, meta);
+    setupPage(doc, meta, false);
 
-    const rows = (data.rows || []).map((item) => ({
-      semana: String(item.semanaNumero ?? item.semana ?? "-"),
+    const tableRows = rows.map((item) => ({
+      semana: String(item.semanaNumero || item.semana || "-"),
       periodo: item.periodoTexto || item.periodo || "-",
-      noturno: groupRoles(item.noturno),
-      diurno: groupRoles(item.diurno),
-      apoio: groupRoles(normalizeApoio(item)),
+      noturno: roleText(item.noturno),
+      diurno: roleText(item.diurno),
+      apoio: roleText(item.apoioOperacionalDiurno || item.apoio || { operacional: item.diurno?.operacional || [] }),
     }));
 
     drawTable(doc, {
       meta,
       columns: [
         { key: "semana", label: "Semana", width: 52, align: "center" },
-        { key: "periodo", label: "Período (serviço)", width: 110, align: "center" },
-        { key: "noturno", label: "Turno noturno (19h–05h)", width: 130 },
-        { key: "diurno", label: "Turno diurno (07h–17h)", width: 130 },
+        { key: "periodo", label: "Período (serviço)", width: 114, align: "center" },
+        { key: "noturno", label: "Turno noturno (19h–05h)", width: 128 },
+        { key: "diurno", label: "Turno diurno (07h–17h)", width: 128 },
         { key: "apoio", label: "Apoio operacional (diurno)", width: 127 },
       ],
-      rows,
+      rows: tableRows,
       emptyRow: {
         semana: "-",
         periodo: "-",
@@ -252,86 +216,139 @@ function generateWeeklyPDF(data = {}) {
   return doc;
 }
 
-function generatePeriodPDF(data = {}) {
+function generatePeriodPDF({ start, end, periodoTexto, baseServicos = [], apuracao = [], registros = [], descricoes = [] } = {}) {
   const doc = createDoc();
   const meta = {
     title: "ESCALA DE FOLGAS – COMPENSAÇÃO DE SERVIÇOS",
     subtitle: "Campo do Gado – Manutenção Industrial",
-    logoPath: getLogoPath(),
+    logoPath: logoPath(),
   };
 
   process.nextTick(() => {
-    addStyledPage(doc, meta);
+    setupPage(doc, meta, false);
 
-    const start = data.start || "";
-    const end = data.end || "";
+    const periodoLinha = periodoTexto || (start && end
+      ? `${formatDateBr(start)} até ${formatDateBr(end)}`
+      : "Todos os registros cadastrados");
 
     ensureSpace(doc, 18, meta);
-    doc.font("Helvetica-Bold").fontSize(10).fillColor(COLORS.text).text(
-      `Período: ${formatDateBr(start)} até ${formatDateBr(end)}`,
-      PAGE.margin.left,
-      doc.y,
-      { width: doc.page.width - PAGE.margin.left - PAGE.margin.right }
-    );
-    doc.y += 18;
+    doc.fillColor(COLORS.text).font("Helvetica-Bold").fontSize(10)
+      .text(`Período: ${periodoLinha}`, PAGE.margins.left, doc.y);
+    doc.y += 14;
 
     ensureSpace(doc, 20, meta);
-    doc.font("Helvetica-Bold").fontSize(11).fillColor(COLORS.sectionTitle).text(
-      "1. Base do serviço (registro de horas)",
-      PAGE.margin.left,
-      doc.y
-    );
-    doc.y += 16;
+    doc.font("Helvetica-Bold").fontSize(11).fillColor(COLORS.greenDark)
+      .text("1. Base do serviço (registro de horas)", PAGE.margins.left, doc.y);
+    doc.y += 14;
 
-    const baseServicos = data.baseServicos || [];
     if (!baseServicos.length) {
       ensureSpace(doc, 16, meta);
-      doc.font("Helvetica").fontSize(9).fillColor(COLORS.text).text("Sem registros de serviço no período.", PAGE.margin.left, doc.y);
-      doc.y += 16;
+      doc.font("Helvetica").fontSize(9).fillColor(COLORS.text)
+        .text("Sem registros de serviço cadastrados.", PAGE.margins.left, doc.y);
+      doc.y += 14;
     } else {
-      const limit = Math.min(baseServicos.length, 18);
-      for (let i = 0; i < limit; i += 1) {
-        const item = baseServicos[i];
-        const line = `• ${formatDateBr(item.data)} — ${item.nome} (${item.turnoFuncao})`;
-        ensureSpace(doc, 16, meta);
-        doc.font("Helvetica").fontSize(9).fillColor(COLORS.text).text(line, PAGE.margin.left, doc.y, {
-          width: doc.page.width - PAGE.margin.left - PAGE.margin.right,
-        });
-        doc.y += 14;
-      }
+      baseServicos.forEach((item) => {
+        const line = `${formatDateBr(item.data)} — ${item.colaborador} — ${item.funcao} — (${item.horaInicio}–${item.horaFim}) — ${item.equipamento} — ${item.descricaoServico}`;
+        const h = doc.heightOfString(line, { width: 520 }) + 3;
+        ensureSpace(doc, h, meta);
+        doc.font("Helvetica").fontSize(8.8).fillColor(COLORS.text)
+          .text(`• ${line}`, PAGE.margins.left, doc.y, { width: 520 });
+        doc.y += h;
+      });
     }
 
-    doc.y += 8;
+    doc.y += 4;
     ensureSpace(doc, 20, meta);
-    doc.font("Helvetica-Bold").fontSize(11).fillColor(COLORS.sectionTitle).text(
-      "2. Concessão das folgas",
-      PAGE.margin.left,
-      doc.y
-    );
-    doc.y += 16;
+    doc.font("Helvetica-Bold").fontSize(11).fillColor(COLORS.greenDark)
+      .text("2. Apuração de compensação (direito de folga)", PAGE.margins.left, doc.y);
+    doc.y += 14;
 
-    const registros = data.registros || [];
     drawTable(doc, {
       meta,
       columns: [
-        { key: "data", label: "Data", width: 88, align: "center" },
-        { key: "tipo", label: "Tipo (Folga/Atestado)", width: 118, align: "center" },
-        { key: "colaborador", label: "Colaborador", width: 170 },
-        { key: "motivo", label: "Motivo (opcional)", width: 166 },
+        { key: "colaborador", label: "Colaborador", width: 160 },
+        { key: "horas", label: "Horas", width: 75, align: "center" },
+        { key: "inteiras", label: "Inteiras", width: 75, align: "center" },
+        { key: "meias", label: "Meias", width: 75, align: "center" },
+        { key: "saldo", label: "Saldo", width: 166, align: "center" },
       ],
-      rows: registros.map((row) => ({
-        data: formatDateBr(row.data),
-        tipo: row.tipo,
-        colaborador: row.colaborador,
-        motivo: row.motivo || "-",
+      rows: apuracao.map((a) => ({
+        colaborador: a.colaborador,
+        horas: `${(a.totalMinutos / 60).toFixed(1).replace('.', ',')}h`,
+        inteiras: String(a.totalInteiras),
+        meias: String(a.totalMeias),
+        saldo: `${a.saldo.toFixed(1).replace('.', ',')} dia(s)`,
+      })),
+      emptyRow: { colaborador: "Sem apuração cadastrada.", horas: "-", inteiras: "-", meias: "-", saldo: "-" },
+    });
+
+    doc.y += 6;
+    ensureSpace(doc, 20, meta);
+    doc.font("Helvetica-Bold").fontSize(11).fillColor(COLORS.greenDark)
+      .text("3. Concessão das folgas (dados completos para RH)", PAGE.margins.left, doc.y);
+    doc.y += 14;
+
+    drawTable(doc, {
+      meta,
+      columns: [
+        { key: "colaborador", label: "Colaborador/Função", width: 145 },
+        { key: "tipo", label: "Tipo", width: 58, align: "center" },
+        { key: "periodo", label: "Início/Fim", width: 92, align: "center" },
+        { key: "motivo", label: "Motivo", width: 86 },
+        { key: "servico", label: "Prestação de serviço (data/horas/equip./descrição)", width: 170 },
+      ],
+      rows: registros.map((r) => ({
+        colaborador: `${r.colaborador}
+${r.funcao}`,
+        tipo: r.tipo,
+        periodo: `${formatDateBr(r.inicio)}
+${formatDateBr(r.fim)}`,
+        motivo: r.motivo || '-',
+        servico: r.dataServico
+          ? `${formatDateBr(r.dataServico)} | ${r.horaInicio || '-'}-${r.horaFim || '-'}
+${r.equipamentoSetor || '-'}
+${r.descricaoServico || '-'}`
+          : '-',
       })),
       emptyRow: {
-        data: "-",
+        colaborador: "Sem concessões cadastradas.",
         tipo: "-",
-        colaborador: "Sem registros de folga/atestado no período.",
+        periodo: "-",
         motivo: "-",
+        servico: "-",
       },
     });
+
+    doc.y += 6;
+    ensureSpace(doc, 20, meta);
+    doc.font("Helvetica-Bold").fontSize(11).fillColor(COLORS.greenDark)
+      .text("4. Descrição dos serviços executados", PAGE.margins.left, doc.y);
+    doc.y += 14;
+    if (!descricoes.length) {
+      ensureSpace(doc, 14, meta);
+      doc.font("Helvetica").fontSize(9).fillColor(COLORS.text)
+        .text("Sem descrição de serviços no período.", PAGE.margins.left, doc.y);
+      doc.y += 12;
+    } else {
+      descricoes.forEach((d) => {
+        const h = doc.heightOfString(`• ${d}`, { width: 520 }) + 2;
+        ensureSpace(doc, h, meta);
+        doc.font("Helvetica").fontSize(8.8).fillColor(COLORS.text)
+          .text(`• ${d}`, PAGE.margins.left, doc.y, { width: 520 });
+        doc.y += h;
+      });
+    }
+
+    doc.y += 6;
+    ensureSpace(doc, 38, meta);
+    doc.font("Helvetica-Bold").fontSize(11).fillColor(COLORS.greenDark)
+      .text("5. Registro em OS", PAGE.margins.left, doc.y);
+    doc.y += 14;
+    doc.font("Helvetica").fontSize(9).fillColor(COLORS.text)
+      .text(OS_NOTE, PAGE.margins.left, doc.y, { width: 520 });
+    doc.y += 20;
+    doc.font("Helvetica-Oblique").fontSize(9).fillColor(COLORS.muted)
+      .text(SIGNATURE, PAGE.margins.left, doc.y, { width: 520 });
 
     doc.end();
   });
@@ -339,12 +356,13 @@ function generatePeriodPDF(data = {}) {
   return doc;
 }
 
+
 module.exports = {
+  drawHeader,
+  drawFooter,
+  ensureSpace,
+  drawTable,
   formatDateBr,
   generateWeeklyPDF,
   generatePeriodPDF,
-  drawHeader,
-  drawFooter,
-  drawTable,
-  ensureSpace,
 };

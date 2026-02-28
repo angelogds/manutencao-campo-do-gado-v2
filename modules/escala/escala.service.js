@@ -158,11 +158,13 @@ function getLinhasSemanaComStatus(semanaId) {
     WHERE NOT (x.data_fim < ? OR x.data_inicio > ?)
   `).all(semana.data_inicio, semana.data_fim);
 
-  const concessoes = db.prepare(`
-    SELECT c.colaborador_id, c.tipo, c.inicio, c.fim
-    FROM escala_concessoes c
-    WHERE NOT (c.fim < ? OR c.inicio > ?)
-  `).all(semana.data_inicio, semana.data_fim);
+  const concessoes = tableExists("escala_concessoes")
+    ? db.prepare(`
+      SELECT c.colaborador_id, c.tipo, c.inicio, c.fim
+      FROM escala_concessoes c
+      WHERE NOT (c.fim < ? OR c.inicio > ?)
+    `).all(semana.data_inicio, semana.data_fim)
+    : [];
 
   const mapAus = new Map();
   for (const a of [...ausencias, ...concessoes]) {
@@ -507,40 +509,88 @@ function getPeriodoCompensacaoData(start, end) {
     };
   }
 
-  const baseServicos = linhas.map((l) => ({
-    data: l.data_inicio,
-    nome: l.nome,
-    turnoFuncao: `${l.turnoLabel} / ${l.funcaoLabel}`,
-  }));
+  const baseQuery = `
+    SELECT cp.id, cp.data_servico, cp.hora_inicio, cp.hora_fim, cp.equipamento, cp.descricao_servico,
+           cp.minutos_total, cp.concessao_sugerida,
+           c.nome AS colaborador, c.funcao
+    FROM escala_compensacoes cp
+    JOIN colaboradores c ON c.id = cp.colaborador_id
+    ${usePeriodo ? 'WHERE cp.data_servico BETWEEN ? AND ?' : ''}
+    ORDER BY cp.data_servico ASC, c.nome ASC
+  `;
 
-  const registros = [];
-  for (const ausencia of ausencias) {
-    const current = new Date(`${ausencia.data_inicio}T00:00:00Z`);
-    const limit = new Date(`${ausencia.data_fim}T00:00:00Z`);
+  const baseServicos = db.prepare(baseQuery)
+    .all(...(usePeriodo ? [inicio, fim] : []))
+    .map((row) => ({
+      id: row.id,
+      data: row.data_servico,
+      colaborador: row.colaborador,
+      funcao: funcaoLabel(normalizeFuncao(row.funcao) || row.funcao),
+      horaInicio: row.hora_inicio,
+      horaFim: row.hora_fim,
+      equipamento: row.equipamento || '-',
+      descricaoServico: row.descricao_servico || '-',
+      minutosTotal: row.minutos_total,
+      concessaoSugerida: row.concessao_sugerida,
+    }));
 
-    while (current <= limit) {
-      const iso = current.toISOString().slice(0, 10);
-      if (iso >= start && iso <= end) {
-        registros.push({
-          data: iso,
-          tipo: ausencia.tipo === "atestado" ? "Atestado" : "Folga",
-          colaborador: ausencia.colaborador,
-          motivo: ausencia.motivo || "",
-        });
-      }
-      current.setUTCDate(current.getUTCDate() + 1);
-    }
+  const apuracaoMap = new Map();
+  for (const item of baseServicos) {
+    const atual = apuracaoMap.get(item.colaborador) || {
+      colaborador: item.colaborador,
+      totalMinutos: 0,
+      totalInteiras: 0,
+      totalMeias: 0,
+      saldo: 0,
+    };
+    atual.totalMinutos += item.minutosTotal;
+    if (item.concessaoSugerida === 'INTEIRA') atual.totalInteiras += 1;
+    if (item.concessaoSugerida === 'MEIA') atual.totalMeias += 1;
+    atual.saldo = atual.totalInteiras + (atual.totalMeias * 0.5);
+    apuracaoMap.set(item.colaborador, atual);
   }
 
-  registros.sort((a, b) => {
-    if (a.data !== b.data) return a.data.localeCompare(b.data);
-    return a.colaborador.localeCompare(b.colaborador, "pt-BR");
-  });
+  const apuracao = Array.from(apuracaoMap.values())
+    .sort((a, b) => a.colaborador.localeCompare(b.colaborador, 'pt-BR'));
+
+  const concessoesQuery = `
+    SELECT ec.inicio, ec.fim, ec.tipo, ec.concessao, ec.motivo,
+           c.nome AS colaborador, c.funcao,
+           cp.data_servico, cp.hora_inicio, cp.hora_fim, cp.equipamento, cp.descricao_servico
+    FROM escala_concessoes ec
+    JOIN colaboradores c ON c.id = ec.colaborador_id
+    LEFT JOIN escala_compensacoes cp ON cp.id = ec.ref_compensacao_id
+    ${usePeriodo ? 'WHERE NOT (ec.fim < ? OR ec.inicio > ?)' : ''}
+    ORDER BY ec.inicio ASC, c.nome ASC
+  `;
+
+  const concessoes = db.prepare(concessoesQuery).all(...(usePeriodo ? [inicio, fim] : []));
+
+  const registros = concessoes.map((item) => ({
+    colaborador: item.colaborador,
+    funcao: funcaoLabel(normalizeFuncao(item.funcao) || item.funcao),
+    tipo: item.tipo,
+    inicio: item.inicio,
+    fim: item.fim,
+    concessao: item.concessao,
+    motivo: item.motivo || '',
+    dataServico: item.data_servico || '',
+    horaInicio: item.hora_inicio || '',
+    horaFim: item.hora_fim || '',
+    equipamentoSetor: item.equipamento || '',
+    descricaoServico: item.descricao_servico || '',
+  }));
+
+  const descricoes = baseServicos
+    .filter((item) => item.descricaoServico && item.descricaoServico !== '-')
+    .map((item) => `${item.data} — ${item.colaborador}: ${item.descricaoServico}`);
 
   return {
     periodoTexto: usePeriodo ? `${inicio} até ${fim}` : 'Todos os registros cadastrados',
     baseServicos,
+    apuracao,
     registros,
+    descricoes,
   };
 }
 

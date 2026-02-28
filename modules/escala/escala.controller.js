@@ -44,6 +44,8 @@ exports.index = (req, res, next) => {
       alvo,
       semana,
       publicacoes,
+      pdfStart,
+      pdfEnd,
     });
   } catch (e) {
     next(e);
@@ -308,10 +310,17 @@ exports.pdfPeriodo = (req, res, next) => {
       });
     }
 
-    const data = service.getPeriodoCompensacaoData(start, end);
+    if (start && end && daysInclusive(start, end) > 365) {
+      return res.status(400).json({
+        ok: false,
+        message: 'O período máximo permitido para filtro é de 365 dias.',
+      });
+    }
 
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", 'inline; filename="escala-periodo.pdf"');
+    const data = service.getPeriodoCompensacaoData(start || null, end || null);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="escala-folgas.pdf"');
     const doc = generator.generatePeriodPDF({ start, end, ...data });
     doc.pipe(res);
     return doc;
