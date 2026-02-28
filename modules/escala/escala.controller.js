@@ -1,5 +1,5 @@
 const service = require("./escala.service");
-const { renderEscalaSemanalPdf, renderEscalaPeriodoPdf, formatDateBr } = require("../../utils/pdf/pdfEscala");
+const generator = require("./escala.pdf");
 
 function isoToday() {
   return new Date().toISOString().slice(0, 10);
@@ -172,23 +172,27 @@ exports.salvarEdicao = (req, res, next) => {
   }
 };
 
-exports.pdfSemanaAtual = (req, res, next) => {
+exports.pdfSemana = (req, res, next) => {
   try {
     const rows = service.getEscalaSemanalPdfData().map((s) => ({
-      semana: String(s.semana),
-      periodo: `${formatDateBr(s.data_inicio)} até ${formatDateBr(s.data_fim)}`,
+      semanaNumero: String(s.semana),
+      periodoTexto: `${generator.formatDateBr(s.data_inicio)} até ${generator.formatDateBr(s.data_fim)}`,
       noturno: s.noturno,
       diurno: s.diurno,
-      apoio: s.apoio,
+      apoioOperacionalDiurno: s.apoio,
     }));
 
-    return renderEscalaSemanalPdf(res, { rows });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", 'inline; filename="escala-semanal.pdf"');
+    const doc = generator.generateWeeklyPDF({ rows });
+    doc.pipe(res);
+    return doc;
   } catch (e) {
     next(e);
   }
 };
 
-exports.pdfSemana = (req, res, next) => {
+exports.pdfSemanaById = (req, res, next) => {
   try {
     const semanaId = Number(req.params.id);
     const semana = service.getSemanaById(semanaId);
@@ -196,17 +200,22 @@ exports.pdfSemana = (req, res, next) => {
 
     const consolidado = service.getEscalaSemanalPdfData().find((item) => item.semana === semana.semana_numero);
 
-    return renderEscalaSemanalPdf(res, {
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", 'inline; filename="escala-semanal.pdf"');
+
+    const doc = generator.generateWeeklyPDF({
       rows: [
         {
-          semana: String(semana.semana_numero),
-          periodo: `${formatDateBr(semana.data_inicio)} até ${formatDateBr(semana.data_fim)}`,
+          semanaNumero: String(semana.semana_numero),
+          periodoTexto: `${generator.formatDateBr(semana.data_inicio)} até ${generator.formatDateBr(semana.data_fim)}`,
           noturno: consolidado?.noturno || { mecanico: [], auxiliar: [], operacional: [] },
           diurno: consolidado?.diurno || { mecanico: [], auxiliar: [], operacional: [] },
-          apoio: consolidado?.apoio || { mecanico: [], auxiliar: [], operacional: [] },
+          apoioOperacionalDiurno: consolidado?.apoio || { mecanico: [], auxiliar: [], operacional: [] },
         },
       ],
     });
+    doc.pipe(res);
+    return doc;
   } catch (e) {
     next(e);
   }
@@ -232,7 +241,12 @@ exports.pdfPeriodo = (req, res, next) => {
     }
 
     const data = service.getPeriodoCompensacaoData(start, end);
-    return renderEscalaPeriodoPdf(res, { start, end, ...data });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", 'inline; filename="escala-periodo.pdf"');
+    const doc = generator.generatePeriodPDF({ start, end, ...data });
+    doc.pipe(res);
+    return doc;
   } catch (e) {
     next(e);
   }
