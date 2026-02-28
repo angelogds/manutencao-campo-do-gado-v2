@@ -483,86 +483,49 @@ function getEscalaSemanalPdfData() {
 }
 
 function getPeriodoCompensacaoData(start, end) {
-  const inicio = toDateOnly(start);
-  const fim = toDateOnly(end);
+  const linhas = getLinhasPeriodo(start, end);
 
-  const baseServicos = db.prepare(`
-    SELECT cp.data_servico, cp.hora_inicio, cp.hora_fim, cp.equipamento, cp.descricao_servico,
-           cp.minutos_total, cp.concessao_sugerida,
-           c.nome AS colaborador, c.funcao
-    FROM escala_compensacoes cp
-    JOIN colaboradores c ON c.id = cp.colaborador_id
-    WHERE cp.data_servico BETWEEN ? AND ?
-    ORDER BY cp.data_servico ASC, c.nome ASC
-  `).all(inicio, fim).map((row) => ({
-    data: row.data_servico,
-    colaborador: row.colaborador,
-    funcao: funcaoLabel(normalizeFuncao(row.funcao) || row.funcao),
-    horaInicio: row.hora_inicio,
-    horaFim: row.hora_fim,
-    equipamento: row.equipamento || "-",
-    descricaoServico: row.descricao_servico || "-",
-    minutosTotal: row.minutos_total,
-    concessaoSugerida: row.concessao_sugerida,
+  const ausencias = db.prepare(`
+    SELECT x.data_inicio, x.data_fim, x.tipo, x.motivo, c.nome AS colaborador
+    FROM escala_ausencias x
+    JOIN colaboradores c ON c.id = x.colaborador_id
+    WHERE NOT (x.data_fim < ? OR x.data_inicio > ?)
+    ORDER BY x.data_inicio ASC, c.nome ASC
+  `).all(start, end);
+
+  const baseServicos = linhas.map((l) => ({
+    data: l.data_inicio,
+    nome: l.nome,
+    turnoFuncao: `${l.turnoLabel} / ${l.funcaoLabel}`,
   }));
 
-  const apuracaoMap = new Map();
-  for (const item of baseServicos) {
-    const atual = apuracaoMap.get(item.colaborador) || {
-      colaborador: item.colaborador,
-      totalMinutos: 0,
-      totalInteiras: 0,
-      totalMeias: 0,
-      saldo: 0,
-    };
-    atual.totalMinutos += item.minutosTotal;
-    if (item.concessaoSugerida === "INTEIRA") atual.totalInteiras += 1;
-    if (item.concessaoSugerida === "MEIA") atual.totalMeias += 1;
-    atual.saldo = atual.totalInteiras + (atual.totalMeias * 0.5);
-    apuracaoMap.set(item.colaborador, atual);
-  }
-
-  const apuracao = Array.from(apuracaoMap.values()).sort((a, b) => a.colaborador.localeCompare(b.colaborador, "pt-BR"));
-
-  const concessoes = db.prepare(`
-    SELECT ec.inicio, ec.fim, ec.tipo, ec.concessao, ec.motivo,
-           c.nome AS colaborador
-    FROM escala_concessoes ec
-    JOIN colaboradores c ON c.id = ec.colaborador_id
-    WHERE NOT (ec.fim < ? OR ec.inicio > ?)
-    ORDER BY ec.inicio ASC, c.nome ASC
-  `).all(inicio, fim);
-
   const registros = [];
-  for (const item of concessoes) {
-    const current = new Date(`${item.inicio}T00:00:00Z`);
-    const limit = new Date(`${item.fim}T00:00:00Z`);
+  for (const ausencia of ausencias) {
+    const current = new Date(`${ausencia.data_inicio}T00:00:00Z`);
+    const limit = new Date(`${ausencia.data_fim}T00:00:00Z`);
+
     while (current <= limit) {
-      const data = current.toISOString().slice(0, 10);
-      if (data >= inicio && data <= fim) {
+      const iso = current.toISOString().slice(0, 10);
+      if (iso >= start && iso <= end) {
         registros.push({
-          data,
-          tipo: item.tipo,
-          concessao: item.concessao,
-          motivo: item.motivo || "",
-          colaborador: item.colaborador,
+          data: iso,
+          tipo: ausencia.tipo === "atestado" ? "Atestado" : "Folga",
+          colaborador: ausencia.colaborador,
+          motivo: ausencia.motivo || "",
         });
       }
       current.setUTCDate(current.getUTCDate() + 1);
     }
   }
 
-  registros.sort((a, b) => (a.data === b.data ? a.colaborador.localeCompare(b.colaborador, "pt-BR") : a.data.localeCompare(b.data)));
-
-  const descricoes = baseServicos
-    .filter((item) => item.descricaoServico && item.descricaoServico !== "-")
-    .map((item) => `${item.data} — ${item.colaborador}: ${item.descricaoServico}`);
+  registros.sort((a, b) => {
+    if (a.data !== b.data) return a.data.localeCompare(b.data);
+    return a.colaborador.localeCompare(b.colaborador, "pt-BR");
+  });
 
   return {
     baseServicos,
-    apuracao,
     registros,
-    descricoes,
   };
 }
 
