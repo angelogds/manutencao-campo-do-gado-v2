@@ -1,5 +1,5 @@
 const service = require("./escala.service");
-const { renderEscalaSemanalPdf, renderEscalaPeriodoPdf, formatDateBr } = require("../../utils/pdf/pdfEscala");
+const generator = require("./escala.pdf");
 
 function isoToday() {
   return new Date().toISOString().slice(0, 10);
@@ -9,6 +9,17 @@ function daysInclusive(start, end) {
   const s = new Date(`${start}T00:00:00Z`);
   const e = new Date(`${end}T00:00:00Z`);
   return Math.floor((e - s) / 86400000) + 1;
+}
+
+
+function getCurrentMonthRangeISO() {
+  const now = new Date();
+  const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0));
+  return {
+    start: first.toISOString().slice(0, 10),
+    end: last.toISOString().slice(0, 10),
+  };
 }
 
 function isValidDateISO(value) {
@@ -24,14 +35,17 @@ exports.index = (req, res, next) => {
 
     const semana = service.getSemanaPorData(alvo);
     const publicacoes = service.getPublicacoes();
+    const monthRange = getCurrentMonthRangeISO();
+    const pdfStart = String(req.query?.start || monthRange.start).slice(0, 10);
+    const pdfEnd = String(req.query?.end || monthRange.end).slice(0, 10);
 
     return res.render("escala/index", {
       title: "Escala",
       alvo,
       semana,
       publicacoes,
-      pdfStart: String(req.query?.start || semana?.data_inicio || alvo).slice(0, 10),
-      pdfEnd: String(req.query?.end || semana?.data_fim || alvo).slice(0, 10),
+      pdfStart,
+      pdfEnd,
     });
   } catch (e) {
     next(e);
@@ -102,13 +116,19 @@ exports.lancarAusencia = (req, res, next) => {
   try {
     const date = String(req.body?.date || "").slice(0, 10) || isoToday();
     const nome = String(req.body?.nome || "").trim();
-    const tipo = String(req.body?.tipo || "").trim().toLowerCase();
+    const tipo = String(req.body?.tipo || "").trim().toUpperCase();
     const inicio = String(req.body?.inicio || "").slice(0, 10);
     const fim = String(req.body?.fim || "").slice(0, 10);
     const motivo = String(req.body?.motivo || "").trim();
+    const dataServico = String(req.body?.dataServico || "").slice(0, 10);
+    const horaInicio = String(req.body?.horaInicio || "").trim();
+    const horaFim = String(req.body?.horaFim || "").trim();
+    const equipamento = String(req.body?.equipamento || "").trim();
+    const descricaoServico = String(req.body?.descricaoServico || "").trim();
+    const funcao = service.normalizeFuncao(req.body?.funcao) || "mecanico";
 
     if (!nome || !inicio || !fim || !tipo) {
-      req.flash("error", "Preencha: Nome, Tipo (folga/atestado), Início e Fim.");
+      req.flash("error", "Preencha: Colaborador, Tipo, Início e Fim.");
       return res.redirect(`/escala?date=${date}`);
     }
 
@@ -117,14 +137,64 @@ exports.lancarAusencia = (req, res, next) => {
       return res.redirect(`/escala?date=${date}`);
     }
 
-    if (tipo !== "folga" && tipo !== "atestado") {
-      req.flash("error", "Tipo inválido (use folga ou atestado).");
+    if (!["FOLGA", "ATESTADO", "FERIAS"].includes(tipo)) {
+      req.flash("error", "Tipo inválido (use Folga, Férias ou Atestado).");
       return res.redirect(`/escala?date=${date}`);
     }
 
-    service.lancarAusencia({ nome, tipo, inicio, fim, motivo });
+    if (tipo === "ATESTADO" && !motivo) {
+      req.flash("error", "Motivo é obrigatório para atestado.");
+      return res.redirect(`/escala?date=${date}`);
+    }
 
-    req.flash("success", "Ausência lançada. A semana já vai reconhecer automaticamente.");
+    if (tipo === "FOLGA") {
+      const hasAnyCompField = dataServico || horaInicio || horaFim || equipamento || descricaoServico;
+      if (hasAnyCompField && (!dataServico || !horaInicio || !horaFim || !equipamento || !descricaoServico)) {
+        req.flash("error", "Para folga por compensação, preencha todos os campos do serviço prestado.");
+        return res.redirect(`/escala?date=${date}`);
+      }
+    }
+
+    service.lancarAusencia({
+      nome,
+      tipo,
+      inicio,
+      fim,
+      motivo,
+      dataServico,
+      horaInicio,
+      horaFim,
+      equipamento,
+      descricaoServico,
+      funcao,
+    });
+
+    req.flash("success", "Concessão lançada com sucesso.");
+    return res.redirect(`/escala?date=${date}`);
+  } catch (e) {
+    next(e);
+  }
+};
+
+
+
+exports.removerAlocacao = (req, res, next) => {
+  try {
+    const alocacaoId = Number(req.params.id);
+    const date = String(req.body?.date || req.query?.date || "").slice(0, 10) || isoToday();
+
+    if (!alocacaoId) {
+      req.flash("error", "Alocação inválida para exclusão.");
+      return res.redirect(`/escala?date=${date}`);
+    }
+
+    const ok = service.removerAlocacao(alocacaoId);
+    if (!ok) {
+      req.flash("error", "Registro não encontrado para exclusão.");
+      return res.redirect(`/escala?date=${date}`);
+    }
+
+    req.flash("success", "Registro removido com sucesso.");
     return res.redirect(`/escala?date=${date}`);
   } catch (e) {
     next(e);
@@ -172,23 +242,27 @@ exports.salvarEdicao = (req, res, next) => {
   }
 };
 
-exports.pdfSemanaAtual = (req, res, next) => {
+exports.pdfSemana = (req, res, next) => {
   try {
     const rows = service.getEscalaSemanalPdfData().map((s) => ({
-      semana: String(s.semana),
-      periodo: `${formatDateBr(s.data_inicio)} até ${formatDateBr(s.data_fim)}`,
+      semanaNumero: String(s.semana),
+      periodoTexto: `${generator.formatDateBr(s.data_inicio)} até ${generator.formatDateBr(s.data_fim)}`,
       noturno: s.noturno,
       diurno: s.diurno,
-      apoio: s.apoio,
+      apoioOperacionalDiurno: s.apoio,
     }));
 
-    return renderEscalaSemanalPdf(res, { rows });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", 'inline; filename="escala-semanal.pdf"');
+    const doc = generator.generateWeeklyPDF({ rows });
+    doc.pipe(res);
+    return doc;
   } catch (e) {
     next(e);
   }
 };
 
-exports.pdfSemana = (req, res, next) => {
+exports.pdfSemanaById = (req, res, next) => {
   try {
     const semanaId = Number(req.params.id);
     const semana = service.getSemanaById(semanaId);
@@ -196,17 +270,22 @@ exports.pdfSemana = (req, res, next) => {
 
     const consolidado = service.getEscalaSemanalPdfData().find((item) => item.semana === semana.semana_numero);
 
-    return renderEscalaSemanalPdf(res, {
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", 'inline; filename="escala-semanal.pdf"');
+
+    const doc = generator.generateWeeklyPDF({
       rows: [
         {
-          semana: String(semana.semana_numero),
-          periodo: `${formatDateBr(semana.data_inicio)} até ${formatDateBr(semana.data_fim)}`,
+          semanaNumero: String(semana.semana_numero),
+          periodoTexto: `${generator.formatDateBr(semana.data_inicio)} até ${generator.formatDateBr(semana.data_fim)}`,
           noturno: consolidado?.noturno || { mecanico: [], auxiliar: [], operacional: [] },
           diurno: consolidado?.diurno || { mecanico: [], auxiliar: [], operacional: [] },
-          apoio: consolidado?.apoio || { mecanico: [], auxiliar: [], operacional: [] },
+          apoioOperacionalDiurno: consolidado?.apoio || { mecanico: [], auxiliar: [], operacional: [] },
         },
       ],
     });
+    doc.pipe(res);
+    return doc;
   } catch (e) {
     next(e);
   }
@@ -214,25 +293,37 @@ exports.pdfSemana = (req, res, next) => {
 
 exports.pdfPeriodo = (req, res, next) => {
   try {
-    const start = String(req.query?.start || "").slice(0, 10);
-    const end = String(req.query?.end || "").slice(0, 10);
+    const start = String(req.query?.start || '').slice(0, 10);
+    const end = String(req.query?.end || '').slice(0, 10);
 
-    if (!start || !end || !isValidDateISO(start) || !isValidDateISO(end) || end < start) {
+    if ((start && !isValidDateISO(start)) || (end && !isValidDateISO(end))) {
       return res.status(400).json({
         ok: false,
-        message: "Parâmetros inválidos. Use /escala/pdf/periodo?start=YYYY-MM-DD&end=YYYY-MM-DD com end >= start.",
+        message: 'Parâmetros inválidos. Datas devem estar no formato YYYY-MM-DD.',
       });
     }
 
-    if (daysInclusive(start, end) > 365) {
+    if (start && end && end < start) {
       return res.status(400).json({
         ok: false,
-        message: "O período máximo permitido para o PDF é de 365 dias.",
+        message: 'Data final não pode ser menor que a inicial.',
       });
     }
 
-    const data = service.getPeriodoCompensacaoData(start, end);
-    return renderEscalaPeriodoPdf(res, { start, end, ...data });
+    if (start && end && daysInclusive(start, end) > 365) {
+      return res.status(400).json({
+        ok: false,
+        message: 'O período máximo permitido para filtro é de 365 dias.',
+      });
+    }
+
+    const data = service.getPeriodoCompensacaoData(start || null, end || null);
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename="escala-folgas.pdf"');
+    const doc = generator.generatePeriodPDF({ start, end, ...data });
+    doc.pipe(res);
+    return doc;
   } catch (e) {
     next(e);
   }

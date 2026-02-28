@@ -23,9 +23,10 @@ router.post("/adicionar", requireLogin, requireRole(ACCESS.escala), safe(control
 router.post("/ausencia", requireLogin, requireRole(ACCESS.escala), safe(controller.lancarAusencia, "lancarAusencia"));
 router.get("/editar/:id", requireLogin, requireRole(ACCESS.escala), safe(controller.editarSemana, "editarSemana"));
 router.post("/editar/:id", requireLogin, requireRole(ACCESS.escala), safe(controller.salvarEdicao, "salvarEdicao"));
+router.post("/alocacao/:id/delete", requireLogin, requireRole(ACCESS.escala), safe(controller.removerAlocacao, "removerAlocacao"));
 
-router.get("/pdf/semana", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfSemanaAtual, "pdfSemanaAtual"));
-router.get("/pdf/semana/:id", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfSemana, "pdfSemana"));
+router.get("/pdf/semana", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfSemana, "pdfSemana"));
+router.get("/pdf/semana/:id", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfSemanaById, "pdfSemanaById"));
 router.get("/pdf/periodo", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfPeriodo, "pdfPeriodo"));
 router.get("/pdf", requireLogin, requireRole(ACCESS.escala), safe(controller.pdfPeriodo, "pdfPeriodo"));
 
