@@ -1,6 +1,5 @@
 const db = require("../../database/db");
 
-// ---------- helpers ----------
 function isoToday() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -26,15 +25,16 @@ function normalizeTurno(turno) {
 
 function normalizeFuncao(funcao) {
   const f = String(funcao || "").trim().toLowerCase();
-  if (f === "mecânico") return "mecanico";
-  if (f === "mecanico") return "mecanico";
+  if (f === "mecânico" || f === "mecanico") return "mecanico";
   if (f === "auxiliar") return "auxiliar";
+  if (f === "operacional" || f === "apoio") return "operacional";
   return "";
 }
 
 function funcaoLabel(funcao) {
   if (funcao === "mecanico") return "Mecânico";
   if (funcao === "auxiliar") return "Auxiliar";
+  if (funcao === "operacional") return "Operacional";
   return String(funcao || "-");
 }
 
@@ -57,7 +57,6 @@ function findSemanaByDate(dateISO) {
   `).get(dateISO);
 }
 
-// ---------- publicações (tabela já existe pela 063) ----------
 function getPublicacoes() {
   try {
     return db.prepare(`
@@ -71,7 +70,6 @@ function getPublicacoes() {
   }
 }
 
-// ---------- semana por data ----------
 function getSemanaPorData(dateISO) {
   const d = (dateISO || isoToday()).slice(0, 10);
 
@@ -143,9 +141,10 @@ function getLinhasSemanaComStatus(semanaId) {
       tipo_turno: a.tipo_turno,
       turnoLabel: turnoLabel(a.tipo_turno),
       setor: "Manutenção",
-      funcao: a.funcao || "mecanico",
-      funcaoLabel: funcaoLabel(a.funcao || "mecanico"),
+      funcao: normalizeFuncao(a.funcao) || "mecanico",
+      funcaoLabel: funcaoLabel(normalizeFuncao(a.funcao) || "mecanico"),
       statusLabel,
+      observacao: a.observacao || "",
     };
   });
 }
@@ -203,7 +202,6 @@ function getEscalaCompletaComTimes() {
   });
 }
 
-// ---------- adicionar rápido ----------
 function ensureColaborador(nome, funcao = "mecanico") {
   const n = String(nome || "").trim();
   if (!n) return null;
@@ -331,6 +329,7 @@ function getLinhasPeriodo(start, end) {
         turnoLabel: l.turnoLabel,
         funcaoLabel: l.funcaoLabel,
         statusLabel: l.statusLabel,
+        observacao: l.observacao,
       });
     }
   }
@@ -341,6 +340,76 @@ function getLinhasPeriodo(start, end) {
   });
 
   return linhas;
+}
+
+function getEscalaSemanalPdfData() {
+  const semanas = db.prepare(`
+    SELECT s.id, s.semana_numero, s.data_inicio, s.data_fim
+    FROM escala_semanas s
+    ORDER BY s.data_inicio ASC
+  `).all();
+
+  return semanas.map((s) => {
+    const linhas = db.prepare(`
+      SELECT a.tipo_turno, c.nome, c.funcao
+      FROM escala_alocacoes a
+      JOIN colaboradores c ON c.id = a.colaborador_id
+      WHERE a.semana_id = ?
+      ORDER BY c.nome ASC
+    `).all(s.id);
+
+    const montarGrupo = () => ({ mecanico: [], auxiliar: [], operacional: [] });
+    const grupos = { noturno: montarGrupo(), diurno: montarGrupo(), apoio: montarGrupo() };
+
+    linhas.forEach((l) => {
+      const turno = l.tipo_turno === "apoio" ? "apoio" : l.tipo_turno;
+      if (!grupos[turno]) return;
+      const funcao = normalizeFuncao(l.funcao) || "mecanico";
+      const key = funcao === "operacional" ? "operacional" : funcao;
+      if (!grupos[turno][key].includes(l.nome)) {
+        grupos[turno][key].push(l.nome);
+      }
+    });
+
+    return {
+      semana: s.semana_numero,
+      data_inicio: s.data_inicio,
+      data_fim: s.data_fim,
+      noturno: grupos.noturno,
+      diurno: grupos.diurno,
+      apoio: grupos.apoio,
+    };
+  });
+}
+
+function getPeriodoCompensacaoData(start, end) {
+  const linhas = getLinhasPeriodo(start, end);
+
+  const ausencias = db.prepare(`
+    SELECT x.data_inicio, x.data_fim, x.tipo, x.motivo, c.nome AS colaborador
+    FROM escala_ausencias x
+    JOIN colaboradores c ON c.id = x.colaborador_id
+    WHERE NOT (x.data_fim < ? OR x.data_inicio > ?)
+    ORDER BY x.data_inicio ASC, c.nome ASC
+  `).all(start, end);
+
+  const colaboradores = new Set(linhas.map((l) => l.nome));
+  const totalRegistros = linhas.length;
+  const baseResumo = totalRegistros
+    ? `Registros no período: ${totalRegistros} lançamento(s) envolvendo ${colaboradores.size} colaborador(es).`
+    : "Sem registros de serviço no período informado.";
+
+  const concessoes = ausencias.map((a) => ({
+    data: a.data_inicio,
+    tipo: a.tipo === "atestado" ? "Atestado" : "Folga",
+    colaborador: a.colaborador,
+    motivo: a.motivo || "",
+  }));
+
+  return {
+    baseResumo,
+    concessoes,
+  };
 }
 
 module.exports = {
@@ -354,6 +423,8 @@ module.exports = {
   getLinhasSemanaComStatus,
   getSemanasNoPeriodo,
   getLinhasPeriodo,
+  getEscalaSemanalPdfData,
+  getPeriodoCompensacaoData,
   normalizeTurno,
   normalizeFuncao,
 };
