@@ -102,13 +102,19 @@ exports.lancarAusencia = (req, res, next) => {
   try {
     const date = String(req.body?.date || "").slice(0, 10) || isoToday();
     const nome = String(req.body?.nome || "").trim();
-    const tipo = String(req.body?.tipo || "").trim().toLowerCase();
+    const tipo = String(req.body?.tipo || "").trim().toUpperCase();
     const inicio = String(req.body?.inicio || "").slice(0, 10);
     const fim = String(req.body?.fim || "").slice(0, 10);
     const motivo = String(req.body?.motivo || "").trim();
+    const dataServico = String(req.body?.dataServico || "").slice(0, 10);
+    const horaInicio = String(req.body?.horaInicio || "").trim();
+    const horaFim = String(req.body?.horaFim || "").trim();
+    const equipamento = String(req.body?.equipamento || "").trim();
+    const descricaoServico = String(req.body?.descricaoServico || "").trim();
+    const funcao = service.normalizeFuncao(req.body?.funcao) || "mecanico";
 
     if (!nome || !inicio || !fim || !tipo) {
-      req.flash("error", "Preencha: Nome, Tipo (folga/atestado), Início e Fim.");
+      req.flash("error", "Preencha: Colaborador, Tipo, Início e Fim.");
       return res.redirect(`/escala?date=${date}`);
     }
 
@@ -117,14 +123,64 @@ exports.lancarAusencia = (req, res, next) => {
       return res.redirect(`/escala?date=${date}`);
     }
 
-    if (tipo !== "folga" && tipo !== "atestado") {
-      req.flash("error", "Tipo inválido (use folga ou atestado).");
+    if (!["FOLGA", "ATESTADO", "FERIAS"].includes(tipo)) {
+      req.flash("error", "Tipo inválido (use Folga, Férias ou Atestado).");
       return res.redirect(`/escala?date=${date}`);
     }
 
-    service.lancarAusencia({ nome, tipo, inicio, fim, motivo });
+    if (tipo === "ATESTADO" && !motivo) {
+      req.flash("error", "Motivo é obrigatório para atestado.");
+      return res.redirect(`/escala?date=${date}`);
+    }
 
-    req.flash("success", "Ausência lançada. A semana já vai reconhecer automaticamente.");
+    if (tipo === "FOLGA") {
+      const hasAnyCompField = dataServico || horaInicio || horaFim || equipamento || descricaoServico;
+      if (hasAnyCompField && (!dataServico || !horaInicio || !horaFim || !equipamento || !descricaoServico)) {
+        req.flash("error", "Para folga por compensação, preencha todos os campos do serviço prestado.");
+        return res.redirect(`/escala?date=${date}`);
+      }
+    }
+
+    service.lancarAusencia({
+      nome,
+      tipo,
+      inicio,
+      fim,
+      motivo,
+      dataServico,
+      horaInicio,
+      horaFim,
+      equipamento,
+      descricaoServico,
+      funcao,
+    });
+
+    req.flash("success", "Concessão lançada com sucesso.");
+    return res.redirect(`/escala?date=${date}`);
+  } catch (e) {
+    next(e);
+  }
+};
+
+
+
+exports.removerAlocacao = (req, res, next) => {
+  try {
+    const alocacaoId = Number(req.params.id);
+    const date = String(req.body?.date || req.query?.date || "").slice(0, 10) || isoToday();
+
+    if (!alocacaoId) {
+      req.flash("error", "Alocação inválida para exclusão.");
+      return res.redirect(`/escala?date=${date}`);
+    }
+
+    const ok = service.removerAlocacao(alocacaoId);
+    if (!ok) {
+      req.flash("error", "Registro não encontrado para exclusão.");
+      return res.redirect(`/escala?date=${date}`);
+    }
+
+    req.flash("success", "Registro removido com sucesso.");
     return res.redirect(`/escala?date=${date}`);
   } catch (e) {
     next(e);
