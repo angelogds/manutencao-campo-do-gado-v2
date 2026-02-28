@@ -5,10 +5,10 @@
     display: grid;
     grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
     grid-template-areas:
-      "os mural"
-      "preventivas quick"
-      "andamento escala"
-      "demandas escala";
+      "os andamento"
+      "preventivas escala"
+      "mural quick"
+      "demandas quick";
     gap: 10px;
     align-items: start;
   }
@@ -66,7 +66,7 @@
   .os-row-leve { background:#f8fafc; }
 
   @media (max-width: 1200px) {
-    .tv-grid { grid-template-columns: 1fr; grid-template-areas: "os" "mural" "preventivas" "andamento" "escala" "demandas" "quick"; }
+    .tv-grid { grid-template-columns: 1fr; grid-template-areas: "os" "andamento" "preventivas" "escala" "mural" "quick" "demandas"; }
     .alerta-tv__title { font-size:22px; }
   }
 
