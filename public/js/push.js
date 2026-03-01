@@ -8,6 +8,31 @@
     return outputArray;
   }
 
+  function isIOS() {
+    const ua = navigator.userAgent || '';
+    return /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function isStandalone() {
+    return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  }
+
+  function unsupportedMessage() {
+    if (isIOS()) {
+      if (!isStandalone()) {
+        return [
+          'No iPhone, as notificações push funcionam no app instalado na Tela de Início.',
+          'Isso vale para Safari, Edge e Chrome no iOS.',
+          'Abra no Safari, toque em Compartilhar e escolha “Adicionar à Tela de Início”.',
+          'Depois abra o app salvo na Tela de Início e ative os alertas.',
+        ].join('\n');
+      }
+      return 'Seu iPhone não expôs os recursos de push para este app agora. Atualize o iOS e tente novamente pela Tela de Início.';
+    }
+
+    return 'Push não suportado neste navegador/dispositivo.';
+  }
+
   async function enablePush() {
     if (!window.isSecureContext) {
       alert('Notificações push exigem HTTPS.');
@@ -15,21 +40,25 @@
     }
 
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-      alert('Push não suportado neste navegador.');
+      alert(unsupportedMessage());
       return;
     }
 
     const vapidPublicKey = window.__VAPID_PUBLIC_KEY__ || '';
     if (!vapidPublicKey) {
-      alert('VAPID_PUBLIC_KEY não configurada no servidor.');
+      alert('VAPID_PUBLIC_KEY não configurada no servidor. Contate o suporte.');
       return;
     }
 
     const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
+    if (permission !== 'granted') {
+      alert('Permissão de notificação não concedida.');
+      return;
+    }
 
     const registration = await navigator.serviceWorker.register('/sw.js');
-    const subscription = await registration.pushManager.subscribe({
+    const existing = await registration.pushManager.getSubscription();
+    const subscription = existing || await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: base64ToUint8Array(vapidPublicKey),
     });
@@ -53,6 +82,7 @@
 
   window.enablePush = function () {
     enablePush().catch(function (err) {
+      alert('Não foi possível ativar os alertas neste dispositivo.');
       console.warn('Falha ao ativar push:', err?.message || err);
     });
   };
