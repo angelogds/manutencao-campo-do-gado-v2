@@ -183,6 +183,7 @@ function getEscalaPainelSemana() {
       .prepare(
         `
         SELECT
+          c.id AS colaborador_id,
           c.nome,
           COALESCE(NULLIF(c.funcao, ''), '-') AS funcao,
           a.tipo_turno
@@ -194,18 +195,63 @@ function getEscalaPainelSemana() {
             WHEN 'diurno' THEN 1
             WHEN 'apoio' THEN 2
             WHEN 'noturno' THEN 3
-            ELSE 4
+            WHEN 'folga' THEN 4
+            ELSE 5
           END,
           c.nome ASC
       `
       )
       .all(semana.id);
 
+    const ausencias = safeGet(() => db
+      .prepare(
+        `
+        SELECT
+          c.id AS colaborador_id,
+          c.nome,
+          UPPER(COALESCE(x.tipo, '-')) AS tipo,
+          x.data_inicio,
+          x.data_fim
+        FROM escala_ausencias x
+        JOIN colaboradores c ON c.id = x.colaborador_id
+        WHERE NOT (x.data_fim < ? OR x.data_inicio > ?)
+        ORDER BY c.nome ASC
+      `
+      )
+      .all(semana.data_inicio, semana.data_fim), []);
+
+    const folgasTurno = alocacoes
+      .filter((a) => a.tipo_turno === "folga")
+      .map((a) => ({
+        colaborador_id: a.colaborador_id,
+        nome: a.nome,
+        tipo: "FOLGA",
+        data_inicio: semana.data_inicio,
+        data_fim: semana.data_fim,
+      }));
+
+    const folgasAfastamentosMap = new Map();
+    [...folgasTurno, ...ausencias].forEach((item) => {
+      if (!item?.colaborador_id) return;
+      const key = String(item.colaborador_id);
+      const atual = folgasAfastamentosMap.get(key);
+      if (!atual || String(item.tipo || '').toUpperCase() === 'ATESTADO') {
+        folgasAfastamentosMap.set(key, {
+          colaborador_id: item.colaborador_id,
+          nome: item.nome,
+          tipo: String(item.tipo || '-').toUpperCase(),
+          data_inicio: item.data_inicio || semana.data_inicio,
+          data_fim: item.data_fim || semana.data_fim,
+        });
+      }
+    });
+
     return {
       ...semana,
       diurno_mecanicos: alocacoes.filter((a) => a.tipo_turno === "diurno"),
       apoio_operacional: alocacoes.filter((a) => a.tipo_turno === "apoio"),
       noturno: alocacoes.filter((a) => a.tipo_turno === "noturno"),
+      folgas_afastamentos: Array.from(folgasAfastamentosMap.values()),
     };
   }, null);
 }

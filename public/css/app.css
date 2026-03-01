@@ -282,3 +282,30 @@ textarea{ min-height:110px; resize:vertical; }
   .page-head h1{ font-size:28px; }
   .grid-2{ grid-template-columns:1fr; }
 }
+
+
+/* Dashboard: layout em 2 colunas sem buracos */
+.dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.dash-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.dash-col .dashboard-card {
+  height: auto;
+  min-height: unset;
+}
+
+@media (max-width: 980px) {
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}

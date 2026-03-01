@@ -1,4 +1,5 @@
 const service = require("./os.service");
+const pushService = require("../push/push.service");
 
 function mapFilesToPublic(files = []) {
   return (files || []).map((f) => ({
@@ -28,7 +29,7 @@ function osNewForm(req, res) {
   });
 }
 
-function osCreate(req, res) {
+async function osCreate(req, res) {
   try {
     const {
       equipamento_id,
@@ -62,6 +63,12 @@ function osCreate(req, res) {
       tipo: "ABERTURA",
       userId: req.session?.user?.id || null,
     });
+
+    await pushService.sendPushToAll({
+      title: "Nova Ordem de Serviço",
+      body: `OS #${id} - ${equipamento_manual || (equipamento_id ? `Equipamento #${equipamento_id}` : 'Equipamento')}`,
+      url: `/os/${id}`,
+    }).catch(() => {});
 
     req.flash("success", `OS #${id} criada com sucesso.`);
     return res.redirect("/os");
@@ -98,10 +105,15 @@ function osCloseForm(req, res) {
   });
 }
 
-function osIniciar(req, res) {
+async function osIniciar(req, res) {
   const id = Number(req.params.id);
   try {
     service.iniciarOS(id, req.session?.user?.id || null);
+    await pushService.sendPushToAll({
+      title: "OS em andamento",
+      body: `OS #${id} entrou em andamento.`,
+      url: `/os/${id}`,
+    }).catch(() => {});
     req.flash("success", "OS iniciada e enviada para andamento.");
   } catch (err) {
     req.flash("error", err.message || "Não foi possível iniciar a OS.");
@@ -130,7 +142,7 @@ function normalizePecasBody(body) {
   }));
 }
 
-function osClose(req, res) {
+async function osClose(req, res) {
   const id = Number(req.params.id);
   console.log("[OS_CLOSE] Iniciando fechamento", {
     osId: id,
@@ -159,6 +171,12 @@ function osClose(req, res) {
       dataFim: req.body.data_fim,
     });
 
+    await pushService.sendPushToAll({
+      title: "OS finalizada",
+      body: `OS #${id} foi finalizada.`,
+      url: `/os/${id}`,
+    }).catch(() => {});
+
     console.log("[OS_CLOSE] Fechamento concluído", { osId: id, syncResult });
     req.flash("success", "OS concluída com sucesso.");
   } catch (err) {
@@ -168,12 +186,29 @@ function osClose(req, res) {
   return res.redirect(`/os/${id}`);
 }
 
-function osUpdateStatus(req, res) {
+async function osUpdateStatus(req, res) {
   const id = Number(req.params.id);
   const { status } = req.body;
 
   try {
     service.updateStatus(id, status, req.session?.user?.id || null);
+
+    const st = String(status || '').toUpperCase();
+    if (st === 'ANDAMENTO' || st === 'EM_ANDAMENTO') {
+      await pushService.sendPushToAll({
+        title: "OS em andamento",
+        body: `OS #${id} entrou em andamento.`,
+        url: `/os/${id}`,
+      }).catch(() => {});
+    }
+    if (['FECHADA', 'FINALIZADA', 'CONCLUIDA', 'CONCLUÍDA'].includes(st)) {
+      await pushService.sendPushToAll({
+        title: "OS finalizada",
+        body: `OS #${id} foi finalizada.`,
+        url: `/os/${id}`,
+      }).catch(() => {});
+    }
+
     req.flash("success", "Status atualizado.");
     return res.redirect(`/os/${id}`);
   } catch (err) {

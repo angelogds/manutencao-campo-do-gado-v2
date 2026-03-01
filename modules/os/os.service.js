@@ -2,7 +2,6 @@ const db = require("../../database/db");
 const { classifyOSPriority } = require("./os-priority.service");
 const alertsHub = require("../alerts/alerts.hub");
 const alertsService = require("../alerts/alerts.service");
-const webPushService = require("../notifications/webpush.service");
 let inspecaoService = null;
 try {
   inspecaoService = require("../inspecao/inspecao.service");
@@ -328,15 +327,6 @@ function createOS({
   emitOSEvents(osId, "create");
   syncInspecaoFromOS(osId);
 
-  webPushService
-    .sendOSPushNotifications({
-      osId,
-      equipamento: equipamentoFinal,
-      grau: grauOS,
-      descricao: desc,
-    })
-    .catch(() => {});
-
   return osId;
 }
 
@@ -519,6 +509,13 @@ function updateStatus(id, status) {
 
   db.prepare(`UPDATE os SET status = ? WHERE id = ?`).run(st, id);
   emitOSEvents(id, "status");
+
+  if (st === "ANDAMENTO" || st === "EM_ANDAMENTO") {
+  }
+
+  if (["FECHADA", "FINALIZADA", "CONCLUIDA", "CONCLUÍDA"].includes(st)) {
+  }
+
   if (inspecaoService?.syncFromOS) {
     try {
       inspecaoService.syncFromOS(id);
