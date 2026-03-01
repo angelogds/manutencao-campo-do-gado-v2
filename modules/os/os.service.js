@@ -2,7 +2,7 @@ const db = require("../../database/db");
 const { classifyOSPriority } = require("./os-priority.service");
 const alertsHub = require("../alerts/alerts.hub");
 const alertsService = require("../alerts/alerts.service");
-const webPushService = require("../notifications/webpush.service");
+const pushService = require("../push/push.service");
 let inspecaoService = null;
 try {
   inspecaoService = require("../inspecao/inspecao.service");
@@ -328,12 +328,11 @@ function createOS({
   emitOSEvents(osId, "create");
   syncInspecaoFromOS(osId);
 
-  webPushService
-    .sendOSPushNotifications({
-      osId,
-      equipamento: equipamentoFinal,
-      grau: grauOS,
-      descricao: desc,
+  pushService
+    .sendPushToAll({
+      title: "Nova Ordem de Serviço",
+      body: `OS #${osId} - ${equipamentoFinal}`,
+      url: `/os/${osId}`,
     })
     .catch(() => {});
 
@@ -411,6 +410,13 @@ function iniciarOS(id, userId) {
   db.prepare(`UPDATE os SET ${sets.join(", ")} WHERE id = ?`).run(...args);
 
   emitOSEvents(id, "status");
+  pushService
+    .sendPushToAll({
+      title: "OS em andamento",
+      body: `OS #${id} entrou em andamento.`,
+      url: `/os/${id}`,
+    })
+    .catch(() => {});
   if (inspecaoService?.syncFromOS) {
     try {
       inspecaoService.syncFromOS(id);
@@ -492,6 +498,13 @@ function concluirOS(id, { closedBy, diagnostico, acaoExecutada, pecas, dataFim }
 
   tx();
   emitOSEvents(id, "status");
+  pushService
+    .sendPushToAll({
+      title: "OS finalizada",
+      body: `OS #${id} foi finalizada.`,
+      url: `/os/${id}`,
+    })
+    .catch(() => {});
   let syncResult = null;
   if (inspecaoService?.syncFromClosedOS) {
     try {
@@ -519,6 +532,27 @@ function updateStatus(id, status) {
 
   db.prepare(`UPDATE os SET status = ? WHERE id = ?`).run(st, id);
   emitOSEvents(id, "status");
+
+  if (st === "ANDAMENTO" || st === "EM_ANDAMENTO") {
+    pushService
+      .sendPushToAll({
+        title: "OS em andamento",
+        body: `OS #${id} entrou em andamento.`,
+        url: `/os/${id}`,
+      })
+      .catch(() => {});
+  }
+
+  if (["FECHADA", "FINALIZADA", "CONCLUIDA", "CONCLUÍDA"].includes(st)) {
+    pushService
+      .sendPushToAll({
+        title: "OS finalizada",
+        body: `OS #${id} foi finalizada.`,
+        url: `/os/${id}`,
+      })
+      .catch(() => {});
+  }
+
   if (inspecaoService?.syncFromOS) {
     try {
       inspecaoService.syncFromOS(id);

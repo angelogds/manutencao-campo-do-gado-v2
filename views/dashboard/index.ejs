@@ -105,7 +105,7 @@
     <h1>Painel Operacional Reciclagem</h1>
     <p class="muted">TV da manutenção • OS, mural, preventivas, escala e demandas em tempo real</p>
   </div>
-  <button id="btn-ativar-push" class="btn-outline" type="button">Ativar alertas de OS neste dispositivo</button>
+  <button id="btn-ativar-push" class="btn-outline" type="button" onclick="enablePush()">Ativar alertas de OS neste dispositivo</button>
 </div>
 
 <section id="alerta-tv" class="alerta-tv <%= alertaInicial ? 'piscar' : 'hidden' %>">
@@ -300,22 +300,6 @@
   });
 
 
-
-  var pushBtn = document.getElementById('btn-ativar-push');
-  async function ativarPush() {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return alert('Push não suportado neste navegador.');
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
-    const reg = await navigator.serviceWorker.register('/sw.js');
-    const vapid = '<%= process.env.VAPID_PUBLIC_KEY || "" %>';
-    if (!vapid) { alert('VAPID_PUBLIC_KEY não configurada no servidor.'); return; }
-    const key = Uint8Array.from(atob(vapid.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
-    await fetch('/dashboard/push/subscribe', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ subscription: sub }) });
-    pushBtn.textContent = 'Alertas ativados neste dispositivo';
-    pushBtn.disabled = true;
-  }
-  pushBtn?.addEventListener('click', function(){ ativarPush().catch(function(){}); });
 
   btnReconhecer?.addEventListener('click', function(){
     if (!alertaAtual || !alertaAtual.id_os) return;
