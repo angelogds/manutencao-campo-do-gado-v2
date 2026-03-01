@@ -14,6 +14,9 @@ const session = require("express-session");
 const flash = require("connect-flash");
 const engine = require("ejs-mate");
 
+let webPush = null;
+try { webPush = require("web-push"); } catch (_e) { webPush = null; }
+
 const dateUtil = require("./utils/date");
 const fmtBR =
   typeof dateUtil.fmtBR === "function" ? dateUtil.fmtBR : (v) => String(v ?? "-");
@@ -32,6 +35,22 @@ try {
 
 const app = express();
 app.set("trust proxy", 1);
+
+if (webPush && process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  try {
+    webPush.setVapidDetails(
+      process.env.VAPID_SUBJECT || 'mailto:admin@campodogado.local',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+  } catch (e) {
+    console.warn('⚠️ WebPush desativado: VAPID não configurado');
+  }
+} else {
+  console.warn('⚠️ WebPush desativado: VAPID não configurado');
+}
+
+app.locals.VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
 
 // ===== View engine =====
 app.engine("ejs", engine);
@@ -85,6 +104,7 @@ app.use((req, res, next) => {
   // ✅ data helpers
   res.locals.fmtBR = fmtBR;
   res.locals.TZ = TZ;
+  res.locals.VAPID_PUBLIC_KEY = app.locals.VAPID_PUBLIC_KEY || "";
 
   // ✅ RBAC helpers disponíveis no EJS (sem require no template)
   res.locals.canAccessModule = canAccessModule;
@@ -130,6 +150,7 @@ function mount(basePath, modPath) {
 
 mount("/auth", "./modules/auth/auth.routes");
 mount("/dashboard", "./modules/dashboard/dashboard.routes");
+mount("/push", "./modules/push/push.routes");
 mount("/pcm", "./modules/pcm/pcm.routes");
 mount("/equipamentos", "./modules/equipamentos/equipamentos.routes");
 mount("/os", "./modules/os/os.routes");
