@@ -47,24 +47,7 @@
     <div class="muted">Descrição do problema (solicitante)</div>
     <div><%= os.descricao || '-' %></div>
 
-    <% if (os.diagnostico || os.causa_diagnostico || os.acao_executada || os.resumo_tecnico) { %>
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:12px 0"/>
-      <div><b>Causa / Diagnóstico / Ação preventiva:</b><br/><%= os.causa_diagnostico || os.diagnostico || '-' %></div>
-      <div style="margin-top:8px;"><b>Resumo técnico / Ação corretiva:</b><br/><%= os.resumo_tecnico || os.acao_executada || '-' %></div>
-    <% } %>
-  </div>
-
-  <% if (!isOSFechada) { %>
-    <div class="card">
-      <div class="actions">
-        <form method="POST" action="/os/<%= os.id %>/iniciar"><button class="btn btn-green" type="submit">Iniciar OS</button></form>
-        <form method="POST" action="/os/<%= os.id %>/pausar"><button class="btn" type="submit">Pausar OS</button></form>
-        <a class="btn btn-primary" href="/os/<%= os.id %>/fechar">Ir para fechamento</a>
-      </div>
-    </div>
-  <% } %>
-</div>
-
+ 
 <div class="card" style="margin-top:12px;">
   <h3 style="margin:0;">Fotos de abertura da OS</h3>
   <div class="muted">Registro visual inicial do equipamento.</div>
