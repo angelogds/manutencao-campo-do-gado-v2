@@ -184,35 +184,6 @@
     <% } %>
   </section>
 
-  <section class="dashboard-card area-escala">
-    <div class="dashboard-title">Escala da Semana</div>
-    <% if (escalaDiurno || escalaApoio || escalaNoturno || escalaFolgasAfastamentos.length) { %>
-      <div class="muted-xs" style="margin-bottom:8px;">Semana #<%= safeEscala.semana_numero || '-' %> • <%= safeEscala.data_inicio || '-' %> até <%= safeEscala.data_fim || '-' %></div>
-      <table class="table compact"><tbody>
-        <tr><td><strong>Dia (mecânicos)</strong></td><td><%= escalaDiurno || '-' %></td></tr>
-        <tr><td><strong>Apoio operacional</strong></td><td><%= escalaApoio || '-' %></td></tr>
-        <tr><td><strong>Noite (responsável)</strong></td><td><%= escalaNoturno || '-' %></td></tr>
-      </tbody></table>
-
-      <div class="dashboard-title" style="margin-top:10px; margin-bottom:6px; font-size:11px;">Folga / atestado</div>
-      <% if (escalaFolgasAfastamentos.length === 0) { %>
-        <p class="muted-xs" style="margin:0;">Sem mecânicos em folga/atestado nesta semana.</p>
-      <% } else { %>
-        <ul class="list-tight" style="margin-top:0;">
-          <% escalaFolgasAfastamentos.forEach(function(item) { %>
-            <li>
-              <strong><%= item.nome || '-' %></strong>
-              — <%= item.tipo || '-' %>
-              <% if (item.data_inicio || item.data_fim) { %>
-                (<%= item.data_inicio || '-' %> até <%= item.data_fim || '-' %>)
-              <% } %>
-            </li>
-          <% }) %>
-        </ul>
-      <% } %>
-    <% } else { %><p class="muted" style="margin:0;">Escala não disponível.</p><% } %>
-  </section>
-
 <section class="dashboard-card area-demandas">
     <div class="dashboard-title">Demandas</div>
     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
