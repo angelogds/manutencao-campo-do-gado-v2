@@ -32,14 +32,14 @@
             <td><span class="pill-tag pill-gray"><%= s.status %></span></td>
             <td style="display:flex;gap:8px;flex-wrap:wrap;">
               <% if (['COMPRADA', 'REABERTA'].includes(s.status)) { %>
-                <form method="POST" action="/almoxarifado/solicitacoes/<%= s.id %>/iniciar-recebimento"><button class="btn btn-sm btn-green" type="submit">Iniciar</button></form>
+                <form method="POST" action="/almoxarifado/recebimentos/<%= s.id %>/iniciar"><button class="btn btn-sm btn-green" type="submit">Iniciar</button></form>
               <% } %>
-              <a class="btn btn-sm btn-ghost" href="/almoxarifado/solicitacoes/<%= s.id %>/conferir">Conferir</a>
+              <a class="btn btn-sm btn-ghost" href="/almoxarifado/recebimentos/<%= s.id %>/conferir">Conferir</a>
               <% if (['RECEBIDA_TOTAL', 'RECEBIDA_PARCIAL'].includes(s.status)) { %>
-                <form method="POST" action="/almoxarifado/solicitacoes/<%= s.id %>/fechar"><button class="btn btn-sm" type="submit">Fechar</button></form>
+                <form method="POST" action="/almoxarifado/recebimentos/<%= s.id %>/fechar"><button class="btn btn-sm" type="submit">Fechar</button></form>
               <% } %>
               <% if (['FECHADA', 'RECEBIDA_PARCIAL'].includes(s.status)) { %>
-                <form method="POST" action="/almoxarifado/solicitacoes/<%= s.id %>/reabrir"><button class="btn btn-sm" type="submit">Reabrir</button></form>
+                <form method="POST" action="/almoxarifado/recebimentos/<%= s.id %>/reabrir"><button class="btn btn-sm" type="submit">Reabrir</button></form>
               <% } %>
             </td>
           </tr>
