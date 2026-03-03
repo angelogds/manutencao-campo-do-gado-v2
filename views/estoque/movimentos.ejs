@@ -1,0 +1,2 @@
+<h1>Movimentos de Estoque</h1>
+<table class="table"><tr><th>Data</th><th>Tipo</th><th>Item</th><th>Qtd</th><th>Usuário</th><th>Obs</th></tr><% movimentos.forEach(m=> { %><tr><td><%= fmtBR(m.data_mov) %></td><td><%= m.tipo %></td><td><%= m.item_nome %></td><td><%= m.quantidade %></td><td><%= m.usuario_nome || '-' %></td><td><%= m.observacao || '-' %></td></tr><% }) %></table>

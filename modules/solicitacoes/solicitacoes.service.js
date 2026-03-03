@@ -1,185 +1,125 @@
 const db = require("../../database/db");
+const { normalizeRole } = require("../../config/rbac");
 
-function hasColumn(tableName, columnName) {
-  try {
-    const cols = db.prepare(`PRAGMA table_info(${tableName})`).all();
-    return cols.some(
-      (col) => String(col.name || "").toLowerCase() === String(columnName || "").toLowerCase()
-    );
-  } catch (_e) {
-    return false;
-  }
+const STATUS = {
+  ABERTA: "ABERTA",
+  EM_COTACAO: "EM_COTACAO",
+  COMPRADA: "COMPRADA",
+  EM_RECEBIMENTO: "EM_RECEBIMENTO",
+  RECEBIDA_PARCIAL: "RECEBIDA_PARCIAL",
+  RECEBIDA_TOTAL: "RECEBIDA_TOTAL",
+  FECHADA: "FECHADA",
+  REABERTA: "REABERTA",
+};
+
+function canManageByRole(role) {
+  const r = normalizeRole(role);
+  return {
+    isAdmin: r === "ADMIN",
+    isCompras: r === "COMPRAS",
+    isAlmox: r === "ALMOXARIFADO",
+    isSolicitante: ["ENCARREGADO_MANUTENCAO", "MANUTENCAO_SUPERVISOR", "ENCARREGADO_PRODUCAO"].includes(r),
+  };
 }
 
-function listSolicitacoes() {
-  return db
-    .prepare(
-      `
-    SELECT s.id, s.solicitante, s.setor, s.status, s.observacao, s.created_at,
-           v.tipo_origem, v.destino_uso,
-           e.nome AS equipamento_nome
-    FROM solicitacoes_compra s
-    LEFT JOIN solicitacao_vinculos v ON v.solicitacao_id = s.id
-    LEFT JOIN equipamentos e ON e.id = v.equipamento_id
-    ORDER BY s.id DESC
-  `
-    )
-    .all();
+function nextNumero() {
+  const year = new Date().getFullYear();
+  const like = `SOL-${year}-%`;
+  const row = db.prepare("SELECT numero FROM solicitacoes WHERE numero LIKE ? ORDER BY id DESC LIMIT 1").get(like);
+  const seq = row?.numero ? Number(String(row.numero).split("-").pop()) + 1 : 1;
+  return `SOL-${year}-${String(seq).padStart(6, "0")}`;
 }
 
-function listEquipamentos() {
-  return db.prepare(`SELECT id, nome FROM equipamentos WHERE ativo = 1 ORDER BY nome`).all();
-}
-
-function createSolicitacao({ solicitante, setor, observacao, itens, vinculo, createdBy }) {
-  const hasCreatedBy = hasColumn("solicitacoes_compra", "created_by");
-
-  const insertSolic = hasCreatedBy
-    ? db.prepare(`
-        INSERT INTO solicitacoes_compra (solicitante, setor, status, observacao, created_by, created_at)
-        VALUES (?, ?, 'aberta', ?, ?, datetime('now'))
-      `)
-    : db.prepare(`
-        INSERT INTO solicitacoes_compra (solicitante, setor, status, observacao, created_at)
-        VALUES (?, ?, 'aberta', ?, datetime('now'))
-      `);
-
-  const hasEspecificacao = hasColumn("solicitacao_itens", "especificacao");
-
-  const insertItem = hasEspecificacao
-    ? db.prepare(`
-        INSERT INTO solicitacao_itens (solicitacao_id, item_id, descricao, especificacao, quantidade, unidade, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
-      `)
-    : db.prepare(`
-        INSERT INTO solicitacao_itens (solicitacao_id, item_id, descricao, quantidade, unidade, created_at)
-        VALUES (?, ?, ?, ?, ?, datetime('now'))
-      `);
-
-  const insertVinculo = db.prepare(`
-    INSERT INTO solicitacao_vinculos (solicitacao_id, tipo_origem, origem_id, equipamento_id, destino_uso, created_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
+function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao, equipamento_id, preventiva_id, os_id, demanda_id, itens }) {
+  const insertSol = db.prepare(`
+    INSERT INTO solicitacoes (
+      numero, solicitante_user_id, setor_origem, prioridade, titulo, descricao, equipamento_id, preventiva_id, os_id, demanda_id, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  return db
-    .transaction(() => {
-      const info = hasCreatedBy
-        ? insertSolic.run(solicitante, setor || "MANUTENCAO", observacao || null, createdBy || null)
-        : insertSolic.run(solicitante, setor || "MANUTENCAO", observacao || null);
+  const insertItem = db.prepare(`
+    INSERT INTO solicitacao_itens (
+      solicitacao_id, item_nome, item_descricao, unidade, categoria_id, estoque_item_id, qtd_solicitada
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
 
-      const solicitacaoId = Number(info.lastInsertRowid);
-
-      for (const it of itens || []) {
-        if (hasEspecificacao) {
-          insertItem.run(
-            solicitacaoId,
-            it.item_id ? Number(it.item_id) : null,
-            String(it.descricao || "").trim(),
-            it.especificacao ? String(it.especificacao).trim() : null,
-            Number(it.quantidade || 1),
-            String(it.unidade || "UN").toUpperCase()
-          );
-        } else {
-          const descricaoComposta = [String(it.descricao || "").trim(), it.especificacao ? String(it.especificacao).trim() : ""]
-            .filter(Boolean)
-            .join(" • ");
-          insertItem.run(
-            solicitacaoId,
-            it.item_id ? Number(it.item_id) : null,
-            descricaoComposta,
-            Number(it.quantidade || 1),
-            String(it.unidade || "UN").toUpperCase()
-          );
-        }
-      }
-
-      insertVinculo.run(
+  return db.transaction(() => {
+    const numero = nextNumero();
+    const info = insertSol.run(
+      numero,
+      userId,
+      setor_origem || "Manutenção",
+      prioridade || "MEDIA",
+      titulo,
+      descricao || null,
+      equipamento_id || null,
+      preventiva_id || null,
+      os_id || null,
+      demanda_id || null,
+      STATUS.ABERTA
+    );
+    const solicitacaoId = Number(info.lastInsertRowid);
+    for (const item of itens || []) {
+      insertItem.run(
         solicitacaoId,
-        String(vinculo?.tipo_origem || "AVULSA").toUpperCase(),
-        vinculo?.origem_id ? Number(vinculo.origem_id) : null,
-        vinculo?.equipamento_id ? Number(vinculo.equipamento_id) : null,
-        vinculo?.destino_uso ? String(vinculo.destino_uso).trim() : null
+        item.item_nome,
+        item.item_descricao || null,
+        (item.unidade || "UN").toUpperCase(),
+        item.categoria_id || null,
+        item.estoque_item_id || null,
+        Number(item.qtd_solicitada || 0)
       );
+    }
+    return solicitacaoId;
+  })();
+}
 
-      return solicitacaoId;
-    })();
+function listMinhasSolicitacoes(userId) {
+  return db.prepare(`
+    SELECT s.*, u.name AS solicitante_nome,
+      (SELECT COUNT(*) FROM solicitacao_itens i WHERE i.solicitacao_id = s.id) AS itens_count
+    FROM solicitacoes s
+    JOIN users u ON u.id = s.solicitante_user_id
+    WHERE s.solicitante_user_id = ?
+    ORDER BY s.id DESC
+  `).all(userId);
+}
+
+function getCountersForUser(userId) {
+  const rows = db.prepare("SELECT status, COUNT(*) AS total FROM solicitacoes WHERE solicitante_user_id = ? GROUP BY status").all(userId);
+  const counters = Object.values(STATUS).reduce((acc, st) => ({ ...acc, [st]: 0 }), {});
+  rows.forEach((r) => { counters[r.status] = r.total; });
+  return counters;
 }
 
 function getSolicitacaoById(id) {
-  const sol = db
-    .prepare(
-      `
-    SELECT s.id, s.solicitante, s.setor, s.status, s.observacao, s.created_at,
-           v.tipo_origem, v.origem_id, v.destino_uso, v.equipamento_id,
+  const sol = db.prepare(`
+    SELECT s.*, u.name AS solicitante_nome, u.role AS solicitante_role, cu.name AS compras_nome, au.name AS almox_nome,
            e.nome AS equipamento_nome
-    FROM solicitacoes_compra s
-    LEFT JOIN solicitacao_vinculos v ON v.solicitacao_id = s.id
-    LEFT JOIN equipamentos e ON e.id = v.equipamento_id
+    FROM solicitacoes s
+    JOIN users u ON u.id = s.solicitante_user_id
+    LEFT JOIN users cu ON cu.id = s.compras_user_id
+    LEFT JOIN users au ON au.id = s.almox_user_id
+    LEFT JOIN equipamentos e ON e.id = s.equipamento_id
     WHERE s.id = ?
-  `
-    )
-    .get(id);
-
+  `).get(id);
   if (!sol) return null;
-
-  const hasEspecificacao = hasColumn("solicitacao_itens", "especificacao");
-
-  const itensQuery = hasEspecificacao
-    ? `
-      SELECT si.id, si.item_id, si.descricao, si.especificacao, si.quantidade, si.unidade,
-             ei.codigo AS estoque_codigo, ei.nome AS estoque_nome,
-             COALESCE(vs.saldo, 0) AS saldo_atual
-      FROM solicitacao_itens si
-      LEFT JOIN estoque_itens ei ON ei.id = si.item_id
-      LEFT JOIN vw_estoque_saldo vs ON vs.item_id = si.item_id
-      WHERE si.solicitacao_id = ?
-      ORDER BY si.id
-    `
-    : `
-      SELECT si.id, si.item_id, si.descricao, NULL AS especificacao, si.quantidade, si.unidade,
-             ei.codigo AS estoque_codigo, ei.nome AS estoque_nome,
-             COALESCE(vs.saldo, 0) AS saldo_atual
-      FROM solicitacao_itens si
-      LEFT JOIN estoque_itens ei ON ei.id = si.item_id
-      LEFT JOIN vw_estoque_saldo vs ON vs.item_id = si.item_id
-      WHERE si.solicitacao_id = ?
-      ORDER BY si.id
-    `;
-
-  const itens = db.prepare(itensQuery).all(id);
-
-  const cotacoes = db
-    .prepare(
-      `
-    SELECT id, fornecedor, valor_total, observacao, anexo_path, created_at
-    FROM solicitacao_cotacoes
-    WHERE solicitacao_id = ?
-    ORDER BY id DESC
-  `
-    )
-    .all(id);
-
-  return { ...sol, itens, cotacoes };
+  const itens = db.prepare(`
+    SELECT si.*, (si.qtd_solicitada - si.qtd_recebida_total) AS qtd_pendente, ei.codigo AS estoque_codigo
+    FROM solicitacao_itens si
+    LEFT JOIN estoque_itens ei ON ei.id = si.estoque_item_id
+    WHERE si.solicitacao_id = ?
+    ORDER BY si.id
+  `).all(id);
+  return { ...sol, itens };
 }
 
-function updateStatus(id, status) {
-  db.prepare(`UPDATE solicitacoes_compra SET status = ? WHERE id = ?`).run(String(status || "").toLowerCase(), id);
+function listEquipamentos() {
+  return db.prepare("SELECT id, nome FROM equipamentos ORDER BY nome").all();
 }
 
-function addCotacao(solicitacaoId, { fornecedor, valor_total, observacao, anexo_path }) {
-  db.prepare(
-    `
-    INSERT INTO solicitacao_cotacoes (solicitacao_id, fornecedor, valor_total, observacao, anexo_path, created_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
-  `
-  ).run(solicitacaoId, fornecedor, Number(valor_total || 0), observacao || null, anexo_path || null);
+function listEstoqueItens() {
+  return db.prepare("SELECT id, codigo, nome, unidade FROM estoque_itens WHERE ativo = 1 ORDER BY nome").all();
 }
 
-module.exports = {
-  listSolicitacoes,
-  listEquipamentos,
-  createSolicitacao,
-  getSolicitacaoById,
-  updateStatus,
-  addCotacao,
-};
+module.exports = { STATUS, canManageByRole, createSolicitacao, listMinhasSolicitacoes, getCountersForUser, getSolicitacaoById, listEquipamentos, listEstoqueItens };

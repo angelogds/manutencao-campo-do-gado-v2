@@ -1,0 +1,5 @@
+<h1>Novo Item</h1>
+<form method="POST" action="/estoque/itens"><input name="codigo" placeholder="Código"/><input name="nome" placeholder="Nome" required/><input name="unidade" value="UN"/>
+<select name="categoria_id"><option value="">Categoria</option><% categorias.forEach(c=> { %><option value="<%= c.id %>"><%= c.nome %></option><% }) %></select>
+<select name="local_id"><option value="">Local</option><% locais.forEach(l=> { %><option value="<%= l.id %>"><%= l.nome %></option><% }) %></select>
+<input type="number" step="0.01" name="saldo_minimo" placeholder="Saldo mínimo"/><button class="btn">Salvar</button></form>

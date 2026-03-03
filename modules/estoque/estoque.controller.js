@@ -1,114 +1,15 @@
-// modules/estoque/estoque.controller.js
 const service = require("./estoque.service");
 
-function estoqueIndex(req, res) {
-  const q = (req.query.q || "").toString().trim();
-  const onlyBelow = (req.query.below || "") === "1";
+function index(req, res) { res.render("estoque/index", { title: "Estoque", activeMenu: "estoque", cards: service.dashboard() }); }
+function itens(req, res) { res.render("estoque/itens", { title: "Itens", activeMenu: "estoque", itens: service.listItens() }); }
+function novoItem(req, res) { res.render("estoque/novo_item", { title: "Novo Item", activeMenu: "estoque", categorias: service.listCategorias(), locais: service.listLocais() }); }
+function criarItem(req, res) { try { const id = service.createItem(req.body); req.flash("success", "Item criado."); return res.redirect(`/estoque/itens/${id}`);} catch (e) { req.flash("error", e.message); return res.redirect("/estoque/itens/novo"); } }
+function detalheItem(req, res) { const item = service.getItem(Number(req.params.id)); if (!item) return res.status(404).send("Item não encontrado"); res.render("estoque/show", { title: item.nome, activeMenu: "estoque", item }); }
+function categorias(req, res) { res.render("estoque/categorias", { title: "Categorias", activeMenu: "estoque", categorias: service.listCategorias() }); }
+function criarCategoria(req, res) { service.createCategoria(req.body); req.flash("success", "Categoria criada."); res.redirect("/estoque/categorias"); }
+function locais(req, res) { res.render("estoque/locais", { title: "Locais", activeMenu: "estoque", locais: service.listLocais() }); }
+function criarLocal(req, res) { service.createLocal(req.body); req.flash("success", "Local criado."); res.redirect("/estoque/locais"); }
+function movimentos(req, res) { res.render("estoque/movimentos", { title: "Movimentos", activeMenu: "estoque", movimentos: service.listMovimentos() }); }
+function saidaNova(req, res) { res.render("estoque/saida_nova", { title: "Registrar saída", activeMenu: "estoque", itens: service.listItens() }); }
 
-  const lista = service.listItens({ q, onlyBelowMin: onlyBelow });
-
-  const cards = service.getCards();
-
-  return res.render("estoque/index", {
-    title: "Estoque",
-    activeMenu: "estoque",
-    lista,
-    cards,
-    q,
-    onlyBelow,
-  });
-}
-
-function estoqueNewForm(req, res) {
-  return res.render("estoque/novo", {
-    title: "Novo Item",
-    activeMenu: "estoque",
-  });
-}
-
-function estoqueCreate(req, res) {
-  const { codigo, nome, unidade, estoque_min, custo_unit } = req.body;
-
-  if (!nome || !String(nome).trim()) {
-    req.flash("error", "Informe o nome do item.");
-    return res.redirect("/estoque/novo");
-  }
-
-  try {
-    const id = service.createItem({
-      codigo: (codigo || "").trim(),
-      nome: String(nome).trim(),
-      unidade: (unidade || "un").trim(),
-      estoque_min: estoque_min ? Number(String(estoque_min).replace(",", ".")) : 0,
-      custo_unit: custo_unit ? Number(String(custo_unit).replace(",", ".")) : 0,
-    });
-
-    req.flash("success", "Item criado com sucesso.");
-    return res.redirect(`/estoque/${id}`);
-  } catch (e) {
-    req.flash("error", `Erro ao criar item: ${e.message}`);
-    return res.redirect("/estoque/novo");
-  }
-}
-
-function estoqueShow(req, res) {
-  const id = Number(req.params.id);
-
-  const item = service.getItemById(id);
-  if (!item) {
-    return res.status(404).render("errors/404", {
-      title: "Não encontrado",
-      activeMenu: "estoque",
-    });
-  }
-
-  const movimentos = service.listMovimentosByItem(id);
-
-  return res.render("estoque/show", {
-    title: `Item #${id}`,
-    activeMenu: "estoque",
-    item,
-    movimentos,
-  });
-}
-
-function estoqueMovCreate(req, res) {
-  const itemId = Number(req.params.id);
-  const { tipo, quantidade, custo_unit, origem, observacao } = req.body;
-
-  if (!tipo || !String(tipo).trim()) {
-    req.flash("error", "Informe o tipo de movimentação.");
-    return res.redirect(`/estoque/${itemId}`);
-  }
-
-  const qtd = quantidade ? Number(String(quantidade).replace(",", ".")) : 0;
-  if (!qtd || qtd <= 0) {
-    req.flash("error", "Informe uma quantidade válida.");
-    return res.redirect(`/estoque/${itemId}`);
-  }
-
-  try {
-    service.createMovimento({
-      item_id: itemId,
-      tipo: String(tipo).trim().toLowerCase(), // entrada|saida|ajuste
-      quantidade: qtd,
-      custo_unit: custo_unit ? Number(String(custo_unit).replace(",", ".")) : null,
-      origem: (origem || "").trim(),
-      observacao: (observacao || "").trim(),
-    });
-
-    req.flash("success", "Movimentação registrada.");
-    return res.redirect(`/estoque/${itemId}`);
-  } catch (e) {
-    req.flash("error", `Erro ao registrar movimentação: ${e.message}`);
-    return res.redirect(`/estoque/${itemId}`);
-  }
-}
-
-module.exports = {
-  estoqueIndex,
-  estoqueNewForm,
-  estoqueCreate,
-  estoqueShow,
-  estoqueMovCreate,
-};
+module.exports = { index, itens, novoItem, criarItem, detalheItem, categorias, criarCategoria, locais, criarLocal, movimentos, saidaNova };

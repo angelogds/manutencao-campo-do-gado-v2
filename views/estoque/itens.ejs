@@ -1,0 +1,2 @@
+<h1>Estoque - Itens</h1><a class="btn" href="/estoque/itens/novo">Novo item</a>
+<table class="table"><tr><th>Código</th><th>Nome</th><th>Saldo</th><th>Mínimo</th></tr><% itens.forEach(i=> { %><tr><td><%= i.codigo || '-' %></td><td><a href="/estoque/itens/<%= i.id %>"><%= i.nome %></a></td><td><%= i.saldo_atual %></td><td><%= i.saldo_minimo %></td></tr><% }) %></table>

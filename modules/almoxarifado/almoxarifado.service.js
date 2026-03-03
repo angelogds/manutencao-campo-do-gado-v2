@@ -1,90 +1,70 @@
 const db = require("../../database/db");
+const { STATUS } = require("../solicitacoes/solicitacoes.service");
+function hasColumn(table, name) { try { return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === name); } catch { return false; } }
+const HAS_SALDO_ATUAL = hasColumn('estoque_itens','saldo_atual');
 
-function listFuncionarios() {
-  return db.prepare(`SELECT id, codigo, nome FROM almox_funcionarios WHERE ativo = 1 ORDER BY nome`).all();
+function listRecebimentos() {
+  return db.prepare(`SELECT s.*, u.name AS solicitante_nome FROM solicitacoes s JOIN users u ON u.id=s.solicitante_user_id WHERE s.status IN (?, ?, ?, ?) ORDER BY s.id DESC`).all(
+    STATUS.COMPRADA,
+    STATUS.EM_RECEBIMENTO,
+    STATUS.RECEBIDA_PARCIAL,
+    STATUS.FECHADA
+  );
 }
 
-function createFuncionario({ codigo, nome }) {
-  const info = db.prepare(`
-    INSERT INTO almox_funcionarios (codigo, nome, ativo, created_at)
-    VALUES (?, ?, 1, datetime('now'))
-  `).run(String(codigo).trim(), String(nome).trim());
-  return Number(info.lastInsertRowid);
+function getSolicitacao(id) {
+  const sol = db.prepare("SELECT * FROM solicitacoes WHERE id=?").get(id);
+  if (!sol) return null;
+  const itens = db.prepare("SELECT *, (qtd_solicitada-qtd_recebida_total) AS pendente FROM solicitacao_itens WHERE solicitacao_id=? ORDER BY id").all(id);
+  return { ...sol, itens };
 }
 
-function listItensEstoque() {
-  return db.prepare(`
-    SELECT i.id, i.codigo, i.nome, i.unidade, COALESCE(v.saldo, 0) AS saldo
-    FROM estoque_itens i
-    LEFT JOIN vw_estoque_saldo v ON v.item_id = i.id
-    WHERE i.ativo = 1
-    ORDER BY i.nome
-  `).all();
+function iniciarRecebimento(id, userId) {
+  const s = getSolicitacao(id);
+  if (!s || s.status !== STATUS.COMPRADA) throw new Error("Somente COMPRADA pode iniciar recebimento.");
+  db.prepare("UPDATE solicitacoes SET status=?, almox_user_id=?, recebimento_inicio_em=datetime('now'), updated_at=datetime('now') WHERE id=?").run(STATUS.EM_RECEBIMENTO, userId, id);
 }
 
-function listSolicitacoesAbertas() {
-  return db.prepare(`
-    SELECT id, status, setor
-    FROM solicitacoes_compra
-    WHERE status IN ('aberta','em_cotacao','liberada','aprovada_compra')
-    ORDER BY id DESC
-    LIMIT 100
-  `).all();
-}
-
-function registrarRetirada({ funcionario_id, item_id, quantidade, finalidade, destino, solicitacao_id, created_by }) {
-  const saldo = db.prepare(`SELECT COALESCE(saldo, 0) AS saldo FROM vw_estoque_saldo WHERE item_id = ?`).get(item_id)?.saldo || 0;
-  if (Number(quantidade) <= 0) throw new Error("Quantidade inválida.");
-  if (Number(quantidade) > Number(saldo)) throw new Error("Saldo insuficiente no estoque.");
-
+function receberItem({ solicitacaoId, itemId, qtdAgora, observacao, userId }) {
+  if (qtdAgora <= 0) throw new Error("Quantidade deve ser maior que zero.");
   return db.transaction(() => {
-    const ret = db.prepare(`
-      INSERT INTO almox_retiradas (
-        funcionario_id, item_id, quantidade, finalidade, destino, solicitacao_id, created_by, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(
-      Number(funcionario_id),
-      Number(item_id),
-      Number(quantidade),
-      finalidade || null,
-      destino || null,
-      solicitacao_id ? Number(solicitacao_id) : null,
-      created_by || null
-    );
+    const item = db.prepare("SELECT * FROM solicitacao_itens WHERE id=? AND solicitacao_id=?").get(itemId, solicitacaoId);
+    if (!item) throw new Error("Item não encontrado.");
 
-    db.prepare(`
-      INSERT INTO estoque_movimentos (item_id, tipo, quantidade, origem, referencia_id, observacao, created_at)
-      VALUES (?, 'saida', ?, 'almoxarifado', ?, ?, datetime('now'))
-    `).run(
-      Number(item_id),
-      Number(quantidade),
-      Number(ret.lastInsertRowid),
-      `Retirada almoxarifado para ${destino || "uso geral"}`
-    );
+    const recebida = Number(item.qtd_recebida_total || 0) + Number(qtdAgora);
+    let statusItem = "PENDENTE";
+    if (recebida >= Number(item.qtd_solicitada)) statusItem = "OK";
+    else if (recebida > 0) statusItem = "PARCIAL";
 
-    return Number(ret.lastInsertRowid);
+    db.prepare("UPDATE solicitacao_itens SET qtd_recebida_total=?, status_item=?, observacao_item=?, updated_at=datetime('now') WHERE id=?").run(recebida, statusItem, observacao || item.observacao_item || null, itemId);
+
+    if (item.estoque_item_id) {
+      if (HAS_SALDO_ATUAL) {
+        db.prepare("UPDATE estoque_itens SET saldo_atual = COALESCE(saldo_atual,0) + ?, updated_at=datetime('now') WHERE id=?").run(Number(qtdAgora), item.estoque_item_id);
+      }
+      db.prepare(`INSERT INTO estoque_movimentos (tipo, item_id, quantidade, usuario_id, referencia_tipo, referencia_id, observacao) VALUES ('ENTRADA_COMPRA', ?, ?, ?, 'SOLICITACAO', ?, ?)`)
+        .run(item.estoque_item_id, Number(qtdAgora), userId || null, solicitacaoId, observacao || `Recebimento solicitação #${solicitacaoId}`);
+    }
   })();
 }
 
-function listRetiradas() {
-  return db.prepare(`
-    SELECT r.id, r.quantidade, r.finalidade, r.destino, r.created_at,
-           f.codigo AS funcionario_codigo, f.nome AS funcionario_nome,
-           i.nome AS item_nome, i.unidade,
-           r.solicitacao_id
-    FROM almox_retiradas r
-    JOIN almox_funcionarios f ON f.id = r.funcionario_id
-    JOIN estoque_itens i ON i.id = r.item_id
-    ORDER BY r.id DESC
-    LIMIT 200
-  `).all();
+function finalizarRecebimento(id) {
+  const itens = db.prepare("SELECT status_item FROM solicitacao_itens WHERE solicitacao_id=?").all(id);
+  const parcial = itens.some((i) => i.status_item === "PENDENTE" || i.status_item === "PARCIAL");
+  const status = parcial ? STATUS.RECEBIDA_PARCIAL : STATUS.RECEBIDA_TOTAL;
+  db.prepare("UPDATE solicitacoes SET status=?, recebida_em=datetime('now'), updated_at=datetime('now') WHERE id=?").run(status, id);
 }
 
-module.exports = {
-  listFuncionarios,
-  createFuncionario,
-  listItensEstoque,
-  listSolicitacoesAbertas,
-  registrarRetirada,
-  listRetiradas,
-};
+function fechar(id) {
+  const s = getSolicitacao(id);
+  if (!s || ![STATUS.RECEBIDA_PARCIAL, STATUS.RECEBIDA_TOTAL].includes(s.status)) throw new Error("Somente recebidas podem ser fechadas.");
+  db.prepare("UPDATE solicitacoes SET status=?, fechada_em=datetime('now'), updated_at=datetime('now') WHERE id=?").run(STATUS.FECHADA, id);
+}
+
+function reabrir(id) {
+  const s = getSolicitacao(id);
+  if (!s || ![STATUS.FECHADA, STATUS.RECEBIDA_PARCIAL].includes(s.status)) throw new Error("Somente FECHADA ou RECEBIDA_PARCIAL podem ser reabertas.");
+  db.prepare("UPDATE solicitacoes SET status=?, reaberta_em=datetime('now'), updated_at=datetime('now') WHERE id=?").run(STATUS.REABERTA, id);
+}
+
+module.exports = { listRecebimentos, getSolicitacao, iniciarRecebimento, receberItem, finalizarRecebimento, fechar, reabrir };

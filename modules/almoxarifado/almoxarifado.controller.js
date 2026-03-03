@@ -1,42 +1,38 @@
 const service = require("./almoxarifado.service");
+const estoqueService = require("../estoque/estoque.service");
 
-function index(req, res) {
-  return res.render("almoxarifado/index", {
-    title: "Almoxarifado",
-    activeMenu: "almoxarifado",
-    retiradas: service.listRetiradas(),
-    funcionarios: service.listFuncionarios(),
-    itens: service.listItensEstoque(),
-    solicitacoes: service.listSolicitacoesAbertas(),
-  });
+function recebimentos(req, res) {
+  res.render("almox/recebimentos", { title: "Recebimentos", activeMenu: "almoxarifado", lista: service.listRecebimentos(), status: req.query.status || "" });
 }
 
-function createFuncionario(req, res) {
+function iniciarRecebimento(req, res) {
+  try { service.iniciarRecebimento(Number(req.params.id), req.session.user.id); req.flash("success", "Recebimento iniciado."); }
+  catch (e) { req.flash("error", e.message); }
+  res.redirect(`/almoxarifado/solicitacoes/${req.params.id}/conferir`);
+}
+
+function conferir(req, res) {
+  const sol = service.getSolicitacao(Number(req.params.id));
+  if (!sol) return res.status(404).send("Solicitação não encontrada");
+  res.render("almox/conferir", { title: `Conferir ${sol.numero}`, activeMenu: "almoxarifado", sol });
+}
+
+function receberItem(req, res) {
   try {
-    service.createFuncionario({ codigo: req.body.codigo, nome: req.body.nome });
-    req.flash("success", "Funcionário cadastrado no almoxarifado.");
-  } catch (e) {
-    req.flash("error", `Erro ao cadastrar funcionário: ${e.message}`);
-  }
-  return res.redirect("/almoxarifado");
+    service.receberItem({ solicitacaoId: Number(req.params.id), itemId: Number(req.params.itemId), qtdAgora: Number(req.body.qtd_recebida_agora || 0), observacao: req.body.observacao_item, userId: req.session.user.id });
+    req.flash("success", "Item recebido e estoque atualizado.");
+  } catch (e) { req.flash("error", e.message); }
+  res.redirect(`/almoxarifado/solicitacoes/${req.params.id}/conferir`);
 }
 
-function createRetirada(req, res) {
-  try {
-    service.registrarRetirada({
-      funcionario_id: req.body.funcionario_id,
-      item_id: req.body.item_id,
-      quantidade: Number(req.body.quantidade || 0),
-      finalidade: req.body.finalidade,
-      destino: req.body.destino,
-      solicitacao_id: req.body.solicitacao_id,
-      created_by: req.session?.user?.id || null,
-    });
-    req.flash("success", "Retirada registrada e estoque baixado.");
-  } catch (e) {
-    req.flash("error", `Erro na retirada: ${e.message}`);
-  }
-  return res.redirect("/almoxarifado");
+function finalizar(req, res) { try { service.finalizarRecebimento(Number(req.params.id)); req.flash("success", "Recebimento finalizado."); } catch (e) { req.flash("error", e.message); } res.redirect("/almoxarifado/recebimentos"); }
+function fechar(req, res) { try { service.fechar(Number(req.params.id)); req.flash("success", "Solicitação fechada."); } catch (e) { req.flash("error", e.message); } res.redirect("/almoxarifado/recebimentos"); }
+function reabrir(req, res) { try { service.reabrir(Number(req.params.id)); req.flash("success", "Solicitação reaberta."); } catch (e) { req.flash("error", e.message); } res.redirect("/almoxarifado/recebimentos"); }
+
+function registrarSaida(req, res) {
+  try { estoqueService.registrarSaida({ ...req.body, usuario_id: req.session.user.id }); req.flash("success", "Saída registrada."); }
+  catch (e) { req.flash("error", e.message); }
+  res.redirect("/estoque/saidas/nova");
 }
 
-module.exports = { index, createFuncionario, createRetirada };
+module.exports = { recebimentos, iniciarRecebimento, conferir, receberItem, finalizar, fechar, reabrir, registrarSaida };

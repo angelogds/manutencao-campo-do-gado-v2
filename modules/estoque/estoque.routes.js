@@ -1,75 +1,20 @@
-// modules/estoque/estoque.routes.js
-const express = require("express");
-const router = express.Router();
-
+const router = require("express").Router();
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
 const { ACCESS } = require("../../config/rbac");
+const ctrl = require("./estoque.controller");
+const almoxCtrl = require("../almoxarifado/almoxarifado.controller");
 
-// Permissões Estoque:
-// - ALMOXARIFADO: controla entradas/saídas
-// - MECANICO: consulta (se quiser)
-// - DIRETORIA: consulta
-// - ADMIN: tudo (admin passa automaticamente no requireRole, se seu middleware faz isso)
-const ESTOQUE_ACCESS = ACCESS.estoque_view;
-
-let ctrl = {};
-try {
-  ctrl = require("./estoque.controller");
-  console.log("✅ [estoque] controller exports:", Object.keys(ctrl));
-} catch (e) {
-  console.error("❌ [estoque] Falha ao carregar estoque.controller:", e.message);
-}
-
-const safe = (fn, name) =>
-  typeof fn === "function"
-    ? (req, res, next) => {
-        try {
-          res.locals.activeMenu = "estoque";
-          return fn(req, res, next);
-        } catch (err) {
-          return next(err);
-        }
-      }
-    : (_req, res) => {
-        console.error(`❌ [estoque] Handler ${name} indefinido (export errado).`);
-        return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
-      };
-
-// =====================================================
-// ✅ IMPORTANTE:
-// Este arquivo assume que no server.js você faz:
-// app.use("/estoque", require("./modules/estoque/estoque.routes"))
-// Então aqui dentro NÃO pode repetir "/estoque".
-// =====================================================
-
-// INDEX -> GET /estoque
-router.get("/", requireLogin, requireRole(ESTOQUE_ACCESS), safe(ctrl.estoqueIndex, "estoqueIndex"));
-
-// FORM NOVO -> GET /estoque/novo
-router.get(
-  "/novo",
-  requireLogin,
-  requireRole(ACCESS.estoque_manage),
-  safe(ctrl.estoqueNewForm, "estoqueNewForm")
-);
-
-// CREATE -> POST /estoque
-router.post(
-  "/",
-  requireLogin,
-  requireRole(ACCESS.estoque_manage),
-  safe(ctrl.estoqueCreate, "estoqueCreate")
-);
-
-// SHOW -> GET /estoque/:id
-router.get("/:id", requireLogin, requireRole(ESTOQUE_ACCESS), safe(ctrl.estoqueShow, "estoqueShow"));
-
-// MOV -> POST /estoque/:id/mov
-router.post(
-  "/:id/mov",
-  requireLogin,
-  requireRole(ACCESS.estoque_manage),
-  safe(ctrl.estoqueMovCreate, "estoqueMovCreate")
-);
+router.get("/", requireLogin, requireRole(ACCESS.estoque_view), ctrl.index);
+router.get("/itens", requireLogin, requireRole(ACCESS.estoque_view), ctrl.itens);
+router.get("/itens/novo", requireLogin, requireRole(ACCESS.estoque_manage), ctrl.novoItem);
+router.post("/itens", requireLogin, requireRole(ACCESS.estoque_manage), ctrl.criarItem);
+router.get("/itens/:id", requireLogin, requireRole(ACCESS.estoque_view), ctrl.detalheItem);
+router.get("/categorias", requireLogin, requireRole(ACCESS.estoque_view), ctrl.categorias);
+router.post("/categorias", requireLogin, requireRole(ACCESS.estoque_manage), ctrl.criarCategoria);
+router.get("/locais", requireLogin, requireRole(ACCESS.estoque_view), ctrl.locais);
+router.post("/locais", requireLogin, requireRole(ACCESS.estoque_manage), ctrl.criarLocal);
+router.get("/movimentos", requireLogin, requireRole(ACCESS.estoque_view), ctrl.movimentos);
+router.get("/saidas/nova", requireLogin, requireRole(ACCESS.estoque_manage), ctrl.saidaNova);
+router.post("/saidas", requireLogin, requireRole(ACCESS.estoque_manage), almoxCtrl.registrarSaida);
 
 module.exports = router;

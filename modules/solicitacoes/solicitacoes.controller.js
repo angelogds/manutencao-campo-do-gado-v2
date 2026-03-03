@@ -1,98 +1,51 @@
 const service = require("./solicitacoes.service");
 
-function index(req, res) {
-  const lista = service.listSolicitacoes();
-  return res.render("solicitacoes/index", {
-    title: "Solicitações",
+function minhas(req, res) {
+  const userId = req.session.user.id;
+  res.render("solicitacoes/minhas", {
+    title: "Minhas Solicitações",
     activeMenu: "solicitacoes",
-    lista,
+    lista: service.listMinhasSolicitacoes(userId),
+    counters: service.getCountersForUser(userId),
   });
 }
 
-function newForm(req, res) {
-  return res.render("solicitacoes/new", {
+function nova(req, res) {
+  res.render("solicitacoes/nova", {
     title: "Nova Solicitação",
     activeMenu: "solicitacoes",
     equipamentos: service.listEquipamentos(),
+    estoqueItens: service.listEstoqueItens(),
   });
 }
 
-function create(req, res) {
-  const { solicitante, setor, observacao, tipo_origem, origem_id, equipamento_id, destino_uso } = req.body;
-  const nomeArr = Array.isArray(req.body.itens_nome) ? req.body.itens_nome : [req.body.itens_nome];
-  const espArr = Array.isArray(req.body.itens_especificacao) ? req.body.itens_especificacao : [req.body.itens_especificacao];
-  const qtdArr = Array.isArray(req.body.itens_qtd) ? req.body.itens_qtd : [req.body.itens_qtd];
-  const unArr = Array.isArray(req.body.itens_un) ? req.body.itens_un : [req.body.itens_un];
-
-  const itens = [];
-  for (let i = 0; i < nomeArr.length; i++) {
-    const nome = String(nomeArr[i] || "").trim();
-    const especificacao = String(espArr[i] || "").trim();
-    if (!nome) continue;
-
-    itens.push({
-      descricao: nome,
-      especificacao: especificacao || null,
-      quantidade: Number(qtdArr[i] || 1),
-      unidade: String(unArr[i] || "UN"),
-    });
-  }
-
+function criar(req, res) {
+  const arr = (v) => (Array.isArray(v) ? v : [v]);
+  const nomes = arr(req.body.item_nome);
+  const descs = arr(req.body.item_descricao);
+  const uns = arr(req.body.unidade);
+  const qtds = arr(req.body.qtd_solicitada);
+  const ids = arr(req.body.estoque_item_id);
+  const itens = nomes
+    .map((n, i) => ({ item_nome: String(n || "").trim(), item_descricao: String(descs[i] || "").trim(), unidade: uns[i], qtd_solicitada: Number(qtds[i] || 0), estoque_item_id: ids[i] ? Number(ids[i]) : null }))
+    .filter((i) => i.item_nome && i.qtd_solicitada > 0);
   if (!itens.length) {
-    req.flash("error", "Inclua ao menos um item.");
+    req.flash("error", "Informe ao menos um item válido.");
     return res.redirect("/solicitacoes/nova");
   }
-
-  const id = service.createSolicitacao({
-    solicitante: solicitante || req.session?.user?.name || "Usuário",
-    setor: setor || "MANUTENCAO",
-    observacao,
-    itens,
-    createdBy: req.session?.user?.id || null,
-    vinculo: { tipo_origem, origem_id, equipamento_id, destino_uso },
-  });
-
-  req.flash("success", `Solicitação #${id} criada.`);
-  return res.redirect(`/solicitacoes/${id}`);
+  const id = service.createSolicitacao({ ...req.body, userId: req.session.user.id, itens });
+  req.flash("success", "Solicitação criada.");
+  res.redirect(`/solicitacoes/${id}`);
 }
 
-function show(req, res) {
-  const id = Number(req.params.id);
-  const sol = service.getSolicitacaoById(id);
+function detalhe(req, res) {
+  const sol = service.getSolicitacaoById(Number(req.params.id));
   if (!sol) return res.status(404).send("Solicitação não encontrada");
-
-  return res.render("solicitacoes/show", {
-    title: `Solicitação #${id}`,
-    activeMenu: "solicitacoes",
-    sol,
-  });
-}
-
-function updateStatus(req, res) {
-  const id = Number(req.params.id);
-  const status = String(req.body.status || "").toLowerCase();
-  service.updateStatus(id, status);
-  req.flash("success", "Status atualizado.");
-  return res.redirect(`/solicitacoes/${id}`);
-}
-
-function addCotacao(req, res) {
-  const id = Number(req.params.id);
-  const { fornecedor, valor_total, observacao, anexo_path } = req.body;
-  if (!fornecedor || String(fornecedor).trim().length < 2) {
-    req.flash("error", "Informe o fornecedor da cotação.");
-    return res.redirect(`/solicitacoes/${id}`);
+  if (req.session.user.role !== "ADMIN" && sol.solicitante_user_id !== req.session.user.id) {
+    req.flash("error", "Sem permissão para esta solicitação.");
+    return res.redirect("/solicitacoes/minhas");
   }
-
-  service.addCotacao(id, {
-    fornecedor: String(fornecedor).trim(),
-    valor_total: Number(valor_total || 0),
-    observacao: observacao || null,
-    anexo_path: anexo_path || null,
-  });
-
-  req.flash("success", "Cotação adicionada.");
-  return res.redirect(`/solicitacoes/${id}`);
+  res.render("solicitacoes/detalhe", { title: sol.numero, activeMenu: "solicitacoes", sol });
 }
 
-module.exports = { index, newForm, create, show, updateStatus, addCotacao };
+module.exports = { minhas, nova, criar, detalhe };
