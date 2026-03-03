@@ -16,6 +16,8 @@ function nova(req, res) {
     activeMenu: "solicitacoes",
     equipamentos: service.listEquipamentos(),
     estoqueItens: service.listEstoqueItens(),
+    formData: {},
+    formItens: [],
   });
 }
 
@@ -52,13 +54,22 @@ function criar(req, res) {
 }
 
 function detalhe(req, res) {
-  const sol = service.getSolicitacaoById(Number(req.params.id));
-  if (!sol) return res.status(404).send("Solicitação não encontrada");
-  if (req.session.user.role !== "ADMIN" && sol.solicitante_user_id !== req.session.user.id) {
+  const solicitacao = service.getSolicitacaoById(Number(req.params.id));
+  if (!solicitacao) return res.status(404).send("Solicitação não encontrada");
+
+  if (req.session.user.role !== "ADMIN" && solicitacao.solicitante_user_id !== req.session.user.id) {
     req.flash("error", "Sem permissão para esta solicitação.");
     return res.redirect("/solicitacoes/minhas");
   }
-  res.render("solicitacoes/detalhe", { title: sol.numero, activeMenu: "solicitacoes", sol });
+
+  const backUrl = req.query.from === "compras" ? "/compras/solicitacoes" : "/solicitacoes/minhas";
+  return res.render("solicitacoes/show", {
+    title: "Solicitação",
+    activeMenu: "solicitacoes",
+    solicitacao,
+    itens: solicitacao.itens || [],
+    backUrl,
+  });
 }
 
 module.exports = { minhas, nova, criar, detalhe };

@@ -9,6 +9,7 @@ try {
 }
 
 const express = require("express");
+const fs = require("fs");
 const path = require("path");
 const session = require("express-session");
 const flash = require("connect-flash");
@@ -72,6 +73,9 @@ app.locals.incluir = function (p) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), "uploads");
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+app.use("/uploads", express.static(UPLOADS_DIR));
 
 // ===== Session + Flash =====
 app.use(

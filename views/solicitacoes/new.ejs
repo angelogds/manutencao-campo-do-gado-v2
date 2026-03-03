@@ -1,4 +1,5 @@
 <% layout('layout') %>
+<% const fd = formData || {}; const rows = (formItens && formItens.length) ? formItens : [{}]; %>
 
 <div class="page-head">
   <div>
@@ -12,29 +13,29 @@
     <div class="grid-3">
       <div>
         <div class="label">Título</div>
-        <input class="input" name="titulo" placeholder="Ex.: Troca de rolamento transportador" required />
+        <input class="input" name="titulo" placeholder="Ex.: Troca de rolamento transportador" value="<%= fd.titulo || "" %>" required />
       </div>
       <div>
         <div class="label">Setor origem</div>
         <select class="input" name="setor_origem">
-          <option value="Manutenção">Manutenção</option>
-          <option value="Produção">Produção</option>
+          <option value="Manutenção" <%= (fd.setor_origem || "Manutenção") === "Manutenção" ? "selected" : "" %>>Manutenção</option>
+          <option value="Produção" <%= fd.setor_origem === "Produção" ? "selected" : "" %>>Produção</option>
         </select>
       </div>
       <div>
         <div class="label">Prioridade</div>
         <select class="input" name="prioridade">
-          <option value="BAIXA">Baixa</option>
-          <option value="MEDIA" selected>Média</option>
-          <option value="ALTA">Alta</option>
-          <option value="URGENTE">Urgente</option>
+          <option value="BAIXA" <%= (fd.prioridade || "MEDIA") === "BAIXA" ? "selected" : "" %>>Baixa</option>
+          <option value="MEDIA" <%= (fd.prioridade || "MEDIA") === "MEDIA" ? "selected" : "" %>>Média</option>
+          <option value="ALTA" <%= (fd.prioridade || "MEDIA") === "ALTA" ? "selected" : "" %>>Alta</option>
+          <option value="URGENTE" <%= (fd.prioridade || "MEDIA") === "URGENTE" ? "selected" : "" %>>Urgente</option>
         </select>
       </div>
     </div>
 
     <div style="margin-top:12px;">
       <div class="label">Descrição</div>
-      <textarea class="input" name="descricao" placeholder="Descreva o motivo e o serviço relacionado"></textarea>
+      <textarea class="input" name="descricao" placeholder="Descreva o motivo e o serviço relacionado"><%= fd.descricao || "" %></textarea>
     </div>
 
     <div class="divider"></div>
@@ -94,13 +95,14 @@
     const tbody = document.getElementById("itens-body");
     const tpl = document.getElementById("item-row-template");
     const btnAdd = document.getElementById("btn-add-item");
+    const initialRows = <%- JSON.stringify(rows) %>;
 
     function bindRemoveButtons() {
-      const rows = tbody.querySelectorAll("tr");
-      rows.forEach((row) => {
+      const rowsEls = tbody.querySelectorAll("tr");
+      rowsEls.forEach((row) => {
         const btn = row.querySelector(".btn-remove-item");
         if (!btn) return;
-        btn.disabled = rows.length <= 1;
+        btn.disabled = rowsEls.length <= 1;
         btn.onclick = () => {
           row.remove();
           bindRemoveButtons();
@@ -108,12 +110,19 @@
       });
     }
 
-    function addRow() {
-      tbody.appendChild(tpl.content.cloneNode(true));
+    function addRow(data = {}) {
+      const frag = tpl.content.cloneNode(true);
+      const row = frag.querySelector("tr");
+      row.querySelector('[name="itens_nome[]"]').value = data.item_nome || "";
+      row.querySelector('[name="itens_especificacao[]"]').value = data.item_descricao || "";
+      row.querySelector('[name="itens_un[]"]').value = data.unidade || "UN";
+      row.querySelector('[name="itens_qtd[]"]').value = data.qtd_solicitada || 1;
+      row.querySelector('[name="itens_item_id[]"]').value = data.estoque_item_id || "";
+      tbody.appendChild(frag);
       bindRemoveButtons();
     }
 
-    btnAdd.addEventListener("click", addRow);
-    addRow();
+    btnAdd.addEventListener("click", () => addRow());
+    (initialRows.length ? initialRows : [{}]).forEach((row) => addRow(row));
   })();
 </script>

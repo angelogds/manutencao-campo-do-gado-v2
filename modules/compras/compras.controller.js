@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const service = require("./compras.service");
 
 function lista(req, res) {
@@ -52,4 +54,4 @@ function pdf(req, res) {
   return service.gerarPdf(sol, res);
 }
 
-module.exports = { lista, detalhe, assumir, atualizarDados, marcarComprada, pdf };
+module.exports = { lista, detalhe, assumir, atualizarDados, marcarComprada, pdf, uploadAnexo, downloadAnexo, deleteAnexo };
