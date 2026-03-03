@@ -1,0 +1,8 @@
+<h1><%= sol.numero %> - <%= sol.titulo %></h1>
+<p>Status: <strong><%= sol.status %></strong></p>
+<p>Solicitante: <%= sol.solicitante_nome %></p>
+<p>Setor: <%= sol.setor_origem %> | Prioridade: <%= sol.prioridade %></p>
+<p>Descrição: <%= sol.descricao %></p>
+<table class="table"><tr><th>Item</th><th>Solicitado</th><th>Recebido</th><th>Pendente</th><th>Status</th></tr>
+<% sol.itens.forEach(i=> { %><tr><td><%= i.item_nome %></td><td><%= i.qtd_solicitada %> <%= i.unidade %></td><td><%= i.qtd_recebida_total %></td><td><%= i.qtd_pendente %></td><td><%= i.status_item %></td></tr><% }) %>
+</table>

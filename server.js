@@ -12,6 +12,8 @@ const express = require("express");
 const path = require("path");
 const session = require("express-session");
 const flash = require("connect-flash");
+const SQLiteStoreFactory = require("better-sqlite3-session-store")(session);
+const db = require("./database/db");
 const engine = require("ejs-mate");
 
 let webPush = null;
@@ -79,6 +81,10 @@ app.use(
     resave: false,
     saveUninitialized: false,
     proxy: true,
+    store: new SQLiteStoreFactory({
+      client: db,
+      expired: { clear: true, intervalMs: 15 * 60 * 1000 },
+    }),
     cookie: {
       httpOnly: true,
       sameSite: "lax",

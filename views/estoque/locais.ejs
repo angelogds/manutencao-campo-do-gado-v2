@@ -1,0 +1,3 @@
+<h1>Locais de Estoque</h1>
+<form method="POST" action="/estoque/locais"><input name="nome" placeholder="Nome" required/><input name="descricao" placeholder="Descrição"/><button>Criar</button></form>
+<ul><% locais.forEach(l=> { %><li><%= l.nome %> - <%= l.descricao || '-' %></li><% }) %></ul>
