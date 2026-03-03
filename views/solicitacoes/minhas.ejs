@@ -1,39 +1,8 @@
-<% layout('layout') %>
-
-<div class="page-head">
-  <div>
-    <h1>Minhas Solicitações</h1>
-    <p class="muted">Acompanhe o status das suas solicitações de material.</p>
-  </div>
-  <div><a class="btn btn-green" href="/solicitacoes/nova">Nova solicitação</a></div>
+<h1>Minhas Solicitações</h1>
+<div class="cards-grid">
+  <% Object.entries(counters || {}).forEach(([k,v])=> { %><div class="card"><strong><%= k %></strong><div><%= v %></div></div><% }) %>
 </div>
-
-<div class="grid-3" style="margin-bottom:14px;">
-  <% Object.entries(counters || {}).forEach(([status, total]) => { %>
-    <div class="card">
-      <div class="label"><%= status.replaceAll('_', ' ') %></div>
-      <div style="font-size:28px;font-weight:900;"><%= total %></div>
-    </div>
-  <% }) %>
-</div>
-
-<div class="card">
-  <div class="table-wrap">
-    <table class="table">
-      <thead><tr><th>Número</th><th>Título</th><th>Status</th><th>Criada em</th></tr></thead>
-      <tbody>
-        <% if (!lista.length) { %>
-          <tr><td colspan="4" class="muted">Você ainda não possui solicitações.</td></tr>
-        <% } %>
-        <% lista.forEach((s) => { %>
-          <tr>
-            <td><a href="/solicitacoes/<%= s.id %>"><strong><%= s.numero || ('#' + s.id) %></strong></a></td>
-            <td><%= s.titulo %></td>
-            <td><span class="pill-tag pill-gray"><%= s.status %></span></td>
-            <td><%= fmtBR(s.created_at) %></td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  </div>
-</div>
+<a class="btn" href="/solicitacoes/nova">Nova solicitação</a>
+<table class="table"><tr><th>Número</th><th>Título</th><th>Status</th><th>Criada</th></tr>
+<% lista.forEach(s => { %><tr><td><a href="/solicitacoes/<%= s.id %>"><%= s.numero %></a></td><td><%= s.titulo %></td><td><span class="badge"><%= s.status %></span></td><td><%= fmtBR(s.created_at) %></td></tr><% }) %>
+</table>

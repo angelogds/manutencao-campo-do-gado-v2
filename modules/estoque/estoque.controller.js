@@ -1,100 +1,15 @@
 const service = require("./estoque.service");
 
-function index(req, res) {
-  res.locals.activeMenu = "estoque";
-  res.locals.estoqueTab = "itens";
+function index(req, res) { res.render("estoque/index", { title: "Estoque", activeMenu: "estoque", cards: service.dashboard() }); }
+function itens(req, res) { res.render("estoque/itens", { title: "Itens", activeMenu: "estoque", itens: service.listItens() }); }
+function novoItem(req, res) { res.render("estoque/novo_item", { title: "Novo Item", activeMenu: "estoque", categorias: service.listCategorias(), locais: service.listLocais() }); }
+function criarItem(req, res) { try { const id = service.createItem(req.body); req.flash("success", "Item criado."); return res.redirect(`/estoque/itens/${id}`);} catch (e) { req.flash("error", e.message); return res.redirect("/estoque/itens/novo"); } }
+function detalheItem(req, res) { const item = service.getItem(Number(req.params.id)); if (!item) return res.status(404).send("Item não encontrado"); res.render("estoque/show", { title: item.nome, activeMenu: "estoque", item }); }
+function categorias(req, res) { res.render("estoque/categorias", { title: "Categorias", activeMenu: "estoque", categorias: service.listCategorias() }); }
+function criarCategoria(req, res) { service.createCategoria(req.body); req.flash("success", "Categoria criada."); res.redirect("/estoque/categorias"); }
+function locais(req, res) { res.render("estoque/locais", { title: "Locais", activeMenu: "estoque", locais: service.listLocais() }); }
+function criarLocal(req, res) { service.createLocal(req.body); req.flash("success", "Local criado."); res.redirect("/estoque/locais"); }
+function movimentos(req, res) { res.render("estoque/movimentos", { title: "Movimentos", activeMenu: "estoque", movimentos: service.listMovimentos() }); }
+function saidaNova(req, res) { res.render("estoque/saida_nova", { title: "Registrar saída", activeMenu: "estoque", itens: service.listItens() }); }
 
-  return res.render("estoque/index", {
-    title: "Estoque - Itens",
-    activeMenu: "estoque",
-    cards: service.dashboard(),
-    itens: service.listItens(),
-  });
-}
-
-function categoriasIndex(req, res) {
-  res.locals.activeMenu = "estoque";
-  res.locals.estoqueTab = "categorias";
-
-  return res.render("estoque/categorias", {
-    title: "Estoque - Categorias",
-    activeMenu: "estoque",
-    categorias: service.listCategorias(),
-  });
-}
-
-function categoriasCreate(req, res) {
-  try {
-    service.createCategoria(req.body);
-    req.flash("success", "Categoria criada com sucesso.");
-  } catch (e) {
-    req.flash("error", `Não foi possível criar a categoria: ${e.message}`);
-  }
-  return res.redirect("/estoque/categorias");
-}
-
-function locaisIndex(req, res) {
-  res.locals.activeMenu = "estoque";
-  res.locals.estoqueTab = "locais";
-
-  return res.render("estoque/locais", {
-    title: "Estoque - Locais",
-    activeMenu: "estoque",
-    locais: service.listLocais(),
-  });
-}
-
-function locaisCreate(req, res) {
-  try {
-    service.createLocal(req.body);
-    req.flash("success", "Local criado com sucesso.");
-  } catch (e) {
-    req.flash("error", `Não foi possível criar o local: ${e.message}`);
-  }
-  return res.redirect("/estoque/locais");
-}
-
-function movimentosIndex(req, res) {
-  res.locals.activeMenu = "estoque";
-  res.locals.estoqueTab = "movimentos";
-
-  return res.render("estoque/movimentos", {
-    title: "Estoque - Movimentos",
-    activeMenu: "estoque",
-    movimentos: service.listMovimentos({ tipo: req.query.tipo, item_id: req.query.item_id }),
-    itens: service.listItens(),
-    filtros: { tipo: req.query.tipo || "", item_id: req.query.item_id || "" },
-  });
-}
-
-function saidaNewForm(req, res) {
-  res.locals.activeMenu = "estoque";
-  res.locals.estoqueTab = "saida";
-
-  return res.render("estoque/saida_nova", {
-    title: "Estoque - Registrar saída",
-    activeMenu: "estoque",
-    itens: service.listItens(),
-  });
-}
-
-function saidaCreate(req, res) {
-  try {
-    service.registrarSaida({ ...req.body, usuario_id: req.session?.user?.id || null });
-    req.flash("success", "Saída registrada e saldo atualizado.");
-  } catch (e) {
-    req.flash("error", `Erro ao registrar saída: ${e.message}`);
-  }
-  return res.redirect("/estoque/saidas/nova");
-}
-
-module.exports = {
-  index,
-  categoriasIndex,
-  categoriasCreate,
-  locaisIndex,
-  locaisCreate,
-  movimentosIndex,
-  saidaNewForm,
-  saidaCreate,
-};
+module.exports = { index, itens, novoItem, criarItem, detalheItem, categorias, criarCategoria, locais, criarLocal, movimentos, saidaNova };
