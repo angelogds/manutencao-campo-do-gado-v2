@@ -53,15 +53,15 @@
     <% } %>
 
     <% if (canSolicitacoes) { %>
-      <a class="nav-item <%= activeMenu === 'solicitacoes' ? 'active' : '' %>" href="/solicitacoes">Solicitações</a>
+      <a class="nav-item <%= activeMenu === 'solicitacoes' ? 'active' : '' %>" href="/solicitacoes/minhas">Solicitações</a>
     <% } %>
 
     <% if (canCompras) { %>
-      <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras">Compras</a>
+      <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras/solicitacoes">Compras</a>
     <% } %>
 
     <% if (canAlmoxarifado) { %>
-      <a class="nav-item <%= activeMenu === 'almoxarifado' ? 'active' : '' %>" href="/almoxarifado">Almoxarifado</a>
+      <a class="nav-item <%= activeMenu === 'almoxarifado' ? 'active' : '' %>" href="/almoxarifado/recebimentos">Almoxarifado</a>
     <% } %>
 
     <% if (canEstoque) { %>

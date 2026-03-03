@@ -1,114 +1,100 @@
-// modules/estoque/estoque.controller.js
 const service = require("./estoque.service");
 
-function estoqueIndex(req, res) {
-  const q = (req.query.q || "").toString().trim();
-  const onlyBelow = (req.query.below || "") === "1";
-
-  const lista = service.listItens({ q, onlyBelowMin: onlyBelow });
-
-  const cards = service.getCards();
+function index(req, res) {
+  res.locals.activeMenu = "estoque";
+  res.locals.estoqueTab = "itens";
 
   return res.render("estoque/index", {
-    title: "Estoque",
+    title: "Estoque - Itens",
     activeMenu: "estoque",
-    lista,
-    cards,
-    q,
-    onlyBelow,
+    cards: service.dashboard(),
+    itens: service.listItens(),
   });
 }
 
-function estoqueNewForm(req, res) {
-  return res.render("estoque/novo", {
-    title: "Novo Item",
+function categoriasIndex(req, res) {
+  res.locals.activeMenu = "estoque";
+  res.locals.estoqueTab = "categorias";
+
+  return res.render("estoque/categorias", {
+    title: "Estoque - Categorias",
     activeMenu: "estoque",
+    categorias: service.listCategorias(),
   });
 }
 
-function estoqueCreate(req, res) {
-  const { codigo, nome, unidade, estoque_min, custo_unit } = req.body;
-
-  if (!nome || !String(nome).trim()) {
-    req.flash("error", "Informe o nome do item.");
-    return res.redirect("/estoque/novo");
-  }
-
+function categoriasCreate(req, res) {
   try {
-    const id = service.createItem({
-      codigo: (codigo || "").trim(),
-      nome: String(nome).trim(),
-      unidade: (unidade || "un").trim(),
-      estoque_min: estoque_min ? Number(String(estoque_min).replace(",", ".")) : 0,
-      custo_unit: custo_unit ? Number(String(custo_unit).replace(",", ".")) : 0,
-    });
-
-    req.flash("success", "Item criado com sucesso.");
-    return res.redirect(`/estoque/${id}`);
+    service.createCategoria(req.body);
+    req.flash("success", "Categoria criada com sucesso.");
   } catch (e) {
-    req.flash("error", `Erro ao criar item: ${e.message}`);
-    return res.redirect("/estoque/novo");
+    req.flash("error", `Não foi possível criar a categoria: ${e.message}`);
   }
+  return res.redirect("/estoque/categorias");
 }
 
-function estoqueShow(req, res) {
-  const id = Number(req.params.id);
+function locaisIndex(req, res) {
+  res.locals.activeMenu = "estoque";
+  res.locals.estoqueTab = "locais";
 
-  const item = service.getItemById(id);
-  if (!item) {
-    return res.status(404).render("errors/404", {
-      title: "Não encontrado",
-      activeMenu: "estoque",
-    });
-  }
-
-  const movimentos = service.listMovimentosByItem(id);
-
-  return res.render("estoque/show", {
-    title: `Item #${id}`,
+  return res.render("estoque/locais", {
+    title: "Estoque - Locais",
     activeMenu: "estoque",
-    item,
-    movimentos,
+    locais: service.listLocais(),
   });
 }
 
-function estoqueMovCreate(req, res) {
-  const itemId = Number(req.params.id);
-  const { tipo, quantidade, custo_unit, origem, observacao } = req.body;
-
-  if (!tipo || !String(tipo).trim()) {
-    req.flash("error", "Informe o tipo de movimentação.");
-    return res.redirect(`/estoque/${itemId}`);
-  }
-
-  const qtd = quantidade ? Number(String(quantidade).replace(",", ".")) : 0;
-  if (!qtd || qtd <= 0) {
-    req.flash("error", "Informe uma quantidade válida.");
-    return res.redirect(`/estoque/${itemId}`);
-  }
-
+function locaisCreate(req, res) {
   try {
-    service.createMovimento({
-      item_id: itemId,
-      tipo: String(tipo).trim().toLowerCase(), // entrada|saida|ajuste
-      quantidade: qtd,
-      custo_unit: custo_unit ? Number(String(custo_unit).replace(",", ".")) : null,
-      origem: (origem || "").trim(),
-      observacao: (observacao || "").trim(),
-    });
-
-    req.flash("success", "Movimentação registrada.");
-    return res.redirect(`/estoque/${itemId}`);
+    service.createLocal(req.body);
+    req.flash("success", "Local criado com sucesso.");
   } catch (e) {
-    req.flash("error", `Erro ao registrar movimentação: ${e.message}`);
-    return res.redirect(`/estoque/${itemId}`);
+    req.flash("error", `Não foi possível criar o local: ${e.message}`);
   }
+  return res.redirect("/estoque/locais");
+}
+
+function movimentosIndex(req, res) {
+  res.locals.activeMenu = "estoque";
+  res.locals.estoqueTab = "movimentos";
+
+  return res.render("estoque/movimentos", {
+    title: "Estoque - Movimentos",
+    activeMenu: "estoque",
+    movimentos: service.listMovimentos({ tipo: req.query.tipo, item_id: req.query.item_id }),
+    itens: service.listItens(),
+    filtros: { tipo: req.query.tipo || "", item_id: req.query.item_id || "" },
+  });
+}
+
+function saidaNewForm(req, res) {
+  res.locals.activeMenu = "estoque";
+  res.locals.estoqueTab = "saida";
+
+  return res.render("estoque/saida_nova", {
+    title: "Estoque - Registrar saída",
+    activeMenu: "estoque",
+    itens: service.listItens(),
+  });
+}
+
+function saidaCreate(req, res) {
+  try {
+    service.registrarSaida({ ...req.body, usuario_id: req.session?.user?.id || null });
+    req.flash("success", "Saída registrada e saldo atualizado.");
+  } catch (e) {
+    req.flash("error", `Erro ao registrar saída: ${e.message}`);
+  }
+  return res.redirect("/estoque/saidas/nova");
 }
 
 module.exports = {
-  estoqueIndex,
-  estoqueNewForm,
-  estoqueCreate,
-  estoqueShow,
-  estoqueMovCreate,
+  index,
+  categoriasIndex,
+  categoriasCreate,
+  locaisIndex,
+  locaisCreate,
+  movimentosIndex,
+  saidaNewForm,
+  saidaCreate,
 };
