@@ -1,103 +1,198 @@
-// modules/estoque/estoque.service.js
 const db = require("../../database/db");
 
-function getCards() {
-  const itens_estoque =
-    db.prepare(`SELECT COUNT(*) AS total FROM estoque_itens WHERE ativo = 1`).get()?.total || 0;
-
-  const abaixo_minimo =
-    db.prepare(`
-      SELECT COUNT(*) AS total
-      FROM vw_estoque_saldo s
-      JOIN estoque_itens i ON i.id = s.item_id
-      WHERE i.ativo = 1 AND s.saldo < COALESCE(i.estoque_min,0)
-    `).get()?.total || 0;
-
-  const saldo_total =
-    db.prepare(`
-      SELECT COALESCE(SUM(saldo),0) AS total
-      FROM vw_estoque_saldo
-    `).get()?.total || 0;
-
-  return { itens_estoque, abaixo_minimo, saldo_total };
+function hasColumn(table, column) {
+  try {
+    return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+  } catch (_e) {
+    return false;
+  }
 }
 
-function listItens({ q = "", onlyBelowMin = false } = {}) {
-  const like = `%${q}%`;
+const HAS_SALDO_ATUAL = hasColumn("estoque_itens", "saldo_atual");
+const HAS_SALDO_MINIMO = hasColumn("estoque_itens", "saldo_minimo");
+const HAS_ESTOQUE_MIN = hasColumn("estoque_itens", "estoque_min");
+const HAS_DATA_MOV = hasColumn("estoque_movimentos", "data_mov");
+const HAS_CATEGORIA_ID = hasColumn("estoque_itens", "categoria_id");
+const HAS_LOCAL_ID = hasColumn("estoque_itens", "local_id");
 
-  if (onlyBelowMin) {
-    return db.prepare(`
-      SELECT i.id, i.codigo, i.nome, i.unidade, i.estoque_min, i.custo_unit, i.ativo,
-             COALESCE(s.saldo,0) AS saldo
-      FROM estoque_itens i
-      LEFT JOIN vw_estoque_saldo s ON s.item_id = i.id
-      WHERE i.ativo = 1
-        AND (i.nome LIKE ? OR i.codigo LIKE ?)
-        AND COALESCE(s.saldo,0) < COALESCE(i.estoque_min,0)
-      ORDER BY i.nome ASC
-    `).all(like, like);
+const saldoExpr = HAS_SALDO_ATUAL ? "COALESCE(i.saldo_atual, 0)" : "COALESCE(v.saldo, 0)";
+const minimoExpr = HAS_SALDO_MINIMO
+  ? "COALESCE(i.saldo_minimo, 0)"
+  : HAS_ESTOQUE_MIN
+    ? "COALESCE(i.estoque_min, 0)"
+    : "0";
+
+function dashboard() {
+  const itens = db.prepare("SELECT COUNT(*) AS total FROM estoque_itens WHERE ativo = 1").get()?.total || 0;
+  const baixo =
+    db
+      .prepare(
+        `SELECT COUNT(*) AS total
+         FROM estoque_itens i
+         LEFT JOIN vw_estoque_saldo v ON v.item_id = i.id
+         WHERE i.ativo = 1 AND ${saldoExpr} < ${minimoExpr}`
+      )
+      .get()?.total || 0;
+  const saldo =
+    db
+      .prepare(
+        `SELECT COALESCE(SUM(${saldoExpr}), 0) AS total
+         FROM estoque_itens i
+         LEFT JOIN vw_estoque_saldo v ON v.item_id = i.id
+         WHERE i.ativo = 1`
+      )
+      .get()?.total || 0;
+
+  return { itens, baixo, saldo };
+}
+
+function listItens() {
+  const selectCategoria = HAS_CATEGORIA_ID ? "c.nome AS categoria_nome" : "NULL AS categoria_nome";
+  const selectLocal = HAS_LOCAL_ID ? "l.nome AS local_nome" : "NULL AS local_nome";
+  const joinCategoria = HAS_CATEGORIA_ID ? "LEFT JOIN estoque_categorias c ON c.id = i.categoria_id" : "";
+  const joinLocal = HAS_LOCAL_ID ? "LEFT JOIN estoque_locais l ON l.id = i.local_id" : "";
+
+  return db
+    .prepare(
+      `SELECT i.id, i.codigo, i.nome, i.unidade,
+              ${saldoExpr} AS saldo_atual,
+              ${minimoExpr} AS saldo_minimo,
+              ${selectCategoria},
+              ${selectLocal}
+       FROM estoque_itens i
+       ${joinCategoria}
+       ${joinLocal}
+       LEFT JOIN vw_estoque_saldo v ON v.item_id = i.id
+       WHERE i.ativo = 1
+       ORDER BY i.nome`
+    )
+    .all();
+}
+
+function listCategorias() {
+  return db.prepare("SELECT id, nome, parent_id, ativo, created_at FROM estoque_categorias WHERE ativo = 1 ORDER BY nome").all();
+}
+
+function listLocais() {
+  return db.prepare("SELECT id, nome, descricao, ativo, created_at FROM estoque_locais WHERE ativo = 1 ORDER BY nome").all();
+}
+
+function listMovimentos({ tipo, item_id } = {}) {
+  const where = [];
+  const params = [];
+
+  if (tipo) {
+    where.push("m.tipo = ?");
+    params.push(tipo);
   }
 
-  return db.prepare(`
-    SELECT i.id, i.codigo, i.nome, i.unidade, i.estoque_min, i.custo_unit, i.ativo,
-           COALESCE(s.saldo,0) AS saldo
-    FROM estoque_itens i
-    LEFT JOIN vw_estoque_saldo s ON s.item_id = i.id
-    WHERE i.ativo = 1
-      AND (i.nome LIKE ? OR i.codigo LIKE ?)
-    ORDER BY i.nome ASC
-  `).all(like, like);
+  if (item_id) {
+    where.push("m.item_id = ?");
+    params.push(Number(item_id));
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  return db
+    .prepare(
+      `SELECT m.*, ${HAS_DATA_MOV ? "COALESCE(m.data_mov, m.created_at)" : "m.created_at"} AS data_mov,
+              i.nome AS item_nome,
+              i.unidade AS item_unidade,
+              u.name AS usuario_nome
+       FROM estoque_movimentos m
+       JOIN estoque_itens i ON i.id = m.item_id
+       LEFT JOIN users u ON u.id = m.usuario_id
+       ${whereSql}
+       ORDER BY m.id DESC
+       LIMIT 300`
+    )
+    .all(...params);
 }
 
-function createItem({ codigo, nome, unidade, estoque_min, custo_unit }) {
-  const stmt = db.prepare(`
-    INSERT INTO estoque_itens (codigo, nome, unidade, estoque_min, custo_unit, ativo)
-    VALUES (?, ?, ?, ?, ?, 1)
-  `);
+function createCategoria({ nome, parent_id }) {
+  if (!nome || String(nome).trim().length < 2) throw new Error("Informe um nome válido.");
+  db.prepare("INSERT INTO estoque_categorias (nome, parent_id, ativo, created_at) VALUES (?, ?, 1, datetime('now'))").run(String(nome).trim(), parent_id ? Number(parent_id) : null);
+}
 
-  const info = stmt.run(codigo || null, nome, unidade || "un", estoque_min || 0, custo_unit || 0);
-  return info.lastInsertRowid;
+function createLocal({ nome, descricao }) {
+  if (!nome || String(nome).trim().length < 2) throw new Error("Informe um nome válido.");
+  db.prepare("INSERT INTO estoque_locais (nome, descricao, ativo, created_at) VALUES (?, ?, 1, datetime('now'))").run(String(nome).trim(), descricao ? String(descricao).trim() : null);
 }
 
 function getItemById(id) {
-  const item = db.prepare(`
-    SELECT i.id, i.codigo, i.nome, i.unidade, i.estoque_min, i.custo_unit, i.ativo, i.created_at,
-           COALESCE(s.saldo,0) AS saldo
-    FROM estoque_itens i
-    LEFT JOIN vw_estoque_saldo s ON s.item_id = i.id
-    WHERE i.id = ?
-  `).get(id);
+  return db
+    .prepare(
+      `SELECT i.id, i.nome, i.unidade,
+              ${saldoExpr} AS saldo_atual
+       FROM estoque_itens i
+       LEFT JOIN vw_estoque_saldo v ON v.item_id = i.id
+       WHERE i.id = ?`
+    )
+    .get(id);
+}
 
-  return item || null;
+function registrarSaida({ item_id, quantidade, usuario_id, observacao, referencia_id }) {
+  const item = getItemById(Number(item_id));
+  if (!item) throw new Error("Item não encontrado.");
+
+  const qtd = Number(String(quantidade || "0").replace(",", "."));
+  if (!Number.isFinite(qtd) || qtd <= 0) throw new Error("Quantidade inválida.");
+  if (qtd > Number(item.saldo_atual || 0)) throw new Error("Saldo insuficiente para a saída.");
+
+  db.transaction(() => {
+    if (HAS_SALDO_ATUAL) {
+      db.prepare("UPDATE estoque_itens SET saldo_atual = COALESCE(saldo_atual, 0) - ?, updated_at = datetime('now') WHERE id = ?").run(qtd, item.id);
+    }
+
+    db.prepare(
+      `INSERT INTO estoque_movimentos (
+         tipo, ${HAS_DATA_MOV ? "data_mov," : ""} item_id, quantidade, usuario_id, referencia_tipo, referencia_id, observacao, created_at
+       ) VALUES (
+         'SAIDA_REQUISICAO_INTERNA', ${HAS_DATA_MOV ? "datetime('now')," : ""} ?, ?, ?, 'SOLICITACAO', ?, ?, datetime('now')
+       )`
+    ).run(item.id, qtd, usuario_id || null, referencia_id ? Number(referencia_id) : null, observacao ? String(observacao).trim() : null);
+  })();
+}
+
+
+function createItem({ codigo, nome, unidade, categoria_id, local_id, saldo_minimo }) {
+  if (!nome || String(nome).trim().length < 2) throw new Error("Nome do item é obrigatório.");
+
+  const hasCategoria = hasColumn("estoque_itens", "categoria_id");
+  const hasLocal = hasColumn("estoque_itens", "local_id");
+  const minColumn = HAS_SALDO_MINIMO ? "saldo_minimo" : (HAS_ESTOQUE_MIN ? "estoque_min" : null);
+
+  const cols = ["codigo", "nome", "unidade"];
+  const vals = [codigo ? String(codigo).trim() : null, String(nome).trim(), String(unidade || "UN").toUpperCase()];
+
+  if (hasCategoria) { cols.push("categoria_id"); vals.push(categoria_id ? Number(categoria_id) : null); }
+  if (hasLocal) { cols.push("local_id"); vals.push(local_id ? Number(local_id) : null); }
+  if (minColumn) { cols.push(minColumn); vals.push(Number(saldo_minimo || 0)); }
+
+  const placeholders = cols.map(() => "?").join(", ");
+  const sql = `INSERT INTO estoque_itens (${cols.join(", ")}) VALUES (${placeholders})`;
+  const info = db.prepare(sql).run(...vals);
+  return Number(info.lastInsertRowid);
+}
+
+function getItemDetalhe(id) {
+  return getItemById(Number(id));
 }
 
 function listMovimentosByItem(itemId) {
-  return db.prepare(`
-    SELECT id, tipo, quantidade, custo_unit, origem, referencia_id, observacao, created_at
-    FROM estoque_movimentos
-    WHERE item_id = ?
-    ORDER BY id DESC
-    LIMIT 200
-  `).all(itemId);
-}
-
-function createMovimento({ item_id, tipo, quantidade, custo_unit, origem, observacao }) {
-  const allowed = new Set(["entrada", "saida", "ajuste"]);
-  if (!allowed.has(tipo)) throw new Error("Tipo inválido. Use: entrada, saida ou ajuste.");
-
-  const stmt = db.prepare(`
-    INSERT INTO estoque_movimentos (item_id, tipo, quantidade, custo_unit, origem, observacao)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-
-  stmt.run(item_id, tipo, quantidade, custo_unit, origem || null, observacao || null);
+  return listMovimentos({ item_id: Number(itemId) });
 }
 
 module.exports = {
-  getCards,
+  dashboard,
   listItens,
+  listCategorias,
+  listLocais,
+  listMovimentos,
+  createCategoria,
+  createLocal,
   createItem,
-  getItemById,
+  getItemDetalhe,
   listMovimentosByItem,
-  createMovimento,
+  registrarSaida,
 };
