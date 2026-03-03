@@ -11,7 +11,7 @@ function minhas(req, res) {
 }
 
 function nova(req, res) {
-  res.render("solicitacoes/nova", {
+  res.render("solicitacoes/new", {
     title: "Nova Solicitação",
     activeMenu: "solicitacoes",
     equipamentos: service.listEquipamentos(),
@@ -20,19 +20,32 @@ function nova(req, res) {
 }
 
 function criar(req, res) {
-  const arr = (v) => (Array.isArray(v) ? v : [v]);
-  const nomes = arr(req.body.item_nome);
-  const descs = arr(req.body.item_descricao);
-  const uns = arr(req.body.unidade);
-  const qtds = arr(req.body.qtd_solicitada);
-  const ids = arr(req.body.estoque_item_id);
-  const itens = nomes
-    .map((n, i) => ({ item_nome: String(n || "").trim(), item_descricao: String(descs[i] || "").trim(), unidade: uns[i], qtd_solicitada: Number(qtds[i] || 0), estoque_item_id: ids[i] ? Number(ids[i]) : null }))
-    .filter((i) => i.item_nome && i.qtd_solicitada > 0);
+  const toArray = (value) => {
+    if (Array.isArray(value)) return value;
+    if (value === undefined || value === null || value === "") return [];
+    return [value];
+  };
+
+  const nomes = toArray(req.body.itens_nome ?? req.body['itens_nome[]'] ?? req.body.item_nome);
+  const especificacoes = toArray(req.body.itens_especificacao ?? req.body['itens_especificacao[]'] ?? req.body.item_descricao);
+  const unidades = toArray(req.body.itens_un ?? req.body['itens_un[]'] ?? req.body.unidade);
+  const quantidades = toArray(req.body.itens_qtd ?? req.body['itens_qtd[]'] ?? req.body.qtd_solicitada);
+  const itemIds = toArray(req.body.itens_item_id ?? req.body['itens_item_id[]'] ?? req.body.estoque_item_id);
+
+  const tamanho = Math.max(nomes.length, especificacoes.length, unidades.length, quantidades.length, itemIds.length);
+  const itens = Array.from({ length: tamanho }, (_, i) => ({
+    item_nome: String(nomes[i] || "").trim(),
+    item_descricao: String(especificacoes[i] || "").trim(),
+    unidade: String(unidades[i] || "UN").trim() || "UN",
+    qtd_solicitada: Number(quantidades[i] || 0),
+    estoque_item_id: itemIds[i] ? Number(itemIds[i]) : null,
+  })).filter((item) => item.item_nome && item.qtd_solicitada > 0);
+
   if (!itens.length) {
     req.flash("error", "Informe ao menos um item válido.");
     return res.redirect("/solicitacoes/nova");
   }
+
   const id = service.createSolicitacao({ ...req.body, userId: req.session.user.id, itens });
   req.flash("success", "Solicitação criada.");
   res.redirect(`/solicitacoes/${id}`);
