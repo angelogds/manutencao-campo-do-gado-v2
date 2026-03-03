@@ -1,94 +1,54 @@
 <% layout('layout') %>
 
-<style>
-  .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-  .spacer{ flex:1; }
-  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:14px; }
-  .muted{ color:#6b7280; }
-  .btn-sm{ padding:8px 10px; border-radius:12px; font-weight:900; border:1px solid #e5e7eb; background:#fff; cursor:pointer; }
-  .btn-sm:hover{ border-color:#10b981; color:#065f46; background:#ecfdf5; }
-  .pill{ display:inline-flex; gap:8px; align-items:center; padding:6px 10px; border-radius:999px; border:1px solid #e5e7eb; background:#f9fafb; font-weight:900; font-size:12px; }
-  table{ width:100%; border-collapse:separate; border-spacing:0; background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; }
-  th,td{ padding:10px 12px; border-bottom:1px solid #eef2f7; }
-  th{ text-align:left; font-size:12px; color:#6b7280; letter-spacing:.04em; }
-  tr:last-child td{ border-bottom:none; }
-  select{ padding:8px 10px; border-radius:12px; border:1px solid #e5e7eb; }
-  select:focus{ border-color:#10b981; box-shadow:0 0 0 3px rgba(16,185,129,.15); outline:none; }
-</style>
-
-<div class="row">
+<div class="page-head">
   <div>
-    <h1>Solicitação #<%= solicitacao.id %></h1>
-    <div class="muted">Criada em: <%= solicitacao.created_at ? fmtBR(solicitacao.created_at) : '-' %></div>
+    <h1><%= sol.numero || ('Solicitação #' + sol.id) %></h1>
+    <p class="muted">Solicitante: <%= sol.solicitante_nome %> • Setor: <%= sol.setor_origem %> • Status: <%= sol.status %></p>
   </div>
-  <div class="spacer"></div>
-
-  <div class="pill">
-    Status: <%= String(solicitacao.status || '').toUpperCase() %>
+  <div style="display:flex;gap:8px;">
+    <a class="btn btn-ghost" href="/compras/solicitacoes?status=<%= sol.status %>">Voltar</a>
+    <a class="btn btn-green" href="/compras/solicitacoes/<%= sol.id %>/pdf">Baixar PDF</a>
   </div>
-
-  <a class="btn-sm" href="/solicitacoes">Voltar</a>
 </div>
 
-<div style="height:12px"></div>
-
-<div class="card">
-  <div class="row">
-    <div style="flex:1; min-width:220px;">
-      <div class="muted">Solicitante</div>
-      <div style="font-weight:900;"><%= solicitacao.solicitante || '-' %></div>
-    </div>
-    <div style="flex:1; min-width:220px;">
-      <div class="muted">Setor</div>
-      <div style="font-weight:900;"><%= solicitacao.setor || '-' %></div>
-    </div>
-    <div style="flex:2; min-width:220px;">
-      <div class="muted">Observação</div>
-      <div style="font-weight:700;"><%= solicitacao.observacao || '-' %></div>
-    </div>
-  </div>
-
-  <div style="height:12px"></div>
-
-  <form action="/solicitacoes/<%= solicitacao.id %>/status" method="POST" class="row">
-    <div>
-      <div class="muted" style="font-weight:900; font-size:12px;">Atualizar status</div>
-      <select name="status">
-        <% const st = String(solicitacao.status||'aberta').toLowerCase(); %>
-        <option value="aberta" <%= st==='aberta'?'selected':'' %>>aberta</option>
-        <option value="cotacao" <%= st==='cotacao'?'selected':'' %>>cotacao</option>
-        <option value="aprovada" <%= st==='aprovada'?'selected':'' %>>aprovada</option>
-        <option value="comprada" <%= st==='comprada'?'selected':'' %>>comprada</option>
-        <option value="recebida" <%= st==='recebida'?'selected':'' %>>recebida</option>
-        <option value="cancelada" <%= st==='cancelada'?'selected':'' %>>cancelada</option>
-      </select>
-    </div>
-    <div style="align-self:flex-end;">
-      <button class="btn-sm" type="submit">Salvar</button>
+<div class="card" style="margin-bottom:14px;">
+  <div class="label" style="margin-bottom:8px;">Dados de cotação/compra</div>
+  <form method="POST" action="/compras/solicitacoes/<%= sol.id %>/atualizar-dados" class="grid-3">
+    <div><div class="label">Fornecedor</div><input class="input" name="fornecedor" value="<%= sol.fornecedor || '' %>" /></div>
+    <div><div class="label">Previsão de entrega</div><input class="input" type="date" name="previsao_entrega" value="<%= sol.previsao_entrega ? String(sol.previsao_entrega).slice(0,10) : '' %>" /></div>
+    <div><div class="label">Valor total</div><input class="input" name="valor_total" type="number" step="0.01" min="0" value="<%= sol.valor_total || '' %>" /></div>
+    <div style="grid-column:1/-1;"><div class="label">Observações compras</div><textarea class="input" name="observacoes_compras"><%= sol.observacoes_compras || '' %></textarea></div>
+    <div style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-ghost" type="submit">Salvar dados</button>
     </div>
   </form>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+    <% if (sol.status === 'ABERTA') { %>
+      <form method="POST" action="/compras/solicitacoes/<%= sol.id %>/assumir"><button class="btn btn-green" type="submit">Assumir (EM_COTACAO)</button></form>
+    <% } %>
+    <% if (sol.status === 'EM_COTACAO') { %>
+      <form method="POST" action="/compras/solicitacoes/<%= sol.id %>/marcar-comprada"><button class="btn btn-green" type="submit">Marcar COMPRADA</button></form>
+    <% } %>
+  </div>
 </div>
 
-<div style="height:12px"></div>
 
-<table>
-  <thead>
-    <tr>
-      <th>Descrição</th>
-      <th style="width:120px;">Qtd</th>
-      <th style="width:120px;">Un</th>
-    </tr>
-  </thead>
-  <tbody>
-    <% if (!solicitacao.itens || !solicitacao.itens.length) { %>
-      <tr><td colspan="3" class="muted">Sem itens.</td></tr>
-    <% } %>
-    <% (solicitacao.itens || []).forEach(it => { %>
-      <tr>
-        <td><strong><%= it.descricao %></strong></td>
-        <td><%= it.quantidade %></td>
-        <td><%= it.unidade %></td>
-      </tr>
-    <% }) %>
-  </tbody>
-</table>
+<div class="card">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Item</th><th>Descrição</th><th>Unidade</th><th>Qtd Solicitada</th><th>Status item</th></tr></thead>
+      <tbody>
+        <% if (!sol.itens.length) { %><tr><td colspan="5" class="muted">Sem itens.</td></tr><% } %>
+        <% sol.itens.forEach((item) => { %>
+          <tr>
+            <td><%= item.item_nome %></td>
+            <td><%= item.item_descricao || '-' %></td>
+            <td><%= item.unidade %></td>
+            <td><%= item.qtd_solicitada %></td>
+            <td><%= item.status_item || '-' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>

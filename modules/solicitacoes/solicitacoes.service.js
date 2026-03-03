@@ -53,6 +53,11 @@ function nextNumero() {
   return `SOL-${year}-${String(seq).padStart(6, "0")}`;
 }
 
+function sanitizePositiveId(value) {
+  const id = Number(value);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
 function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao, equipamento_id, preventiva_id, os_id, demanda_id, itens }) {
   const fallbackItemId = ITEM_HAS_ITEM_ID ? getFallbackItemId() : null;
   const insertSol = db.prepare(`
@@ -81,13 +86,15 @@ function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao
       prioridade || "MEDIA",
       titulo,
       descricao || null,
-      equipamento_id || null,
-      preventiva_id || null,
-      os_id || null,
-      demanda_id || null,
+      sanitizePositiveId(equipamento_id),
+      sanitizePositiveId(preventiva_id),
+      sanitizePositiveId(os_id),
+      sanitizePositiveId(demanda_id),
       STATUS.ABERTA
     );
+
     const solicitacaoId = Number(info.lastInsertRowid);
+
     for (const item of itens || []) {
       const row = [solicitacaoId];
       if (ITEM_HAS_ITEM_NOME) row.push(item.item_nome);
@@ -100,6 +107,7 @@ function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao
       if (ITEM_HAS_QUANTIDADE) row.push(Number(item.qtd_solicitada || 0));
       insertItem.run(...row);
     }
+
     return solicitacaoId;
   })();
 }
