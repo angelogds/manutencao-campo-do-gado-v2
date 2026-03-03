@@ -3,93 +3,37 @@
 <div class="page-head">
   <div>
     <h1>Compras</h1>
-    <p class="muted">Solicitações: criar, acompanhar e aprovar status.</p>
-  </div>
-
-  <div class="actions">
-    <a class="btn btn-green" href="/solicitacoes/nova">+ Nova Solicitação</a>
-    <a class="btn btn-ghost" href="/compras">Ir para Compras</a>
+    <p class="muted">Acompanhamento do fluxo de compras: ABERTAS, EM COTAÇÃO e COMPRADAS.</p>
   </div>
 </div>
 
-<div class="grid-2" style="grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-bottom:14px;">
-  <div class="card">
-    <div class="label">Solicitações</div>
-    <div style="font-size:22px; font-weight:900; margin-top:2px;"><%= (lista?.length ?? 0) %></div>
-    <div class="muted" style="margin-top:4px;">Total cadastradas</div>
-  </div>
-
-  <div class="card">
-    <div class="label">Abertas/Cotação/Aprovadas</div>
-    <div style="font-size:22px; font-weight:900; margin-top:2px;">
-      <%
-        const abertas = (lista||[]).filter(s => ['aberta','cotacao','aprovada'].includes(String(s.status||'').toLowerCase())).length;
-      %>
-      <%= abertas %>
-    </div>
-    <div class="muted" style="margin-top:4px;">Em andamento</div>
-  </div>
-
-  <div class="card">
-    <div class="label">Atalho</div>
-    <!-- ✅ sem negrito pesado -->
-    <div style="font-size:16px; font-weight:700; margin-top:2px;">Recebimento</div>
-    <div class="muted" style="margin-top:4px;">Criar compra / dar entrada</div>
-
-    <div style="margin-top:10px;">
-      <a class="btn btn-green btn-sm" href="/compras/nova">+ Nova Compra</a>
-    </div>
-  </div>
+<div class="subtabs" style="margin-top:0;">
+  <a class="subtab <%= status === 'ABERTA' ? 'active' : '' %>" href="/compras/solicitacoes?status=ABERTA">Abertas</a>
+  <a class="subtab <%= status === 'EM_COTACAO' ? 'active' : '' %>" href="/compras/solicitacoes?status=EM_COTACAO">Em cotação</a>
+  <a class="subtab <%= status === 'COMPRADA' ? 'active' : '' %>" href="/compras/solicitacoes?status=COMPRADA">Compradas</a>
 </div>
 
 <div class="card">
   <div class="table-wrap">
     <table class="table">
-      <thead>
-        <tr>
-          <th style="width:90px;">#</th>
-          <th style="width:160px;">Status</th>
-          <th>Solicitante</th>
-          <th>Setor</th>
-          <th style="width:180px;">Criada em</th>
-          <th style="width:120px; text-align:right;">Ações</th>
-        </tr>
-      </thead>
+      <thead><tr><th>Número</th><th>Status</th><th>Solicitante</th><th>Setor</th><th>Criada em</th><th>Ações</th></tr></thead>
       <tbody>
-        <% if (!lista || !lista.length) { %>
+        <% if (!lista.length) { %><tr><td colspan="6" class="muted" style="text-align:center;">Nenhuma solicitação nesta aba.</td></tr><% } %>
+        <% lista.forEach((s) => { const pill = s.status === 'ABERTA' ? 'pill-amber' : s.status === 'EM_COTACAO' ? 'pill-sky' : 'pill-green'; %>
           <tr>
-            <td colspan="6" class="muted" style="text-align:center; padding:22px;">
-              Nenhuma solicitação cadastrada.
+            <td><strong><%= s.numero || ('#' + s.id) %></strong></td>
+            <td><span class="pill-tag <%= pill %>"><%= s.status %></span></td>
+            <td><%= s.solicitante_nome || '-' %></td>
+            <td><%= s.setor_origem || '-' %></td>
+            <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
+            <td style="display:flex;gap:8px;flex-wrap:wrap;">
+              <a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>">Abrir</a>
+              <% if (s.status === 'ABERTA') { %>
+                <a class="btn btn-sm btn-green" href="/compras/solicitacoes/<%= s.id %>/pdf">Gerar PDF / Iniciar Cotação</a>
+              <% } %>
             </td>
           </tr>
-        <% } else { %>
-          <% (lista || []).forEach(s => { 
-               const st = String(s.status || '').toLowerCase();
-               const stUp = String(s.status || '').toUpperCase();
-               const cls =
-                 st === 'aberta'   ? 'pill-amber' :
-                 st === 'cotacao'  ? 'pill-sky'   :
-                 st === 'aprovada' ? 'pill-green' :
-                 'pill-gray';
-          %>
-            <tr>
-              <!-- ✅ sem negrito -->
-              <td>#<%= s.id %></td>
-
-              <td>
-                <span class="pill-tag <%= cls %>"><%= stUp || '-' %></span>
-              </td>
-
-              <td><%= s.solicitante || '-' %></td>
-              <td><%= s.setor || '-' %></td>
-              <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
-
-              <td style="text-align:right;">
-                <a class="btn btn-ghost btn-sm" href="/solicitacoes/<%= s.id %>">Abrir</a>
-              </td>
-            </tr>
-          <% }) %>
-        <% } %>
+        <% }) %>
       </tbody>
     </table>
   </div>

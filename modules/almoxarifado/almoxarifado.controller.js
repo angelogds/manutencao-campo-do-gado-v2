@@ -2,7 +2,7 @@ const service = require("./almoxarifado.service");
 const estoqueService = require("../estoque/estoque.service");
 
 function recebimentos(req, res) {
-  res.render("almox/recebimentos", { title: "Recebimentos", activeMenu: "almoxarifado", lista: service.listRecebimentos(), status: req.query.status || "" });
+  res.render("almoxarifado/recebimentos", { title: "Recebimentos", activeMenu: "almoxarifado", lista: service.listRecebimentos(), status: req.query.status || "" });
 }
 
 function iniciarRecebimento(req, res) {
@@ -14,7 +14,7 @@ function iniciarRecebimento(req, res) {
 function conferir(req, res) {
   const sol = service.getSolicitacao(Number(req.params.id));
   if (!sol) return res.status(404).send("Solicitação não encontrada");
-  res.render("almox/conferir", { title: `Conferir ${sol.numero}`, activeMenu: "almoxarifado", sol });
+  res.render("almoxarifado/conferir", { title: `Conferir ${sol.numero}`, activeMenu: "almoxarifado", sol });
 }
 
 function receberItem(req, res) {

@@ -30,6 +30,11 @@ function nextNumero() {
   return `SOL-${year}-${String(seq).padStart(6, "0")}`;
 }
 
+function sanitizePositiveId(value) {
+  const id = Number(value);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
 function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao, equipamento_id, preventiva_id, os_id, demanda_id, itens }) {
   const insertSol = db.prepare(`
     INSERT INTO solicitacoes (
@@ -52,24 +57,30 @@ function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao
       prioridade || "MEDIA",
       titulo,
       descricao || null,
-      equipamento_id || null,
-      preventiva_id || null,
-      os_id || null,
-      demanda_id || null,
+      sanitizePositiveId(equipamento_id),
+      sanitizePositiveId(preventiva_id),
+      sanitizePositiveId(os_id),
+      sanitizePositiveId(demanda_id),
       STATUS.ABERTA
     );
+
     const solicitacaoId = Number(info.lastInsertRowid);
+
     for (const item of itens || []) {
+      const categoria_id = sanitizePositiveId(item.categoria_id);
+      const estoque_item_id = sanitizePositiveId(item.estoque_item_id);
+
       insertItem.run(
         solicitacaoId,
         item.item_nome,
         item.item_descricao || null,
         (item.unidade || "UN").toUpperCase(),
-        item.categoria_id || null,
-        item.estoque_item_id || null,
+        categoria_id,
+        estoque_item_id,
         Number(item.qtd_solicitada || 0)
       );
     }
+
     return solicitacaoId;
   })();
 }
@@ -104,6 +115,7 @@ function getSolicitacaoById(id) {
     WHERE s.id = ?
   `).get(id);
   if (!sol) return null;
+
   const itens = db.prepare(`
     SELECT si.*, (si.qtd_solicitada - si.qtd_recebida_total) AS qtd_pendente, ei.codigo AS estoque_codigo
     FROM solicitacao_itens si
@@ -111,6 +123,7 @@ function getSolicitacaoById(id) {
     WHERE si.solicitacao_id = ?
     ORDER BY si.id
   `).all(id);
+
   return { ...sol, itens };
 }
 
