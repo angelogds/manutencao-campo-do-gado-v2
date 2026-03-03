@@ -7,8 +7,23 @@ try {
   webPush = null;
 }
 
+function vapidConfig() {
+  const publicKey = process.env.VAPID_PUBLIC_KEY || '';
+  const privateKey = process.env.VAPID_PRIVATE_KEY || '';
+  const subject = process.env.VAPID_SUBJECT || 'mailto:admin@campodogado.local';
+  return { publicKey, privateKey, subject };
+}
+
 function hasVapidConfig() {
-  return Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
+  const { publicKey, privateKey } = vapidConfig();
+  return Boolean(publicKey && privateKey);
+}
+
+function configureWebPush() {
+  if (!webPush || !hasVapidConfig()) return false;
+  const { publicKey, privateKey, subject } = vapidConfig();
+  webPush.setVapidDetails(subject, publicKey, privateKey);
+  return true;
 }
 
 function saveSubscription({ userId, subscription }) {
@@ -45,7 +60,9 @@ function removeSubscriptionById(id) {
 }
 
 async function sendPushToAll(payload) {
-  if (!webPush || !hasVapidConfig()) return { sent: 0, skipped: 0 };
+  if (!configureWebPush()) {
+    return { sent: 0, skipped: 0, reason: 'webpush_nao_configurado' };
+  }
 
   const items = listSubscriptions();
   if (!items.length) return { sent: 0, skipped: 0 };
@@ -75,4 +92,5 @@ async function sendPushToAll(payload) {
 module.exports = {
   saveSubscription,
   sendPushToAll,
+  configureWebPush,
 };

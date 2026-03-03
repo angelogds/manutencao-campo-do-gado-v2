@@ -64,7 +64,7 @@
 
     const vapidPublicKey = window.__VAPID_PUBLIC_KEY__ || '';
     if (!vapidPublicKey) {
-      alert('VAPID_PUBLIC_KEY não configurada no servidor.');
+      alert('VAPID_PUBLIC_KEY não configurada no servidor. Contate o suporte.');
       return;
     }
 
