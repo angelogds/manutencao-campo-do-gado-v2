@@ -12,6 +12,29 @@ const STATUS = {
   REABERTA: "REABERTA",
 };
 
+function hasColumn(table, name) {
+  try { return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === name); } catch { return false; }
+}
+const ITEM_HAS_ITEM_NOME = hasColumn("solicitacao_itens", "item_nome");
+const ITEM_HAS_ITEM_DESCRICAO = hasColumn("solicitacao_itens", "item_descricao");
+const ITEM_HAS_ESTOQUE_ITEM_ID = hasColumn("solicitacao_itens", "estoque_item_id");
+const ITEM_HAS_QTD_SOLICITADA = hasColumn("solicitacao_itens", "qtd_solicitada");
+const ITEM_HAS_ITEM_ID = hasColumn("solicitacao_itens", "item_id");
+const ITEM_HAS_DESCRICAO = hasColumn("solicitacao_itens", "descricao");
+const ITEM_HAS_QUANTIDADE = hasColumn("solicitacao_itens", "quantidade");
+
+function getFallbackItemId() {
+  const row = db.prepare("SELECT id FROM estoque_itens ORDER BY id LIMIT 1").get();
+  if (row?.id) return row.id;
+  const cols = db.prepare("PRAGMA table_info(estoque_itens)").all().map((c) => c.name);
+  const payload = { codigo: "AUTO", nome: "Item automático", unidade: "UN", ativo: 1, estoque_min: 0, categoria: "GERAL" };
+  const useCols = Object.keys(payload).filter((c) => cols.includes(c));
+  const placeholders = useCols.map(() => "?").join(",");
+  const info = db.prepare(`INSERT INTO estoque_itens (${useCols.join(",")}) VALUES (${placeholders})`).run(...useCols.map((c) => payload[c]));
+  return Number(info.lastInsertRowid);
+}
+
+
 function canManageByRole(role) {
   const r = normalizeRole(role);
   return {
@@ -31,17 +54,23 @@ function nextNumero() {
 }
 
 function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao, equipamento_id, preventiva_id, os_id, demanda_id, itens }) {
+  const fallbackItemId = ITEM_HAS_ITEM_ID ? getFallbackItemId() : null;
   const insertSol = db.prepare(`
     INSERT INTO solicitacoes (
       numero, solicitante_user_id, setor_origem, prioridade, titulo, descricao, equipamento_id, preventiva_id, os_id, demanda_id, status
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  const insertItem = db.prepare(`
-    INSERT INTO solicitacao_itens (
-      solicitacao_id, item_nome, item_descricao, unidade, categoria_id, estoque_item_id, qtd_solicitada
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
+  const itemColumns = ["solicitacao_id"];
+  if (ITEM_HAS_ITEM_NOME) itemColumns.push("item_nome");
+  if (ITEM_HAS_ITEM_DESCRICAO) itemColumns.push("item_descricao");
+  itemColumns.push("unidade");
+  if (ITEM_HAS_ESTOQUE_ITEM_ID) itemColumns.push("estoque_item_id");
+  if (ITEM_HAS_QTD_SOLICITADA) itemColumns.push("qtd_solicitada");
+  if (ITEM_HAS_ITEM_ID) itemColumns.push("item_id");
+  if (ITEM_HAS_DESCRICAO) itemColumns.push("descricao");
+  if (ITEM_HAS_QUANTIDADE) itemColumns.push("quantidade");
+  const insertItem = db.prepare(`INSERT INTO solicitacao_itens (${itemColumns.join(",")}) VALUES (${itemColumns.map(() => "?").join(",")})`);
 
   return db.transaction(() => {
     const numero = nextNumero();
@@ -60,15 +89,16 @@ function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao
     );
     const solicitacaoId = Number(info.lastInsertRowid);
     for (const item of itens || []) {
-      insertItem.run(
-        solicitacaoId,
-        item.item_nome,
-        item.item_descricao || null,
-        (item.unidade || "UN").toUpperCase(),
-        item.categoria_id || null,
-        item.estoque_item_id || null,
-        Number(item.qtd_solicitada || 0)
-      );
+      const row = [solicitacaoId];
+      if (ITEM_HAS_ITEM_NOME) row.push(item.item_nome);
+      if (ITEM_HAS_ITEM_DESCRICAO) row.push(item.item_descricao || null);
+      row.push((item.unidade || "UN").toUpperCase());
+      if (ITEM_HAS_ESTOQUE_ITEM_ID) row.push(item.estoque_item_id || null);
+      if (ITEM_HAS_QTD_SOLICITADA) row.push(Number(item.qtd_solicitada || 0));
+      if (ITEM_HAS_ITEM_ID) row.push(item.estoque_item_id || fallbackItemId || null);
+      if (ITEM_HAS_DESCRICAO) row.push(item.item_descricao || item.item_nome);
+      if (ITEM_HAS_QUANTIDADE) row.push(Number(item.qtd_solicitada || 0));
+      insertItem.run(...row);
     }
     return solicitacaoId;
   })();
@@ -104,13 +134,7 @@ function getSolicitacaoById(id) {
     WHERE s.id = ?
   `).get(id);
   if (!sol) return null;
-  const itens = db.prepare(`
-    SELECT si.*, (si.qtd_solicitada - si.qtd_recebida_total) AS qtd_pendente, ei.codigo AS estoque_codigo
-    FROM solicitacao_itens si
-    LEFT JOIN estoque_itens ei ON ei.id = si.estoque_item_id
-    WHERE si.solicitacao_id = ?
-    ORDER BY si.id
-  `).all(id);
+  const itens = db.prepare(`SELECT si.*, COALESCE(si.item_nome, si.descricao, ei.nome) AS item_nome, COALESCE(si.item_descricao, si.descricao) AS item_descricao, COALESCE(si.qtd_solicitada, si.quantidade, 0) AS qtd_solicitada, COALESCE(si.qtd_recebida_total, 0) AS qtd_recebida_total, (COALESCE(si.qtd_solicitada, si.quantidade, 0) - COALESCE(si.qtd_recebida_total, 0)) AS qtd_pendente, ei.codigo AS estoque_codigo FROM solicitacao_itens si LEFT JOIN estoque_itens ei ON ei.id = COALESCE(si.estoque_item_id, si.item_id) WHERE si.solicitacao_id = ? ORDER BY si.id`).all(id);
   return { ...sol, itens };
 }
 

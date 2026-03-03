@@ -1,3 +1,6 @@
+<% layout('layout') %>
+
+<%- include("_tabs", { tab: "categorias" }) %>
 <h1>Categorias de Estoque</h1>
 <form method="POST" action="/estoque/categorias"><input name="nome" placeholder="Nome" required/><button>Criar</button></form>
 <ul><% categorias.forEach(c=> { %><li><%= c.nome %></li><% }) %></ul>

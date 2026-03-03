@@ -65,10 +65,10 @@
 
 <template id="item-row-template">
   <tr>
-    <td><input class="input" name="itens_nome" placeholder="Nome do item" required /></td>
-    <td><input class="input" name="itens_especificacao" placeholder="Descrição técnica" /></td>
+    <td><input class="input" name="itens_nome[]" placeholder="Nome do item" required /></td>
+    <td><input class="input" name="itens_especificacao[]" placeholder="Descrição técnica" /></td>
     <td>
-      <select class="input" name="itens_un">
+      <select class="input" name="itens_un[]">
         <option value="UN">UN</option>
         <option value="KG">KG</option>
         <option value="MT">MT</option>
@@ -76,9 +76,9 @@
         <option value="CX">CX</option>
       </select>
     </td>
-    <td><input class="input" name="itens_qtd" type="number" min="0.01" step="0.01" value="1" required /></td>
+    <td><input class="input" name="itens_qtd[]" type="number" min="0.01" step="0.01" value="1" required /></td>
     <td>
-      <select class="input" name="itens_item_id">
+      <select class="input" name="itens_item_id[]">
         <option value="">Sem vínculo</option>
         <% estoqueItens.forEach((item) => { %>
           <option value="<%= item.id %>"><%= item.nome %> (<%= item.unidade %>)</option>
