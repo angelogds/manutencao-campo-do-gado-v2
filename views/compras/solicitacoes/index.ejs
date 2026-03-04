@@ -1,51 +1,147 @@
 <% layout('layout') %>
+<%
+const statusConfig = {
+  ABERTA: { label: 'Aberta', className: 'is-open', icon: '📂' },
+  EM_COTACAO: { label: 'Em Cotação', className: 'is-quote', icon: '💬' },
+  COMPRADA: { label: 'Comprada', className: 'is-bought', icon: '🛒' },
+  EM_RECEBIMENTO: { label: 'Em Recebimento', className: 'is-receiving', icon: '📦' },
+  RECEBIDA_PARCIAL: { label: 'Recebida Parcial', className: 'is-partial', icon: '🧩' },
+  RECEBIDA_TOTAL: { label: 'Recebida Total', className: 'is-total', icon: '✅' },
+  FECHADA: { label: 'Fechada', className: 'is-closed', icon: '⛔' },
+  REABERTA: { label: 'Reaberta', className: 'is-reopened', icon: '🔄' },
+};
+const queryBase = `/compras/solicitacoes?q=${encodeURIComponent(filters?.query || '')}&status=${encodeURIComponent(filters?.status || '')}&startDate=${encodeURIComponent(filters?.startDate || '')}&endDate=${encodeURIComponent(filters?.endDate || '')}`;
+%>
 
-<div class="page-head">
-  <div>
-    <h1>Compras</h1>
-    <p class="muted">Gestão de solicitações por status do fluxo de cotação e compra.</p>
+<style>
+  .sol-page { display: grid; gap: 16px; }
+  .sol-page .page-head { align-items: flex-start; gap: 12px; }
+  .sol-summary { display: grid; grid-template-columns: repeat(4, minmax(160px, 1fr)); gap: 12px; }
+  .sol-card { border-radius: 14px; padding: 14px; color: #0f172a; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(15,23,42,.08); transition: all .2s ease; }
+  .sol-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(15,23,42,.12); }
+  .sol-card strong { font-size: 1.3rem; display: block; }
+  .sol-card .icon { font-size: 1.25rem; background: rgba(255,255,255,.7); border-radius: 999px; width: 34px; height: 34px; display:flex; align-items:center; justify-content:center; }
+  .is-open { background: linear-gradient(140deg,#fde68a,#facc15); }
+  .is-quote { background: linear-gradient(140deg,#bfdbfe,#60a5fa); }
+  .is-bought { background: linear-gradient(140deg,#d1d5db,#9ca3af); }
+  .is-receiving { background: linear-gradient(140deg,#fed7aa,#fb923c); }
+  .is-partial { background: linear-gradient(140deg,#ddd6fe,#a78bfa); }
+  .is-total { background: linear-gradient(140deg,#bbf7d0,#4ade80); }
+  .is-closed { background: linear-gradient(140deg,#fecaca,#f87171); }
+  .is-reopened { background: linear-gradient(140deg,#99f6e4,#2dd4bf); }
+  .sol-filters { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr auto; gap: 10px; align-items: end; }
+  .sol-filter-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sol-filter-actions .btn { white-space: nowrap; }
+  .sol-table td, .sol-table th { vertical-align: middle; }
+  .sol-status { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 10px; font-size: .78rem; font-weight: 700; border: 1px solid rgba(0,0,0,.08); }
+  .sol-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .anim-fade-up { animation: fadeUp .35s ease both; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 1100px) {
+    .sol-summary { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
+    .sol-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 768px) {
+    .sol-summary { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+    .sol-page .page-head { flex-direction: column; }
+    .sol-filters { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 460px) {
+    .sol-summary { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="sol-page">
+  <div class="page-head anim-fade-up">
+    <div>
+      <h1>Solicitações</h1>
+      <p class="muted">Gestão moderna de solicitações de materiais para ambiente industrial.</p>
+    </div>
+    <div>
+      <a class="btn btn-green" href="/solicitacoes/nova">+ Nova Solicitação</a>
+    </div>
   </div>
-  <div>
-    <a class="btn btn-green" href="/solicitacoes/nova">+ Nova Solicitação</a>
-  </div>
-</div>
 
-<div class="subtabs" style="margin-top:0;">
-  <a class="subtab <%= status === 'ABERTA' ? 'active' : '' %>" href="/compras/solicitacoes?status=ABERTA">Abertas</a>
-  <a class="subtab <%= status === 'EM_COTACAO' ? 'active' : '' %>" href="/compras/solicitacoes?status=EM_COTACAO">Em cotação</a>
-  <a class="subtab <%= status === 'COMPRADA' ? 'active' : '' %>" href="/compras/solicitacoes?status=COMPRADA">Compradas</a>
-</div>
+  <section class="sol-summary anim-fade-up">
+    <% statusList.forEach((st) => { const conf = statusConfig[st] || {label: st, className: 'is-bought', icon: '📌'}; %>
+      <a class="sol-card <%= conf.className %>" href="/compras/solicitacoes?status=<%= st %>">
+        <div>
+          <span><%= conf.label %></span>
+          <strong><%= resumo?.[st] || 0 %></strong>
+        </div>
+        <span class="icon"><%= conf.icon %></span>
+      </a>
+    <% }) %>
+  </section>
 
-<div class="card">
-  <div class="table-wrap">
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Número</th>
-          <th>Status</th>
-          <th>Solicitante</th>
-          <th>Setor</th>
-          <th>Criada em</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% if (!lista.length) { %>
-          <tr><td colspan="6" class="muted" style="text-align:center;">Nenhuma solicitação nesta aba.</td></tr>
-        <% } %>
-        <% lista.forEach((s) => { 
-          const pill = s.status === 'ABERTA' ? 'pill-amber' : s.status === 'EM_COTACAO' ? 'pill-sky' : s.status === 'COMPRADA' ? 'pill-green' : 'pill-gray';
-        %>
+  <section class="card anim-fade-up">
+    <form class="sol-filters" method="GET" action="/compras/solicitacoes">
+      <div>
+        <label class="label">Pesquisar</label>
+        <input class="input" type="text" name="q" placeholder="Número ou título" value="<%= filters?.query || '' %>" />
+      </div>
+      <div>
+        <label class="label">Status</label>
+        <select class="input" name="status">
+          <option value="">Todos</option>
+          <% statusList.forEach((st) => { %>
+            <option value="<%= st %>" <%= filters?.status === st ? 'selected' : '' %>><%= statusConfig?.[st]?.label || st %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label class="label">De</label>
+        <input class="input" type="date" name="startDate" value="<%= filters?.startDate || '' %>" />
+      </div>
+      <div>
+        <label class="label">Até</label>
+        <input class="input" type="date" name="endDate" value="<%= filters?.endDate || '' %>" />
+      </div>
+      <div class="sol-filter-actions">
+        <button class="btn" type="submit">Filtrar</button>
+        <a class="btn btn-ghost" href="/compras/solicitacoes">Limpar</a>
+        <a class="btn btn-ghost" href="<%= `${queryBase}&export=excel` %>">Excel</a>
+        <button class="btn btn-ghost" type="button" onclick="window.print()">PDF</button>
+      </div>
+    </form>
+  </section>
+
+  <div class="card anim-fade-up">
+    <div class="table-wrap">
+      <table class="table sol-table">
+        <thead>
           <tr>
-            <td><strong><%= s.numero || ('#' + s.id) %></strong></td>
-            <td><span class="pill-tag <%= pill %>"><%= s.status %></span></td>
-            <td><%= s.solicitante_nome || '-' %></td>
-            <td><%= s.setor_origem || '-' %></td>
-            <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
-            <td><a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>">Abrir</a></td>
+            <th>Número</th>
+            <th>Título</th>
+            <th>Status</th>
+            <th>Criada em</th>
+            <th>Ações</th>
           </tr>
-        <% }) %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% if (!lista.length) { %>
+            <tr><td colspan="5" class="muted" style="text-align:center;">Nenhuma solicitação encontrada com os filtros aplicados.</td></tr>
+          <% } %>
+          <% lista.forEach((s) => { const conf = statusConfig[s.status] || { label: s.status || '-', className: 'is-bought', icon: '📌' }; %>
+            <tr>
+              <td><strong><%= s.numero || ('#' + s.id) %></strong></td>
+              <td><%= s.titulo || '-' %></td>
+              <td>
+                <span class="sol-status <%= conf.className %>"><span><%= conf.icon %></span> <%= conf.label %></span>
+              </td>
+              <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
+              <td>
+                <div class="sol-actions">
+                  <a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>">Detalhes</a>
+                  <a class="btn btn-sm" href="/compras/solicitacoes/<%= s.id %>">Editar</a>
+                  <a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>#historico">Histórico</a>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

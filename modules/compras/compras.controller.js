@@ -13,12 +13,45 @@ const STATUS = Object.freeze({
 });
 
 function lista(req, res) {
-  const status = service.STATUS_COMPRAS.includes(req.query.status) ? req.query.status : STATUS.ABERTA;
+  const filters = {
+    query: (req.query.q || "").trim(),
+    status: service.STATUS_COMPRAS.includes(req.query.status) ? req.query.status : "",
+    startDate: req.query.startDate || "",
+    endDate: req.query.endDate || "",
+  };
+
+  const lista = service.listSolicitacoesPorStatus(filters);
+
+  if (req.query.export === "excel") {
+    const escapeCsv = (value) => {
+      const raw = value == null ? "" : String(value);
+      return `"${raw.replace(/"/g, '""')}"`;
+    };
+    const lines = [
+      ["Número", "Título", "Status", "Solicitante", "Setor", "Criada em"].join(","),
+      ...lista.map((s) =>
+        [
+          escapeCsv(s.numero || `#${s.id}`),
+          escapeCsv(s.titulo || "-"),
+          escapeCsv(s.status || "-"),
+          escapeCsv(s.solicitante_nome || "-"),
+          escapeCsv(s.setor_origem || "-"),
+          escapeCsv(s.created_at || "-"),
+        ].join(",")
+      ),
+    ];
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename=solicitacoes_${Date.now()}.csv`);
+    return res.send(`\uFEFF${lines.join("\n")}`);
+  }
+
   res.render("compras/solicitacoes/index", {
     title: "Compras",
     activeMenu: "compras",
-    status,
-    lista: service.listSolicitacoesPorStatus(status),
+    lista,
+    filters,
+    statusList: service.STATUS_COMPRAS,
+    resumo: service.getResumoSolicitacoes(),
   });
 }
 
