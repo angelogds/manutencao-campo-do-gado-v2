@@ -13,21 +13,68 @@ const STATUS = Object.freeze({
   REABERTA: "REABERTA",
 });
 
-const STATUS_COMPRAS = [STATUS.ABERTA, STATUS.EM_COTACAO, STATUS.COMPRADA];
+const STATUS_COMPRAS = [
+  STATUS.ABERTA,
+  STATUS.EM_COTACAO,
+  STATUS.COMPRADA,
+  STATUS.EM_RECEBIMENTO,
+  STATUS.RECEBIDA_PARCIAL,
+  STATUS.RECEBIDA_TOTAL,
+  STATUS.FECHADA,
+  STATUS.REABERTA,
+];
 
 function normalizeStatus(status) {
-  return STATUS_COMPRAS.includes(status) ? status : STATUS.ABERTA;
+  return STATUS_COMPRAS.includes(status) ? status : "";
 }
 
-function listSolicitacoesPorStatus(status = STATUS.ABERTA) {
-  const st = normalizeStatus(status);
+function listSolicitacoesPorStatus(filters = {}) {
+  const where = [];
+  const params = [];
+  const status = normalizeStatus(filters.status);
+
+  if (status) {
+    where.push("s.status = ?");
+    params.push(status);
+  }
+
+  if (filters.query) {
+    where.push("(LOWER(s.numero) LIKE ? OR LOWER(s.titulo) LIKE ?)");
+    const q = `%${String(filters.query).trim().toLowerCase()}%`;
+    params.push(q, q);
+  }
+
+  if (filters.startDate) {
+    where.push("date(s.created_at) >= date(?)");
+    params.push(filters.startDate);
+  }
+
+  if (filters.endDate) {
+    where.push("date(s.created_at) <= date(?)");
+    params.push(filters.endDate);
+  }
+
   return db.prepare(`
     SELECT s.*, u.name AS solicitante_nome
     FROM solicitacoes s
     JOIN users u ON u.id = s.solicitante_user_id
-    WHERE s.status = ?
+    ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     ORDER BY s.id DESC
-  `).all(st);
+  `).all(...params);
+}
+
+function getResumoSolicitacoes() {
+  const rows = db.prepare(`
+    SELECT status, COUNT(*) AS total
+    FROM solicitacoes
+    GROUP BY status
+  `).all();
+
+  const totals = Object.fromEntries(STATUS_COMPRAS.map((status) => [status, 0]));
+  rows.forEach((row) => {
+    if (row.status in totals) totals[row.status] = row.total;
+  });
+  return totals;
 }
 
 function getSolicitacaoDetalhe(id) {
@@ -171,7 +218,9 @@ function gerarPdf(solicitacao, res) {
 
 module.exports = {
   STATUS_COMPRAS,
+  STATUS,
   listSolicitacoesPorStatus,
+  getResumoSolicitacoes,
   getSolicitacaoDetalhe,
   assumirSolicitacao,
   atualizarDados,

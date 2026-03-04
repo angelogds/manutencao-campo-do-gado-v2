@@ -2,11 +2,19 @@ const service = require("./solicitacoes.service");
 
 function minhas(req, res) {
   const userId = req.session.user.id;
+  const filters = {
+    query: (req.query.q || "").trim(),
+    status: Object.values(service.STATUS).includes(req.query.status) ? req.query.status : "",
+    date: req.query.date || "",
+  };
+
   res.render("solicitacoes/minhas", {
     title: "Minhas Solicitações",
     activeMenu: "solicitacoes",
-    lista: service.listMinhasSolicitacoes(userId),
+    lista: service.listMinhasSolicitacoes(userId, filters),
     counters: service.getCountersForUser(userId),
+    filters,
+    statuses: Object.values(service.STATUS),
   });
 }
 

@@ -112,15 +112,34 @@ function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao
   })();
 }
 
-function listMinhasSolicitacoes(userId) {
+function listMinhasSolicitacoes(userId, filters = {}) {
+  const where = ["s.solicitante_user_id = ?"];
+  const params = [userId];
+
+  if (Object.values(STATUS).includes(filters.status)) {
+    where.push("s.status = ?");
+    params.push(filters.status);
+  }
+
+  if (filters.query) {
+    where.push("(LOWER(s.numero) LIKE ? OR LOWER(s.titulo) LIKE ?)");
+    const q = `%${String(filters.query).trim().toLowerCase()}%`;
+    params.push(q, q);
+  }
+
+  if (filters.date) {
+    where.push("date(s.created_at) = date(?)");
+    params.push(filters.date);
+  }
+
   return db.prepare(`
     SELECT s.*, u.name AS solicitante_nome,
       (SELECT COUNT(*) FROM solicitacao_itens i WHERE i.solicitacao_id = s.id) AS itens_count
     FROM solicitacoes s
     JOIN users u ON u.id = s.solicitante_user_id
-    WHERE s.solicitante_user_id = ?
+    WHERE ${where.join(" AND ")}
     ORDER BY s.id DESC
-  `).all(userId);
+  `).all(...params);
 }
 
 function getCountersForUser(userId) {
