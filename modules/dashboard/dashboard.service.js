@@ -354,6 +354,23 @@ function getOSPainel(page = 1, pageSize = 10) {
 
 function getComprasResumoDashboard() {
   return safeGet(() => {
+    const hasSolicitacoes = !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='solicitacoes'").get();
+    if (hasSolicitacoes) {
+      const row = db.prepare(`
+        SELECT
+          SUM(CASE WHEN status IN ('ABERTA','EM_COTACAO') THEN 1 ELSE 0 END) AS solicitacoes_abertas,
+          SUM(CASE WHEN status = 'COMPRADA' THEN 1 ELSE 0 END) AS solicitacoes_aprovadas
+        FROM solicitacoes
+      `).get() || {};
+      return {
+        solicitacoes_abertas: Number(row.solicitacoes_abertas || 0),
+        solicitacoes_aprovadas: Number(row.solicitacoes_aprovadas || 0),
+      };
+    }
+
+    const hasLegacy = !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='solicitacoes_compra'").get();
+    if (!hasLegacy) return { solicitacoes_abertas: 0, solicitacoes_aprovadas: 0 };
+
     const row = db.prepare(`
       SELECT
         SUM(CASE WHEN status IN ('aberta','em_cotacao') THEN 1 ELSE 0 END) AS solicitacoes_abertas,

@@ -1,3 +1,5 @@
+<% layout('layout') %>
+
 <h1>Compras - <%= sol.numero %></h1>
 <p>Status: <%= sol.status %></p>
 <form method="POST" action="/compras/solicitacoes/<%= sol.id %>/assumir"><button class="btn" type="submit">Assumir (EM_COTACAO)</button></form>
