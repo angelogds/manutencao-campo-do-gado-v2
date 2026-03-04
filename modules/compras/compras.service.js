@@ -2,6 +2,17 @@ const fs = require("fs");
 const path = require("path");
 const db = require("../../database/db");
 
+const STATUS = Object.freeze({
+  ABERTA: "ABERTA",
+  EM_COTACAO: "EM_COTACAO",
+  COMPRADA: "COMPRADA",
+  EM_RECEBIMENTO: "EM_RECEBIMENTO",
+  RECEBIDA_PARCIAL: "RECEBIDA_PARCIAL",
+  RECEBIDA_TOTAL: "RECEBIDA_TOTAL",
+  FECHADA: "FECHADA",
+  REABERTA: "REABERTA",
+});
+
 const STATUS_COMPRAS = [STATUS.ABERTA, STATUS.EM_COTACAO, STATUS.COMPRADA];
 
 function normalizeStatus(status) {
