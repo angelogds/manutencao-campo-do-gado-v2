@@ -3,7 +3,10 @@
 <div class="page-head">
   <div>
     <h1>Compras</h1>
-    <p class="muted">Acompanhamento do fluxo de compras: ABERTAS, EM COTAÇÃO e COMPRADAS.</p>
+    <p class="muted">Gestão de solicitações por status do fluxo de cotação e compra.</p>
+  </div>
+  <div>
+    <a class="btn btn-green" href="/solicitacoes/nova">+ Nova Solicitação</a>
   </div>
 </div>
 
@@ -16,22 +19,30 @@
 <div class="card">
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>Número</th><th>Status</th><th>Solicitante</th><th>Setor</th><th>Criada em</th><th>Ações</th></tr></thead>
+      <thead>
+        <tr>
+          <th>Número</th>
+          <th>Status</th>
+          <th>Solicitante</th>
+          <th>Setor</th>
+          <th>Criada em</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
       <tbody>
-        <% if (!lista.length) { %><tr><td colspan="6" class="muted" style="text-align:center;">Nenhuma solicitação nesta aba.</td></tr><% } %>
-        <% lista.forEach((s) => { const pill = s.status === 'ABERTA' ? 'pill-amber' : s.status === 'EM_COTACAO' ? 'pill-sky' : 'pill-green'; %>
+        <% if (!lista.length) { %>
+          <tr><td colspan="6" class="muted" style="text-align:center;">Nenhuma solicitação nesta aba.</td></tr>
+        <% } %>
+        <% lista.forEach((s) => { 
+          const pill = s.status === 'ABERTA' ? 'pill-amber' : s.status === 'EM_COTACAO' ? 'pill-sky' : s.status === 'COMPRADA' ? 'pill-green' : 'pill-gray';
+        %>
           <tr>
             <td><strong><%= s.numero || ('#' + s.id) %></strong></td>
             <td><span class="pill-tag <%= pill %>"><%= s.status %></span></td>
             <td><%= s.solicitante_nome || '-' %></td>
             <td><%= s.setor_origem || '-' %></td>
             <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
-            <td style="display:flex;gap:8px;flex-wrap:wrap;">
-              <a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>">Abrir</a>
-              <% if (s.status === 'ABERTA') { %>
-                <a class="btn btn-sm btn-green" href="/compras/solicitacoes/<%= s.id %>/pdf">Gerar PDF / Iniciar Cotação</a>
-              <% } %>
-            </td>
+            <td><a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>">Abrir</a></td>
           </tr>
         <% }) %>
       </tbody>
