@@ -151,7 +151,7 @@ function mount(basePath, modPath) {
   try {
     app.use(basePath, require(modPath));
   } catch (err) {
-    console.error(`❌ [routes] Falha ao carregar ${modPath}:`, err.message || err);
+    console.error(`❌ [routes] Falha ao carregar ${modPath}:`, err && (err.stack || err.message || err));
     app.use(basePath, (_req, res) => {
       res.status(503).send(`Módulo temporariamente indisponível: ${basePath}`);
     });

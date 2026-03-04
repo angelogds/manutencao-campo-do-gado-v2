@@ -1,9 +1,6 @@
-const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
 const db = require("../../database/db");
-const { STATUS } = require("../solicitacoes/solicitacoes.service");
-const { fmtBR } = require("../../utils/date");
 
 const STATUS_COMPRAS = [STATUS.ABERTA, STATUS.EM_COTACAO, STATUS.COMPRADA];
 
@@ -97,6 +94,12 @@ function marcarComprada(id, userId, dados = {}) {
 }
 
 function gerarPdf(solicitacao, res) {
+  const PDFDocument = getPDFKit();
+  if (!PDFDocument) {
+    const err = new Error("PDF indisponível: pdfkit não carregou");
+    err.code = "PDFKIT_NOT_AVAILABLE";
+    throw err;
+  }
   const doc = new PDFDocument({ margin: 40, size: "A4" });
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename=solicitacao_${solicitacao.numero}.pdf`);
