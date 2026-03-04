@@ -28,7 +28,7 @@
             <td><%= item.qtd_recebida_total %> <%= item.unidade %></td>
             <td><%= item.pendente %> <%= item.unidade %></td>
             <td>
-              <form method="POST" action="/almoxarifado/recebimentos/<%= sol.id %>/itens/<%= item.id %>/receber" class="row">
+              <form method="POST" action="/almoxarifado/solicitacoes/<%= sol.id %>/itens/<%= item.id %>/receber" class="row">
                 <input class="input" type="number" min="0.01" step="0.01" name="qtd_recebida_agora" placeholder="Qtd" required />
                 <input class="input" name="observacao_item" placeholder="Observação" />
                 <button class="btn btn-sm btn-green" type="submit">OK</button>
@@ -40,7 +40,7 @@
     </table>
   </div>
 
-  <form method="POST" action="/almoxarifado/recebimentos/<%= sol.id %>/finalizar" style="margin-top:12px;display:flex;gap:8px;">
+  <form method="POST" action="/almoxarifado/solicitacoes/<%= sol.id %>/finalizar-recebimento" style="margin-top:12px;display:flex;gap:8px;">
     <button class="btn btn-green" type="submit">Finalizar recebimento</button>
     <a class="btn btn-ghost" href="/almoxarifado/recebimentos">Cancelar</a>
   </form>
