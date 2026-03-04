@@ -28,11 +28,11 @@ function criar(req, res) {
     return [value];
   };
 
-  const nomes = toArray(req.body.itens_nome ?? req.body["itens_nome[]"] ?? req.body.item_nome);
-  const especificacoes = toArray(req.body.itens_especificacao ?? req.body["itens_especificacao[]"] ?? req.body.item_descricao);
-  const unidades = toArray(req.body.itens_un ?? req.body["itens_un[]"] ?? req.body.unidade);
-  const quantidades = toArray(req.body.itens_qtd ?? req.body["itens_qtd[]"] ?? req.body.qtd_solicitada);
-  const itemIds = toArray(req.body.itens_item_id ?? req.body["itens_item_id[]"] ?? req.body.estoque_item_id);
+  const nomes = toArray(req.body.itens_nome ?? req.body['itens_nome[]'] ?? req.body.item_nome);
+  const especificacoes = toArray(req.body.itens_especificacao ?? req.body['itens_especificacao[]'] ?? req.body.item_descricao);
+  const unidades = toArray(req.body.itens_un ?? req.body['itens_un[]'] ?? req.body.unidade);
+  const quantidades = toArray(req.body.itens_qtd ?? req.body['itens_qtd[]'] ?? req.body.qtd_solicitada);
+  const itemIds = toArray(req.body.itens_item_id ?? req.body['itens_item_id[]'] ?? req.body.estoque_item_id);
 
   const tamanho = Math.max(nomes.length, especificacoes.length, unidades.length, quantidades.length, itemIds.length);
   const itens = Array.from({ length: tamanho }, (_, i) => ({
@@ -48,22 +48,9 @@ function criar(req, res) {
     return res.redirect("/solicitacoes/nova");
   }
 
-  try {
-    const idCriado = service.createSolicitacao({ ...req.body, userId: req.session.user.id, itens });
-    req.flash("success", "✅ Solicitação criada com sucesso!");
-    return res.redirect(`/solicitacoes/${idCriado}`);
-  } catch (err) {
-    console.error(err);
-    req.flash("error", "❌ Não foi possível criar a solicitação. Verifique os campos e tente novamente.");
-    return res.status(422).render("solicitacoes/new", {
-      title: "Nova Solicitação",
-      activeMenu: "solicitacoes",
-      equipamentos: service.listEquipamentos(),
-      estoqueItens: service.listEstoqueItens(),
-      formData: req.body,
-      formItens: itens,
-    });
-  }
+  const id = service.createSolicitacao({ ...req.body, userId: req.session.user.id, itens });
+  req.flash("success", "Solicitação criada.");
+  res.redirect(`/solicitacoes/${id}`);
 }
 
 function detalhe(req, res) {
