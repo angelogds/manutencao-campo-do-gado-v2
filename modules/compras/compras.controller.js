@@ -1,6 +1,16 @@
 const fs = require("fs");
 const path = require("path");
 const service = require("./compras.service");
+const STATUS = Object.freeze({
+  ABERTA: "ABERTA",
+  EM_COTACAO: "EM_COTACAO",
+  COMPRADA: "COMPRADA",
+  EM_RECEBIMENTO: "EM_RECEBIMENTO",
+  RECEBIDA_PARCIAL: "RECEBIDA_PARCIAL",
+  RECEBIDA_TOTAL: "RECEBIDA_TOTAL",
+  FECHADA: "FECHADA",
+  REABERTA: "REABERTA",
+});
 
 function lista(req, res) {
   const status = service.STATUS_COMPRAS.includes(req.query.status) ? req.query.status : "ABERTA";
