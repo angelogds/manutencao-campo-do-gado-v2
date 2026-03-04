@@ -6,6 +6,15 @@ function hasColumn(table, name) {
 const HAS_SALDO_ATUAL = hasColumn("estoque_itens", "saldo_atual");
 const HAS_SALDO_MINIMO = hasColumn("estoque_itens", "saldo_minimo");
 const HAS_ESTOQUE_MIN = hasColumn("estoque_itens", "estoque_min");
+const HAS_CATEGORIA_ID = hasColumn("estoque_itens", "categoria_id");
+const HAS_LOCAL_ID = hasColumn("estoque_itens", "local_id");
+const HAS_DATA_MOV = hasColumn("estoque_movimentos", "data_mov");
+const HAS_USUARIO_ID = hasColumn("estoque_movimentos", "usuario_id");
+
+function categoriaJoin() { return HAS_CATEGORIA_ID ? "LEFT JOIN estoque_categorias c ON c.id=i.categoria_id" : "LEFT JOIN estoque_categorias c ON 1=0"; }
+function localJoin() { return HAS_LOCAL_ID ? "LEFT JOIN estoque_locais l ON l.id=i.local_id" : "LEFT JOIN estoque_locais l ON 1=0"; }
+function dataMovExpr() { return HAS_DATA_MOV ? "COALESCE(m.data_mov,m.created_at)" : "m.created_at"; }
+function usuarioJoin() { return HAS_USUARIO_ID ? "LEFT JOIN users u ON u.id=m.usuario_id" : "LEFT JOIN users u ON 1=0"; }
 
 function saldoExpr() { return HAS_SALDO_ATUAL ? "COALESCE(i.saldo_atual,0)" : "COALESCE(v.saldo,0)"; }
 function minExpr() { return HAS_SALDO_MINIMO ? "COALESCE(i.saldo_minimo,0)" : (HAS_ESTOQUE_MIN ? "COALESCE(i.estoque_min,0)" : "0"); }
@@ -18,15 +27,25 @@ function dashboard() {
 }
 
 function listItens() {
-  return db.prepare(`SELECT i.*, c.nome categoria_nome, l.nome local_nome, ${saldoExpr()} AS saldo_atual, ${minExpr()} AS saldo_minimo FROM estoque_itens i LEFT JOIN estoque_categorias c ON c.id=i.categoria_id LEFT JOIN estoque_locais l ON l.id=i.local_id LEFT JOIN vw_estoque_saldo v ON v.item_id=i.id WHERE i.ativo=1 ORDER BY i.nome`).all();
+  return db.prepare(`SELECT i.*, c.nome categoria_nome, l.nome local_nome, ${saldoExpr()} AS saldo_atual, ${minExpr()} AS saldo_minimo FROM estoque_itens i ${categoriaJoin()} ${localJoin()} LEFT JOIN vw_estoque_saldo v ON v.item_id=i.id WHERE i.ativo=1 ORDER BY i.nome`).all();
 }
 function listCategorias() { return db.prepare("SELECT * FROM estoque_categorias WHERE ativo=1 ORDER BY nome").all(); }
 function listLocais() { return db.prepare("SELECT * FROM estoque_locais WHERE ativo=1 ORDER BY nome").all(); }
-function listMovimentos() { return db.prepare("SELECT m.*, COALESCE(m.data_mov,m.created_at) AS data_mov, i.nome item_nome, u.name usuario_nome FROM estoque_movimentos m JOIN estoque_itens i ON i.id=m.item_id LEFT JOIN users u ON u.id=m.usuario_id ORDER BY m.id DESC LIMIT 300").all(); }
+function listMovimentos() { return db.prepare(`SELECT m.*, ${dataMovExpr()} AS data_mov, i.nome item_nome, u.name usuario_nome FROM estoque_movimentos m JOIN estoque_itens i ON i.id=m.item_id ${usuarioJoin()} ORDER BY m.id DESC LIMIT 300`).all(); }
 
 function createCategoria({ nome, parent_id }) { db.prepare("INSERT INTO estoque_categorias (nome,parent_id) VALUES (?,?)").run(nome, parent_id || null); }
 function createLocal({ nome, descricao }) { db.prepare("INSERT INTO estoque_locais (nome,descricao) VALUES (?,?)").run(nome, descricao || null); }
-function createItem(data) { return Number(db.prepare(`INSERT INTO estoque_itens (codigo,nome,unidade,categoria_id,local_id,${HAS_SALDO_MINIMO ? "saldo_minimo" : HAS_ESTOQUE_MIN ? "estoque_min" : "categoria"}) VALUES (?,?,?,?,?,?)`).run(data.codigo||null, data.nome, data.unidade||'UN', data.categoria_id||null, data.local_id||null, Number(data.saldo_minimo||0)).lastInsertRowid); }
+function createItem(data) {
+  const minColumn = HAS_SALDO_MINIMO ? "saldo_minimo" : HAS_ESTOQUE_MIN ? "estoque_min" : "categoria";
+  const cols = ["codigo", "nome", "unidade"];
+  const values = [data.codigo || null, data.nome, data.unidade || "UN"];
+  if (HAS_CATEGORIA_ID) { cols.push("categoria_id"); values.push(data.categoria_id || null); }
+  if (HAS_LOCAL_ID) { cols.push("local_id"); values.push(data.local_id || null); }
+  cols.push(minColumn);
+  values.push(Number(data.saldo_minimo || 0));
+  const placeholders = cols.map(() => "?").join(",");
+  return Number(db.prepare(`INSERT INTO estoque_itens (${cols.join(",")}) VALUES (${placeholders})`).run(...values).lastInsertRowid);
+}
 function getItem(id) { return db.prepare(`SELECT i.*, ${saldoExpr()} AS saldo_atual, ${minExpr()} AS saldo_minimo FROM estoque_itens i LEFT JOIN vw_estoque_saldo v ON v.item_id=i.id WHERE i.id=?`).get(id); }
 
 function registrarSaida({ item_id, quantidade, usuario_id, observacao, referencia_id }) {

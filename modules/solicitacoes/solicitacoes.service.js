@@ -30,6 +30,16 @@ function nextNumero() {
   return `SOL-${year}-${String(seq).padStart(6, "0")}`;
 }
 
+function sanitizePositiveId(value) {
+  const id = Number(value);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+function getTableColumns(table) {
+  try { return db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name); }
+  catch { return []; }
+}
+
 function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao, equipamento_id, preventiva_id, os_id, demanda_id, itens }) {
   const insertSol = db.prepare(`
     INSERT INTO solicitacoes (
@@ -52,24 +62,30 @@ function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao
       prioridade || "MEDIA",
       titulo,
       descricao || null,
-      equipamento_id || null,
-      preventiva_id || null,
-      os_id || null,
-      demanda_id || null,
+      sanitizePositiveId(equipamento_id),
+      sanitizePositiveId(preventiva_id),
+      sanitizePositiveId(os_id),
+      sanitizePositiveId(demanda_id),
       STATUS.ABERTA
     );
+
     const solicitacaoId = Number(info.lastInsertRowid);
+
     for (const item of itens || []) {
+      const categoria_id = sanitizePositiveId(item.categoria_id);
+      const estoque_item_id = sanitizePositiveId(item.estoque_item_id);
+
       insertItem.run(
         solicitacaoId,
         item.item_nome,
         item.item_descricao || null,
         (item.unidade || "UN").toUpperCase(),
-        item.categoria_id || null,
-        item.estoque_item_id || null,
+        categoria_id,
+        estoque_item_id,
         Number(item.qtd_solicitada || 0)
       );
     }
+
     return solicitacaoId;
   })();
 }
@@ -104,13 +120,36 @@ function getSolicitacaoById(id) {
     WHERE s.id = ?
   `).get(id);
   if (!sol) return null;
+
+  const cols = getTableColumns('solicitacao_itens');
+  const has = (c) => cols.includes(c);
+  const exprItemNome = has('item_nome') ? 'si.item_nome' : has('descricao') ? 'si.descricao' : "'-'";
+  const exprItemDesc = has('item_descricao') ? 'si.item_descricao' : has('descricao') ? 'si.descricao' : 'NULL';
+  const exprUnidade = has('unidade') ? 'si.unidade' : "'UN'";
+  const exprQtdSolic = has('qtd_solicitada') ? 'si.qtd_solicitada' : has('quantidade') ? 'si.quantidade' : '0';
+  const exprQtdRec = has('qtd_recebida_total') ? 'si.qtd_recebida_total' : '0';
+  const exprStatusItem = has('status_item') ? 'si.status_item' : "'PENDENTE'";
+  const exprObs = has('observacao_item') ? 'si.observacao_item' : has('descricao') ? 'si.descricao' : 'NULL';
+  const exprEstoqueRef = has('estoque_item_id') ? 'si.estoque_item_id' : has('item_id') ? 'si.item_id' : 'NULL';
+
   const itens = db.prepare(`
-    SELECT si.*, (si.qtd_solicitada - si.qtd_recebida_total) AS qtd_pendente, ei.codigo AS estoque_codigo
+    SELECT
+      si.id,
+      ${exprItemNome} AS item_nome,
+      ${exprItemDesc} AS item_descricao,
+      ${exprUnidade} AS unidade,
+      ${exprQtdSolic} AS qtd_solicitada,
+      ${exprQtdRec} AS qtd_recebida_total,
+      (${exprQtdSolic} - ${exprQtdRec}) AS qtd_pendente,
+      ${exprStatusItem} AS status_item,
+      ${exprObs} AS observacao_item,
+      ei.codigo AS estoque_codigo
     FROM solicitacao_itens si
-    LEFT JOIN estoque_itens ei ON ei.id = si.estoque_item_id
+    LEFT JOIN estoque_itens ei ON ei.id = ${exprEstoqueRef}
     WHERE si.solicitacao_id = ?
     ORDER BY si.id
   `).all(id);
+
   return { ...sol, itens };
 }
 
