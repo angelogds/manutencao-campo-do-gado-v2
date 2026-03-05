@@ -10,8 +10,27 @@ function tableExists(tableName) {
   }
 }
 
+function getNowSaoPauloParts() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  return {
+    dateISO: `${map.year}-${map.month}-${map.day}`,
+    hour: Number(map.hour || 0),
+    minute: Number(map.minute || 0),
+  };
+}
+
 function isoToday() {
-  return new Date().toISOString().slice(0, 10);
+  return getNowSaoPauloParts().dateISO;
 }
 
 function turnoLabel(tipo_turno) {
@@ -48,8 +67,8 @@ function roleToFuncao(role) {
 }
 
 function currentTurno() {
-  const now = new Date();
-  const mins = (now.getHours() * 60) + now.getMinutes();
+  const now = getNowSaoPauloParts();
+  const mins = (now.hour * 60) + now.minute;
   return mins >= (7 * 60) && mins < (19 * 60) ? "diurno" : "noturno";
 }
 
@@ -633,7 +652,7 @@ function getDisponiveisAgora() {
       JOIN colaboradores c ON c.id = a.colaborador_id AND IFNULL(c.ativo, 1) = 1
       JOIN users u ON u.id = c.user_id
       WHERE ? BETWEEN s.data_inicio AND s.data_fim
-        AND a.tipo_turno IN (?, 'apoio')
+        AND a.tipo_turno IN (?, 'apoio', 'plantao')
         ${hasUserAtivo ? "AND IFNULL(u.ativo, 1) = 1" : ""}
       ORDER BY name ASC
     `).all(hoje, turnoAtual);
