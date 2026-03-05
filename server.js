@@ -179,6 +179,24 @@ mount("/motores", "./modules/motores/motores.routes");
 mount("/inspecao", "./modules/inspecao/inspecao.routes");
 mount("/inspection", "./modules/inspection/inspecao.routes");
 
+try {
+  const osService = require("./modules/os/os.service");
+  if (typeof osService.syncOpenOSWithCurrentShift === "function") {
+    const run = () => {
+      try {
+        osService.syncOpenOSWithCurrentShift();
+      } catch (err) {
+        console.warn("⚠️ Falha na sincronização automática das OS por turno:", err.message || err);
+      }
+    };
+
+    run();
+    setInterval(run, 60 * 1000);
+  }
+} catch (err) {
+  console.warn("⚠️ Serviço de OS não carregado para sincronização automática:", err.message || err);
+}
+
 // ===== Home =====
 app.get("/", (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");

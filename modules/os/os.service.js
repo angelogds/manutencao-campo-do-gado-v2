@@ -200,13 +200,13 @@ function isOcupado(userId) {
   return !!row;
 }
 
-function getDisponiveis(turnoUsers, funcao) {
+function getDisponiveis(turnoUsers, funcao, { considerarOcupacao = true } = {}) {
   return (turnoUsers || [])
     .filter((u) => {
       if (!funcao) return true;
       return String(u.funcao || "").toLowerCase() === String(funcao || "").toLowerCase();
     })
-    .filter((u) => !isOcupado(u.id));
+    .filter((u) => (considerarOcupacao ? !isOcupado(u.id) : true));
 }
 
 function getParesAtivosDisponiveis(turnoUsers) {
@@ -372,7 +372,8 @@ function autoAssignEquipe(osId, alocadoPorUserId) {
     }
 
     const usersNoite = escalaService.getUsersDoTurno?.("NOITE") || [];
-    const auxiliarNoite = getDisponiveis(usersNoite, "auxiliar").find((u) => Number(u.id) !== Number(plantonistaId)) || null;
+    const auxiliarNoite = getDisponiveis(usersNoite, "auxiliar", { considerarOcupacao: false })
+      .find((u) => Number(u.id) !== Number(plantonistaId)) || null;
     const executor = usersNoite.find((u) => Number(u.id) === Number(plantonistaId))
       || db.prepare(`SELECT id, name FROM users WHERE id = ?`).get(Number(plantonistaId));
 
@@ -396,8 +397,8 @@ function autoAssignEquipe(osId, alocadoPorUserId) {
     || escalaService.getUsersDoTurnoAtual?.({ prefer: "diurno" })
     || [];
 
-  const auxiliares = getDisponiveis(turnoUsers, "auxiliar");
-  const mecanicosDia = getDisponiveis(turnoUsers, "mecanico");
+  const auxiliares = getDisponiveis(turnoUsers, "auxiliar", { considerarOcupacao: false });
+  const mecanicosDia = getDisponiveis(turnoUsers, "mecanico", { considerarOcupacao: false });
   const escolherMecanicoDia = () => {
     const ordenados = prioritizeMecanicos(mecanicosDia);
     return pickNextMecanicoRoundRobin(ordenados);
@@ -440,6 +441,57 @@ function autoAssignEquipe(osId, alocadoPorUserId) {
     auxiliar: auxiliar ? { id: Number(auxiliar.id), nome: auxiliar.name } : null,
     turno: "DIA",
   };
+}
+
+function syncOpenOSWithCurrentShift() {
+  const turnoAtual = escalaService.getTurnoAtual?.() || "DIA";
+  const turnoUsers = escalaService.getUsersDoTurno?.(turnoAtual) || [];
+  const turnoUserIds = new Set((turnoUsers || []).map((u) => Number(u.id || u.user_id)).filter(Boolean));
+
+  const emAndamento = db.prepare(`
+    SELECT id, status, mecanico_user_id
+    FROM os
+    WHERE UPPER(COALESCE(status, '')) IN ('ANDAMENTO', 'EM_ANDAMENTO')
+  `).all();
+
+  let devolvidasParaFila = 0;
+  for (const os of emAndamento) {
+    const mecanicoId = Number(os.mecanico_user_id || 0);
+    if (!mecanicoId || turnoUserIds.has(mecanicoId)) continue;
+
+    db.transaction(() => {
+      if (tableExists("os_execucoes")) {
+        db.prepare(`UPDATE os_execucoes SET finalizado_em = datetime('now') WHERE os_id = ? AND finalizado_em IS NULL`)
+          .run(Number(os.id));
+      }
+      db.prepare(`
+        UPDATE os
+        SET status = 'AGUARDANDO_EQUIPE', mecanico_user_id = NULL, auxiliar_user_id = NULL
+        WHERE id = ?
+      `).run(Number(os.id));
+    })();
+
+    emitOSEvents(Number(os.id), "status");
+    devolvidasParaFila += 1;
+  }
+
+  const pendentes = db.prepare(`
+    SELECT id
+    FROM os
+    WHERE UPPER(COALESCE(status, '')) IN ('ABERTA', 'AGUARDANDO_EQUIPE')
+    ORDER BY id ASC
+  `).all();
+
+  let alocadas = 0;
+  for (const os of pendentes) {
+    const result = autoAssignEquipe(Number(os.id), null);
+    if (!result?.aguardando) {
+      emitOSEvents(Number(os.id), "status");
+      alocadas += 1;
+    }
+  }
+
+  return { turnoAtual, devolvidasParaFila, alocadas };
 }
 
 function setEquipeManual(osId, { mecanico_user_id, auxiliar_user_id }, userId) {
@@ -919,6 +971,7 @@ module.exports = {
   updateStatus,
   autoAssign,
   autoAssignEquipe,
+  syncOpenOSWithCurrentShift,
   setEquipeManual,
   getExecucaoAtiva,
   setupPairsIfEmpty,
