@@ -67,7 +67,7 @@ function listSolicitacoesPorStatus(filters = {}) {
     FROM solicitacoes s
     JOIN users u ON u.id = s.solicitante_user_id
     LEFT JOIN fornecedores f ON f.id = s.fornecedor_id
-    ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+    ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     ORDER BY s.id DESC
   `).all(...params);
 }
@@ -105,63 +105,15 @@ function getCotacaoSelecionada(solicitacaoId) {
   `).get(solicitacaoId);
 }
 
-function listarAnexos(referenciaTipo, referenciaId) {
+function listAnexosSolicitacao(solicitacaoId) {
   return db.prepare(`
     SELECT a.*, u.name AS uploaded_by_nome
     FROM anexos a
     LEFT JOIN users u ON u.id = a.uploaded_by
-    WHERE (a.referencia_tipo = ? AND a.referencia_id = ?)
-       OR (a.owner_type = ? AND a.owner_id = ?)
+    WHERE (a.referencia_tipo = 'SOLICITACAO' AND a.referencia_id = ?)
+       OR (a.owner_type = 'SOLICITACAO' AND a.owner_id = ?)
     ORDER BY a.id DESC
-  `).all(referenciaTipo, referenciaId, referenciaTipo, referenciaId);
-}
-
-function listAnexosSolicitacao(solicitacaoId) {
-  return listarAnexos('SOLICITACAO', solicitacaoId);
-}
-
-function salvarAnexo({ referencia_tipo, referencia_id, tipo, file, user_id }) {
-  if (!file) throw new Error('Arquivo não enviado.');
-  if (!referencia_tipo || !referencia_id) throw new Error('Referência inválida.');
-
-  const allowed = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
-  if (!allowed.includes(file.mimetype)) throw new Error('Tipo de arquivo não permitido.');
-
-  const baseUploads = process.env.UPLOADS_DIR || (fs.existsSync('/data') ? '/data/uploads' : path.join(process.cwd(), 'uploads'));
-  const filepath = file.path || path.join(baseUploads, file.filename);
-
-  const stmt = db.prepare(`
-    INSERT INTO anexos (
-      owner_type, owner_id,
-      referencia_tipo, referencia_id, tipo,
-      filename, filepath, original_name, mime_type, size,
-      uploaded_by, uploaded_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-  `);
-
-  const info = stmt.run(
-    referencia_tipo,
-    Number(referencia_id),
-    referencia_tipo,
-    Number(referencia_id),
-    tipo || 'COTACAO',
-    file.filename,
-    filepath,
-    file.originalname,
-    file.mimetype,
-    Number(file.size || 0),
-    Number(user_id || null),
-  );
-
-  return db.prepare('SELECT * FROM anexos WHERE id = ?').get(info.lastInsertRowid);
-}
-
-function getAnexo(anexoId) {
-  return db.prepare('SELECT * FROM anexos WHERE id = ?').get(anexoId);
-}
-
-function deletarAnexo(anexoId) {
-  db.prepare('DELETE FROM anexos WHERE id = ?').run(anexoId);
+  `).all(solicitacaoId, solicitacaoId);
 }
 
 function getHistoricoPrecos(solicitacaoId) {
@@ -183,7 +135,7 @@ function getHistoricoPrecos(solicitacaoId) {
 
 function getSolicitacaoDetalhe(id) {
   const sol = db.prepare(`
-    SELECT s.*, u.name AS solicitante_nome, u.role AS solicititante_role, e.nome AS equipamento_nome, f.nome AS fornecedor_nome
+    SELECT s.*, u.name AS solicitante_nome, u.role AS solicitante_role, e.nome AS equipamento_nome, f.nome AS fornecedor_nome
     FROM solicitacoes s
     JOIN users u ON u.id = s.solicitante_user_id
     LEFT JOIN equipamentos e ON e.id = s.equipamento_id
@@ -210,6 +162,16 @@ function getSolicitacaoDetalhe(id) {
     historicoPrecos: getHistoricoPrecos(id),
     cotacaoSelecionada: getCotacaoSelecionada(id),
   };
+}
+
+
+function listFornecedoresAtivos() {
+  return db.prepare(`
+    SELECT id, nome, cnpj, cidade
+    FROM fornecedores
+    WHERE ativo = 1
+    ORDER BY nome ASC
+  `).all();
 }
 
 function assumirSolicitacao(id, userId) {
@@ -266,11 +228,18 @@ function selecionarCotacao(solicitacaoId, cotacaoId) {
 
 function atualizarDados(id, dados) {
   const fornecedorId = dados.fornecedor_id ? Number(dados.fornecedor_id) : null;
-  const fornecedorSelecionado = fornecedorId ? db.prepare('SELECT id, nome FROM fornecedores WHERE id = ?').get(fornecedorId) : null;
+  const fornecedorSelecionado = fornecedorId
+    ? db.prepare('SELECT id, nome FROM fornecedores WHERE id = ?').get(fornecedorId)
+    : null;
 
   db.prepare(`
     UPDATE solicitacoes
-    SET fornecedor = ?, fornecedor_id = ?, previsao_entrega = ?, observacoes_compras = ?, valor_total = ?, updated_at = datetime('now')
+    SET fornecedor = ?,
+        fornecedor_id = ?,
+        previsao_entrega = ?,
+        observacoes_compras = ?,
+        valor_total = ?,
+        updated_at = datetime('now')
     WHERE id = ?
   `).run(
     fornecedorSelecionado?.nome || dados.fornecedor || null,
@@ -314,32 +283,37 @@ function marcarComprada(id, userId, dados = {}) {
   const cur = getSolicitacaoDetalhe(id);
   if (!cur || cur.status !== STATUS.EM_COTACAO) throw new Error('Somente EM_COTACAO pode virar COMPRADA.');
 
-  const cotacaoSelecionada = getCotacaoSelecionada(id);
-  if (!cotacaoSelecionada) throw new Error('Selecione uma cotação vencedora antes de marcar como COMPRADA.');
+  db.prepare(`
+    UPDATE solicitacoes
+    SET status = ?,
+        compras_user_id = ?,
+        comprada_em = datetime('now'),
+        fornecedor = ?,
+        fornecedor_id = ?,
+        previsao_entrega = ?,
+        observacoes_compras = ?,
+        valor_total = ?,
+        updated_at = datetime('now')
+    WHERE id = ?
+  `).run(
+    STATUS.COMPRADA,
+    userId,
+    dados.fornecedor || cur.fornecedor || null,
+    dados.fornecedor_id ? Number(dados.fornecedor_id) : (cur.fornecedor_id || null),
+    dados.previsao_entrega || cur.previsao_entrega || null,
+    dados.observacoes_compras || cur.observacoes_compras || null,
+    dados.valor_total ? Number(dados.valor_total) : cur.valor_total || null,
+    id
+  );
+  return info.lastInsertRowid;
+}
 
-  return db.transaction(() => {
-    const fornecedorNome = cotacaoSelecionada.fornecedor_cadastro_nome || cotacaoSelecionada.fornecedor_nome || dados.fornecedor || cur.fornecedor || null;
-    const fornecedorId = cotacaoSelecionada.fornecedor_id || (dados.fornecedor_id ? Number(dados.fornecedor_id) : cur.fornecedor_id || null);
-    const valor = Number(cotacaoSelecionada.valor_total || dados.valor_total || cur.valor_total || 0);
+function getAnexoById(anexoId) {
+  return db.prepare('SELECT * FROM anexos WHERE id = ?').get(anexoId);
+}
 
-    db.prepare(`
-      UPDATE solicitacoes
-      SET status = ?, compras_user_id = ?, comprada_em = datetime('now'), fornecedor = ?, fornecedor_id = ?,
-          previsao_entrega = ?, observacoes_compras = ?, valor_total = ?, updated_at = datetime('now')
-      WHERE id = ?
-    `).run(
-      STATUS.COMPRADA,
-      userId,
-      fornecedorNome,
-      fornecedorId,
-      dados.previsao_entrega || cotacaoSelecionada.prazo_entrega || cur.previsao_entrega || null,
-      dados.observacoes_compras || cotacaoSelecionada.observacao || cur.observacoes_compras || null,
-      valor || null,
-      id,
-    );
-
-    registrarHistoricoPrecos({ ...cur, id, fornecedor: fornecedorNome, fornecedor_id: fornecedorId, valor_total: valor }, cotacaoSelecionada);
-  })();
+function deleteAnexo(anexoId) {
+  db.prepare('DELETE FROM anexos WHERE id = ?').run(anexoId);
 }
 
 function gerarPdf(solicitacao, res) {
@@ -414,8 +388,8 @@ module.exports = {
   atualizarDados,
   marcarComprada,
   salvarAnexo,
-  listarAnexos,
-  getAnexo,
-  deletarAnexo,
+  getAnexoById,
+  deleteAnexo,
   gerarPdf,
+  listFornecedoresAtivos,
 };

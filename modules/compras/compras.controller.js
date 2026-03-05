@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const service = require('./compras.service');
 
-const UPLOADS_DIR = process.env.UPLOADS_DIR || (fs.existsSync('/data') ? '/data/uploads' : path.join(process.cwd(), 'uploads'));
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
 
 function lista(req, res) {
   const filters = {
@@ -17,16 +17,18 @@ function lista(req, res) {
   if (req.query.export === 'excel') {
     const escapeCsv = (value) => `"${String(value == null ? '' : value).replace(/"/g, '""')}"`;
     const lines = [
-      ['Número', 'Título', 'Status', 'Fornecedor', 'Solicitante', 'Setor', 'Criada em'].join(','),
-      ...lista.map((s) => [
-        escapeCsv(s.numero || `#${s.id}`),
-        escapeCsv(s.titulo || '-'),
-        escapeCsv(s.status || '-'),
-        escapeCsv(s.fornecedor_nome || s.fornecedor || '-'),
-        escapeCsv(s.solicitante_nome || '-'),
-        escapeCsv(s.setor_origem || '-'),
-        escapeCsv(s.created_at || '-'),
-      ].join(',')),
+      ["Número", "Título", "Status", "Fornecedor", "Solicitante", "Setor", "Criada em"].join(","),
+      ...lista.map((s) =>
+        [
+          escapeCsv(s.numero || `#${s.id}`),
+          escapeCsv(s.titulo || "-"),
+          escapeCsv(s.status || "-"),
+          escapeCsv(s.fornecedor_nome || s.fornecedor || "-"),
+          escapeCsv(s.solicitante_nome || "-"),
+          escapeCsv(s.setor_origem || "-"),
+          escapeCsv(s.created_at || "-"),
+        ].join(",")
+      ),
     ];
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename=solicitacoes_${Date.now()}.csv`);
@@ -45,36 +47,9 @@ function lista(req, res) {
 
 function detalhe(req, res) {
   const sol = service.getSolicitacaoDetalhe(Number(req.params.id));
-  if (!sol) return res.status(404).send('Solicitação não encontrada');
-
-  return res.render('compras/solicitacoes/show', {
-    title: `Compras ${sol.numero || `#${sol.id}`}`,
-    activeMenu: 'compras',
-    sol,
-    fornecedores: service.listFornecedoresAtivos(),
-  });
-}
-
-function pdf(req, res) {
-  try {
-    const id = Number(req.params.id);
-    service.iniciarCotacaoViaPdf(id, req.session.user.id);
-    const sol = service.getSolicitacaoDetalhe(id);
-    if (!sol) return res.status(404).send('Solicitação não encontrada');
-    return service.gerarPdf(sol, res);
-  } catch (error) {
-    return res.status(400).send(error.message || 'Falha ao gerar PDF.');
-  }
-}
-
-function criarCotacao(req, res) {
-  try {
-    service.createCotacao(Number(req.params.id), req.body);
-    req.flash('success', 'Cotação cadastrada com sucesso.');
-  } catch (error) {
-    req.flash('error', error.message || 'Não foi possível cadastrar cotação.');
-  }
-  return res.redirect(`/compras/solicitacoes/${req.params.id}`);
+  if (!sol) return res.status(404).send("Solicitação não encontrada");
+  const fornecedores = service.listFornecedoresAtivos();
+  res.render("compras/solicitacoes/show", { title: `Compras ${sol.numero}`, activeMenu: "compras", sol, fornecedores });
 }
 
 function selecionarCotacao(req, res) {
@@ -111,11 +86,10 @@ function uploadAnexo(req, res) {
   try {
     if (!req.file) throw new Error('Nenhum arquivo foi enviado.');
     service.salvarAnexo({
-      referencia_tipo: 'SOLICITACAO',
-      referencia_id: Number(req.params.id),
-      tipo: req.body.tipo || 'COTACAO',
+      solicitacaoId: Number(req.params.id),
       file: req.file,
-      user_id: req.user?.id || req.session?.user?.id || null,
+      tipo: req.body.tipo || 'COTACAO',
+      uploadedBy: req.session?.user?.id || null,
     });
     req.flash('success', 'Anexo enviado com sucesso.');
   } catch (error) {
@@ -125,25 +99,25 @@ function uploadAnexo(req, res) {
 }
 
 function downloadAnexo(req, res) {
-  const anexo = service.getAnexo(Number(req.params.anexoId));
+  const anexo = service.getAnexoById(Number(req.params.anexoId));
   if (!anexo) return res.status(404).send('Anexo não encontrado');
 
-  const fullPath = anexo.filepath || path.join(UPLOADS_DIR, anexo.filename);
+  const fullPath = path.join(UPLOADS_DIR, anexo.filename);
   if (!fs.existsSync(fullPath)) return res.status(404).send('Arquivo não encontrado no disco');
 
   return res.download(fullPath, anexo.original_name || anexo.filename);
 }
 
 function deleteAnexo(req, res) {
-  const anexo = service.getAnexo(Number(req.params.anexoId));
+  const anexo = service.getAnexoById(Number(req.params.anexoId));
   if (!anexo) {
     req.flash('error', 'Anexo não encontrado.');
     return res.redirect('/compras/solicitacoes');
   }
 
-  const fullPath = anexo.filepath || path.join(UPLOADS_DIR, anexo.filename);
+  const fullPath = path.join(UPLOADS_DIR, anexo.filename);
   if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
-  service.deletarAnexo(anexo.id);
+  service.deleteAnexo(anexo.id);
   req.flash('success', 'Anexo removido.');
   return res.redirect(`/compras/solicitacoes/${anexo.referencia_id}`);
 }
