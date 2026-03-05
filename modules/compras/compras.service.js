@@ -56,7 +56,17 @@ function columnExists(table, col) {
   }
 }
 
+function resolveUsersTable() {
+  if (tableExists('usuarios')) {
+    const nameCol = columnExists('usuarios', 'nome') ? 'nome' : 'name';
+    const roleCol = columnExists('usuarios', 'role') ? 'role' : (columnExists('usuarios', 'perfil') ? 'perfil' : 'role');
+    return { table: 'usuarios', nameCol, roleCol };
+  }
+  return { table: 'users', nameCol: 'name', roleCol: 'role' };
+}
+
 function listSolicitacoesPorStatus(filters = {}) {
+  const usersRef = resolveUsersTable();
   const where = [];
   const params = [];
   const status = normalizeStatus(filters.status);
@@ -70,9 +80,9 @@ function listSolicitacoesPorStatus(filters = {}) {
   if (filters.endDate) { where.push('date(s.created_at) <= date(?)'); params.push(filters.endDate); }
 
   return db.prepare(`
-    SELECT s.*, u.name AS solicitante_nome, f.nome AS fornecedor_nome
+    SELECT s.*, u.${usersRef.nameCol} AS solicitante_nome, f.nome AS fornecedor_nome
     FROM solicitacoes s
-    JOIN users u ON u.id = s.solicitante_user_id
+    JOIN ${usersRef.table} u ON u.id = s.solicitante_user_id
     LEFT JOIN fornecedores f ON f.id = s.fornecedor_id
     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
     ORDER BY s.id DESC
@@ -103,14 +113,15 @@ function listCotacoes(solicitacaoId) {
 
 function listAnexosSolicitacao(solicitacaoId) {
   if (!tableExists('anexos')) return [];
+  const usersRef = resolveUsersTable();
 
   const hasOwnerType = columnExists('anexos', 'owner_type');
   const hasOwnerId = columnExists('anexos', 'owner_id');
 
   const baseSelect = `
-    SELECT a.*, u.name AS uploaded_by_nome
+    SELECT a.*, u.${usersRef.nameCol} AS uploaded_by_nome
     FROM anexos a
-    LEFT JOIN users u ON u.id = a.uploaded_by
+    LEFT JOIN ${usersRef.table} u ON u.id = a.uploaded_by
   `;
 
   if (hasOwnerType && hasOwnerId) {
@@ -153,10 +164,11 @@ function getHistoricoPrecos(solicitacaoId) {
 }
 
 function getSolicitacaoDetalhe(id) {
+  const usersRef = resolveUsersTable();
   const sol = db.prepare(`
-    SELECT s.*, u.name AS solicitante_nome, u.role AS solicitante_role, e.nome AS equipamento_nome, f.nome AS fornecedor_nome
+    SELECT s.*, u.${usersRef.nameCol} AS solicitante_nome, u.${usersRef.roleCol} AS solicitante_role, e.nome AS equipamento_nome, f.nome AS fornecedor_nome
     FROM solicitacoes s
-    JOIN users u ON u.id = s.solicitante_user_id
+    JOIN ${usersRef.table} u ON u.id = s.solicitante_user_id
     LEFT JOIN equipamentos e ON e.id = s.equipamento_id
     LEFT JOIN fornecedores f ON f.id = s.fornecedor_id
     WHERE s.id = ?

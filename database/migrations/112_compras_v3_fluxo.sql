@@ -17,12 +17,19 @@ CREATE TABLE IF NOT EXISTS compras_cotacoes (
 CREATE INDEX IF NOT EXISTS idx_cotacoes_solicitacao ON compras_cotacoes(solicitacao_id);
 CREATE INDEX IF NOT EXISTS idx_cotacoes_fornecedor ON compras_cotacoes(fornecedor_id);
 
-ALTER TABLE anexos ADD COLUMN referencia_tipo TEXT;
-ALTER TABLE anexos ADD COLUMN referencia_id INTEGER;
-ALTER TABLE anexos ADD COLUMN tipo TEXT;
-ALTER TABLE anexos ADD COLUMN original_name TEXT;
-ALTER TABLE anexos ADD COLUMN mime_type TEXT;
-ALTER TABLE anexos ADD COLUMN size INTEGER;
+CREATE TABLE IF NOT EXISTS anexos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  referencia_tipo TEXT NOT NULL,
+  referencia_id INTEGER NOT NULL,
+  tipo TEXT NOT NULL DEFAULT 'COTACAO',
+  filename TEXT NOT NULL,
+  original_name TEXT,
+  mime_type TEXT,
+  size INTEGER,
+  uploaded_by INTEGER,
+  uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
+);
 
 CREATE INDEX IF NOT EXISTS idx_anexos_ref ON anexos(referencia_tipo, referencia_id);
 
