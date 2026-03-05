@@ -39,9 +39,9 @@ function listSolicitacoesPorStatus(filters = {}) {
   }
 
   if (filters.query) {
-    where.push("(LOWER(s.numero) LIKE ? OR LOWER(s.titulo) LIKE ?)");
+    where.push("(LOWER(s.numero) LIKE ? OR LOWER(s.titulo) LIKE ? OR LOWER(COALESCE(s.fornecedor, '')) LIKE ? OR LOWER(COALESCE(f.nome, '')) LIKE ?)");
     const q = `%${String(filters.query).trim().toLowerCase()}%`;
-    params.push(q, q);
+    params.push(q, q, q, q);
   }
 
   if (filters.startDate) {
@@ -55,9 +55,10 @@ function listSolicitacoesPorStatus(filters = {}) {
   }
 
   return db.prepare(`
-    SELECT s.*, u.name AS solicitante_nome
+    SELECT s.*, u.name AS solicitante_nome, f.nome AS fornecedor_nome
     FROM solicitacoes s
     JOIN users u ON u.id = s.solicitante_user_id
+    LEFT JOIN fornecedores f ON f.id = s.fornecedor_id
     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     ORDER BY s.id DESC
   `).all(...params);
@@ -79,10 +80,11 @@ function getResumoSolicitacoes() {
 
 function getSolicitacaoDetalhe(id) {
   const sol = db.prepare(`
-    SELECT s.*, u.name AS solicitante_nome, u.role AS solicitante_role, e.nome AS equipamento_nome
+    SELECT s.*, u.name AS solicitante_nome, u.role AS solicitante_role, e.nome AS equipamento_nome, f.nome AS fornecedor_nome
     FROM solicitacoes s
     JOIN users u ON u.id = s.solicitante_user_id
     LEFT JOIN equipamentos e ON e.id = s.equipamento_id
+    LEFT JOIN fornecedores f ON f.id = s.fornecedor_id
     WHERE s.id = ?
   `).get(id);
   if (!sol) return null;
@@ -97,6 +99,16 @@ function getSolicitacaoDetalhe(id) {
   return { ...sol, itens };
 }
 
+
+function listFornecedoresAtivos() {
+  return db.prepare(`
+    SELECT id, nome, cnpj, cidade
+    FROM fornecedores
+    WHERE ativo = 1
+    ORDER BY nome ASC
+  `).all();
+}
+
 function assumirSolicitacao(id, userId) {
   const cur = getSolicitacaoDetalhe(id);
   if (!cur || cur.status !== STATUS.ABERTA) throw new Error("Somente solicitações ABERTAS podem ser assumidas.");
@@ -108,16 +120,23 @@ function assumirSolicitacao(id, userId) {
 }
 
 function atualizarDados(id, dados) {
+  const fornecedorId = dados.fornecedor_id ? Number(dados.fornecedor_id) : null;
+  const fornecedorSelecionado = fornecedorId
+    ? db.prepare('SELECT id, nome FROM fornecedores WHERE id = ?').get(fornecedorId)
+    : null;
+
   db.prepare(`
     UPDATE solicitacoes
     SET fornecedor = ?,
+        fornecedor_id = ?,
         previsao_entrega = ?,
         observacoes_compras = ?,
         valor_total = ?,
         updated_at = datetime('now')
     WHERE id = ?
   `).run(
-    dados.fornecedor || null,
+    fornecedorSelecionado?.nome || dados.fornecedor || null,
+    fornecedorSelecionado?.id || null,
     dados.previsao_entrega || null,
     dados.observacoes_compras || null,
     dados.valor_total ? Number(dados.valor_total) : null,
@@ -135,6 +154,7 @@ function marcarComprada(id, userId, dados = {}) {
         compras_user_id = ?,
         comprada_em = datetime('now'),
         fornecedor = ?,
+        fornecedor_id = ?,
         previsao_entrega = ?,
         observacoes_compras = ?,
         valor_total = ?,
@@ -144,6 +164,7 @@ function marcarComprada(id, userId, dados = {}) {
     STATUS.COMPRADA,
     userId,
     dados.fornecedor || cur.fornecedor || null,
+    dados.fornecedor_id ? Number(dados.fornecedor_id) : (cur.fornecedor_id || null),
     dados.previsao_entrega || cur.previsao_entrega || null,
     dados.observacoes_compras || cur.observacoes_compras || null,
     dados.valor_total ? Number(dados.valor_total) : cur.valor_total || null,
@@ -226,4 +247,5 @@ module.exports = {
   atualizarDados,
   marcarComprada,
   gerarPdf,
+  listFornecedoresAtivos,
 };

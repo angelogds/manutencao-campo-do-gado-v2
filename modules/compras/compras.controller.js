@@ -28,12 +28,13 @@ function lista(req, res) {
       return `"${raw.replace(/"/g, '""')}"`;
     };
     const lines = [
-      ["Número", "Título", "Status", "Solicitante", "Setor", "Criada em"].join(","),
+      ["Número", "Título", "Status", "Fornecedor", "Solicitante", "Setor", "Criada em"].join(","),
       ...lista.map((s) =>
         [
           escapeCsv(s.numero || `#${s.id}`),
           escapeCsv(s.titulo || "-"),
           escapeCsv(s.status || "-"),
+          escapeCsv(s.fornecedor_nome || s.fornecedor || "-"),
           escapeCsv(s.solicitante_nome || "-"),
           escapeCsv(s.setor_origem || "-"),
           escapeCsv(s.created_at || "-"),
@@ -58,7 +59,8 @@ function lista(req, res) {
 function detalhe(req, res) {
   const sol = service.getSolicitacaoDetalhe(Number(req.params.id));
   if (!sol) return res.status(404).send("Solicitação não encontrada");
-  res.render("compras/solicitacoes/show", { title: `Compras ${sol.numero}`, activeMenu: "compras", sol });
+  const fornecedores = service.listFornecedoresAtivos();
+  res.render("compras/solicitacoes/show", { title: `Compras ${sol.numero}`, activeMenu: "compras", sol, fornecedores });
 }
 
 function assumir(req, res) {
