@@ -58,6 +58,13 @@ function sanitizePositiveId(value) {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
+function validateEstoqueItemId(value) {
+  const id = sanitizePositiveId(value);
+  if (!id) return null;
+  const exists = db.prepare("SELECT 1 FROM estoque_itens WHERE id = ?").get(id);
+  return exists ? id : null;
+}
+
 function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao, equipamento_id, preventiva_id, os_id, demanda_id, itens }) {
   const fallbackItemId = ITEM_HAS_ITEM_ID ? getFallbackItemId() : null;
   const insertSol = db.prepare(`
@@ -100,9 +107,10 @@ function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao
       if (ITEM_HAS_ITEM_NOME) row.push(item.item_nome);
       if (ITEM_HAS_ITEM_DESCRICAO) row.push(item.item_descricao || null);
       row.push((item.unidade || "UN").toUpperCase());
-      if (ITEM_HAS_ESTOQUE_ITEM_ID) row.push(item.estoque_item_id || null);
+      const estoqueItemId = validateEstoqueItemId(item.estoque_item_id);
+      if (ITEM_HAS_ESTOQUE_ITEM_ID) row.push(estoqueItemId);
       if (ITEM_HAS_QTD_SOLICITADA) row.push(Number(item.qtd_solicitada || 0));
-      if (ITEM_HAS_ITEM_ID) row.push(item.estoque_item_id || fallbackItemId || null);
+      if (ITEM_HAS_ITEM_ID) row.push(estoqueItemId || fallbackItemId || null);
       if (ITEM_HAS_DESCRICAO) row.push(item.item_descricao || item.item_nome);
       if (ITEM_HAS_QUANTIDADE) row.push(Number(item.qtd_solicitada || 0));
       insertItem.run(...row);

@@ -1,51 +1,6 @@
 <% layout('layout') %>
-
-<div class="page-header">
-  <h2>Nova Solicitação</h2>
-  <div class="actions">
-    <a class="btn" href="/compras/solicitacoes">Voltar</a>
-  </div>
+<div class="card">
+  <h1>Compras</h1>
+  <p class="muted">O módulo de compras não cria solicitações. Acesse a lista para acompanhamento e cotação.</p>
+  <a class="btn btn-ghost" href="/compras/solicitacoes">Ir para solicitações</a>
 </div>
-
-<form method="POST" action="/compras/solicitacoes">
-  <div class="grid">
-    <div>
-      <label>Solicitante</label>
-      <input name="solicitante" placeholder="Ex.: Angelo / Encarregado" />
-    </div>
-
-    <div>
-      <label>Setor</label>
-      <input name="setor" value="Manutenção" />
-    </div>
-  </div>
-
-  <label>Observação</label>
-  <textarea name="observacao" rows="3"></textarea>
-
-  <h3>Itens</h3>
-
-  <div id="itens">
-    <div class="row">
-      <input name="itens_descricao" placeholder="Descrição do item" required />
-      <input name="itens_qtd" type="number" step="0.01" value="1" />
-      <input name="itens_un" value="un" />
-    </div>
-  </div>
-
-  <button type="button" class="btn" onclick="addItem()">+ Adicionar item</button>
-  <button type="submit" class="btn btn-primary">Salvar</button>
-</form>
-
-<script>
-  function addItem(){
-    const div = document.createElement('div');
-    div.className = 'row';
-    div.innerHTML = `
-      <input name="itens_descricao" placeholder="Descrição do item" required />
-      <input name="itens_qtd" type="number" step="0.01" value="1" />
-      <input name="itens_un" value="un" />
-    `;
-    document.getElementById('itens').appendChild(div);
-  }
-</script>

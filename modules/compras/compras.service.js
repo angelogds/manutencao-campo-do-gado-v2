@@ -13,61 +13,55 @@ const STATUS = Object.freeze({
   REABERTA: 'REABERTA',
 });
 
-const STATUS_COMPRAS = [
-  STATUS.ABERTA,
-  STATUS.EM_COTACAO,
-  STATUS.COMPRADA,
-  STATUS.EM_RECEBIMENTO,
-  STATUS.RECEBIDA_PARCIAL,
-  STATUS.RECEBIDA_TOTAL,
-  STATUS.FECHADA,
-  STATUS.REABERTA,
-];
+const STATUS_COMPRAS = [STATUS.ABERTA, STATUS.EM_COTACAO, STATUS.COMPRADA];
 
 function normalizeStatus(status) {
-  return STATUS_COMPRAS.includes(status) ? status : '';
+  return Object.values(STATUS).includes(status) ? status : '';
 }
 
+function ensureComprasAnexosTable() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS compras_anexos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      referencia_tipo TEXT NOT NULL DEFAULT 'SOLICITACAO',
+      referencia_id INTEGER NOT NULL,
+      tipo TEXT NOT NULL DEFAULT 'COTACAO',
+      original_name TEXT,
+      filename TEXT NOT NULL,
+      mimetype TEXT,
+      size INTEGER,
+      uploaded_by INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (uploaded_by) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_compras_anexos_ref ON compras_anexos (referencia_tipo, referencia_id);
+  `);
+}
+ensureComprasAnexosTable();
+
 function getPDFKit() {
-  try {
-    return require('pdfkit');
-  } catch (_error) {
-    return null;
-  }
+  try { return require('pdfkit'); } catch { return null; }
 }
 
 function listSolicitacoesPorStatus(filters = {}) {
   const where = [];
   const params = [];
   const status = normalizeStatus(filters.status);
-
-  if (status) {
-    where.push('s.status = ?');
-    params.push(status);
-  }
-
+  if (status) { where.push('s.status = ?'); params.push(status); }
   if (filters.query) {
     where.push("(LOWER(s.numero) LIKE ? OR LOWER(s.titulo) LIKE ? OR LOWER(COALESCE(s.fornecedor, '')) LIKE ? OR LOWER(COALESCE(f.nome, '')) LIKE ?)");
     const q = `%${String(filters.query).trim().toLowerCase()}%`;
     params.push(q, q, q, q);
   }
-
-  if (filters.startDate) {
-    where.push('date(s.created_at) >= date(?)');
-    params.push(filters.startDate);
-  }
-
-  if (filters.endDate) {
-    where.push('date(s.created_at) <= date(?)');
-    params.push(filters.endDate);
-  }
+  if (filters.startDate) { where.push('date(s.created_at) >= date(?)'); params.push(filters.startDate); }
+  if (filters.endDate) { where.push('date(s.created_at) <= date(?)'); params.push(filters.endDate); }
 
   return db.prepare(`
     SELECT s.*, u.name AS solicitante_nome, f.nome AS fornecedor_nome
     FROM solicitacoes s
     JOIN users u ON u.id = s.solicitante_user_id
     LEFT JOIN fornecedores f ON f.id = s.fornecedor_id
-    ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+    ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
     ORDER BY s.id DESC
   `).all(...params);
 }
@@ -75,9 +69,7 @@ function listSolicitacoesPorStatus(filters = {}) {
 function getResumoSolicitacoes() {
   const rows = db.prepare('SELECT status, COUNT(*) AS total FROM solicitacoes GROUP BY status').all();
   const totals = Object.fromEntries(STATUS_COMPRAS.map((status) => [status, 0]));
-  rows.forEach((row) => {
-    if (row.status in totals) totals[row.status] = row.total;
-  });
+  rows.forEach((row) => { if (row.status in totals) totals[row.status] = row.total; });
   return totals;
 }
 
@@ -95,6 +87,16 @@ function listCotacoes(solicitacaoId) {
   `).all(solicitacaoId);
 }
 
+function listAnexosSolicitacao(solicitacaoId) {
+  return db.prepare(`
+    SELECT a.*, u.name AS uploaded_by_nome
+    FROM compras_anexos a
+    LEFT JOIN users u ON u.id = a.uploaded_by
+    WHERE a.referencia_tipo = 'SOLICITACAO' AND a.referencia_id = ?
+    ORDER BY a.id DESC
+  `).all(solicitacaoId);
+}
+
 function getCotacaoSelecionada(solicitacaoId) {
   return db.prepare(`
     SELECT c.*, f.nome AS fornecedor_cadastro_nome
@@ -105,32 +107,15 @@ function getCotacaoSelecionada(solicitacaoId) {
   `).get(solicitacaoId);
 }
 
-function listAnexosSolicitacao(solicitacaoId) {
-  return db.prepare(`
-    SELECT a.*, u.name AS uploaded_by_nome
-    FROM anexos a
-    LEFT JOIN users u ON u.id = a.uploaded_by
-    WHERE (a.referencia_tipo = 'SOLICITACAO' AND a.referencia_id = ?)
-       OR (a.owner_type = 'SOLICITACAO' AND a.owner_id = ?)
-    ORDER BY a.id DESC
-  `).all(solicitacaoId, solicitacaoId);
-}
-
 function getHistoricoPrecos(solicitacaoId) {
   return db.prepare(`
     SELECT hp.*, f.nome AS fornecedor_cadastro_nome
     FROM historico_precos hp
     LEFT JOIN fornecedores f ON f.id = hp.fornecedor_id
     WHERE hp.solicitacao_id = ?
-       OR hp.item_nome IN (
-          SELECT COALESCE(si.item_nome, ei.nome)
-          FROM solicitacao_itens si
-          LEFT JOIN estoque_itens ei ON ei.id = si.estoque_item_id
-          WHERE si.solicitacao_id = ?
-       )
     ORDER BY datetime(COALESCE(hp.data_compra, hp.rowid)) DESC
     LIMIT 5
-  `).all(solicitacaoId, solicitacaoId);
+  `).all(solicitacaoId);
 }
 
 function getSolicitacaoDetalhe(id) {
@@ -142,85 +127,49 @@ function getSolicitacaoDetalhe(id) {
     LEFT JOIN fornecedores f ON f.id = s.fornecedor_id
     WHERE s.id = ?
   `).get(id);
-
   if (!sol) return null;
 
   const itens = db.prepare(`
     SELECT si.*, COALESCE(si.item_nome, ei.nome) AS item_nome, COALESCE(si.item_descricao, si.descricao) AS item_descricao,
            COALESCE(si.qtd_solicitada, si.quantidade, 0) AS qtd_solicitada
     FROM solicitacao_itens si
-    LEFT JOIN estoque_itens ei ON ei.id = si.estoque_item_id
+    LEFT JOIN estoque_itens ei ON ei.id = COALESCE(si.estoque_item_id, si.item_id)
     WHERE si.solicitacao_id = ?
     ORDER BY si.id
   `).all(id);
 
-  return {
-    ...sol,
-    itens,
-    cotacoes: listCotacoes(id),
-    anexos: listAnexosSolicitacao(id),
-    historicoPrecos: getHistoricoPrecos(id),
-    cotacaoSelecionada: getCotacaoSelecionada(id),
-  };
-}
-
-
-function listFornecedoresAtivos() {
-  return db.prepare(`
-    SELECT id, nome, cnpj, cidade
-    FROM fornecedores
-    WHERE ativo = 1
-    ORDER BY nome ASC
-  `).all();
+  return { ...sol, itens, cotacoes: listCotacoes(id), anexos: listAnexosSolicitacao(id), historicoPrecos: getHistoricoPrecos(id), cotacaoSelecionada: getCotacaoSelecionada(id) };
 }
 
 function assumirSolicitacao(id, userId) {
   const cur = getSolicitacaoDetalhe(id);
   if (!cur || cur.status !== STATUS.ABERTA) throw new Error('Somente solicitações ABERTAS podem ser assumidas.');
-
-  db.prepare(`
-    UPDATE solicitacoes
-    SET status = ?, compras_user_id = ?, cotacao_inicio_em = datetime('now'), updated_at = datetime('now')
-    WHERE id = ?
-  `).run(STATUS.EM_COTACAO, userId, id);
+  db.prepare("UPDATE solicitacoes SET status=?, compras_user_id=?, cotacao_inicio_em=datetime('now'), updated_at=datetime('now') WHERE id=?")
+    .run(STATUS.EM_COTACAO, userId, id);
 }
 
 function iniciarCotacaoViaPdf(id, userId) {
   const cur = getSolicitacaoDetalhe(id);
   if (!cur) throw new Error('Solicitação não encontrada.');
   if (cur.status === STATUS.ABERTA) {
-    db.prepare(`
-      UPDATE solicitacoes
-      SET status = ?, compras_user_id = ?, cotacao_inicio_em = datetime('now'), updated_at = datetime('now')
-      WHERE id = ?
-    `).run(STATUS.EM_COTACAO, userId, id);
+    db.prepare("UPDATE solicitacoes SET status=?, compras_user_id=?, cotacao_inicio_em=datetime('now'), updated_at=datetime('now') WHERE id=?")
+      .run(STATUS.EM_COTACAO, userId, id);
   }
 }
 
 function createCotacao(solicitacaoId, dados = {}) {
   const fornecedorId = dados.fornecedor_id ? Number(dados.fornecedor_id) : null;
-  const fornecedor = fornecedorId
-    ? db.prepare('SELECT id, nome FROM fornecedores WHERE id = ?').get(fornecedorId)
-    : null;
-
+  const fornecedor = fornecedorId ? db.prepare('SELECT id, nome FROM fornecedores WHERE id = ?').get(fornecedorId) : null;
   db.prepare(`
     INSERT INTO compras_cotacoes (solicitacao_id, fornecedor_id, fornecedor_nome, valor_total, prazo_entrega, observacao, selecionada, created_at)
     VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'))
-  `).run(
-    solicitacaoId,
-    fornecedor?.id || null,
-    fornecedor?.nome || (dados.fornecedor_nome || null),
-    dados.valor_total ? Number(dados.valor_total) : null,
-    dados.prazo_entrega || null,
-    dados.observacao || null,
-  );
+  `).run(solicitacaoId, fornecedor?.id || null, fornecedor?.nome || (dados.fornecedor_nome || null), dados.valor_total ? Number(dados.valor_total) : null, dados.prazo_entrega || null, dados.observacao || null);
 }
 
 function selecionarCotacao(solicitacaoId, cotacaoId) {
   return db.transaction(() => {
     const cotacao = db.prepare('SELECT * FROM compras_cotacoes WHERE id = ? AND solicitacao_id = ?').get(cotacaoId, solicitacaoId);
     if (!cotacao) throw new Error('Cotação não encontrada para a solicitação.');
-
     db.prepare('UPDATE compras_cotacoes SET selecionada = 0 WHERE solicitacao_id = ?').run(solicitacaoId);
     db.prepare('UPDATE compras_cotacoes SET selecionada = 1 WHERE id = ?').run(cotacaoId);
   })();
@@ -228,129 +177,31 @@ function selecionarCotacao(solicitacaoId, cotacaoId) {
 
 function atualizarDados(id, dados) {
   const fornecedorId = dados.fornecedor_id ? Number(dados.fornecedor_id) : null;
-  const fornecedorSelecionado = fornecedorId
-    ? db.prepare('SELECT id, nome FROM fornecedores WHERE id = ?').get(fornecedorId)
-    : null;
-
-  db.prepare(`
-    UPDATE solicitacoes
-    SET fornecedor = ?,
-        fornecedor_id = ?,
-        previsao_entrega = ?,
-        observacoes_compras = ?,
-        valor_total = ?,
-        updated_at = datetime('now')
-    WHERE id = ?
-  `).run(
-    fornecedorSelecionado?.nome || dados.fornecedor || null,
-    fornecedorSelecionado?.id || null,
-    dados.previsao_entrega || null,
-    dados.observacoes_compras || null,
-    dados.valor_total ? Number(dados.valor_total) : null,
-    id,
-  );
-}
-
-function registrarHistoricoPrecos(solicitacao, cotacao) {
-  const itens = solicitacao.itens || [];
-  const totalQtd = itens.reduce((acc, item) => acc + Number(item.qtd_solicitada || 0), 0);
-  const valorTotal = Number(cotacao?.valor_total || solicitacao.valor_total || 0);
-  const precoUnitMedio = totalQtd > 0 ? valorTotal / totalQtd : 0;
-
-  const insert = db.prepare(`
-    INSERT INTO historico_precos (
-      estoque_item_id, item_nome, fornecedor_id, fornecedor_nome, preco_unit, preco_total, unidade, data_compra, solicitacao_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), ?)
-  `);
-
-  itens.forEach((item) => {
-    const qtd = Number(item.qtd_solicitada || 0);
-    const precoTotalItem = qtd * precoUnitMedio;
-    insert.run(
-      item.estoque_item_id || null,
-      item.item_nome || null,
-      cotacao?.fornecedor_id || solicitacao.fornecedor_id || null,
-      cotacao?.fornecedor_cadastro_nome || cotacao?.fornecedor_nome || solicitacao.fornecedor || null,
-      precoUnitMedio || null,
-      precoTotalItem || null,
-      item.unidade || 'UN',
-      solicitacao.id,
-    );
-  });
+  const fornecedorSelecionado = fornecedorId ? db.prepare('SELECT id, nome FROM fornecedores WHERE id = ?').get(fornecedorId) : null;
+  db.prepare(`UPDATE solicitacoes SET fornecedor=?, fornecedor_id=?, previsao_entrega=?, observacoes_compras=?, valor_total=?, updated_at=datetime('now') WHERE id=?`)
+    .run(fornecedorSelecionado?.nome || dados.fornecedor || null, fornecedorSelecionado?.id || null, dados.previsao_entrega || null, dados.observacoes_compras || null, dados.valor_total ? Number(dados.valor_total) : null, id);
 }
 
 function marcarComprada(id, userId, dados = {}) {
   const cur = getSolicitacaoDetalhe(id);
   if (!cur || cur.status !== STATUS.EM_COTACAO) throw new Error('Somente EM_COTACAO pode virar COMPRADA.');
-
-  db.prepare(`
-    UPDATE solicitacoes
-    SET status = ?,
-        compras_user_id = ?,
-        comprada_em = datetime('now'),
-        fornecedor = ?,
-        fornecedor_id = ?,
-        previsao_entrega = ?,
-        observacoes_compras = ?,
-        valor_total = ?,
-        updated_at = datetime('now')
-    WHERE id = ?
-  `).run(
-    STATUS.COMPRADA,
-    userId,
-    dados.fornecedor || cur.fornecedor || null,
-    dados.fornecedor_id ? Number(dados.fornecedor_id) : (cur.fornecedor_id || null),
-    dados.previsao_entrega || cur.previsao_entrega || null,
-    dados.observacoes_compras || cur.observacoes_compras || null,
-    dados.valor_total ? Number(dados.valor_total) : cur.valor_total || null,
-    id
-  );
+  db.prepare(`UPDATE solicitacoes SET status=?, compras_user_id=?, comprada_em=datetime('now'), fornecedor=?, fornecedor_id=?, previsao_entrega=?, observacoes_compras=?, valor_total=?, updated_at=datetime('now') WHERE id=?`)
+    .run(STATUS.COMPRADA, userId, dados.fornecedor || cur.fornecedor || null, dados.fornecedor_id ? Number(dados.fornecedor_id) : (cur.fornecedor_id || null), dados.previsao_entrega || cur.previsao_entrega || null, dados.observacoes_compras || cur.observacoes_compras || null, dados.valor_total ? Number(dados.valor_total) : cur.valor_total || null, id);
   return getSolicitacaoDetalhe(id);
 }
 
 function salvarAnexo({ solicitacaoId, file, tipo = 'COTACAO', uploadedBy = null }) {
   if (!solicitacaoId) throw new Error('Solicitação inválida para anexo.');
   if (!file || !file.filename) throw new Error('Arquivo inválido.');
-
-  const cols = db.prepare("PRAGMA table_info('anexos')").all().map((col) => col.name);
-  const hasReferencia = cols.includes('referencia_tipo') && cols.includes('referencia_id');
-
-  if (hasReferencia) {
-    const info = db.prepare(`
-      INSERT INTO anexos (referencia_tipo, referencia_id, tipo, filename, original_name, mime_type, size, uploaded_by, uploaded_at)
-      VALUES ('SOLICITACAO', ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `).run(
-      solicitacaoId,
-      tipo || 'COTACAO',
-      file.filename,
-      file.originalname || file.filename,
-      file.mimetype || null,
-      Number(file.size || 0),
-      uploadedBy || null,
-    );
-    return getAnexoById(info.lastInsertRowid);
-  }
-
   const info = db.prepare(`
-    INSERT INTO anexos (owner_type, owner_id, filename, filepath, uploaded_by, uploaded_at)
-    VALUES ('SOLICITACAO', ?, ?, ?, ?, datetime('now'))
-  `).run(
-    solicitacaoId,
-    file.filename,
-    file.path || file.filename,
-    uploadedBy || null,
-  );
+    INSERT INTO compras_anexos (referencia_tipo, referencia_id, tipo, original_name, filename, mimetype, size, uploaded_by)
+    VALUES ('SOLICITACAO', ?, ?, ?, ?, ?, ?, ?)
+  `).run(solicitacaoId, tipo || 'COTACAO', file.originalname || file.filename, file.filename, file.mimetype || null, Number(file.size || 0), uploadedBy || null);
   return getAnexoById(info.lastInsertRowid);
 }
 
-function getAnexoById(anexoId) {
-  return db.prepare('SELECT * FROM anexos WHERE id = ?').get(anexoId);
-}
-
-function deleteAnexo(anexoId) {
-  db.prepare('DELETE FROM anexos WHERE id = ?').run(anexoId);
-}
-
+function getAnexoById(anexoId) { return db.prepare('SELECT * FROM compras_anexos WHERE id = ?').get(anexoId); }
+function deleteAnexo(anexoId) { db.prepare('DELETE FROM compras_anexos WHERE id = ?').run(anexoId); }
 const listarAnexos = listAnexosSolicitacao;
 const getAnexo = getAnexoById;
 const deletarAnexo = deleteAnexo;
@@ -368,9 +219,7 @@ function gerarPdf(solicitacao, res) {
   res.setHeader('Content-Disposition', `attachment; filename=solicitacao_${solicitacao.numero}.pdf`);
   doc.pipe(res);
 
-  const logoPath = ['public/IMG/logopdf_campo_do_gado.png.png', 'public/img/logo_menu_256.png', 'public/img/logo.png']
-    .map((p) => path.join(process.cwd(), p))
-    .find((p) => fs.existsSync(p));
+  const logoPath = ['public/IMG/logopdf_campo_do_gado.png.png', 'public/img/logo_menu_256.png', 'public/img/logo.png'].map((p) => path.join(process.cwd(), p)).find((p) => fs.existsSync(p));
   if (logoPath) doc.image(logoPath, 40, 30, { width: 60 });
 
   doc.fillColor('#166534').fontSize(16).text('RECICLAGEM CAMPO DO GADO', 120, 35);
@@ -393,20 +242,13 @@ function gerarPdf(solicitacao, res) {
 
   y += 8;
   doc.rect(40, y, 515, 20).strokeColor('#e5e7eb').stroke();
-  doc.fontSize(9).font('Helvetica-Bold')
-    .text('Item', 44, y + 6)
-    .text('Descrição', 170, y + 6)
-    .text('Unidade', 360, y + 6)
-    .text('Qtde Solicitada', 420, y + 6);
+  doc.fontSize(9).font('Helvetica-Bold').text('Item', 44, y + 6).text('Descrição', 170, y + 6).text('Unidade', 360, y + 6).text('Qtde Solicitada', 420, y + 6);
   y += 22;
 
   doc.font('Helvetica');
   for (const it of solicitacao.itens || []) {
     doc.rect(40, y, 515, 22).strokeColor('#e5e7eb').stroke();
-    doc.text(it.item_nome || '-', 44, y + 6, { width: 120 })
-      .text(it.item_descricao || '-', 170, y + 6, { width: 180 })
-      .text(it.unidade || 'UN', 360, y + 6, { width: 50 })
-      .text(String(it.qtd_solicitada || 0), 420, y + 6, { width: 75 });
+    doc.text(it.item_nome || '-', 44, y + 6, { width: 120 }).text(it.item_descricao || '-', 170, y + 6, { width: 180 }).text(it.unidade || 'UN', 360, y + 6, { width: 50 }).text(String(it.qtd_solicitada || 0), 420, y + 6, { width: 75 });
     y += 22;
   }
 
