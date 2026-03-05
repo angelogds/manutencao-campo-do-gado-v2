@@ -57,7 +57,7 @@ async function osCreate(req, res) {
       opened_by: req.session?.user?.id || null,
     });
 
-    service.autoAssign(id, req.session?.user?.id || null);
+    service.autoAssignOS(id, req.session?.user?.id || null);
 
 
     const fotosAbertura = mapFilesToPublic(req.files?.abertura_fotos || []);

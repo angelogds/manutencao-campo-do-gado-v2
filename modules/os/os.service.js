@@ -60,6 +60,100 @@ function normalizeGrau(grau) {
   return "MEDIA";
 }
 
+function normalizeColaboradorFuncao(funcao) {
+  const raw = String(funcao || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase();
+
+  if (raw.includes("MECAN")) return "MECANICO";
+  if (raw.includes("AUXILIAR")) return "AUXILIAR";
+  if (raw.includes("OPERACIONAL") || raw.includes("APOIO")) return "APOIO";
+  return "APOIO";
+}
+
+function getTurnoAtual() {
+  const h = Number(db.prepare(`SELECT strftime('%H','now','localtime') AS h`).get()?.h || 0);
+  return h >= 18 || h < 6 ? "NOITE" : "DIA";
+}
+
+function getEscalaSemanaAtual() {
+  if (!tableExists("escala_semanas")) return null;
+  return db.prepare(`
+    SELECT id, semana_numero, data_inicio, data_fim
+    FROM escala_semanas
+    WHERE date('now','localtime') BETWEEN data_inicio AND data_fim
+    LIMIT 1
+  `).get() || null;
+}
+
+function getPessoasDoTurnoAtual() {
+  const semanaAtual = getEscalaSemanaAtual();
+  if (!semanaAtual?.id || !tableExists("escala_alocacoes") || !tableExists("colaboradores")) return [];
+
+  const turnoAtual = getTurnoAtual();
+  const turnosPermitidos = turnoAtual === "NOITE"
+    ? ["noturno", "plantao"]
+    : ["diurno", "apoio", "plantao"];
+
+  const placeholders = turnosPermitidos.map(() => "?").join(",");
+  const usersTable = tableExists("users");
+  const rows = db.prepare(`
+    SELECT
+      COALESCE(
+        c.user_id,
+        ${usersTable ? `(SELECT u2.id FROM users u2
+            WHERE lower(trim(u2.name)) = lower(trim(c.nome))
+              AND IFNULL(u2.ativo,1) = 1
+            ORDER BY u2.id
+            LIMIT 1)` : "NULL"}
+      ) AS user_id,
+      COALESCE(
+        ${usersTable ? "u.name" : "NULL"},
+        c.nome
+      ) AS nome,
+      c.funcao,
+      a.tipo_turno
+    FROM escala_alocacoes a
+    JOIN colaboradores c ON c.id = a.colaborador_id
+    ${usersTable ? "LEFT JOIN users u ON u.id = c.user_id AND IFNULL(u.ativo,1) = 1" : ""}
+    WHERE a.semana_id = ?
+      AND a.tipo_turno IN (${placeholders})
+      AND IFNULL(c.ativo,1) = 1
+    ORDER BY nome ASC
+  `).all(semanaAtual.id, ...turnosPermitidos);
+
+  return rows
+    .map((row) => ({
+      user_id: Number(row.user_id),
+      nome: row.nome,
+      funcao: normalizeColaboradorFuncao(row.funcao),
+      tipo_turno: String(row.tipo_turno || "").toUpperCase(),
+    }))
+    .filter((row) => row.user_id && row.nome);
+}
+
+function isUserOcupado(userId) {
+  if (!userId || !tableExists("os_execucoes")) return false;
+  const execCols = getTableColumns("os_execucoes");
+  const executorCol = execCols.includes("executor_user_id") ? "executor_user_id" : "mecanico_user_id";
+  const row = db.prepare(`
+    SELECT 1 FROM os_execucoes
+    WHERE finalizado_em IS NULL
+      AND (${executorCol} = ? OR auxiliar_user_id = ?)
+    LIMIT 1
+  `).get(Number(userId), Number(userId));
+  return !!row;
+}
+
+function getPlantonistaNoite() {
+  const pessoas = getPessoasDoTurnoAtual().filter((p) => p.funcao === "MECANICO" && p.user_id);
+  const noturno = pessoas.find((p) => p.tipo_turno === "NOTURNO");
+  if (noturno) return noturno;
+  return pessoas.find((p) => p.tipo_turno === "PLANTAO") || pessoas[0] || null;
+}
+
 function listEquipamentosAtivos() {
   try {
     return db.prepare(`SELECT id, nome FROM equipamentos WHERE ativo = 1 ORDER BY nome`).all();
@@ -187,17 +281,7 @@ function getExecucaoAtiva(osId) {
 }
 
 function isOcupado(userId) {
-  if (!userId || !tableExists("os_execucoes")) return false;
-  const execCols = getTableColumns("os_execucoes");
-  const executorCol = execCols.includes("executor_user_id") ? "executor_user_id" : "mecanico_user_id";
-  const row = db.prepare(`
-    SELECT 1
-    FROM os_execucoes
-    WHERE finalizado_em IS NULL
-      AND (${executorCol} = ? OR auxiliar_user_id = ?)
-    LIMIT 1
-  `).get(Number(userId), Number(userId));
-  return !!row;
+  return isUserOcupado(userId);
 }
 
 function getDisponiveis(turnoUsers, funcao, { considerarOcupacao = true } = {}) {
@@ -354,93 +438,91 @@ function rotateByLastId(disponiveis, lastId) {
   return disponiveis.slice(idx + 1).concat(disponiveis.slice(0, idx + 1));
 }
 
-function autoAssignEquipe(osId, alocadoPorUserId) {
+function getUserNameById(userId) {
+  if (!userId || !tableExists("users")) return null;
+  return db.prepare(`SELECT name FROM users WHERE id = ?`).get(Number(userId))?.name || null;
+}
+
+function autoAssignOS(osId, alocadoPorUserId = null) {
   const os = db.prepare(`SELECT id, grau, status FROM os WHERE id = ?`).get(Number(osId));
   if (!os) throw new Error("OS não encontrada.");
 
+  const turno = getTurnoAtual();
   const grau = normalizeGrau(os.grau);
-  const turnoAtual = typeof escalaService.getTurnoAtual === "function"
-    ? escalaService.getTurnoAtual()
-    : "DIA";
-  const emAndamentoStatus = "EM_ANDAMENTO";
 
-  if (turnoAtual === "NOITE") {
-    const plantonistaId = escalaService.getPlantonistaDoDia?.("NOITE") || escalaService.getPlantonistaNoturno?.();
-    if (!plantonistaId) {
-      db.prepare(`UPDATE os SET status = 'AGUARDANDO_EQUIPE' WHERE id = ?`).run(Number(osId));
-      return { aguardando: true, aviso: "Sem mecânico plantonista no turno noturno." };
+  const finalizarExecucoesAtivas = db.transaction((executorId, auxiliarId) => {
+    if (tableExists("os_execucoes")) {
+      db.prepare(`UPDATE os_execucoes SET finalizado_em = datetime('now') WHERE os_id = ? AND finalizado_em IS NULL`).run(Number(osId));
+      createExecucao(Number(osId), Number(executorId), auxiliarId ? Number(auxiliarId) : null, alocadoPorUserId, null, turno);
     }
 
-    const usersNoite = escalaService.getUsersDoTurno?.("NOITE") || [];
-    const auxiliarNoite = getDisponiveis(usersNoite, "auxiliar", { considerarOcupacao: false })
-      .find((u) => Number(u.id) !== Number(plantonistaId)) || null;
-    const executor = usersNoite.find((u) => Number(u.id) === Number(plantonistaId))
-      || db.prepare(`SELECT id, name FROM users WHERE id = ?`).get(Number(plantonistaId));
+    db.prepare(`UPDATE os SET status = 'ANDAMENTO', mecanico_user_id = ?, auxiliar_user_id = ? WHERE id = ?`)
+      .run(Number(executorId), auxiliarId ? Number(auxiliarId) : null, Number(osId));
+  });
 
-    db.transaction(() => {
-      db.prepare(`UPDATE os_execucoes SET finalizado_em = datetime('now') WHERE os_id = ? AND finalizado_em IS NULL`).run(Number(osId));
-      createExecucao(osId, Number(plantonistaId), auxiliarNoite?.id || null, alocadoPorUserId, null, "NOITE");
-      db.prepare(`UPDATE os SET status = ?, mecanico_user_id = ?, auxiliar_user_id = ? WHERE id = ?`)
-        .run(emAndamentoStatus, Number(plantonistaId), auxiliarNoite?.id ? Number(auxiliarNoite.id) : null, Number(osId));
-    })();
+  const marcarAguardando = (aviso) => {
+    db.prepare(`UPDATE os SET status = 'AGUARDANDO_EQUIPE', mecanico_user_id = NULL, auxiliar_user_id = NULL WHERE id = ?`).run(Number(osId));
+    return { aguardando: true, aviso, turno };
+  };
 
+  if (turno === "NOITE") {
+    const plantonista = getPlantonistaNoite();
+    if (!plantonista || !plantonista.user_id) {
+      return marcarAguardando("Sem mecânico plantonista no turno noturno.");
+    }
+    if (isUserOcupado(plantonista.user_id)) {
+      return marcarAguardando("Sem executor disponível no turno: OS aguardando alocação.");
+    }
+
+    finalizarExecucoesAtivas(plantonista.user_id, null);
+    const nomeExecutor = plantonista.nome || getUserNameById(plantonista.user_id) || "Plantonista";
     return {
       aguardando: false,
-      mecanico: { id: Number(plantonistaId), nome: executor?.name || "Plantonista" },
-      auxiliar: auxiliarNoite ? { id: Number(auxiliarNoite.id), nome: auxiliarNoite.name } : null,
-      turno: "NOITE",
-      plantonista: true,
+      turno,
+      mecanico: { id: Number(plantonista.user_id), nome: nomeExecutor },
+      auxiliar: null,
+      executor: { id: Number(plantonista.user_id), nome: nomeExecutor },
     };
   }
 
-  const turnoUsers = escalaService.getUsersDoTurno?.("DIA")
-    || escalaService.getUsersDoTurnoAtual?.({ prefer: "diurno" })
-    || [];
-
-  const auxiliares = getDisponiveis(turnoUsers, "auxiliar", { considerarOcupacao: false });
-  const mecanicosDia = getDisponiveis(turnoUsers, "mecanico", { considerarOcupacao: false });
-  const escolherMecanicoDia = () => {
-    const ordenados = prioritizeMecanicos(mecanicosDia);
-    return pickNextMecanicoRoundRobin(ordenados);
-  };
+  const pessoas = getPessoasDoTurnoAtual().filter((p) => !isUserOcupado(p.user_id));
+  const auxiliares = pessoas.filter((p) => p.funcao === "AUXILIAR" || p.funcao === "APOIO");
+  const mecanicos = pessoas.filter((p) => p.funcao === "MECANICO");
 
   if (grau === "BAIXA") {
-    const executor = auxiliares[0] || escolherMecanicoDia();
-    if (!executor) {
-      db.prepare(`UPDATE os SET status = 'AGUARDANDO_EQUIPE' WHERE id = ?`).run(Number(osId));
-      return { aguardando: true, aviso: "Sem executor disponível no turno diurno." };
-    }
+    const executor = auxiliares[0] || mecanicos[0];
+    if (!executor) return marcarAguardando("Sem executor disponível no turno: OS aguardando alocação.");
 
-    db.transaction(() => {
-      db.prepare(`UPDATE os_execucoes SET finalizado_em = datetime('now') WHERE os_id = ? AND finalizado_em IS NULL`).run(Number(osId));
-      createExecucao(osId, executor.id, null, alocadoPorUserId, null, "DIA");
-      db.prepare(`UPDATE os SET status = ?, mecanico_user_id = ?, auxiliar_user_id = NULL WHERE id = ?`)
-        .run(emAndamentoStatus, Number(executor.id), Number(osId));
-    })();
-    return { aguardando: false, mecanico: { id: Number(executor.id), nome: executor.name }, auxiliar: null, turno: "DIA" };
+    finalizarExecucoesAtivas(executor.user_id, null);
+    const nomeExecutor = executor.nome || getUserNameById(executor.user_id) || "Executor";
+    return {
+      aguardando: false,
+      turno,
+      mecanico: { id: Number(executor.user_id), nome: nomeExecutor },
+      auxiliar: null,
+      executor: { id: Number(executor.user_id), nome: nomeExecutor },
+    };
   }
 
-  const mecanico = escolherMecanicoDia();
-  if (!mecanico) {
-    db.prepare(`UPDATE os SET status = 'AGUARDANDO_EQUIPE' WHERE id = ?`).run(Number(osId));
-    return { aguardando: true, aviso: "Sem mecânico disponível no turno diurno." };
-  }
+  const mecanico = mecanicos[0];
+  if (!mecanico) return marcarAguardando("Sem mecânico disponível no turno: OS aguardando alocação.");
 
-  const auxiliar = auxiliares.find((u) => Number(u.id) !== Number(mecanico.id)) || null;
+  const auxiliar = auxiliares.find((a) => Number(a.user_id) !== Number(mecanico.user_id)) || null;
+  finalizarExecucoesAtivas(mecanico.user_id, auxiliar?.user_id || null);
 
-  db.transaction(() => {
-    db.prepare(`UPDATE os_execucoes SET finalizado_em = datetime('now') WHERE os_id = ? AND finalizado_em IS NULL`).run(Number(osId));
-    createExecucao(osId, mecanico.id, auxiliar?.id || null, alocadoPorUserId, null, "DIA");
-    db.prepare(`UPDATE os SET status = ?, mecanico_user_id = ?, auxiliar_user_id = ? WHERE id = ?`)
-      .run(emAndamentoStatus, Number(mecanico.id), auxiliar?.id ? Number(auxiliar.id) : null, Number(osId));
-  })();
-
+  const nomeMecanico = mecanico.nome || getUserNameById(mecanico.user_id) || "Mecânico";
+  const nomeAuxiliar = auxiliar?.nome || (auxiliar?.user_id ? getUserNameById(auxiliar.user_id) : null);
   return {
     aguardando: false,
-    mecanico: { id: Number(mecanico.id), nome: mecanico.name },
-    auxiliar: auxiliar ? { id: Number(auxiliar.id), nome: auxiliar.name } : null,
-    turno: "DIA",
+    turno,
+    mecanico: { id: Number(mecanico.user_id), nome: nomeMecanico },
+    auxiliar: auxiliar ? { id: Number(auxiliar.user_id), nome: nomeAuxiliar || "Auxiliar" } : null,
+    executor: { id: Number(mecanico.user_id), nome: nomeMecanico },
   };
+}
+
+function autoAssignEquipe(osId, alocadoPorUserId) {
+  return autoAssignOS(osId, alocadoPorUserId);
 }
 
 function syncOpenOSWithCurrentShift() {
@@ -969,6 +1051,12 @@ module.exports = {
   pausarOS,
   concluirOS,
   updateStatus,
+  getTurnoAtual,
+  getEscalaSemanaAtual,
+  getPessoasDoTurnoAtual,
+  isUserOcupado,
+  getPlantonistaNoite,
+  autoAssignOS,
   autoAssign,
   autoAssignEquipe,
   syncOpenOSWithCurrentShift,
