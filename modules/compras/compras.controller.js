@@ -52,6 +52,29 @@ function detalhe(req, res) {
   res.render("compras/solicitacoes/show", { title: `Compras ${sol.numero}`, activeMenu: "compras", sol, fornecedores });
 }
 
+function pdf(req, res) {
+  try {
+    const id = Number(req.params.id);
+    const sol = service.getSolicitacaoDetalhe(id);
+    if (!sol) return res.status(404).send('Solicitação não encontrada');
+
+    service.iniciarCotacaoViaPdf(id, req.session?.user?.id || null);
+    return service.gerarPdf(sol, res);
+  } catch (error) {
+    return res.status(500).send(error.message || 'Falha ao gerar PDF.');
+  }
+}
+
+function criarCotacao(req, res) {
+  try {
+    service.createCotacao(Number(req.params.id), req.body);
+    req.flash('success', 'Cotação registrada com sucesso.');
+  } catch (error) {
+    req.flash('error', error.message || 'Não foi possível registrar cotação.');
+  }
+  return res.redirect(`/compras/solicitacoes/${req.params.id}`);
+}
+
 function selecionarCotacao(req, res) {
   try {
     service.selecionarCotacao(Number(req.params.id), Number(req.params.cotacaoId));

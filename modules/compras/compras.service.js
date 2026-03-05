@@ -305,7 +305,42 @@ function marcarComprada(id, userId, dados = {}) {
     dados.valor_total ? Number(dados.valor_total) : cur.valor_total || null,
     id
   );
-  return info.lastInsertRowid;
+  return getSolicitacaoDetalhe(id);
+}
+
+function salvarAnexo({ solicitacaoId, file, tipo = 'COTACAO', uploadedBy = null }) {
+  if (!solicitacaoId) throw new Error('Solicitação inválida para anexo.');
+  if (!file || !file.filename) throw new Error('Arquivo inválido.');
+
+  const cols = db.prepare("PRAGMA table_info('anexos')").all().map((col) => col.name);
+  const hasReferencia = cols.includes('referencia_tipo') && cols.includes('referencia_id');
+
+  if (hasReferencia) {
+    const info = db.prepare(`
+      INSERT INTO anexos (referencia_tipo, referencia_id, tipo, filename, original_name, mime_type, size, uploaded_by, uploaded_at)
+      VALUES ('SOLICITACAO', ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).run(
+      solicitacaoId,
+      tipo || 'COTACAO',
+      file.filename,
+      file.originalname || file.filename,
+      file.mimetype || null,
+      Number(file.size || 0),
+      uploadedBy || null,
+    );
+    return getAnexoById(info.lastInsertRowid);
+  }
+
+  const info = db.prepare(`
+    INSERT INTO anexos (owner_type, owner_id, filename, filepath, uploaded_by, uploaded_at)
+    VALUES ('SOLICITACAO', ?, ?, ?, ?, datetime('now'))
+  `).run(
+    solicitacaoId,
+    file.filename,
+    file.path || file.filename,
+    uploadedBy || null,
+  );
+  return getAnexoById(info.lastInsertRowid);
 }
 
 function getAnexoById(anexoId) {
@@ -315,6 +350,10 @@ function getAnexoById(anexoId) {
 function deleteAnexo(anexoId) {
   db.prepare('DELETE FROM anexos WHERE id = ?').run(anexoId);
 }
+
+const listarAnexos = listAnexosSolicitacao;
+const getAnexo = getAnexoById;
+const deletarAnexo = deleteAnexo;
 
 function gerarPdf(solicitacao, res) {
   const PDFDocument = getPDFKit();
@@ -388,8 +427,10 @@ module.exports = {
   atualizarDados,
   marcarComprada,
   salvarAnexo,
+  listarAnexos,
+  getAnexo,
+  deletarAnexo,
   getAnexoById,
   deleteAnexo,
   gerarPdf,
-  listFornecedoresAtivos,
 };
