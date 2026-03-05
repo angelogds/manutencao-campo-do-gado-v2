@@ -72,6 +72,10 @@ function currentTurno() {
   return mins >= (7 * 60) && mins < (19 * 60) ? "diurno" : "noturno";
 }
 
+function getTurnoAtual() {
+  return currentTurno() === "noturno" ? "NOITE" : "DIA";
+}
+
 function funcaoLabel(funcao) {
   if (funcao === "mecanico") return "Mecânico";
   if (funcao === "auxiliar") return "Auxiliar";
@@ -670,6 +674,65 @@ function getUsersDoTurnoAtual({ prefer = "auto" } = {}) {
     .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
 }
 
+function getPlantonistaNoturno() {
+  const usersNoTurno = getUsersDoTurno("NOITE");
+  const plantonista = usersNoTurno.find((u) => String(u.tipo_turno || "").toLowerCase() === "plantao");
+  if (plantonista?.id) return Number(plantonista.id);
+
+  const mecanicoNoturno = usersNoTurno.find((u) => String(u.funcao || "").toLowerCase() === "mecanico");
+  return mecanicoNoturno?.id ? Number(mecanicoNoturno.id) : null;
+}
+
+function getUsersDoTurno(turno) {
+  const hoje = isoToday();
+  const turnoNorm = String(turno || "").toUpperCase() === "NOITE" ? "noturno" : "diurno";
+  const semana = db.prepare(`
+    SELECT id
+    FROM escala_semanas
+    WHERE ? BETWEEN data_inicio AND data_fim
+    LIMIT 1
+  `).get(hoje);
+
+  if (!semana?.id) return [];
+
+  const colaboradoresCols = tableExists("colaboradores")
+    ? db.prepare("PRAGMA table_info(colaboradores)").all().map((c) => c.name)
+    : [];
+  const hasEhReserva = colaboradoresCols.includes("eh_reserva");
+
+  const rows = db.prepare(`
+    SELECT DISTINCT u.id,
+           u.name,
+           lower(COALESCE(c.funcao, CASE WHEN upper(COALESCE(u.role,''))='MECANICO' THEN 'mecanico' ELSE 'auxiliar' END)) AS funcao,
+           IFNULL(${hasEhReserva ? "c.eh_reserva" : "0"}, 0) AS eh_reserva,
+           a.tipo_turno
+    FROM escala_alocacoes a
+    JOIN colaboradores c ON c.id = a.colaborador_id
+    JOIN users u ON u.id = c.user_id
+    WHERE a.semana_id = ?
+      AND IFNULL(c.ativo,1) = 1
+      AND IFNULL(u.ativo,1) = 1
+      AND a.tipo_turno IN ('diurno','noturno','apoio','plantao')
+  `).all(semana.id);
+
+  const permitidos = new Set(
+    turnoNorm === "noturno"
+      ? ["noturno", "plantao"]
+      : ["diurno", "apoio", "plantao"]
+  );
+
+  return rows
+    .filter((r) => permitidos.has(String(r.tipo_turno || "").toLowerCase()))
+    .map((r) => ({
+      id: Number(r.id),
+      name: r.name,
+      funcao: normalizeFuncao(r.funcao) || r.funcao,
+      eh_reserva: Number(r.eh_reserva || 0),
+      tipo_turno: String(r.tipo_turno || "").toLowerCase(),
+    }))
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
+}
+
 function getDisponiveisAgora() {
   const turnoAtual = currentTurno();
   const hoje = isoToday();
@@ -755,6 +818,9 @@ module.exports = {
   getLinhasPeriodo,
   getEscalaSemanalPdfData,
   getPeriodoCompensacaoData,
+  getTurnoAtual,
+  getPlantonistaNoturno,
+  getUsersDoTurno,
   getUsersDoTurnoAtual,
   getDisponiveisAgora,
   getMecanicosDoTurnoAtual,

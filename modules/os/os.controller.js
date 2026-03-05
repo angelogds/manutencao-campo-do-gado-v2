@@ -42,6 +42,7 @@ async function osCreate(req, res) {
       data_fim,
       tipo,
       grau,
+      permitir_reserva,
     } = req.body;
 
     const id = service.createOS({
@@ -54,6 +55,7 @@ async function osCreate(req, res) {
       data_fim,
       tipo,
       grau,
+      permitir_reserva: Number(permitir_reserva || 0) ? 1 : 0,
       opened_by: req.session?.user?.id || null,
     });
 

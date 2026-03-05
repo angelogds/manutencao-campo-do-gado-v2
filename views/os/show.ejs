@@ -46,6 +46,11 @@
       <div><b>Abertura:</b> <%= os.opened_at ? fmtBR(os.opened_at) : '-' %></div>
       <div><b>Início:</b> <%= os.data_inicio ? fmtBR(os.data_inicio) : (os.execucao_iniciada_em ? fmtBR(os.execucao_iniciada_em) : '-') %></div>
       <div><b>Conclusão:</b> <%= os.data_conclusao ? fmtBR(os.data_conclusao) : '-' %></div>
+      <div><b>Turno da alocação:</b> <%= os.execucao_ativa?.turno_alocacao || '-' %>
+        <% if (os.execucao_ativa?.turno_alocacao === 'NOITE') { %>
+          <span class="badge-funcao func-mon" style="margin-left:6px;">Plantonista</span>
+        <% } %>
+      </div>
       <div><b>Executor em andamento:</b> <%= os.execucao_ativa?.executor_nome || os.mecanico_nome || '-' %></div>
     </div>
 
@@ -84,6 +89,7 @@
 
   <div class="muted" style="margin-top:6px;">Executor: <strong><%= os.execucao_ativa?.executor_nome || os.mecanico_nome || '-' %></strong></div>
   <div class="muted">Auxiliar: <strong><%= os.execucao_ativa?.auxiliar_nome || os.auxiliar_nome || '-' %></strong></div>
+  <div class="muted">Turno: <strong><%= os.execucao_ativa?.turno_alocacao || '-' %></strong></div>
 
   <% if (canAutoAssign) { %>
     <form method="POST" action="/os/<%= os.id %>/equipe" style="margin-top:10px;">
@@ -93,7 +99,7 @@
           <select class="input" name="mecanico_user_id" required>
             <option value="">Selecione</option>
             <% equipeUsuarios.forEach(function(u){ %>
-              <option value="<%= u.id %>" <%= Number(os.execucao_ativa?.mecanico_user_id || os.mecanico_user_id)===Number(u.id) ? 'selected' : '' %>><%= u.name %> (<%= u.funcao %>)</option>
+              <option value="<%= u.id %>" <%= Number(os.execucao_ativa?.executor_user_id || os.execucao_ativa?.mecanico_user_id || os.mecanico_user_id)===Number(u.id) ? 'selected' : '' %>><%= u.name %> (<%= u.funcao %>)</option>
             <% }) %>
           </select>
         </div>

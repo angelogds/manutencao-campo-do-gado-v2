@@ -23,6 +23,15 @@ function safeGet(fn, fallback) {
   }
 }
 
+function tableExists(name) {
+  try {
+    const row = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(name);
+    return !!row;
+  } catch (_e) {
+    return false;
+  }
+}
+
 
 function resolveOSGrauExpression() {
   const cols = safeGet(() => db.prepare('PRAGMA table_info(os)').all(), []);
@@ -578,6 +587,8 @@ function getEscalaSemana() {
 function getOSEmAndamento() {
   return safeGet(() => {
     const grauExpr = resolveOSGrauExpression();
+    const execCols = tableExists("os_execucoes") ? db.prepare("PRAGMA table_info(os_execucoes)").all().map((c) => c.name) : [];
+    const executorCol = execCols.includes("executor_user_id") ? "executor_user_id" : "mecanico_user_id";
     return db.prepare(`
       SELECT o.id, COALESCE(e.nome, o.equipamento_manual, o.equipamento) AS equipamento, ${grauExpr} AS grau, o.status, o.opened_at,
              COALESCE(u.name, 'Não atribuído') AS executor,
@@ -586,7 +597,7 @@ function getOSEmAndamento() {
       FROM os o
       LEFT JOIN equipamentos e ON e.id = o.equipamento_id
       LEFT JOIN os_execucoes ex ON ex.os_id = o.id AND ex.finalizado_em IS NULL
-      LEFT JOIN users u ON u.id = ex.mecanico_user_id
+      LEFT JOIN users u ON u.id = ex.${executorCol}
       LEFT JOIN users ua ON ua.id = ex.auxiliar_user_id
       WHERE UPPER(COALESCE(o.status,'')) IN ('ANDAMENTO','EM_ANDAMENTO')
       ORDER BY datetime(COALESCE(ex.iniciado_em, o.opened_at)) DESC
