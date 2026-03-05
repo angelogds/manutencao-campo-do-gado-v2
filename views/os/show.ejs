@@ -87,29 +87,53 @@
     <% } %>
   </div>
 
-  <div class="muted" style="margin-top:6px;">Executor: <strong><%= os.execucao_ativa?.executor_nome || os.mecanico_nome || '-' %></strong></div>
-  <div class="muted">Auxiliar: <strong><%= os.execucao_ativa?.auxiliar_nome || os.auxiliar_nome || '-' %></strong></div>
+  <div class="muted" style="margin-top:6px;">Executor (Mecânico/Auxiliar): <strong><%= os.execucao_ativa?.executor_nome || os.mecanico_nome || '-' %></strong></div>
+  <div class="muted">Auxiliar (se houver): <strong><%= os.execucao_ativa?.auxiliar_nome || os.auxiliar_nome || '-' %></strong></div>
   <div class="muted">Turno: <strong><%= os.execucao_ativa?.turno_alocacao || '-' %></strong></div>
 
   <% if (canAutoAssign) { %>
+    <% const mecanicosTurno = (equipeUsuarios || []).filter(u => String(u.funcao || '').toLowerCase() === 'mecanico'); %>
+    <% const auxiliaresTurno = (equipeUsuarios || []).filter(u => String(u.funcao || '').toLowerCase() === 'auxiliar'); %>
     <form method="POST" action="/os/<%= os.id %>/equipe" style="margin-top:10px;">
       <div class="grid2">
         <div>
           <label>Executor</label>
           <select class="input" name="mecanico_user_id" required>
             <option value="">Selecione</option>
-            <% equipeUsuarios.forEach(function(u){ %>
-              <option value="<%= u.id %>" <%= Number(os.execucao_ativa?.executor_user_id || os.execucao_ativa?.mecanico_user_id || os.mecanico_user_id)===Number(u.id) ? 'selected' : '' %>><%= u.name %> (<%= u.funcao %>)</option>
-            <% }) %>
+            <% if (mecanicosTurno.length) { %>
+              <optgroup label="Mecânicos">
+                <% mecanicosTurno.forEach(function(u){ %>
+                  <option value="<%= u.id %>" <%= Number(os.execucao_ativa?.executor_user_id || os.execucao_ativa?.mecanico_user_id || os.mecanico_user_id)===Number(u.id) ? 'selected' : '' %>><%= u.name %></option>
+                <% }) %>
+              </optgroup>
+            <% } %>
+            <% if (auxiliaresTurno.length) { %>
+              <optgroup label="Auxiliares">
+                <% auxiliaresTurno.forEach(function(u){ %>
+                  <option value="<%= u.id %>" <%= Number(os.execucao_ativa?.executor_user_id || os.execucao_ativa?.mecanico_user_id || os.mecanico_user_id)===Number(u.id) ? 'selected' : '' %>><%= u.name %></option>
+                <% }) %>
+              </optgroup>
+            <% } %>
           </select>
         </div>
         <div>
           <label>Auxiliar</label>
           <select class="input" name="auxiliar_user_id">
             <option value="">Sem auxiliar</option>
-            <% equipeUsuarios.forEach(function(u){ %>
-              <option value="<%= u.id %>" <%= Number(os.execucao_ativa?.auxiliar_user_id || os.auxiliar_user_id)===Number(u.id) ? 'selected' : '' %>><%= u.name %> (<%= u.funcao %>)</option>
-            <% }) %>
+            <% if (auxiliaresTurno.length) { %>
+              <optgroup label="Auxiliares">
+                <% auxiliaresTurno.forEach(function(u){ %>
+                  <option value="<%= u.id %>" <%= Number(os.execucao_ativa?.auxiliar_user_id || os.auxiliar_user_id)===Number(u.id) ? 'selected' : '' %>><%= u.name %></option>
+                <% }) %>
+              </optgroup>
+            <% } %>
+            <% if (mecanicosTurno.length) { %>
+              <optgroup label="Mecânicos">
+                <% mecanicosTurno.forEach(function(u){ %>
+                  <option value="<%= u.id %>" <%= Number(os.execucao_ativa?.auxiliar_user_id || os.auxiliar_user_id)===Number(u.id) ? 'selected' : '' %>><%= u.name %></option>
+                <% }) %>
+              </optgroup>
+            <% } %>
           </select>
         </div>
       </div>

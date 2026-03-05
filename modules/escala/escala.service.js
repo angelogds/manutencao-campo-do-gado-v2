@@ -69,7 +69,7 @@ function roleToFuncao(role) {
 function currentTurno() {
   const now = getNowSaoPauloParts();
   const mins = (now.hour * 60) + now.minute;
-  return mins >= (7 * 60) && mins < (19 * 60) ? "diurno" : "noturno";
+  return mins >= (18 * 60) || mins < (6 * 60) ? "noturno" : "diurno";
 }
 
 function getTurnoAtual() {
@@ -674,13 +674,24 @@ function getUsersDoTurnoAtual({ prefer = "auto" } = {}) {
     .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
 }
 
-function getPlantonistaNoturno() {
-  const usersNoTurno = getUsersDoTurno("NOITE");
-  const plantonista = usersNoTurno.find((u) => String(u.tipo_turno || "").toLowerCase() === "plantao");
+function getPlantonistaDoDia(turno = "NOITE") {
+  const turnoAlvo = String(turno || "").toUpperCase() === "NOITE" ? "NOITE" : "DIA";
+  const usersNoTurno = getUsersDoTurno(turnoAlvo);
+  const plantonista = usersNoTurno.find((u) => String(u.tipo_turno || "").toLowerCase() === "plantao"
+    && String(u.funcao || "").toLowerCase() === "mecanico");
   if (plantonista?.id) return Number(plantonista.id);
 
-  const mecanicoNoturno = usersNoTurno.find((u) => String(u.funcao || "").toLowerCase() === "mecanico");
-  return mecanicoNoturno?.id ? Number(mecanicoNoturno.id) : null;
+  if (turnoAlvo === "NOITE") {
+    const mecanicoNoturno = usersNoTurno.find((u) => String(u.funcao || "").toLowerCase() === "mecanico");
+    return mecanicoNoturno?.id ? Number(mecanicoNoturno.id) : null;
+  }
+
+  const mecanicoDia = usersNoTurno.find((u) => String(u.funcao || "").toLowerCase() === "mecanico");
+  return mecanicoDia?.id ? Number(mecanicoDia.id) : null;
+}
+
+function getPlantonistaNoturno() {
+  return getPlantonistaDoDia("NOITE");
 }
 
 function getUsersDoTurno(turno) {
@@ -703,7 +714,7 @@ function getUsersDoTurno(turno) {
   const rows = db.prepare(`
     SELECT DISTINCT u.id,
            u.name,
-           lower(COALESCE(c.funcao, CASE WHEN upper(COALESCE(u.role,''))='MECANICO' THEN 'mecanico' ELSE 'auxiliar' END)) AS funcao,
+           lower(COALESCE(NULLIF(c.funcao,''), 'auxiliar')) AS funcao,
            IFNULL(${hasEhReserva ? "c.eh_reserva" : "0"}, 0) AS eh_reserva,
            a.tipo_turno
     FROM escala_alocacoes a
@@ -725,7 +736,9 @@ function getUsersDoTurno(turno) {
     .filter((r) => permitidos.has(String(r.tipo_turno || "").toLowerCase()))
     .map((r) => ({
       id: Number(r.id),
+      user_id: Number(r.id),
       name: r.name,
+      nome: r.name,
       funcao: normalizeFuncao(r.funcao) || r.funcao,
       eh_reserva: Number(r.eh_reserva || 0),
       tipo_turno: String(r.tipo_turno || "").toLowerCase(),
@@ -819,6 +832,7 @@ module.exports = {
   getEscalaSemanalPdfData,
   getPeriodoCompensacaoData,
   getTurnoAtual,
+  getPlantonistaDoDia,
   getPlantonistaNoturno,
   getUsersDoTurno,
   getUsersDoTurnoAtual,

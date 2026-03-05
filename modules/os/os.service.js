@@ -291,19 +291,16 @@ function prioritizeMecanicos(mecanicosDisponiveis = []) {
 
 
 function listUsuariosEquipe() {
-  return db.prepare(`
-    SELECT id, name,
-           CASE
-             WHEN lower(COALESCE(funcao,'')) LIKE '%mecan%' THEN 'mecanico'
-             WHEN lower(COALESCE(funcao,'')) LIKE '%aux%' THEN 'auxiliar'
-             WHEN lower(COALESCE(funcao,'')) LIKE '%oper%' THEN 'operacional'
-             WHEN upper(COALESCE(role,''))='MECANICO' THEN 'mecanico'
-             ELSE 'auxiliar'
-           END AS funcao
-    FROM users
-    WHERE IFNULL(ativo,1)=1
-    ORDER BY name
-  `).all();
+  const turnoAtual = escalaService.getTurnoAtual?.() || "DIA";
+  const usersDoTurno = escalaService.getUsersDoTurno?.(turnoAtual) || [];
+  return usersDoTurno
+    .map((u) => ({
+      id: Number(u.id || u.user_id),
+      name: u.name || u.nome,
+      funcao: String(u.funcao || "").toLowerCase(),
+    }))
+    .filter((u) => u.id && u.name)
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
 }
 
 function getOSById(id) {
@@ -358,7 +355,7 @@ function rotateByLastId(disponiveis, lastId) {
 }
 
 function autoAssignEquipe(osId, alocadoPorUserId) {
-  const os = db.prepare(`SELECT id, grau, status, IFNULL(permitir_reserva,0) AS permitir_reserva FROM os WHERE id = ?`).get(Number(osId));
+  const os = db.prepare(`SELECT id, grau, status FROM os WHERE id = ?`).get(Number(osId));
   if (!os) throw new Error("OS não encontrada.");
 
   const grau = normalizeGrau(os.grau);
@@ -366,10 +363,9 @@ function autoAssignEquipe(osId, alocadoPorUserId) {
     ? escalaService.getTurnoAtual()
     : "DIA";
   const emAndamentoStatus = "EM_ANDAMENTO";
-  const permitirReserva = Number(os.permitir_reserva || 0) === 1;
 
   if (turnoAtual === "NOITE") {
-    const plantonistaId = escalaService.getPlantonistaNoturno?.();
+    const plantonistaId = escalaService.getPlantonistaDoDia?.("NOITE") || escalaService.getPlantonistaNoturno?.();
     if (!plantonistaId) {
       db.prepare(`UPDATE os SET status = 'AGUARDANDO_EQUIPE' WHERE id = ?`).run(Number(osId));
       return { aguardando: true, aviso: "Sem mecânico plantonista no turno noturno." };
@@ -402,20 +398,9 @@ function autoAssignEquipe(osId, alocadoPorUserId) {
 
   const auxiliares = getDisponiveis(turnoUsers, "auxiliar");
   const mecanicosDia = getDisponiveis(turnoUsers, "mecanico");
-  const mecanicosBase = mecanicosDia.filter((u) => Number(u.eh_reserva || 0) !== 1);
-  const reservas = mecanicosDia.filter((u) => Number(u.eh_reserva || 0) === 1);
-
   const escolherMecanicoDia = () => {
-    let candidatos = [...mecanicosBase];
-    if (!candidatos.length) candidatos = [...reservas];
-    if (permitirReserva && reservas.length) candidatos = candidatos.concat(reservas.filter((r) => !candidatos.some((c) => c.id === r.id)));
-    const ordenados = prioritizeMecanicos(candidatos);
+    const ordenados = prioritizeMecanicos(mecanicosDia);
     return pickNextMecanicoRoundRobin(ordenados);
-  };
-
-  const escolherAuxiliarParaReserva = () => {
-    const leo = auxiliares.find((u) => String(u.name || "").toLowerCase().includes("leo") || String(u.name || "").toLowerCase().includes("léo"));
-    return leo || auxiliares[0] || null;
   };
 
   if (grau === "BAIXA") {
@@ -440,25 +425,7 @@ function autoAssignEquipe(osId, alocadoPorUserId) {
     return { aguardando: true, aviso: "Sem mecânico disponível no turno diurno." };
   }
 
-  let auxiliar = null;
-  if (Number(mecanico.eh_reserva || 0) === 1) {
-    auxiliar = escolherAuxiliarParaReserva();
-  } else {
-    const par = db.prepare(`
-      SELECT auxiliar_user_id
-      FROM os_pares_equipes
-      WHERE mecanico_user_id = ?
-        AND IFNULL(ativo,1) = 1
-      LIMIT 1
-    `).get(Number(mecanico.id));
-
-    if (par?.auxiliar_user_id) {
-      auxiliar = auxiliares.find((u) => Number(u.id) === Number(par.auxiliar_user_id)) || null;
-    }
-    if (!auxiliar) {
-      auxiliar = auxiliares.find((u) => Number(u.id) !== Number(mecanico.id)) || null;
-    }
-  }
+  const auxiliar = auxiliares.find((u) => Number(u.id) !== Number(mecanico.id)) || null;
 
   db.transaction(() => {
     db.prepare(`UPDATE os_execucoes SET finalizado_em = datetime('now') WHERE os_id = ? AND finalizado_em IS NULL`).run(Number(osId));
@@ -511,8 +478,8 @@ function setupPairsIfEmpty() {
   }
 }
 
-function autoAssign(osId) {
-  const result = autoAssignEquipe(osId, null);
+function autoAssign(osId, alocadoPorUserId = null) {
+  const result = autoAssignEquipe(osId, alocadoPorUserId);
   if (!result) return { equipe: [], avisos: [] };
   if (result.aguardando) return { equipe: [], avisos: [result.aviso] };
   return { equipe: listAlocacoesEquipe(Number(osId)), avisos: [] };
@@ -606,7 +573,6 @@ function createOS({
   tipo,
   opened_by,
   grau,
-  permitir_reserva,
 }) {
   const desc = String(descricao || "").trim();
   if (!desc) throw new Error("Descrição obrigatória.");
@@ -690,11 +656,6 @@ function createOS({
     fields.push("alertar_imediatamente");
     values.push(score.alertar_imediatamente ? 1 : 0);
   }
-  if (cols.includes("permitir_reserva")) {
-    fields.push("permitir_reserva");
-    values.push(Number(permitir_reserva || 0) ? 1 : 0);
-  }
-
   const stmt = db.prepare(
     `INSERT INTO os (${fields.join(",")})
      VALUES (${fields.map(() => "?").join(",")})`
@@ -704,7 +665,6 @@ function createOS({
   const osId = Number(info.lastInsertRowid);
 
   setupPairsIfEmpty();
-  autoAssignEquipe(osId, openedBy);
 
   emitOSEvents(osId, "create");
   syncInspecaoFromOS(osId);
