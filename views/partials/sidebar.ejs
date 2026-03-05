@@ -17,6 +17,7 @@
   const canDemandas = can('demandas_view');
   const canSolicitacoes = can('solicitacoes');
   const canCompras = can('compras');
+  const canFornecedores = can('fornecedores');
   const canAlmoxarifado = can('almoxarifado');
   const canEstoque = can('estoque_view');
   const canMotores = can('motores');
@@ -58,6 +59,10 @@
 
     <% if (canCompras) { %>
       <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras/solicitacoes">Compras</a>
+    <% } %>
+
+    <% if (canFornecedores) { %>
+      <a class="nav-item <%= activeMenu === 'fornecedores' ? 'active' : '' %>" href="/fornecedores">Fornecedores</a>
     <% } %>
 
     <% if (canAlmoxarifado) { %>

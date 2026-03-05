@@ -115,13 +115,14 @@ const queryBase = `/compras/solicitacoes?q=${encodeURIComponent(filters?.query |
             <th>Número</th>
             <th>Título</th>
             <th>Status</th>
+            <th>Fornecedor</th>
             <th>Criada em</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           <% if (!lista.length) { %>
-            <tr><td colspan="5" class="muted" style="text-align:center;">Nenhuma solicitação encontrada com os filtros aplicados.</td></tr>
+            <tr><td colspan="6" class="muted" style="text-align:center;">Nenhuma solicitação encontrada com os filtros aplicados.</td></tr>
           <% } %>
           <% lista.forEach((s) => { const conf = statusConfig[s.status] || { label: s.status || '-', className: 'is-bought', icon: '📌' }; %>
             <tr>
@@ -130,6 +131,7 @@ const queryBase = `/compras/solicitacoes?q=${encodeURIComponent(filters?.query |
               <td>
                 <span class="sol-status <%= conf.className %>"><span><%= conf.icon %></span> <%= conf.label %></span>
               </td>
+              <td><%= s.fornecedor_nome || s.fornecedor || '-' %></td>
               <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
               <td>
                 <div class="sol-actions">
