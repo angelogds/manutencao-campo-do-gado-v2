@@ -72,7 +72,8 @@ function listSolicitacoesPorStatus(filters = {}) {
   const status = normalizeStatus(filters.status);
   if (status) { where.push('s.status = ?'); params.push(status); }
   if (filters.query) {
-    where.push("(LOWER(s.numero) LIKE ? OR LOWER(s.titulo) LIKE ? OR LOWER(COALESCE(s.fornecedor, '')) LIKE ? OR LOWER(COALESCE(f.nome, '')) LIKE ?)");
+    const fornecedorExpr = hasFornecedorCol ? "COALESCE(s.fornecedor, '')" : "''";
+    where.push(`(LOWER(s.numero) LIKE ? OR LOWER(s.titulo) LIKE ? OR LOWER(${fornecedorExpr}) LIKE ? OR LOWER(COALESCE(f.nome, '')) LIKE ?)`);
     const q = `%${String(filters.query).trim().toLowerCase()}%`;
     params.push(q, q, q, q);
   }
@@ -125,13 +126,23 @@ function listAnexosSolicitacao(solicitacaoId) {
   `;
 
   if (hasOwnerType && hasOwnerId) {
+    if (columnExists('anexos', 'referencia_tipo') && columnExists('anexos', 'referencia_id')) {
+      return db.prepare(`
+        ${baseSelect}
+        WHERE (a.referencia_tipo='SOLICITACAO' AND a.referencia_id=?)
+           OR (a.owner_type='SOLICITACAO' AND a.owner_id=?)
+        ORDER BY a.id DESC
+      `).all(solicitacaoId, solicitacaoId);
+    }
+
     return db.prepare(`
       ${baseSelect}
-      WHERE (a.referencia_tipo='SOLICITACAO' AND a.referencia_id=?)
-         OR (a.owner_type='SOLICITACAO' AND a.owner_id=?)
+      WHERE (a.owner_type='SOLICITACAO' AND a.owner_id=?)
       ORDER BY a.id DESC
-    `).all(solicitacaoId, solicitacaoId);
+    `).all(solicitacaoId);
   }
+
+  if (!columnExists('anexos', 'referencia_tipo') || !columnExists('anexos', 'referencia_id')) return [];
 
   return db.prepare(`
     ${baseSelect}
@@ -175,11 +186,13 @@ function getSolicitacaoDetalhe(id) {
   `).get(id);
   if (!sol) return null;
 
+  const itensSelect = buildSolicitacaoItensSelect();
+
   const itens = db.prepare(`
-    SELECT si.*, COALESCE(si.item_nome, ei.nome) AS item_nome, COALESCE(si.item_descricao, si.descricao) AS item_descricao,
-           COALESCE(si.qtd_solicitada, si.quantidade, 0) AS qtd_solicitada
+    SELECT si.*, ${itensSelect.itemNomeExpr} AS item_nome, ${itensSelect.itemDescExpr} AS item_descricao,
+           ${itensSelect.qtdExpr} AS qtd_solicitada
     FROM solicitacao_itens si
-    LEFT JOIN estoque_itens ei ON ei.id = COALESCE(si.estoque_item_id, si.item_id)
+    LEFT JOIN estoque_itens ei ON ei.id = ${itensSelect.itemJoinExpr}
     WHERE si.solicitacao_id = ?
     ORDER BY si.id
   `).all(id);
