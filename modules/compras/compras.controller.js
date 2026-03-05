@@ -1,8 +1,21 @@
 const fs = require('fs');
 const path = require('path');
 const service = require('./compras.service');
+const { applyMigrations } = require('../../database/migrate');
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+
+function isSchemaError(error) {
+  const msg = String(error?.message || error || '').toLowerCase();
+  return msg.includes('no such table') || msg.includes('no such column') || msg.includes('sqlite_error');
+}
+
+function tryRenderDetalhe(id, res) {
+  const sol = service.getSolicitacaoDetalhe(id);
+  if (!sol) return res.status(404).send('Solicitação não encontrada');
+  const fornecedores = service.listFornecedoresAtivos();
+  return res.render('compras/solicitacoes/show', { title: `Compras ${sol.numero}`, activeMenu: 'compras', sol, fornecedores });
+}
 
 function lista(req, res) {
   const filters = {
@@ -46,13 +59,20 @@ function lista(req, res) {
 }
 
 function detalhe(req, res) {
+  const id = Number(req.params.id);
   try {
-    const id = Number(req.params.id);
-    const sol = service.getSolicitacaoDetalhe(id);
-    if (!sol) return res.status(404).send('Solicitação não encontrada');
-    const fornecedores = service.listFornecedoresAtivos();
-    return res.render('compras/solicitacoes/show', { title: `Compras ${sol.numero}`, activeMenu: 'compras', sol, fornecedores });
+    return tryRenderDetalhe(id, res);
   } catch (e) {
+    if (isSchemaError(e)) {
+      try {
+        console.warn('⚠️ Schema de compras incompleto. Tentando aplicar migrations automaticamente...');
+        applyMigrations();
+        return tryRenderDetalhe(id, res);
+      } catch (migrationError) {
+        console.error('❌ Falha ao aplicar migrations automaticamente:', migrationError && migrationError.stack ? migrationError.stack : migrationError);
+      }
+    }
+
     console.error('❌ Erro detalhe compras:', e && e.stack ? e.stack : e);
     req.flash('error', 'Falha ao abrir detalhes da solicitação. Verifique se as migrations do V3 já foram aplicadas.');
     return res.redirect('/compras/solicitacoes');
