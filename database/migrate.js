@@ -67,11 +67,8 @@ function ensureOSInspectionColumns() {
 
 function applyOne(filename) {
   const full = path.join(__dirname, "migrations", filename);
-  const sql = fs.readFileSync(full, "utf8");
-
-  // PRAGMA foreign_keys só tem efeito fora de transação no SQLite.
-  // Algumas migrations (ex.: recriação da tabela users) precisam rodar sem tx.
-  const needsNoTx = /PRAGMA\s+foreign_keys\s*=\s*OFF/i.test(sql);
+  const isSql = filename.endsWith(".sql");
+  const isJs = filename.endsWith(".js");
 
   try {
     // ✅ antes da 080, garante coluna categoria (corrige banco já existente)
@@ -82,15 +79,39 @@ function applyOne(filename) {
       ensureOSInspectionColumns();
     }
 
-    if (needsNoTx) {
-      db.exec(sql);
-      markApplied(filename);
-    } else {
-      const tx = db.transaction(() => {
+    if (isSql) {
+      const sql = fs.readFileSync(full, "utf8");
+
+      // PRAGMA foreign_keys só tem efeito fora de transação no SQLite.
+      // Algumas migrations (ex.: recriação da tabela users) precisam rodar sem tx.
+      const needsNoTx = /PRAGMA\s+foreign_keys\s*=\s*OFF/i.test(sql);
+
+      if (needsNoTx) {
         db.exec(sql);
         markApplied(filename);
-      });
-      tx();
+      } else {
+        const tx = db.transaction(() => {
+          db.exec(sql);
+          markApplied(filename);
+        });
+        tx();
+      }
+    } else if (isJs) {
+      const migrationModule = require(full);
+      const runMigration = typeof migrationModule === "function"
+        ? migrationModule
+        : migrationModule && typeof migrationModule.up === "function"
+          ? migrationModule.up
+          : null;
+
+      if (!runMigration) {
+        throw new Error("Migration JS inválida: exporte função ou { up() }.");
+      }
+
+      runMigration({ db, tableExists, columnExists });
+      markApplied(filename);
+    } else {
+      throw new Error(`Extensão de migration não suportada: ${filename}`);
     }
     console.log(`✔ Migration aplicada: ${filename}`);
   } catch (err) {
@@ -112,7 +133,7 @@ function applyMigrations() {
 
   const files = fs
     .readdirSync(dir)
-    .filter((f) => f.endsWith(".sql"))
+    .filter((f) => f.endsWith(".sql") || f.endsWith(".js"))
     .sort((a, b) => a.localeCompare(b));
 
   console.log(`🧱 Migrations encontradas (${files.length}):`, files.join(", "));
