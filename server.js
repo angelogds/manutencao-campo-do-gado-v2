@@ -73,7 +73,7 @@ app.locals.incluir = function (p) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, "public")));
-const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(process.cwd(), "uploads");
+const UPLOADS_DIR = process.env.UPLOADS_DIR || (fs.existsSync('/data') ? '/data/uploads' : path.join(process.cwd(), "uploads"));
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 app.use("/uploads", express.static(UPLOADS_DIR));
 
@@ -166,6 +166,7 @@ mount("/equipamentos", "./modules/equipamentos/equipamentos.routes");
 mount("/os", "./modules/os/os.routes");
 mount("/preventivas", "./modules/preventivas/preventivas.routes");
 mount("/compras", "./modules/compras/compras.routes");
+mount("/fornecedores", "./modules/fornecedores/fornecedores.routes");
 mount("/solicitacoes", "./modules/solicitacoes/solicitacoes.routes");
 mount("/estoque", "./modules/estoque/estoque.routes");
 mount("/almoxarifado", "./modules/almoxarifado/almoxarifado.routes");
