@@ -6,12 +6,17 @@ const tabs = [
   { key: 'EM_COTACAO', label: 'Em Cotação' },
   { key: 'COMPRADA', label: 'Compradas' },
 ];
+const statusConfig = {
+  ABERTA: { label: 'Aberta', className: 'is-open', icon: '📝' },
+  EM_COTACAO: { label: 'Em cotação', className: 'is-quote', icon: '💬' },
+  COMPRADA: { label: 'Comprada', className: 'is-bought', icon: '✅' },
+};
 %>
 
 <div class="page-head">
   <div>
     <h1>Compras • Solicitações</h1>
-    <p class="muted">Fluxo ERP de compras com cotações, anexos e seleção de fornecedor.</p>
+    <p class="muted">Acompanhe cotações, anexos e evolução das solicitações.</p>
   </div>
 </div>
 
@@ -65,41 +70,17 @@ const tabs = [
         <% if (!lista?.length) { %>
           <tr><td colspan="6" class="muted" style="text-align:center;">Nenhuma solicitação encontrada.</td></tr>
         <% } %>
-
-        <% (lista || []).forEach((s) => { %>
+        <% (lista || []).forEach((s) => { const conf = statusConfig[s.status] || { label: s.status || '-', className: 'is-bought', icon: '📌' }; %>
           <tr>
-            <th>Número</th>
-            <th>Título</th>
-            <th>Status</th>
-            <th>Fornecedor</th>
-            <th>Criada em</th>
-            <th>Ações</th>
+            <td><strong><%= s.numero || ('#' + s.id) %></strong></td>
+            <td><%= s.titulo || '-' %></td>
+            <td><span class="sol-status <%= conf.className %>"><span><%= conf.icon %></span> <%= conf.label %></span></td>
+            <td><%= s.fornecedor_nome || s.fornecedor || '-' %></td>
+            <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
+            <td><a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>">Detalhes</a></td>
           </tr>
-        </thead>
-        <tbody>
-          <% if (!lista.length) { %>
-            <tr><td colspan="6" class="muted" style="text-align:center;">Nenhuma solicitação encontrada com os filtros aplicados.</td></tr>
-          <% } %>
-          <% lista.forEach((s) => { const conf = statusConfig[s.status] || { label: s.status || '-', className: 'is-bought', icon: '📌' }; %>
-            <tr>
-              <td><strong><%= s.numero || ('#' + s.id) %></strong></td>
-              <td><%= s.titulo || '-' %></td>
-              <td>
-                <span class="sol-status <%= conf.className %>"><span><%= conf.icon %></span> <%= conf.label %></span>
-              </td>
-              <td><%= s.fornecedor_nome || s.fornecedor || '-' %></td>
-              <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
-              <td>
-                <div class="sol-actions">
-                  <a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>">Detalhes</a>
-                  <a class="btn btn-sm" href="/compras/solicitacoes/<%= s.id %>">Editar</a>
-                  <a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>#historico">Histórico</a>
-                </div>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
+        <% }) %>
+      </tbody>
+    </table>
   </div>
 </div>
