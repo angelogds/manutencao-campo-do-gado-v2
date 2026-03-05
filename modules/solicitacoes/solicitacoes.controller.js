@@ -56,9 +56,14 @@ function criar(req, res) {
     return res.redirect("/solicitacoes/nova");
   }
 
-  const id = service.createSolicitacao({ ...req.body, userId: req.session.user.id, itens });
-  req.flash("success", "Solicitação criada.");
-  res.redirect(`/solicitacoes/${id}`);
+  try {
+    const id = service.createSolicitacao({ ...req.body, userId: req.session.user.id, itens });
+    req.flash("success", "✅ Solicitação criada com sucesso!");
+    return res.redirect(`/solicitacoes/${id}`);
+  } catch (error) {
+    req.flash("error", error.message || "Não foi possível criar a solicitação.");
+    return res.redirect("/solicitacoes/nova");
+  }
 }
 
 function detalhe(req, res) {

@@ -23,6 +23,18 @@
   </div>
 </div>
 
+
+<div class="card" style="margin-bottom:14px;">
+  <div class="label">Timeline</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+    <span class="pill-tag pill-gray">Abertura: <%= solicitacao.created_at ? fmtBR(solicitacao.created_at) : '-' %></span>
+    <span class="pill-tag pill-gray">Início cotação: <%= solicitacao.cotacao_inicio_em ? fmtBR(solicitacao.cotacao_inicio_em) : '-' %></span>
+    <span class="pill-tag pill-gray">Comprada: <%= solicitacao.comprada_em ? fmtBR(solicitacao.comprada_em) : '-' %></span>
+    <span class="pill-tag pill-gray">Recebida: <%= solicitacao.recebida_em ? fmtBR(solicitacao.recebida_em) : '-' %></span>
+    <span class="pill-tag pill-gray">Fechada: <%= solicitacao.fechada_em ? fmtBR(solicitacao.fechada_em) : '-' %></span>
+  </div>
+</div>
+
 <div class="card">
   <div class="label">Itens da solicitação</div>
   <div class="table-wrap" style="margin-top:10px;">

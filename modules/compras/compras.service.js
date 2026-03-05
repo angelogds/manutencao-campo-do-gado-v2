@@ -1,16 +1,16 @@
-const fs = require("fs");
-const path = require("path");
-const db = require("../../database/db");
+const fs = require('fs');
+const path = require('path');
+const db = require('../../database/db');
 
 const STATUS = Object.freeze({
-  ABERTA: "ABERTA",
-  EM_COTACAO: "EM_COTACAO",
-  COMPRADA: "COMPRADA",
-  EM_RECEBIMENTO: "EM_RECEBIMENTO",
-  RECEBIDA_PARCIAL: "RECEBIDA_PARCIAL",
-  RECEBIDA_TOTAL: "RECEBIDA_TOTAL",
-  FECHADA: "FECHADA",
-  REABERTA: "REABERTA",
+  ABERTA: 'ABERTA',
+  EM_COTACAO: 'EM_COTACAO',
+  COMPRADA: 'COMPRADA',
+  EM_RECEBIMENTO: 'EM_RECEBIMENTO',
+  RECEBIDA_PARCIAL: 'RECEBIDA_PARCIAL',
+  RECEBIDA_TOTAL: 'RECEBIDA_TOTAL',
+  FECHADA: 'FECHADA',
+  REABERTA: 'REABERTA',
 });
 
 const STATUS_COMPRAS = [
@@ -25,7 +25,15 @@ const STATUS_COMPRAS = [
 ];
 
 function normalizeStatus(status) {
-  return STATUS_COMPRAS.includes(status) ? status : "";
+  return STATUS_COMPRAS.includes(status) ? status : '';
+}
+
+function getPDFKit() {
+  try {
+    return require('pdfkit');
+  } catch (_error) {
+    return null;
+  }
 }
 
 function listSolicitacoesPorStatus(filters = {}) {
@@ -34,7 +42,7 @@ function listSolicitacoesPorStatus(filters = {}) {
   const status = normalizeStatus(filters.status);
 
   if (status) {
-    where.push("s.status = ?");
+    where.push('s.status = ?');
     params.push(status);
   }
 
@@ -45,12 +53,12 @@ function listSolicitacoesPorStatus(filters = {}) {
   }
 
   if (filters.startDate) {
-    where.push("date(s.created_at) >= date(?)");
+    where.push('date(s.created_at) >= date(?)');
     params.push(filters.startDate);
   }
 
   if (filters.endDate) {
-    where.push("date(s.created_at) <= date(?)");
+    where.push('date(s.created_at) <= date(?)');
     params.push(filters.endDate);
   }
 
@@ -65,17 +73,64 @@ function listSolicitacoesPorStatus(filters = {}) {
 }
 
 function getResumoSolicitacoes() {
-  const rows = db.prepare(`
-    SELECT status, COUNT(*) AS total
-    FROM solicitacoes
-    GROUP BY status
-  `).all();
-
+  const rows = db.prepare('SELECT status, COUNT(*) AS total FROM solicitacoes GROUP BY status').all();
   const totals = Object.fromEntries(STATUS_COMPRAS.map((status) => [status, 0]));
   rows.forEach((row) => {
     if (row.status in totals) totals[row.status] = row.total;
   });
   return totals;
+}
+
+function listFornecedoresAtivos() {
+  return db.prepare('SELECT id, nome, cnpj, cidade FROM fornecedores WHERE ativo = 1 ORDER BY nome ASC').all();
+}
+
+function listCotacoes(solicitacaoId) {
+  return db.prepare(`
+    SELECT c.*, f.nome AS fornecedor_cadastro_nome, f.cnpj
+    FROM compras_cotacoes c
+    LEFT JOIN fornecedores f ON f.id = c.fornecedor_id
+    WHERE c.solicitacao_id = ?
+    ORDER BY c.id DESC
+  `).all(solicitacaoId);
+}
+
+function getCotacaoSelecionada(solicitacaoId) {
+  return db.prepare(`
+    SELECT c.*, f.nome AS fornecedor_cadastro_nome
+    FROM compras_cotacoes c
+    LEFT JOIN fornecedores f ON f.id = c.fornecedor_id
+    WHERE c.solicitacao_id = ? AND c.selecionada = 1
+    ORDER BY c.id DESC LIMIT 1
+  `).get(solicitacaoId);
+}
+
+function listAnexosSolicitacao(solicitacaoId) {
+  return db.prepare(`
+    SELECT a.*, u.name AS uploaded_by_nome
+    FROM anexos a
+    LEFT JOIN users u ON u.id = a.uploaded_by
+    WHERE (a.referencia_tipo = 'SOLICITACAO' AND a.referencia_id = ?)
+       OR (a.owner_type = 'SOLICITACAO' AND a.owner_id = ?)
+    ORDER BY a.id DESC
+  `).all(solicitacaoId, solicitacaoId);
+}
+
+function getHistoricoPrecos(solicitacaoId) {
+  return db.prepare(`
+    SELECT hp.*, f.nome AS fornecedor_cadastro_nome
+    FROM historico_precos hp
+    LEFT JOIN fornecedores f ON f.id = hp.fornecedor_id
+    WHERE hp.solicitacao_id = ?
+       OR hp.item_nome IN (
+          SELECT COALESCE(si.item_nome, ei.nome)
+          FROM solicitacao_itens si
+          LEFT JOIN estoque_itens ei ON ei.id = si.estoque_item_id
+          WHERE si.solicitacao_id = ?
+       )
+    ORDER BY datetime(COALESCE(hp.data_compra, hp.rowid)) DESC
+    LIMIT 5
+  `).all(solicitacaoId, solicitacaoId);
 }
 
 function getSolicitacaoDetalhe(id) {
@@ -87,16 +142,26 @@ function getSolicitacaoDetalhe(id) {
     LEFT JOIN fornecedores f ON f.id = s.fornecedor_id
     WHERE s.id = ?
   `).get(id);
+
   if (!sol) return null;
 
   const itens = db.prepare(`
-    SELECT si.*
+    SELECT si.*, COALESCE(si.item_nome, ei.nome) AS item_nome, COALESCE(si.item_descricao, si.descricao) AS item_descricao,
+           COALESCE(si.qtd_solicitada, si.quantidade, 0) AS qtd_solicitada
     FROM solicitacao_itens si
+    LEFT JOIN estoque_itens ei ON ei.id = si.estoque_item_id
     WHERE si.solicitacao_id = ?
     ORDER BY si.id
   `).all(id);
 
-  return { ...sol, itens };
+  return {
+    ...sol,
+    itens,
+    cotacoes: listCotacoes(id),
+    anexos: listAnexosSolicitacao(id),
+    historicoPrecos: getHistoricoPrecos(id),
+    cotacaoSelecionada: getCotacaoSelecionada(id),
+  };
 }
 
 
@@ -111,12 +176,54 @@ function listFornecedoresAtivos() {
 
 function assumirSolicitacao(id, userId) {
   const cur = getSolicitacaoDetalhe(id);
-  if (!cur || cur.status !== STATUS.ABERTA) throw new Error("Somente solicitações ABERTAS podem ser assumidas.");
+  if (!cur || cur.status !== STATUS.ABERTA) throw new Error('Somente solicitações ABERTAS podem ser assumidas.');
+
   db.prepare(`
     UPDATE solicitacoes
     SET status = ?, compras_user_id = ?, cotacao_inicio_em = datetime('now'), updated_at = datetime('now')
     WHERE id = ?
   `).run(STATUS.EM_COTACAO, userId, id);
+}
+
+function iniciarCotacaoViaPdf(id, userId) {
+  const cur = getSolicitacaoDetalhe(id);
+  if (!cur) throw new Error('Solicitação não encontrada.');
+  if (cur.status === STATUS.ABERTA) {
+    db.prepare(`
+      UPDATE solicitacoes
+      SET status = ?, compras_user_id = ?, cotacao_inicio_em = datetime('now'), updated_at = datetime('now')
+      WHERE id = ?
+    `).run(STATUS.EM_COTACAO, userId, id);
+  }
+}
+
+function createCotacao(solicitacaoId, dados = {}) {
+  const fornecedorId = dados.fornecedor_id ? Number(dados.fornecedor_id) : null;
+  const fornecedor = fornecedorId
+    ? db.prepare('SELECT id, nome FROM fornecedores WHERE id = ?').get(fornecedorId)
+    : null;
+
+  db.prepare(`
+    INSERT INTO compras_cotacoes (solicitacao_id, fornecedor_id, fornecedor_nome, valor_total, prazo_entrega, observacao, selecionada, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'))
+  `).run(
+    solicitacaoId,
+    fornecedor?.id || null,
+    fornecedor?.nome || (dados.fornecedor_nome || null),
+    dados.valor_total ? Number(dados.valor_total) : null,
+    dados.prazo_entrega || null,
+    dados.observacao || null,
+  );
+}
+
+function selecionarCotacao(solicitacaoId, cotacaoId) {
+  return db.transaction(() => {
+    const cotacao = db.prepare('SELECT * FROM compras_cotacoes WHERE id = ? AND solicitacao_id = ?').get(cotacaoId, solicitacaoId);
+    if (!cotacao) throw new Error('Cotação não encontrada para a solicitação.');
+
+    db.prepare('UPDATE compras_cotacoes SET selecionada = 0 WHERE solicitacao_id = ?').run(solicitacaoId);
+    db.prepare('UPDATE compras_cotacoes SET selecionada = 1 WHERE id = ?').run(cotacaoId);
+  })();
 }
 
 function atualizarDados(id, dados) {
@@ -140,13 +247,41 @@ function atualizarDados(id, dados) {
     dados.previsao_entrega || null,
     dados.observacoes_compras || null,
     dados.valor_total ? Number(dados.valor_total) : null,
-    id
+    id,
   );
+}
+
+function registrarHistoricoPrecos(solicitacao, cotacao) {
+  const itens = solicitacao.itens || [];
+  const totalQtd = itens.reduce((acc, item) => acc + Number(item.qtd_solicitada || 0), 0);
+  const valorTotal = Number(cotacao?.valor_total || solicitacao.valor_total || 0);
+  const precoUnitMedio = totalQtd > 0 ? valorTotal / totalQtd : 0;
+
+  const insert = db.prepare(`
+    INSERT INTO historico_precos (
+      estoque_item_id, item_nome, fornecedor_id, fornecedor_nome, preco_unit, preco_total, unidade, data_compra, solicitacao_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), ?)
+  `);
+
+  itens.forEach((item) => {
+    const qtd = Number(item.qtd_solicitada || 0);
+    const precoTotalItem = qtd * precoUnitMedio;
+    insert.run(
+      item.estoque_item_id || null,
+      item.item_nome || null,
+      cotacao?.fornecedor_id || solicitacao.fornecedor_id || null,
+      cotacao?.fornecedor_cadastro_nome || cotacao?.fornecedor_nome || solicitacao.fornecedor || null,
+      precoUnitMedio || null,
+      precoTotalItem || null,
+      item.unidade || 'UN',
+      solicitacao.id,
+    );
+  });
 }
 
 function marcarComprada(id, userId, dados = {}) {
   const cur = getSolicitacaoDetalhe(id);
-  if (!cur || cur.status !== STATUS.EM_COTACAO) throw new Error("Somente EM_COTACAO pode virar COMPRADA.");
+  if (!cur || cur.status !== STATUS.EM_COTACAO) throw new Error('Somente EM_COTACAO pode virar COMPRADA.');
 
   db.prepare(`
     UPDATE solicitacoes
@@ -170,82 +305,91 @@ function marcarComprada(id, userId, dados = {}) {
     dados.valor_total ? Number(dados.valor_total) : cur.valor_total || null,
     id
   );
+  return info.lastInsertRowid;
+}
+
+function getAnexoById(anexoId) {
+  return db.prepare('SELECT * FROM anexos WHERE id = ?').get(anexoId);
+}
+
+function deleteAnexo(anexoId) {
+  db.prepare('DELETE FROM anexos WHERE id = ?').run(anexoId);
 }
 
 function gerarPdf(solicitacao, res) {
   const PDFDocument = getPDFKit();
   if (!PDFDocument) {
-    const err = new Error("PDF indisponível: pdfkit não carregou");
-    err.code = "PDFKIT_NOT_AVAILABLE";
+    const err = new Error('PDF indisponível: pdfkit não carregou');
+    err.code = 'PDFKIT_NOT_AVAILABLE';
     throw err;
   }
-  const doc = new PDFDocument({ margin: 40, size: "A4" });
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename=solicitacao_${solicitacao.numero}.pdf`);
+
+  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename=solicitacao_${solicitacao.numero}.pdf`);
   doc.pipe(res);
 
-  const logoPath = ["public/IMG/logopdf_campo_do_gado.png.png", "public/img/logo_menu_256.png", "public/img/logo.png"]
+  const logoPath = ['public/IMG/logopdf_campo_do_gado.png.png', 'public/img/logo_menu_256.png', 'public/img/logo.png']
     .map((p) => path.join(process.cwd(), p))
     .find((p) => fs.existsSync(p));
   if (logoPath) doc.image(logoPath, 40, 30, { width: 60 });
 
-  doc.fillColor("#166534").fontSize(16).text("RECICLAGEM CAMPO DO GADO", 120, 35);
-  doc.fillColor("#15803d").fontSize(11).text("MANUTENÇÃO INDUSTRIAL", 120, 55);
-  doc.fillColor("#111827").fontSize(13).text("SOLICITAÇÃO DE MATERIAL / COTAÇÃO", 40, 95);
-  doc.fontSize(10).text(`Número: ${solicitacao.numero}`, 40, 115).text(`Data: ${fmtBR(new Date().toISOString())}`, 260, 115);
+  doc.fillColor('#166534').fontSize(16).text('RECICLAGEM CAMPO DO GADO', 120, 35);
+  doc.fillColor('#15803d').fontSize(11).text('MANUTENÇÃO INDUSTRIAL', 120, 55);
+  doc.fillColor('#111827').fontSize(13).text('SOLICITAÇÃO DE MATERIAL / COTAÇÃO', 40, 95);
+  doc.fontSize(10).text(`Número: ${solicitacao.numero || `#${solicitacao.id}`}`, 40, 115).text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, 260, 115);
 
   let y = 145;
   const linha = (k, v) => {
-    doc.font("Helvetica-Bold").text(`${k}:`, 40, y, { continued: true });
-    doc.font("Helvetica").text(` ${v || "-"}`);
+    doc.font('Helvetica-Bold').text(`${k}:`, 40, y, { continued: true });
+    doc.font('Helvetica').text(` ${v || '-'}`);
     y += 16;
   };
 
-  linha("Solicitante", solicitacao.solicitante_nome);
-  linha("Setor", solicitacao.setor_origem);
-  linha("Prioridade", solicitacao.prioridade);
-  linha("Equipamento", solicitacao.equipamento_nome);
-  linha("Vínculos", solicitacao.preventiva_id || solicitacao.os_id || solicitacao.demanda_id ? `Prev:${solicitacao.preventiva_id || "-"} | OS:${solicitacao.os_id || "-"} | Demanda:${solicitacao.demanda_id || "-"}` : "-");
-  linha("Descrição", solicitacao.descricao);
+  linha('Solicitante', solicitacao.solicitante_nome);
+  linha('Setor', solicitacao.setor_origem);
+  linha('Prioridade', solicitacao.prioridade);
+  linha('Equipamento', solicitacao.equipamento_nome);
+  linha('Descrição', solicitacao.descricao);
 
   y += 8;
-  doc.rect(40, y, 515, 20).strokeColor("#e5e7eb").stroke();
-  doc.fontSize(9).font("Helvetica-Bold")
-    .text("Item", 44, y + 6)
-    .text("Descrição", 170, y + 6)
-    .text("Unidade", 360, y + 6)
-    .text("Qtde Solicitada", 420, y + 6)
-    .text("Observação", 500, y + 6);
+  doc.rect(40, y, 515, 20).strokeColor('#e5e7eb').stroke();
+  doc.fontSize(9).font('Helvetica-Bold')
+    .text('Item', 44, y + 6)
+    .text('Descrição', 170, y + 6)
+    .text('Unidade', 360, y + 6)
+    .text('Qtde Solicitada', 420, y + 6);
   y += 22;
 
-  doc.font("Helvetica");
+  doc.font('Helvetica');
   for (const it of solicitacao.itens || []) {
-    doc.rect(40, y, 515, 22).strokeColor("#e5e7eb").stroke();
-    doc.text(it.item_nome || "-", 44, y + 6, { width: 120 })
-      .text(it.item_descricao || "-", 170, y + 6, { width: 180 })
-      .text(it.unidade || "UN", 360, y + 6, { width: 50 })
-      .text(String(it.qtd_solicitada || 0), 420, y + 6, { width: 75 })
-      .text(it.observacao_item || "", 500, y + 6, { width: 50 });
+    doc.rect(40, y, 515, 22).strokeColor('#e5e7eb').stroke();
+    doc.text(it.item_nome || '-', 44, y + 6, { width: 120 })
+      .text(it.item_descricao || '-', 170, y + 6, { width: 180 })
+      .text(it.unidade || 'UN', 360, y + 6, { width: 50 })
+      .text(String(it.qtd_solicitada || 0), 420, y + 6, { width: 75 });
     y += 22;
   }
-
-  y += 28;
-  doc.text("Compras ____________________", 40, y)
-    .text("Solicitante ____________________", 220, y)
-    .text("Almoxarifado ____________________", 400, y);
 
   doc.end();
 }
 
 module.exports = {
-  STATUS_COMPRAS,
   STATUS,
+  STATUS_COMPRAS,
   listSolicitacoesPorStatus,
   getResumoSolicitacoes,
   getSolicitacaoDetalhe,
+  listFornecedoresAtivos,
   assumirSolicitacao,
+  iniciarCotacaoViaPdf,
+  createCotacao,
+  selecionarCotacao,
   atualizarDados,
   marcarComprada,
+  salvarAnexo,
+  getAnexoById,
+  deleteAnexo,
   gerarPdf,
   listFornecedoresAtivos,
 };
