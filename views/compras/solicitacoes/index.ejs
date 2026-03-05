@@ -68,30 +68,38 @@ const tabs = [
 
         <% (lista || []).forEach((s) => { %>
           <tr>
-            <td><strong><%= s.numero || ('#' + s.id) %></strong></td>
-            <td><%= s.titulo || '-' %></td>
-            <td><span class="pill-tag pill-gray"><%= s.status || '-' %></span></td>
-            <td><%= s.fornecedor_nome || s.fornecedor || '-' %></td>
-            <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
-            <td style="display:flex;gap:6px;flex-wrap:wrap;">
-              <% if (s.status === 'ABERTA') { %>
-                <a class="btn btn-sm btn-green" href="/compras/solicitacoes/<%= s.id %>/pdf">Gerar PDF / Iniciar Cotação</a>
-              <% } %>
-
-              <% if (s.status === 'EM_COTACAO') { %>
-                <a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>">Detalhar</a>
-                <form method="POST" action="/compras/solicitacoes/<%= s.id %>/marcar-comprada" style="display:inline;">
-                  <button class="btn btn-sm" type="submit">Marcar Comprada</button>
-                </form>
-              <% } %>
-
-              <% if (s.status === 'COMPRADA' || (s.status !== 'ABERTA' && s.status !== 'EM_COTACAO')) { %>
-                <a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>">Detalhar</a>
-              <% } %>
-            </td>
+            <th>Número</th>
+            <th>Título</th>
+            <th>Status</th>
+            <th>Fornecedor</th>
+            <th>Criada em</th>
+            <th>Ações</th>
           </tr>
-        <% }) %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% if (!lista.length) { %>
+            <tr><td colspan="6" class="muted" style="text-align:center;">Nenhuma solicitação encontrada com os filtros aplicados.</td></tr>
+          <% } %>
+          <% lista.forEach((s) => { const conf = statusConfig[s.status] || { label: s.status || '-', className: 'is-bought', icon: '📌' }; %>
+            <tr>
+              <td><strong><%= s.numero || ('#' + s.id) %></strong></td>
+              <td><%= s.titulo || '-' %></td>
+              <td>
+                <span class="sol-status <%= conf.className %>"><span><%= conf.icon %></span> <%= conf.label %></span>
+              </td>
+              <td><%= s.fornecedor_nome || s.fornecedor || '-' %></td>
+              <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
+              <td>
+                <div class="sol-actions">
+                  <a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>">Detalhes</a>
+                  <a class="btn btn-sm" href="/compras/solicitacoes/<%= s.id %>">Editar</a>
+                  <a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>#historico">Histórico</a>
+                </div>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
