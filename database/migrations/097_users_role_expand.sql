@@ -1,6 +1,6 @@
 PRAGMA foreign_keys=OFF;
 
-ALTER TABLE users RENAME TO users_old_roles;
+ALTER TABLE users RENAME TO users_legacy_roles_tmp;
 
 CREATE TABLE users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,8 +20,8 @@ CREATE TABLE users (
 
 INSERT INTO users (id, name, email, password_hash, role, photo_path, created_at)
 SELECT id, name, email, password_hash, role, photo_path, created_at
-FROM users_old_roles;
+FROM users_legacy_roles_tmp;
 
-DROP TABLE users_old_roles;
+DROP TABLE users_legacy_roles_tmp;
 
 PRAGMA foreign_keys=ON;
