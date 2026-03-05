@@ -665,6 +665,17 @@ function getDisponiveisAgora() {
   `).all(roleToFuncao(null));
 }
 
+function getMecanicosDoTurnoAtual() {
+  return (getDisponiveisAgora() || []).filter((p) => String(p.funcao || '').toUpperCase() === 'MECANICO');
+}
+
+function getAuxiliaresDoTurnoAtual() {
+  return (getDisponiveisAgora() || []).filter((p) => {
+    const funcao = String(p.funcao || '').toUpperCase();
+    return funcao === 'AUXILIAR' || funcao === 'APOIO' || funcao === 'MONTADOR' || funcao === 'OPERACIONAL';
+  });
+}
+
 
 module.exports = {
   getPublicacoes,
@@ -681,6 +692,8 @@ module.exports = {
   getEscalaSemanalPdfData,
   getPeriodoCompensacaoData,
   getDisponiveisAgora,
+  getMecanicosDoTurnoAtual,
+  getAuxiliaresDoTurnoAtual,
   normalizeTurno,
   normalizeFuncao,
 };

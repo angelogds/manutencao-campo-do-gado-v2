@@ -57,6 +57,14 @@ async function osCreate(req, res) {
       opened_by: req.session?.user?.id || null,
     });
 
+    const grauNormalizado = String(grau || '').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (["MEDIA", "ALTA", "CRITICA"].includes(grauNormalizado)) {
+      const alocacao = service.autoAssignEquipe(id, req.session?.user?.id || null);
+      if (alocacao?.aguardando) {
+        req.flash("error", alocacao.aviso);
+      }
+    }
+
     const fotosAbertura = mapFilesToPublic(req.files?.abertura_fotos || []);
     service.addFotosAberturaFechamento({
       osId: id,
@@ -226,10 +234,14 @@ async function osUpdateStatus(req, res) {
 function osAutoAssign(req, res) {
   const id = Number(req.params.id);
   try {
-    const result = service.autoAssign(id);
-    const nomes = (result.equipe || []).map((m) => m.name).join(", ");
-    if (nomes) req.flash("success", `Equipe sugerida: ${nomes}.`);
-    if ((result.avisos || []).length) req.flash("error", result.avisos.join(" "));
+    const result = service.autoAssignEquipe(id, req.session?.user?.id || null);
+    if (!result) {
+      req.flash("success", "OS de baixa complexidade: sem autoalocação de mecânico.");
+    } else if (result.aguardando) {
+      req.flash("error", result.aviso);
+    } else {
+      req.flash("success", `Equipe atribuída: ${result.mecanico.nome} + ${result.auxiliar.nome}.`);
+    }
   } catch (err) {
     req.flash("error", err.message || "Não foi possível sugerir a equipe.");
   }

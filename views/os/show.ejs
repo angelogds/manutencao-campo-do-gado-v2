@@ -40,6 +40,9 @@
         <span class="status <%= gg==='BAIXA'?'g-baixa':(gg==='MEDIA'?'g-media':(gg==='ALTA'?'g-alta':'g-critica')) %>"><%= gg || '-' %></span>
       </div>
       <div><b>Status:</b> <%= os.status %></div>
+      <% if (String(os.status || "").toUpperCase() === "AGUARDANDO_EQUIPE") { %>
+        <div style="grid-column:1/-1;color:#b91c1c;font-weight:700;">Sem mecânico disponível no turno: OS aguardando alocação.</div>
+      <% } %>
       <div><b>Abertura:</b> <%= os.opened_at ? fmtBR(os.opened_at) : '-' %></div>
       <div><b>Início:</b> <%= os.data_inicio ? fmtBR(os.data_inicio) : (os.execucao_iniciada_em ? fmtBR(os.execucao_iniciada_em) : '-') %></div>
       <div><b>Conclusão:</b> <%= os.data_conclusao ? fmtBR(os.data_conclusao) : '-' %></div>
@@ -71,33 +74,26 @@
 
 <div class="card" style="margin-top:12px;">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-    <h3 style="margin:0;">Equipe</h3>
+    <h3 style="margin:0;">Equipe atribuída</h3>
     <% if (canAutoAssign) { %>
       <form method="POST" action="/ordens-servico/<%= os.id %>/auto-assign">
-        <button class="btn btn-primary" type="submit">Sugerir Equipe</button>
+        <button class="btn btn-primary" type="submit">Reatribuir automaticamente</button>
       </form>
     <% } %>
   </div>
-  <div class="muted">Responsável e auxiliares alocados para esta OS.</div>
 
-  <% if (!(os.alocacoes_equipe || []).length) { %>
-    <div class="muted" style="margin-top:8px;">Sem equipe alocada.</div>
+  <div class="muted" style="margin-top:6px;">Mecânico: <strong><%= os.mecanico_nome || '-' %></strong></div>
+  <div class="muted">Auxiliar: <strong><%= os.auxiliar_nome || '-' %></strong></div>
+
+  <% if (String(os.status || '').toUpperCase() === 'AGUARDANDO_EQUIPE') { %>
+    <div style="margin-top:10px;color:#b91c1c;font-weight:700;">Sem mecânico disponível no turno: OS aguardando alocação.</div>
   <% } %>
 
-  <% (os.alocacoes_equipe || []).forEach((m) => {
-    const ff = String(m.funcao || '').toUpperCase();
-    const badgeCls = ff === 'MECANICO' ? 'func-mec' : (ff === 'MONTADOR' ? 'func-mon' : 'func-aux');
-  %>
-    <div style="display:flex;justify-content:space-between;align-items:center;border:1px solid #e5e7eb;border-radius:10px;padding:8px 10px;margin-top:8px;">
-      <div>
-        <strong><%= m.name %></strong>
-        <span class="badge-funcao <%= badgeCls %>"><%= ff || 'AUXILIAR' %></span>
-        <% if (String(m.papel || '').toUpperCase() === 'RESPONSAVEL') { %><span class="muted">(Responsável)</span><% } %>
-      </div>
-      <div class="muted">Disponível agora: sim</div>
-    </div>
-  <% }) %>
+  <% if (isOSFechada) { %>
+    <div style="margin-top:10px;"><b>Executado por:</b> <%= os.mecanico_nome || '-' %> + <%= os.auxiliar_nome || '-' %></div>
+  <% } %>
 </div>
+
 
 <div class="card" style="margin-top:12px;">
   <h3 style="margin:0;">Fotos de abertura da OS</h3>
