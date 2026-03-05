@@ -204,11 +204,7 @@ app.use((_req, res) => res.status(404).send("404 - Página não encontrada"));
 
 // ===== Error handler =====
 app.use((err, req, res, _next) => {
-  console.error("❌ ERRO 500:", {
-    url: req.originalUrl,
-    method: req.method,
-    user: req.session?.user?.id || null,
-  });
+  console.error("❌ ERRO 500:", req.method, req.originalUrl);
   console.error(err && err.stack ? err.stack : err);
   res.status(500).send("500 - Erro interno");
 });

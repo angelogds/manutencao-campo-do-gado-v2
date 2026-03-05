@@ -43,6 +43,19 @@ function getPDFKit() {
   try { return require('pdfkit'); } catch { return null; }
 }
 
+function tableExists(name) {
+  return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name);
+}
+
+function columnExists(table, col) {
+  try {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+    return cols.some((c) => c.name === col);
+  } catch {
+    return false;
+  }
+}
+
 function listSolicitacoesPorStatus(filters = {}) {
   const where = [];
   const params = [];
@@ -78,6 +91,7 @@ function listFornecedoresAtivos() {
 }
 
 function listCotacoes(solicitacaoId) {
+  if (!tableExists('compras_cotacoes')) return [];
   return db.prepare(`
     SELECT c.*, f.nome AS fornecedor_cadastro_nome, f.cnpj
     FROM compras_cotacoes c
@@ -88,16 +102,34 @@ function listCotacoes(solicitacaoId) {
 }
 
 function listAnexosSolicitacao(solicitacaoId) {
-  return db.prepare(`
-    SELECT a.*, u.name AS uploaded_by_nome
-    FROM compras_anexos a
-    LEFT JOIN users u ON u.id = a.uploaded_by
-    WHERE a.referencia_tipo = 'SOLICITACAO' AND a.referencia_id = ?
-    ORDER BY a.id DESC
-  `).all(solicitacaoId);
+  if (!tableExists('anexos') && !tableExists('compras_anexos')) return [];
+
+  const tabelaAnexos = tableExists('anexos') ? 'anexos' : 'compras_anexos';
+  const hasOwner = columnExists(tabelaAnexos, 'owner_type') && columnExists(tabelaAnexos, 'owner_id');
+  const sql = hasOwner
+    ? `
+      SELECT a.*, u.name AS uploaded_by_nome
+      FROM ${tabelaAnexos} a
+      LEFT JOIN users u ON u.id = a.uploaded_by
+      WHERE (a.referencia_tipo = 'SOLICITACAO' AND a.referencia_id = ?)
+         OR (a.owner_type = 'SOLICITACAO' AND a.owner_id = ?)
+      ORDER BY a.id DESC
+    `
+    : `
+      SELECT a.*, u.name AS uploaded_by_nome
+      FROM ${tabelaAnexos} a
+      LEFT JOIN users u ON u.id = a.uploaded_by
+      WHERE (a.referencia_tipo = 'SOLICITACAO' AND a.referencia_id = ?)
+      ORDER BY a.id DESC
+    `;
+
+  return hasOwner
+    ? db.prepare(sql).all(solicitacaoId, solicitacaoId)
+    : db.prepare(sql).all(solicitacaoId);
 }
 
 function getCotacaoSelecionada(solicitacaoId) {
+  if (!tableExists('compras_cotacoes')) return null;
   return db.prepare(`
     SELECT c.*, f.nome AS fornecedor_cadastro_nome
     FROM compras_cotacoes c
@@ -108,6 +140,7 @@ function getCotacaoSelecionada(solicitacaoId) {
 }
 
 function getHistoricoPrecos(solicitacaoId) {
+  if (!tableExists('historico_precos')) return [];
   return db.prepare(`
     SELECT hp.*, f.nome AS fornecedor_cadastro_nome
     FROM historico_precos hp
@@ -138,7 +171,17 @@ function getSolicitacaoDetalhe(id) {
     ORDER BY si.id
   `).all(id);
 
-  return { ...sol, itens, cotacoes: listCotacoes(id), anexos: listAnexosSolicitacao(id), historicoPrecos: getHistoricoPrecos(id), cotacaoSelecionada: getCotacaoSelecionada(id) };
+  let cotacoes = [];
+  let anexos = [];
+  let historicoPrecos = [];
+  let cotacaoSelecionada = null;
+
+  try { cotacoes = listCotacoes(id); } catch (_e) { cotacoes = []; }
+  try { anexos = listAnexosSolicitacao(id); } catch (_e) { anexos = []; }
+  try { historicoPrecos = getHistoricoPrecos(id); } catch (_e) { historicoPrecos = []; }
+  try { cotacaoSelecionada = getCotacaoSelecionada(id); } catch (_e) { cotacaoSelecionada = null; }
+
+  return { ...sol, itens, cotacoes, anexos, historicoPrecos, cotacaoSelecionada };
 }
 
 function assumirSolicitacao(id, userId) {
