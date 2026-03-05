@@ -46,10 +46,17 @@ function lista(req, res) {
 }
 
 function detalhe(req, res) {
-  const sol = service.getSolicitacaoDetalhe(Number(req.params.id));
-  if (!sol) return res.status(404).send("Solicitação não encontrada");
-  const fornecedores = service.listFornecedoresAtivos();
-  res.render("compras/solicitacoes/show", { title: `Compras ${sol.numero}`, activeMenu: "compras", sol, fornecedores });
+  try {
+    const id = Number(req.params.id);
+    const sol = service.getSolicitacaoDetalhe(id);
+    if (!sol) return res.status(404).send('Solicitação não encontrada');
+    const fornecedores = service.listFornecedoresAtivos();
+    return res.render('compras/solicitacoes/show', { title: `Compras ${sol.numero}`, activeMenu: 'compras', sol, fornecedores });
+  } catch (e) {
+    console.error('❌ Erro detalhe compras:', e && e.stack ? e.stack : e);
+    req.flash('error', 'Falha ao abrir detalhes da solicitação. Verifique se as migrations do V3 já foram aplicadas.');
+    return res.redirect('/compras/solicitacoes');
+  }
 }
 
 function pdf(req, res) {

@@ -102,30 +102,31 @@ function listCotacoes(solicitacaoId) {
 }
 
 function listAnexosSolicitacao(solicitacaoId) {
-  if (!tableExists('anexos') && !tableExists('compras_anexos')) return [];
+  if (!tableExists('anexos')) return [];
 
-  const tabelaAnexos = tableExists('anexos') ? 'anexos' : 'compras_anexos';
-  const hasOwner = columnExists(tabelaAnexos, 'owner_type') && columnExists(tabelaAnexos, 'owner_id');
-  const sql = hasOwner
-    ? `
-      SELECT a.*, u.name AS uploaded_by_nome
-      FROM ${tabelaAnexos} a
-      LEFT JOIN users u ON u.id = a.uploaded_by
-      WHERE (a.referencia_tipo = 'SOLICITACAO' AND a.referencia_id = ?)
-         OR (a.owner_type = 'SOLICITACAO' AND a.owner_id = ?)
-      ORDER BY a.id DESC
-    `
-    : `
-      SELECT a.*, u.name AS uploaded_by_nome
-      FROM ${tabelaAnexos} a
-      LEFT JOIN users u ON u.id = a.uploaded_by
-      WHERE (a.referencia_tipo = 'SOLICITACAO' AND a.referencia_id = ?)
-      ORDER BY a.id DESC
-    `;
+  const hasOwnerType = columnExists('anexos', 'owner_type');
+  const hasOwnerId = columnExists('anexos', 'owner_id');
 
-  return hasOwner
-    ? db.prepare(sql).all(solicitacaoId, solicitacaoId)
-    : db.prepare(sql).all(solicitacaoId);
+  const baseSelect = `
+    SELECT a.*, u.name AS uploaded_by_nome
+    FROM anexos a
+    LEFT JOIN users u ON u.id = a.uploaded_by
+  `;
+
+  if (hasOwnerType && hasOwnerId) {
+    return db.prepare(`
+      ${baseSelect}
+      WHERE (a.referencia_tipo='SOLICITACAO' AND a.referencia_id=?)
+         OR (a.owner_type='SOLICITACAO' AND a.owner_id=?)
+      ORDER BY a.id DESC
+    `).all(solicitacaoId, solicitacaoId);
+  }
+
+  return db.prepare(`
+    ${baseSelect}
+    WHERE (a.referencia_tipo='SOLICITACAO' AND a.referencia_id=?)
+    ORDER BY a.id DESC
+  `).all(solicitacaoId);
 }
 
 function getCotacaoSelecionada(solicitacaoId) {
