@@ -166,6 +166,7 @@ mount("/equipamentos", "./modules/equipamentos/equipamentos.routes");
 mount("/os", "./modules/os/os.routes");
 mount("/preventivas", "./modules/preventivas/preventivas.routes");
 mount("/compras", "./modules/compras/compras.routes");
+mount("/fornecedores", "./modules/fornecedores/fornecedores.routes");
 mount("/solicitacoes", "./modules/solicitacoes/solicitacoes.routes");
 mount("/estoque", "./modules/estoque/estoque.routes");
 mount("/almoxarifado", "./modules/almoxarifado/almoxarifado.routes");
