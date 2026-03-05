@@ -173,10 +173,12 @@ function listAlocacoesEquipe(osId) {
 
 function getExecucaoAtiva(osId) {
   if (!tableExists("os_execucoes")) return null;
+  const execCols = getTableColumns("os_execucoes");
+  const executorCol = execCols.includes("executor_user_id") ? "executor_user_id" : "mecanico_user_id";
   return db.prepare(`
     SELECT ex.*, u.name AS executor_nome, ua.name AS auxiliar_nome
     FROM os_execucoes ex
-    LEFT JOIN users u ON u.id = ex.mecanico_user_id
+    LEFT JOIN users u ON u.id = ex.${executorCol}
     LEFT JOIN users ua ON ua.id = ex.auxiliar_user_id
     WHERE ex.os_id = ? AND ex.finalizado_em IS NULL
     ORDER BY ex.id DESC
@@ -184,22 +186,27 @@ function getExecucaoAtiva(osId) {
   `).get(Number(osId));
 }
 
-function userOcupado(userId) {
+function isOcupado(userId) {
   if (!userId || !tableExists("os_execucoes")) return false;
+  const execCols = getTableColumns("os_execucoes");
+  const executorCol = execCols.includes("executor_user_id") ? "executor_user_id" : "mecanico_user_id";
   const row = db.prepare(`
     SELECT 1
     FROM os_execucoes
     WHERE finalizado_em IS NULL
-      AND (mecanico_user_id = ? OR auxiliar_user_id = ?)
+      AND (${executorCol} = ? OR auxiliar_user_id = ?)
     LIMIT 1
   `).get(Number(userId), Number(userId));
   return !!row;
 }
 
-function getDisponiveisPorFuncao(turnoUsers, funcao) {
+function getDisponiveis(turnoUsers, funcao) {
   return (turnoUsers || [])
-    .filter((u) => String(u.funcao || "").toLowerCase() === String(funcao || "").toLowerCase())
-    .filter((u) => !userOcupado(u.id));
+    .filter((u) => {
+      if (!funcao) return true;
+      return String(u.funcao || "").toLowerCase() === String(funcao || "").toLowerCase();
+    })
+    .filter((u) => !isOcupado(u.id));
 }
 
 function getParesAtivosDisponiveis(turnoUsers) {
@@ -217,8 +224,8 @@ function getParesAtivosDisponiveis(turnoUsers) {
   return pares.filter((p) =>
     userIdsTurno.has(Number(p.mecanico_user_id))
     && userIdsTurno.has(Number(p.auxiliar_user_id))
-    && !userOcupado(p.mecanico_user_id)
-    && !userOcupado(p.auxiliar_user_id)
+    && !isOcupado(p.mecanico_user_id)
+    && !isOcupado(p.auxiliar_user_id)
   );
 }
 
@@ -232,14 +239,16 @@ function pickNextMecanicoRoundRobin(listaMecanicosDisponiveis) {
   return escolhido;
 }
 
-function createExecucao(osId, mecanicoUserId, auxiliarUserId, alocadoPorUserId, observacao = null) {
+function createExecucao(osId, executorUserId, auxiliarUserId, alocadoPorUserId, observacao = null, turnoAlocacao = null) {
   const cols = tableExists("os_execucoes") ? getTableColumns("os_execucoes") : [];
+  const executorCol = cols.includes("executor_user_id") ? "executor_user_id" : "mecanico_user_id";
   const hasAux = cols.includes("auxiliar_user_id");
   const hasAlocadoPor = cols.includes("alocado_por");
   const hasObs = cols.includes("observacao");
-  const fields = ["os_id", "mecanico_user_id", "iniciado_em"];
+  const hasTurno = cols.includes("turno_alocacao");
+  const fields = ["os_id", executorCol, "iniciado_em"];
   const placeholders = ["?", "?", "datetime('now')"];
-  const args = [Number(osId), Number(mecanicoUserId)];
+  const args = [Number(osId), Number(executorUserId)];
 
   if (hasAux) {
     fields.push("auxiliar_user_id");
@@ -256,8 +265,28 @@ function createExecucao(osId, mecanicoUserId, auxiliarUserId, alocadoPorUserId, 
     placeholders.push("?");
     args.push(observacao || null);
   }
+  if (hasTurno) {
+    fields.push("turno_alocacao");
+    placeholders.push("?");
+    args.push(turnoAlocacao || null);
+  }
 
   db.prepare(`INSERT INTO os_execucoes (${fields.join(",")}) VALUES (${placeholders.join(",")})`).run(...args);
+}
+
+function prioritizeMecanicos(mecanicosDisponiveis = []) {
+  const prioridade = ["Diogo", "Salviano", "Rodolfo", "Fábio"];
+  const normalized = (v) => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const pos = (nome) => {
+    const idx = prioridade.findIndex((ref) => normalized(nome).includes(normalized(ref)));
+    return idx < 0 ? 99 : idx;
+  };
+  return [...mecanicosDisponiveis].sort((a, b) => {
+    const pa = pos(a.name);
+    const pb = pos(b.name);
+    if (pa !== pb) return pa - pb;
+    return String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+  });
 }
 
 
@@ -329,53 +358,121 @@ function rotateByLastId(disponiveis, lastId) {
 }
 
 function autoAssignEquipe(osId, alocadoPorUserId) {
-  const os = db.prepare(`SELECT id, grau, status FROM os WHERE id = ?`).get(Number(osId));
+  const os = db.prepare(`SELECT id, grau, status, IFNULL(permitir_reserva,0) AS permitir_reserva FROM os WHERE id = ?`).get(Number(osId));
   if (!os) throw new Error("OS não encontrada.");
 
-  const turnoUsers = typeof escalaService.getUsersDoTurnoAtual === "function"
-    ? escalaService.getUsersDoTurnoAtual({ prefer: "auto" })
-    : (escalaService.getDisponiveisAgora?.() || []);
-
   const grau = normalizeGrau(os.grau);
+  const turnoAtual = typeof escalaService.getTurnoAtual === "function"
+    ? escalaService.getTurnoAtual()
+    : "DIA";
   const emAndamentoStatus = "EM_ANDAMENTO";
+  const permitirReserva = Number(os.permitir_reserva || 0) === 1;
 
-  if (["MEDIA", "ALTA", "CRITICA"].includes(grau)) {
-    const pares = getParesAtivosDisponiveis(turnoUsers);
-    if (!pares.length) {
+  if (turnoAtual === "NOITE") {
+    const plantonistaId = escalaService.getPlantonistaNoturno?.();
+    if (!plantonistaId) {
       db.prepare(`UPDATE os SET status = 'AGUARDANDO_EQUIPE' WHERE id = ?`).run(Number(osId));
-      return { aguardando: true, aviso: "Sem par MECÂNICO + AUXILIAR disponível no turno." };
+      return { aguardando: true, aviso: "Sem mecânico plantonista no turno noturno." };
     }
 
-    const mecanicoEscolhido = pickNextMecanicoRoundRobin(pares.map((p) => ({ id: p.mecanico_user_id, name: p.mecanico_nome })));
-    const par = pares.find((p) => Number(p.mecanico_user_id) === Number(mecanicoEscolhido.id)) || pares[0];
+    const usersNoite = escalaService.getUsersDoTurno?.("NOITE") || [];
+    const auxiliarNoite = getDisponiveis(usersNoite, "auxiliar").find((u) => Number(u.id) !== Number(plantonistaId)) || null;
+    const executor = usersNoite.find((u) => Number(u.id) === Number(plantonistaId))
+      || db.prepare(`SELECT id, name FROM users WHERE id = ?`).get(Number(plantonistaId));
 
     db.transaction(() => {
       db.prepare(`UPDATE os_execucoes SET finalizado_em = datetime('now') WHERE os_id = ? AND finalizado_em IS NULL`).run(Number(osId));
-      createExecucao(osId, par.mecanico_user_id, par.auxiliar_user_id, alocadoPorUserId);
+      createExecucao(osId, Number(plantonistaId), auxiliarNoite?.id || null, alocadoPorUserId, null, "NOITE");
       db.prepare(`UPDATE os SET status = ?, mecanico_user_id = ?, auxiliar_user_id = ? WHERE id = ?`)
-        .run(emAndamentoStatus, Number(par.mecanico_user_id), Number(par.auxiliar_user_id), Number(osId));
+        .run(emAndamentoStatus, Number(plantonistaId), auxiliarNoite?.id ? Number(auxiliarNoite.id) : null, Number(osId));
     })();
 
-    return { aguardando: false, mecanico: { id: Number(par.mecanico_user_id), nome: par.mecanico_nome }, auxiliar: { id: Number(par.auxiliar_user_id), nome: par.auxiliar_nome } };
+    return {
+      aguardando: false,
+      mecanico: { id: Number(plantonistaId), nome: executor?.name || "Plantonista" },
+      auxiliar: auxiliarNoite ? { id: Number(auxiliarNoite.id), nome: auxiliarNoite.name } : null,
+      turno: "NOITE",
+      plantonista: true,
+    };
   }
 
-  const auxiliares = getDisponiveisPorFuncao(turnoUsers, "auxiliar");
-  const mecanicos = getDisponiveisPorFuncao(turnoUsers, "mecanico");
-  const executor = auxiliares[0] || mecanicos[0];
+  const turnoUsers = escalaService.getUsersDoTurno?.("DIA")
+    || escalaService.getUsersDoTurnoAtual?.({ prefer: "diurno" })
+    || [];
 
-  if (!executor) {
+  const auxiliares = getDisponiveis(turnoUsers, "auxiliar");
+  const mecanicosDia = getDisponiveis(turnoUsers, "mecanico");
+  const mecanicosBase = mecanicosDia.filter((u) => Number(u.eh_reserva || 0) !== 1);
+  const reservas = mecanicosDia.filter((u) => Number(u.eh_reserva || 0) === 1);
+
+  const escolherMecanicoDia = () => {
+    let candidatos = [...mecanicosBase];
+    if (!candidatos.length) candidatos = [...reservas];
+    if (permitirReserva && reservas.length) candidatos = candidatos.concat(reservas.filter((r) => !candidatos.some((c) => c.id === r.id)));
+    const ordenados = prioritizeMecanicos(candidatos);
+    return pickNextMecanicoRoundRobin(ordenados);
+  };
+
+  const escolherAuxiliarParaReserva = () => {
+    const leo = auxiliares.find((u) => String(u.name || "").toLowerCase().includes("leo") || String(u.name || "").toLowerCase().includes("léo"));
+    return leo || auxiliares[0] || null;
+  };
+
+  if (grau === "BAIXA") {
+    const executor = auxiliares[0] || escolherMecanicoDia();
+    if (!executor) {
+      db.prepare(`UPDATE os SET status = 'AGUARDANDO_EQUIPE' WHERE id = ?`).run(Number(osId));
+      return { aguardando: true, aviso: "Sem executor disponível no turno diurno." };
+    }
+
+    db.transaction(() => {
+      db.prepare(`UPDATE os_execucoes SET finalizado_em = datetime('now') WHERE os_id = ? AND finalizado_em IS NULL`).run(Number(osId));
+      createExecucao(osId, executor.id, null, alocadoPorUserId, null, "DIA");
+      db.prepare(`UPDATE os SET status = ?, mecanico_user_id = ?, auxiliar_user_id = NULL WHERE id = ?`)
+        .run(emAndamentoStatus, Number(executor.id), Number(osId));
+    })();
+    return { aguardando: false, mecanico: { id: Number(executor.id), nome: executor.name }, auxiliar: null, turno: "DIA" };
+  }
+
+  const mecanico = escolherMecanicoDia();
+  if (!mecanico) {
     db.prepare(`UPDATE os SET status = 'AGUARDANDO_EQUIPE' WHERE id = ?`).run(Number(osId));
-    return { aguardando: true, aviso: "Sem executor disponível no turno." };
+    return { aguardando: true, aviso: "Sem mecânico disponível no turno diurno." };
+  }
+
+  let auxiliar = null;
+  if (Number(mecanico.eh_reserva || 0) === 1) {
+    auxiliar = escolherAuxiliarParaReserva();
+  } else {
+    const par = db.prepare(`
+      SELECT auxiliar_user_id
+      FROM os_pares_equipes
+      WHERE mecanico_user_id = ?
+        AND IFNULL(ativo,1) = 1
+      LIMIT 1
+    `).get(Number(mecanico.id));
+
+    if (par?.auxiliar_user_id) {
+      auxiliar = auxiliares.find((u) => Number(u.id) === Number(par.auxiliar_user_id)) || null;
+    }
+    if (!auxiliar) {
+      auxiliar = auxiliares.find((u) => Number(u.id) !== Number(mecanico.id)) || null;
+    }
   }
 
   db.transaction(() => {
     db.prepare(`UPDATE os_execucoes SET finalizado_em = datetime('now') WHERE os_id = ? AND finalizado_em IS NULL`).run(Number(osId));
-    createExecucao(osId, executor.id, null, alocadoPorUserId);
-    db.prepare(`UPDATE os SET status = ?, mecanico_user_id = ?, auxiliar_user_id = NULL WHERE id = ?`)
-      .run(emAndamentoStatus, Number(executor.id), Number(osId));
+    createExecucao(osId, mecanico.id, auxiliar?.id || null, alocadoPorUserId, null, "DIA");
+    db.prepare(`UPDATE os SET status = ?, mecanico_user_id = ?, auxiliar_user_id = ? WHERE id = ?`)
+      .run(emAndamentoStatus, Number(mecanico.id), auxiliar?.id ? Number(auxiliar.id) : null, Number(osId));
   })();
 
-  return { aguardando: false, mecanico: { id: Number(executor.id), nome: executor.name }, auxiliar: null };
+  return {
+    aguardando: false,
+    mecanico: { id: Number(mecanico.id), nome: mecanico.name },
+    auxiliar: auxiliar ? { id: Number(auxiliar.id), nome: auxiliar.name } : null,
+    turno: "DIA",
+  };
 }
 
 function setEquipeManual(osId, { mecanico_user_id, auxiliar_user_id }, userId) {
@@ -388,9 +485,11 @@ function setEquipeManual(osId, { mecanico_user_id, auxiliar_user_id }, userId) {
   const actor = userId ? db.prepare(`SELECT name FROM users WHERE id = ?`).get(Number(userId)) : null;
   const obs = actor?.name ? `Reatribuído por ${actor.name}` : "Reatribuído manualmente";
 
+  const turnoAlocacao = escalaService.getTurnoAtual?.() || null;
+
   db.transaction(() => {
     db.prepare(`UPDATE os_execucoes SET finalizado_em = datetime('now') WHERE os_id = ? AND finalizado_em IS NULL`).run(Number(osId));
-    createExecucao(osId, Number(mecanico_user_id), auxiliar_user_id ? Number(auxiliar_user_id) : null, userId, obs);
+    createExecucao(osId, Number(mecanico_user_id), auxiliar_user_id ? Number(auxiliar_user_id) : null, userId, obs, turnoAlocacao);
     db.prepare(`UPDATE os SET status='EM_ANDAMENTO', mecanico_user_id=?, auxiliar_user_id=? WHERE id = ?`)
       .run(Number(mecanico_user_id), auxiliar_user_id ? Number(auxiliar_user_id) : null, Number(osId));
   })();
@@ -507,6 +606,7 @@ function createOS({
   tipo,
   opened_by,
   grau,
+  permitir_reserva,
 }) {
   const desc = String(descricao || "").trim();
   if (!desc) throw new Error("Descrição obrigatória.");
@@ -589,6 +689,10 @@ function createOS({
   if (cols.includes("alertar_imediatamente")) {
     fields.push("alertar_imediatamente");
     values.push(score.alertar_imediatamente ? 1 : 0);
+  }
+  if (cols.includes("permitir_reserva")) {
+    fields.push("permitir_reserva");
+    values.push(Number(permitir_reserva || 0) ? 1 : 0);
   }
 
   const stmt = db.prepare(
