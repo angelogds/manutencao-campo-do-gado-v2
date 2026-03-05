@@ -98,28 +98,18 @@ function getPessoasDoTurnoAtual() {
     : ["diurno", "apoio", "plantao"];
 
   const placeholders = turnosPermitidos.map(() => "?").join(",");
-  const usersTable = tableExists("users");
+  const usersJoin = tableExists("users");
   const rows = db.prepare(`
-    SELECT
-      COALESCE(
-        c.user_id,
-        ${usersTable ? `(SELECT u2.id FROM users u2
-            WHERE lower(trim(u2.name)) = lower(trim(c.nome))
-              AND IFNULL(u2.ativo,1) = 1
-            ORDER BY u2.id
-            LIMIT 1)` : "NULL"}
-      ) AS user_id,
-      COALESCE(
-        ${usersTable ? "u.name" : "NULL"},
-        c.nome
-      ) AS nome,
-      c.funcao,
-      a.tipo_turno
+    SELECT c.user_id,
+           ${usersJoin ? "u.name" : "c.nome"} AS nome,
+           c.funcao,
+           a.tipo_turno
     FROM escala_alocacoes a
     JOIN colaboradores c ON c.id = a.colaborador_id
-    ${usersTable ? "LEFT JOIN users u ON u.id = c.user_id AND IFNULL(u.ativo,1) = 1" : ""}
+    ${usersJoin ? "LEFT JOIN users u ON u.id = c.user_id" : ""}
     WHERE a.semana_id = ?
       AND a.tipo_turno IN (${placeholders})
+      AND c.user_id IS NOT NULL
       AND IFNULL(c.ativo,1) = 1
     ORDER BY nome ASC
   `).all(semanaAtual.id, ...turnosPermitidos);
@@ -148,10 +138,7 @@ function isUserOcupado(userId) {
 }
 
 function getPlantonistaNoite() {
-  const pessoas = getPessoasDoTurnoAtual().filter((p) => p.funcao === "MECANICO" && p.user_id);
-  const noturno = pessoas.find((p) => p.tipo_turno === "NOTURNO");
-  if (noturno) return noturno;
-  return pessoas.find((p) => p.tipo_turno === "PLANTAO") || pessoas[0] || null;
+  return getPessoasDoTurnoAtual().find((p) => p.funcao === "MECANICO" && p.user_id) || null;
 }
 
 function listEquipamentosAtivos() {
