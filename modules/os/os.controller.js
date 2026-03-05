@@ -57,13 +57,6 @@ async function osCreate(req, res) {
       opened_by: req.session?.user?.id || null,
     });
 
-    const grauNormalizado = String(grau || '').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (["MEDIA", "ALTA", "CRITICA"].includes(grauNormalizado)) {
-      const alocacao = service.autoAssignEquipe(id, req.session?.user?.id || null);
-      if (alocacao?.aguardando) {
-        req.flash("error", alocacao.aviso);
-      }
-    }
 
     const fotosAbertura = mapFilesToPublic(req.files?.abertura_fotos || []);
     service.addFotosAberturaFechamento({
@@ -97,11 +90,13 @@ function osShow(req, res) {
 
   const role = normalizeRole(req.session?.user?.role || "");
   const canAutoAssign = ["ADMIN", "SUPERVISOR_MANUTENCAO", "MANUTENCAO_SUPERVISOR"].includes(role);
+  const equipeUsuarios = canAutoAssign ? service.listUsuariosEquipe() : [];
 
   return res.render("os/show", {
     title: `OS #${id}`,
     os,
     canAutoAssign,
+    equipeUsuarios,
     user: req.session?.user || null,
   });
 }
@@ -235,17 +230,33 @@ function osAutoAssign(req, res) {
   const id = Number(req.params.id);
   try {
     const result = service.autoAssignEquipe(id, req.session?.user?.id || null);
-    if (!result) {
-      req.flash("success", "OS de baixa complexidade: sem autoalocação de mecânico.");
-    } else if (result.aguardando) {
+    if (result?.aguardando) {
       req.flash("error", result.aviso);
     } else {
-      req.flash("success", `Equipe atribuída: ${result.mecanico.nome} + ${result.auxiliar.nome}.`);
+      const equipeTxt = result?.auxiliar?.nome
+        ? `${result.mecanico.nome} + ${result.auxiliar.nome}`
+        : result?.mecanico?.nome || "Executor alocado";
+      req.flash("success", `Equipe atribuída: ${equipeTxt}.`);
     }
   } catch (err) {
     req.flash("error", err.message || "Não foi possível sugerir a equipe.");
   }
-  return res.redirect(`/ordens-servico/${id}`);
+  return res.redirect(`/os/${id}`);
+}
+
+
+function osSetEquipe(req, res) {
+  const id = Number(req.params.id);
+  try {
+    service.setEquipeManual(id, {
+      mecanico_user_id: req.body.mecanico_user_id ? Number(req.body.mecanico_user_id) : null,
+      auxiliar_user_id: req.body.auxiliar_user_id ? Number(req.body.auxiliar_user_id) : null,
+    }, req.session?.user?.id || null);
+    req.flash("success", "Equipe atualizada com sucesso.");
+  } catch (err) {
+    req.flash("error", err.message || "Não foi possível atualizar a equipe.");
+  }
+  return res.redirect(`/os/${id}`);
 }
 
 module.exports = {
@@ -259,4 +270,5 @@ module.exports = {
   osClose,
   osUpdateStatus,
   osAutoAssign,
+  osSetEquipe,
 };

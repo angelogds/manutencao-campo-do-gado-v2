@@ -201,17 +201,16 @@
 
   <div class="dash-col">
 <section class="dashboard-card area-andamento">
-    <div class="dashboard-title">OS em andamento (por mecânico)</div>
+    <div class="dashboard-title">OS em andamento (equipe)</div>
     <div class="table-wrap"><table class="table compact">
-      <thead><tr><th>OS</th><th>Equipamento</th><th>Mecânico</th><th>Auxiliar</th></tr></thead>
+      <thead><tr><th>OS</th><th>Equipamento</th><th>Equipe</th></tr></thead>
       <tbody>
-        <% if (osAndamento.length === 0) { %><tr><td colspan="4" class="muted-xs">Nenhuma OS em andamento agora.</td></tr><% } %>
+        <% if (osAndamento.length === 0) { %><tr><td colspan="3" class="muted-xs">Nenhuma OS em andamento agora.</td></tr><% } %>
         <% osAndamento.forEach(function(o){ %>
           <tr>
             <td><a href="/os/<%= o.id %>">#<%= o.id %></a></td>
             <td><%= o.equipamento || '-' %></td>
-            <td><%= o.mecanico || '-' %></td>
-            <td><%= o.auxiliar || '-' %></td>
+            <td><%= o.auxiliar ? `${o.executor} + ${o.auxiliar}` : (o.executor || '-') %></td>
           </tr>
         <% }) %>
       </tbody>

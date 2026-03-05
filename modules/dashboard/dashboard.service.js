@@ -580,14 +580,14 @@ function getOSEmAndamento() {
     const grauExpr = resolveOSGrauExpression();
     return db.prepare(`
       SELECT o.id, COALESCE(e.nome, o.equipamento_manual, o.equipamento) AS equipamento, ${grauExpr} AS grau, o.status, o.opened_at,
-             COALESCE(m.name, 'Não atribuído') AS mecanico,
-             COALESCE(a.name, '-') AS auxiliar,
+             COALESCE(u.name, 'Não atribuído') AS executor,
+             COALESCE(ua.name, '') AS auxiliar,
              ex.iniciado_em
       FROM os o
       LEFT JOIN equipamentos e ON e.id = o.equipamento_id
       LEFT JOIN os_execucoes ex ON ex.os_id = o.id AND ex.finalizado_em IS NULL
-      LEFT JOIN users m ON m.id = o.mecanico_user_id
-      LEFT JOIN users a ON a.id = o.auxiliar_user_id
+      LEFT JOIN users u ON u.id = ex.mecanico_user_id
+      LEFT JOIN users ua ON ua.id = ex.auxiliar_user_id
       WHERE UPPER(COALESCE(o.status,'')) IN ('ANDAMENTO','EM_ANDAMENTO')
       ORDER BY datetime(COALESCE(ex.iniciado_em, o.opened_at)) DESC
       LIMIT 20
