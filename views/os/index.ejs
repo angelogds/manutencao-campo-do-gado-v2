@@ -143,6 +143,7 @@
           <th style="width:180px;">Solicitante</th>
           <th style="width:170px;">Abertura</th>
           <th style="width:170px;">Fechamento</th>
+          <th style="width:240px;">Executores</th>
           <th style="width:140px; text-align:right;">Ações</th>
         </tr>
       </thead>
@@ -190,6 +191,12 @@
             <td><%= o.opened_at ? fmtBR(o.opened_at) : "-" %></td>
 
             <td><%= o.closed_at ? fmtBR(o.closed_at) : "-" %></td>
+
+            <td>
+              <% if (["FECHADA","FINALIZADA","CONCLUIDA","CONCLUÍDA"].includes((o.status||'').toUpperCase())) { %>
+                <%= (o.mecanico_nome || '-') %> + <%= (o.auxiliar_nome || '-') %>
+              <% } else { %>-<% } %>
+            </td>
 
             <td style="text-align:right;">
               <a class="btn-sm" href="/os/<%= o.id %>">Abrir</a>

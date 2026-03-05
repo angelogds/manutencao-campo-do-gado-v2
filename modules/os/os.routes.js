@@ -8,7 +8,7 @@ const { requireLogin, requireRole } = require("../auth/auth.middleware");
 const ctrl = require("./os.controller");
 
 const OS_ACCESS = ["MANUTENCAO", "MECANICO", "PRODUCAO", "ENCARREGADO", "DIRECAO"];
-const OS_DETALHE_ACCESS = ["MANUTENCAO", "MECANICO"];
+const OS_DETALHE_ACCESS = ["MANUTENCAO", "MECANICO", "AUXILIAR", "ADMIN", "SUPERVISOR_MANUTENCAO", "MANUTENCAO_SUPERVISOR"];
 
 const uploadDir = path.join(__dirname, "../../public/uploads/os");
 fs.mkdirSync(uploadDir, { recursive: true });
