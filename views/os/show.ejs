@@ -41,7 +41,7 @@
       </div>
       <div><b>Status:</b> <%= os.status %></div>
       <% if (String(os.status || "").toUpperCase() === "AGUARDANDO_EQUIPE") { %>
-        <div style="grid-column:1/-1;color:#b91c1c;font-weight:700;">Sem mecânico disponível no turno: OS aguardando alocação.</div>
+        <div style="grid-column:1/-1;color:#b91c1c;font-weight:700;">Sem executor disponível no turno: OS aguardando alocação.</div>
       <% } %>
       <div><b>Abertura:</b> <%= os.opened_at ? fmtBR(os.opened_at) : '-' %></div>
       <div><b>Início:</b> <%= os.data_inicio ? fmtBR(os.data_inicio) : (os.execucao_iniciada_em ? fmtBR(os.execucao_iniciada_em) : '-') %></div>
@@ -52,6 +52,7 @@
         <% } %>
       </div>
       <div><b>Executor em andamento:</b> <%= os.execucao_ativa?.executor_nome || os.mecanico_nome || '-' %></div>
+      <div><b>Auxiliar em andamento:</b> <%= os.execucao_ativa?.auxiliar_nome || os.auxiliar_nome || '-' %></div>
     </div>
 
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:12px 0"/>
