@@ -46,7 +46,7 @@
       <div><b>Abertura:</b> <%= os.opened_at ? fmtBR(os.opened_at) : '-' %></div>
       <div><b>Início:</b> <%= os.data_inicio ? fmtBR(os.data_inicio) : (os.execucao_iniciada_em ? fmtBR(os.execucao_iniciada_em) : '-') %></div>
       <div><b>Conclusão:</b> <%= os.data_conclusao ? fmtBR(os.data_conclusao) : '-' %></div>
-      <div><b>Mecânico em andamento:</b> <%= os.mecanico_andamento_nome || '-' %></div>
+      <div><b>Executor em andamento:</b> <%= os.execucao_ativa?.executor_nome || os.mecanico_nome || '-' %></div>
     </div>
 
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:12px 0"/>
@@ -74,23 +74,41 @@
 
 <div class="card" style="margin-top:12px;">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-    <h3 style="margin:0;">Equipe atribuída</h3>
+    <h3 style="margin:0;">Equipe</h3>
     <% if (canAutoAssign) { %>
-      <form method="POST" action="/ordens-servico/<%= os.id %>/auto-assign">
+      <form method="POST" action="/os/<%= os.id %>/auto-assign">
         <button class="btn btn-primary" type="submit">Reatribuir automaticamente</button>
       </form>
     <% } %>
   </div>
 
-  <div class="muted" style="margin-top:6px;">Mecânico: <strong><%= os.mecanico_nome || '-' %></strong></div>
-  <div class="muted">Auxiliar: <strong><%= os.auxiliar_nome || '-' %></strong></div>
+  <div class="muted" style="margin-top:6px;">Executor: <strong><%= os.execucao_ativa?.executor_nome || os.mecanico_nome || '-' %></strong></div>
+  <div class="muted">Auxiliar: <strong><%= os.execucao_ativa?.auxiliar_nome || os.auxiliar_nome || '-' %></strong></div>
 
-  <% if (String(os.status || '').toUpperCase() === 'AGUARDANDO_EQUIPE') { %>
-    <div style="margin-top:10px;color:#b91c1c;font-weight:700;">Sem mecânico disponível no turno: OS aguardando alocação.</div>
-  <% } %>
-
-  <% if (isOSFechada) { %>
-    <div style="margin-top:10px;"><b>Executado por:</b> <%= os.mecanico_nome || '-' %> + <%= os.auxiliar_nome || '-' %></div>
+  <% if (canAutoAssign) { %>
+    <form method="POST" action="/os/<%= os.id %>/equipe" style="margin-top:10px;">
+      <div class="grid2">
+        <div>
+          <label>Executor</label>
+          <select class="input" name="mecanico_user_id" required>
+            <option value="">Selecione</option>
+            <% equipeUsuarios.forEach(function(u){ %>
+              <option value="<%= u.id %>" <%= Number(os.execucao_ativa?.mecanico_user_id || os.mecanico_user_id)===Number(u.id) ? 'selected' : '' %>><%= u.name %> (<%= u.funcao %>)</option>
+            <% }) %>
+          </select>
+        </div>
+        <div>
+          <label>Auxiliar</label>
+          <select class="input" name="auxiliar_user_id">
+            <option value="">Sem auxiliar</option>
+            <% equipeUsuarios.forEach(function(u){ %>
+              <option value="<%= u.id %>" <%= Number(os.execucao_ativa?.auxiliar_user_id || os.auxiliar_user_id)===Number(u.id) ? 'selected' : '' %>><%= u.name %> (<%= u.funcao %>)</option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:8px;"><button class="btn" type="submit">Salvar equipe</button></div>
+    </form>
   <% } %>
 </div>
 

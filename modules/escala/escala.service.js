@@ -625,6 +625,51 @@ function getPeriodoCompensacaoData(start, end) {
   };
 }
 
+
+function getUsersDoTurnoAtual({ prefer = "auto" } = {}) {
+  const hoje = isoToday();
+  const semana = db.prepare(`
+    SELECT id
+    FROM escala_semanas
+    WHERE ? BETWEEN data_inicio AND data_fim
+    LIMIT 1
+  `).get(hoje);
+
+  if (!semana?.id) return [];
+
+  const now = getNowSaoPauloParts();
+  const turnoAuto = now.hour >= 18 ? "noturno" : "diurno";
+  const pref = String(prefer || "auto").toLowerCase();
+  const turno = pref === "auto" ? turnoAuto : normalizeTurno(pref);
+
+  const rows = db.prepare(`
+    SELECT DISTINCT u.id, u.name, c.funcao, a.tipo_turno
+    FROM escala_alocacoes a
+    JOIN colaboradores c ON c.id = a.colaborador_id
+    JOIN users u ON u.id = c.user_id
+    WHERE a.semana_id = ?
+      AND a.tipo_turno IN ('diurno','noturno','apoio','plantao')
+      AND IFNULL(c.ativo,1) = 1
+      AND c.user_id IS NOT NULL
+      AND IFNULL(u.ativo,1) = 1
+  `).all(semana.id);
+
+  const turnoPermitido = new Set(
+    turno === "noturno"
+      ? ["noturno", "plantao"]
+      : ["diurno", "apoio", "plantao"]
+  );
+
+  return rows
+    .filter((r) => turnoPermitido.has(String(r.tipo_turno || "").toLowerCase()))
+    .map((r) => ({
+      id: Number(r.id),
+      name: r.name,
+      funcao: normalizeFuncao(r.funcao) || "operacional",
+    }))
+    .sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "pt-BR"));
+}
+
 function getDisponiveisAgora() {
   const turnoAtual = currentTurno();
   const hoje = isoToday();
@@ -710,6 +755,7 @@ module.exports = {
   getLinhasPeriodo,
   getEscalaSemanalPdfData,
   getPeriodoCompensacaoData,
+  getUsersDoTurnoAtual,
   getDisponiveisAgora,
   getMecanicosDoTurnoAtual,
   getAuxiliaresDoTurnoAtual,

@@ -49,6 +49,18 @@ function ensureEstoqueCategoriaColumn() {
   }
 }
 
+function addColumnIfMissing(table, column, ddl) {
+  if (!tableExists(table)) return;
+  if (columnExists(table, column)) return;
+  console.log(`🛠️ Hotfix: adicionando coluna '${column}' em ${table}...`);
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+}
+
+function ensureOSExecucoesAutoAlocacaoColumns() {
+  addColumnIfMissing("os_execucoes", "auxiliar_user_id", "auxiliar_user_id INTEGER REFERENCES users(id)");
+  addColumnIfMissing("os_execucoes", "alocado_por", "alocado_por INTEGER REFERENCES users(id)");
+}
+
 function ensureOSInspectionColumns() {
   if (!tableExists("os")) return;
   const needed = [
@@ -77,6 +89,10 @@ function applyOne(filename) {
     }
     if (filename === "104_os_inspecao_auto_fields.sql") {
       ensureOSInspectionColumns();
+    }
+
+    if (filename === "114_os_auto_alocacao.sql") {
+      ensureOSExecucoesAutoAlocacaoColumns();
     }
 
     if (isSql) {
@@ -108,7 +124,7 @@ function applyOne(filename) {
         throw new Error("Migration JS inválida: exporte função ou { up() }.");
       }
 
-      runMigration({ db, tableExists, columnExists });
+      runMigration({ db, tableExists, columnExists, addColumnIfMissing });
       markApplied(filename);
     } else {
       throw new Error(`Extensão de migration não suportada: ${filename}`);
