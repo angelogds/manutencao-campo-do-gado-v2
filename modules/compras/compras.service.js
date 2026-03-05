@@ -67,7 +67,7 @@ function listSolicitacoesPorStatus(filters = {}) {
     FROM solicitacoes s
     JOIN users u ON u.id = s.solicitante_user_id
     LEFT JOIN fornecedores f ON f.id = s.fornecedor_id
-    ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+    ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
     ORDER BY s.id DESC
   `).all(...params);
 }
@@ -135,7 +135,7 @@ function getHistoricoPrecos(solicitacaoId) {
 
 function getSolicitacaoDetalhe(id) {
   const sol = db.prepare(`
-    SELECT s.*, u.name AS solicitante_nome, u.role AS solicititante_role, e.nome AS equipamento_nome, f.nome AS fornecedor_nome
+    SELECT s.*, u.name AS solicitante_nome, u.role AS solicitante_role, e.nome AS equipamento_nome, f.nome AS fornecedor_nome
     FROM solicitacoes s
     JOIN users u ON u.id = s.solicitante_user_id
     LEFT JOIN equipamentos e ON e.id = s.equipamento_id
@@ -162,6 +162,16 @@ function getSolicitacaoDetalhe(id) {
     historicoPrecos: getHistoricoPrecos(id),
     cotacaoSelecionada: getCotacaoSelecionada(id),
   };
+}
+
+
+function listFornecedoresAtivos() {
+  return db.prepare(`
+    SELECT id, nome, cnpj, cidade
+    FROM fornecedores
+    WHERE ativo = 1
+    ORDER BY nome ASC
+  `).all();
 }
 
 function assumirSolicitacao(id, userId) {
@@ -218,11 +228,18 @@ function selecionarCotacao(solicitacaoId, cotacaoId) {
 
 function atualizarDados(id, dados) {
   const fornecedorId = dados.fornecedor_id ? Number(dados.fornecedor_id) : null;
-  const fornecedorSelecionado = fornecedorId ? db.prepare('SELECT id, nome FROM fornecedores WHERE id = ?').get(fornecedorId) : null;
+  const fornecedorSelecionado = fornecedorId
+    ? db.prepare('SELECT id, nome FROM fornecedores WHERE id = ?').get(fornecedorId)
+    : null;
 
   db.prepare(`
     UPDATE solicitacoes
-    SET fornecedor = ?, fornecedor_id = ?, previsao_entrega = ?, observacoes_compras = ?, valor_total = ?, updated_at = datetime('now')
+    SET fornecedor = ?,
+        fornecedor_id = ?,
+        previsao_entrega = ?,
+        observacoes_compras = ?,
+        valor_total = ?,
+        updated_at = datetime('now')
     WHERE id = ?
   `).run(
     fornecedorSelecionado?.nome || dados.fornecedor || null,
@@ -266,49 +283,27 @@ function marcarComprada(id, userId, dados = {}) {
   const cur = getSolicitacaoDetalhe(id);
   if (!cur || cur.status !== STATUS.EM_COTACAO) throw new Error('Somente EM_COTACAO pode virar COMPRADA.');
 
-  const cotacaoSelecionada = getCotacaoSelecionada(id);
-  if (!cotacaoSelecionada) throw new Error('Selecione uma cotação vencedora antes de marcar como COMPRADA.');
-
-  return db.transaction(() => {
-    const fornecedorNome = cotacaoSelecionada.fornecedor_cadastro_nome || cotacaoSelecionada.fornecedor_nome || dados.fornecedor || cur.fornecedor || null;
-    const fornecedorId = cotacaoSelecionada.fornecedor_id || (dados.fornecedor_id ? Number(dados.fornecedor_id) : cur.fornecedor_id || null);
-    const valor = Number(cotacaoSelecionada.valor_total || dados.valor_total || cur.valor_total || 0);
-
-    db.prepare(`
-      UPDATE solicitacoes
-      SET status = ?, compras_user_id = ?, comprada_em = datetime('now'), fornecedor = ?, fornecedor_id = ?,
-          previsao_entrega = ?, observacoes_compras = ?, valor_total = ?, updated_at = datetime('now')
-      WHERE id = ?
-    `).run(
-      STATUS.COMPRADA,
-      userId,
-      fornecedorNome,
-      fornecedorId,
-      dados.previsao_entrega || cotacaoSelecionada.prazo_entrega || cur.previsao_entrega || null,
-      dados.observacoes_compras || cotacaoSelecionada.observacao || cur.observacoes_compras || null,
-      valor || null,
-      id,
-    );
-
-    registrarHistoricoPrecos({ ...cur, id, fornecedor: fornecedorNome, fornecedor_id: fornecedorId, valor_total: valor }, cotacaoSelecionada);
-  })();
-}
-
-function salvarAnexo({ solicitacaoId, file, tipo, uploadedBy }) {
-  const filepath = file.path || path.join(process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads'), file.filename);
-  const info = db.prepare(`
-    INSERT INTO anexos (owner_type, owner_id, referencia_tipo, referencia_id, tipo, filename, filepath, original_name, mime_type, size, uploaded_by)
-    VALUES ('SOLICITACAO', ?, 'SOLICITACAO', ?, ?, ?, ?, ?, ?, ?, ?)
+  db.prepare(`
+    UPDATE solicitacoes
+    SET status = ?,
+        compras_user_id = ?,
+        comprada_em = datetime('now'),
+        fornecedor = ?,
+        fornecedor_id = ?,
+        previsao_entrega = ?,
+        observacoes_compras = ?,
+        valor_total = ?,
+        updated_at = datetime('now')
+    WHERE id = ?
   `).run(
-    solicitacaoId,
-    solicitacaoId,
-    tipo || 'COTACAO',
-    file.filename,
-    filepath,
-    file.originalname,
-    file.mimetype,
-    file.size,
-    uploadedBy || null,
+    STATUS.COMPRADA,
+    userId,
+    dados.fornecedor || cur.fornecedor || null,
+    dados.fornecedor_id ? Number(dados.fornecedor_id) : (cur.fornecedor_id || null),
+    dados.previsao_entrega || cur.previsao_entrega || null,
+    dados.observacoes_compras || cur.observacoes_compras || null,
+    dados.valor_total ? Number(dados.valor_total) : cur.valor_total || null,
+    id
   );
   return info.lastInsertRowid;
 }
@@ -396,4 +391,5 @@ module.exports = {
   getAnexoById,
   deleteAnexo,
   gerarPdf,
+  listFornecedoresAtivos,
 };

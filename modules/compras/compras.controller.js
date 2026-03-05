@@ -17,16 +17,18 @@ function lista(req, res) {
   if (req.query.export === 'excel') {
     const escapeCsv = (value) => `"${String(value == null ? '' : value).replace(/"/g, '""')}"`;
     const lines = [
-      ['Número', 'Título', 'Status', 'Fornecedor', 'Solicitante', 'Setor', 'Criada em'].join(','),
-      ...lista.map((s) => [
-        escapeCsv(s.numero || `#${s.id}`),
-        escapeCsv(s.titulo || '-'),
-        escapeCsv(s.status || '-'),
-        escapeCsv(s.fornecedor_nome || s.fornecedor || '-'),
-        escapeCsv(s.solicitante_nome || '-'),
-        escapeCsv(s.setor_origem || '-'),
-        escapeCsv(s.created_at || '-'),
-      ].join(',')),
+      ["Número", "Título", "Status", "Fornecedor", "Solicitante", "Setor", "Criada em"].join(","),
+      ...lista.map((s) =>
+        [
+          escapeCsv(s.numero || `#${s.id}`),
+          escapeCsv(s.titulo || "-"),
+          escapeCsv(s.status || "-"),
+          escapeCsv(s.fornecedor_nome || s.fornecedor || "-"),
+          escapeCsv(s.solicitante_nome || "-"),
+          escapeCsv(s.setor_origem || "-"),
+          escapeCsv(s.created_at || "-"),
+        ].join(",")
+      ),
     ];
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename=solicitacoes_${Date.now()}.csv`);
@@ -45,36 +47,9 @@ function lista(req, res) {
 
 function detalhe(req, res) {
   const sol = service.getSolicitacaoDetalhe(Number(req.params.id));
-  if (!sol) return res.status(404).send('Solicitação não encontrada');
-
-  return res.render('compras/solicitacoes/show', {
-    title: `Compras ${sol.numero || `#${sol.id}`}`,
-    activeMenu: 'compras',
-    sol,
-    fornecedores: service.listFornecedoresAtivos(),
-  });
-}
-
-function pdf(req, res) {
-  try {
-    const id = Number(req.params.id);
-    service.iniciarCotacaoViaPdf(id, req.session.user.id);
-    const sol = service.getSolicitacaoDetalhe(id);
-    if (!sol) return res.status(404).send('Solicitação não encontrada');
-    return service.gerarPdf(sol, res);
-  } catch (error) {
-    return res.status(400).send(error.message || 'Falha ao gerar PDF.');
-  }
-}
-
-function criarCotacao(req, res) {
-  try {
-    service.createCotacao(Number(req.params.id), req.body);
-    req.flash('success', 'Cotação cadastrada com sucesso.');
-  } catch (error) {
-    req.flash('error', error.message || 'Não foi possível cadastrar cotação.');
-  }
-  return res.redirect(`/compras/solicitacoes/${req.params.id}`);
+  if (!sol) return res.status(404).send("Solicitação não encontrada");
+  const fornecedores = service.listFornecedoresAtivos();
+  res.render("compras/solicitacoes/show", { title: `Compras ${sol.numero}`, activeMenu: "compras", sol, fornecedores });
 }
 
 function selecionarCotacao(req, res) {
