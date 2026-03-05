@@ -56,13 +56,72 @@ function columnExists(table, col) {
   }
 }
 
+function resolveUsersTable() {
+  if (tableExists('usuarios')) {
+    const nameCol = columnExists('usuarios', 'nome') ? 'nome' : 'name';
+    const roleCol = columnExists('usuarios', 'role') ? 'role' : (columnExists('usuarios', 'perfil') ? 'perfil' : null);
+    return { table: 'usuarios', nameCol, roleCol };
+  }
+  const roleCol = columnExists('users', 'role') ? 'role' : null;
+  return { table: 'users', nameCol: 'name', roleCol };
+}
+
+function buildSolicitacaoItensSelect() {
+  const hasItemNome = columnExists('solicitacao_itens', 'item_nome');
+  const hasDescricao = columnExists('solicitacao_itens', 'descricao');
+  const hasItemDescricao = columnExists('solicitacao_itens', 'item_descricao');
+  const hasQtdSolicitada = columnExists('solicitacao_itens', 'qtd_solicitada');
+  const hasQuantidade = columnExists('solicitacao_itens', 'quantidade');
+  const hasEstoqueItemId = columnExists('solicitacao_itens', 'estoque_item_id');
+  const hasItemId = columnExists('solicitacao_itens', 'item_id');
+
+  const itemNomeExpr = hasItemNome
+    ? "COALESCE(si.item_nome, ei.nome)"
+    : hasDescricao
+      ? "COALESCE(si.descricao, ei.nome)"
+      : 'COALESCE(ei.nome, NULL)';
+  const itemDescExpr = hasItemDescricao
+    ? hasDescricao
+      ? "COALESCE(si.item_descricao, si.descricao)"
+      : 'si.item_descricao'
+    : hasDescricao
+      ? 'si.descricao'
+      : 'NULL';
+  const qtdExpr = hasQtdSolicitada
+    ? hasQuantidade
+      ? "COALESCE(si.qtd_solicitada, si.quantidade, 0)"
+      : 'COALESCE(si.qtd_solicitada, 0)'
+    : hasQuantidade
+      ? 'COALESCE(si.quantidade, 0)'
+      : '0';
+  const itemJoinExpr = hasEstoqueItemId
+    ? hasItemId
+      ? 'COALESCE(si.estoque_item_id, si.item_id)'
+      : 'si.estoque_item_id'
+    : hasItemId
+      ? 'si.item_id'
+      : 'NULL';
+
+  return {
+    itemNomeExpr,
+    itemDescExpr,
+    qtdExpr,
+    itemJoinExpr,
+  };
+}
+
 function listSolicitacoesPorStatus(filters = {}) {
+  const usersRef = resolveUsersTable();
+  const hasFornecedorCol = columnExists('solicitacoes', 'fornecedor');
+  const hasFornecedorIdCol = columnExists('solicitacoes', 'fornecedor_id');
+  const hasFornecedoresTable = tableExists('fornecedores');
   const where = [];
   const params = [];
   const status = normalizeStatus(filters.status);
   if (status) { where.push('s.status = ?'); params.push(status); }
   if (filters.query) {
-    where.push("(LOWER(s.numero) LIKE ? OR LOWER(s.titulo) LIKE ? OR LOWER(COALESCE(s.fornecedor, '')) LIKE ? OR LOWER(COALESCE(f.nome, '')) LIKE ?)");
+    const fornecedorExpr = hasFornecedorCol ? "COALESCE(s.fornecedor, '')" : "''";
+    where.push(`(LOWER(s.numero) LIKE ? OR LOWER(s.titulo) LIKE ? OR LOWER(${fornecedorExpr}) LIKE ? OR LOWER(COALESCE(f.nome, '')) LIKE ?)`);
     const q = `%${String(filters.query).trim().toLowerCase()}%`;
     params.push(q, q, q, q);
   }
@@ -70,10 +129,10 @@ function listSolicitacoesPorStatus(filters = {}) {
   if (filters.endDate) { where.push('date(s.created_at) <= date(?)'); params.push(filters.endDate); }
 
   return db.prepare(`
-    SELECT s.*, u.name AS solicitante_nome, f.nome AS fornecedor_nome
+    SELECT s.*, u.${usersRef.nameCol} AS solicitante_nome, ${hasFornecedorIdCol && hasFornecedoresTable ? 'f.nome' : 'NULL'} AS fornecedor_nome
     FROM solicitacoes s
-    JOIN users u ON u.id = s.solicitante_user_id
-    LEFT JOIN fornecedores f ON f.id = s.fornecedor_id
+    JOIN ${usersRef.table} u ON u.id = s.solicitante_user_id
+    ${hasFornecedorIdCol && hasFornecedoresTable ? 'LEFT JOIN fornecedores f ON f.id = s.fornecedor_id' : ''}
     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
     ORDER BY s.id DESC
   `).all(...params);
@@ -87,11 +146,20 @@ function getResumoSolicitacoes() {
 }
 
 function listFornecedoresAtivos() {
+  if (!tableExists('fornecedores')) return [];
   return db.prepare('SELECT id, nome, cnpj, cidade FROM fornecedores WHERE ativo = 1 ORDER BY nome ASC').all();
 }
 
 function listCotacoes(solicitacaoId) {
   if (!tableExists('compras_cotacoes')) return [];
+  if (!tableExists('fornecedores')) {
+    return db.prepare(`
+      SELECT c.*, NULL AS fornecedor_cadastro_nome, NULL AS cnpj
+      FROM compras_cotacoes c
+      WHERE c.solicitacao_id = ?
+      ORDER BY c.id DESC
+    `).all(solicitacaoId);
+  }
   return db.prepare(`
     SELECT c.*, f.nome AS fornecedor_cadastro_nome, f.cnpj
     FROM compras_cotacoes c
@@ -103,24 +171,35 @@ function listCotacoes(solicitacaoId) {
 
 function listAnexosSolicitacao(solicitacaoId) {
   if (!tableExists('anexos')) return [];
+  const usersRef = resolveUsersTable();
 
   const hasOwnerType = columnExists('anexos', 'owner_type');
   const hasOwnerId = columnExists('anexos', 'owner_id');
 
   const baseSelect = `
-    SELECT a.*, u.name AS uploaded_by_nome
+    SELECT a.*, u.${usersRef.nameCol} AS uploaded_by_nome
     FROM anexos a
-    LEFT JOIN users u ON u.id = a.uploaded_by
+    LEFT JOIN ${usersRef.table} u ON u.id = a.uploaded_by
   `;
 
   if (hasOwnerType && hasOwnerId) {
+    if (columnExists('anexos', 'referencia_tipo') && columnExists('anexos', 'referencia_id')) {
+      return db.prepare(`
+        ${baseSelect}
+        WHERE (a.referencia_tipo='SOLICITACAO' AND a.referencia_id=?)
+           OR (a.owner_type='SOLICITACAO' AND a.owner_id=?)
+        ORDER BY a.id DESC
+      `).all(solicitacaoId, solicitacaoId);
+    }
+
     return db.prepare(`
       ${baseSelect}
-      WHERE (a.referencia_tipo='SOLICITACAO' AND a.referencia_id=?)
-         OR (a.owner_type='SOLICITACAO' AND a.owner_id=?)
+      WHERE (a.owner_type='SOLICITACAO' AND a.owner_id=?)
       ORDER BY a.id DESC
-    `).all(solicitacaoId, solicitacaoId);
+    `).all(solicitacaoId);
   }
+
+  if (!columnExists('anexos', 'referencia_tipo') || !columnExists('anexos', 'referencia_id')) return [];
 
   return db.prepare(`
     ${baseSelect}
@@ -131,6 +210,14 @@ function listAnexosSolicitacao(solicitacaoId) {
 
 function getCotacaoSelecionada(solicitacaoId) {
   if (!tableExists('compras_cotacoes')) return null;
+  if (!tableExists('fornecedores')) {
+    return db.prepare(`
+      SELECT c.*, NULL AS fornecedor_cadastro_nome
+      FROM compras_cotacoes c
+      WHERE c.solicitacao_id = ? AND c.selecionada = 1
+      ORDER BY c.id DESC LIMIT 1
+    `).get(solicitacaoId);
+  }
   return db.prepare(`
     SELECT c.*, f.nome AS fornecedor_cadastro_nome
     FROM compras_cotacoes c
@@ -142,6 +229,15 @@ function getCotacaoSelecionada(solicitacaoId) {
 
 function getHistoricoPrecos(solicitacaoId) {
   if (!tableExists('historico_precos')) return [];
+  if (!tableExists('fornecedores')) {
+    return db.prepare(`
+      SELECT hp.*, NULL AS fornecedor_cadastro_nome
+      FROM historico_precos hp
+      WHERE hp.solicitacao_id = ?
+      ORDER BY datetime(COALESCE(hp.data_compra, hp.rowid)) DESC
+      LIMIT 5
+    `).all(solicitacaoId);
+  }
   return db.prepare(`
     SELECT hp.*, f.nome AS fornecedor_cadastro_nome
     FROM historico_precos hp
@@ -153,21 +249,35 @@ function getHistoricoPrecos(solicitacaoId) {
 }
 
 function getSolicitacaoDetalhe(id) {
+  const usersRef = resolveUsersTable();
+  const solicitanteRoleSelect = usersRef.roleCol ? `u.${usersRef.roleCol}` : 'NULL';
+  const hasEquipamentoIdCol = columnExists('solicitacoes', 'equipamento_id');
+  const hasFornecedorIdCol = columnExists('solicitacoes', 'fornecedor_id');
+  const hasEquipamentosTable = tableExists('equipamentos');
+  const hasFornecedoresTable = tableExists('fornecedores');
   const sol = db.prepare(`
-    SELECT s.*, u.name AS solicitante_nome, u.role AS solicitante_role, e.nome AS equipamento_nome, f.nome AS fornecedor_nome
+    SELECT s.*, u.${usersRef.nameCol} AS solicitante_nome, ${solicitanteRoleSelect} AS solicitante_role,
+           ${hasEquipamentoIdCol && hasEquipamentosTable ? 'e.nome' : 'NULL'} AS equipamento_nome,
+           ${hasFornecedorIdCol && hasFornecedoresTable ? 'f.nome' : 'NULL'} AS fornecedor_nome
     FROM solicitacoes s
-    JOIN users u ON u.id = s.solicitante_user_id
-    LEFT JOIN equipamentos e ON e.id = s.equipamento_id
-    LEFT JOIN fornecedores f ON f.id = s.fornecedor_id
+    JOIN ${usersRef.table} u ON u.id = s.solicitante_user_id
+    ${hasEquipamentoIdCol && hasEquipamentosTable ? 'LEFT JOIN equipamentos e ON e.id = s.equipamento_id' : ''}
+    ${hasFornecedorIdCol && hasFornecedoresTable ? 'LEFT JOIN fornecedores f ON f.id = s.fornecedor_id' : ''}
     WHERE s.id = ?
   `).get(id);
   if (!sol) return null;
 
+  const itensSelect = buildSolicitacaoItensSelect();
+
+  if (!tableExists('solicitacao_itens')) {
+    return { ...sol, itens: [], cotacoes: [], anexos: [], historicoPrecos: [], cotacaoSelecionada: null };
+  }
+
   const itens = db.prepare(`
-    SELECT si.*, COALESCE(si.item_nome, ei.nome) AS item_nome, COALESCE(si.item_descricao, si.descricao) AS item_descricao,
-           COALESCE(si.qtd_solicitada, si.quantidade, 0) AS qtd_solicitada
+    SELECT si.*, ${itensSelect.itemNomeExpr} AS item_nome, ${itensSelect.itemDescExpr} AS item_descricao,
+           ${itensSelect.qtdExpr} AS qtd_solicitada
     FROM solicitacao_itens si
-    LEFT JOIN estoque_itens ei ON ei.id = COALESCE(si.estoque_item_id, si.item_id)
+    LEFT JOIN estoque_itens ei ON ei.id = ${itensSelect.itemJoinExpr}
     WHERE si.solicitacao_id = ?
     ORDER BY si.id
   `).all(id);
