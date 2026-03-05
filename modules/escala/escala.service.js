@@ -41,6 +41,18 @@ function normalizeFuncao(funcao) {
   return "";
 }
 
+function roleToFuncao(role) {
+  const r = String(role || "").trim().toUpperCase();
+  if (r === "MECANICO") return "MECANICO";
+  return "AUXILIAR";
+}
+
+function currentTurno() {
+  const now = new Date();
+  const mins = (now.getHours() * 60) + now.getMinutes();
+  return mins >= (7 * 60) && mins < (19 * 60) ? "diurno" : "noturno";
+}
+
 function funcaoLabel(funcao) {
   if (funcao === "mecanico") return "Mecânico";
   if (funcao === "auxiliar") return "Auxiliar";
@@ -594,6 +606,65 @@ function getPeriodoCompensacaoData(start, end) {
   };
 }
 
+function getDisponiveisAgora() {
+  const turnoAtual = currentTurno();
+  const hoje = isoToday();
+  const usersCols = tableExists("users") ? db.prepare(`PRAGMA table_info(users)`).all().map((c) => c.name) : [];
+
+  const hasUserFuncao = usersCols.includes("funcao");
+  const hasUserAtivo = usersCols.includes("ativo");
+  const hasUserTurno = usersCols.includes("turno");
+
+  const escalaConfiavel = tableExists("escala_semanas") && tableExists("escala_alocacoes") && tableExists("colaboradores");
+  if (escalaConfiavel) {
+    const rows = db.prepare(`
+      SELECT DISTINCT u.id,
+             COALESCE(u.name, c.nome) AS name,
+             UPPER(COALESCE(NULLIF(${hasUserFuncao ? "u.funcao" : "''"}, ''),
+               CASE
+                 WHEN lower(c.funcao)='mecanico' THEN 'MECANICO'
+                 WHEN lower(c.funcao)='operacional' THEN 'MONTADOR'
+                 ELSE 'AUXILIAR'
+               END,
+               'AUXILIAR')) AS funcao,
+             1 AS disponivel_agora
+      FROM escala_semanas s
+      JOIN escala_alocacoes a ON a.semana_id = s.id
+      JOIN colaboradores c ON c.id = a.colaborador_id AND IFNULL(c.ativo, 1) = 1
+      JOIN users u ON u.id = c.user_id
+      WHERE ? BETWEEN s.data_inicio AND s.data_fim
+        AND a.tipo_turno IN (?, 'apoio')
+        ${hasUserAtivo ? "AND IFNULL(u.ativo, 1) = 1" : ""}
+      ORDER BY name ASC
+    `).all(hoje, turnoAtual);
+
+    if (rows.length) return rows;
+  }
+
+  if (hasUserTurno) {
+    return db.prepare(`
+      SELECT id,
+             name,
+             UPPER(COALESCE(NULLIF(${hasUserFuncao ? "funcao" : "''"}, ''), CASE WHEN role = 'MECANICO' THEN 'MECANICO' ELSE 'AUXILIAR' END)) AS funcao,
+             1 AS disponivel_agora
+      FROM users
+      WHERE ${hasUserAtivo ? "IFNULL(ativo,1)=1" : "1=1"}
+        AND lower(COALESCE(turno, '')) IN (?, 'apoio')
+      ORDER BY name ASC
+    `).all(turnoAtual);
+  }
+
+  return db.prepare(`
+    SELECT id,
+           name,
+           UPPER(COALESCE(NULLIF(${hasUserFuncao ? "funcao" : "''"}, ''), ?)) AS funcao,
+           1 AS disponivel_agora
+    FROM users
+    WHERE ${hasUserAtivo ? "IFNULL(ativo,1)=1" : "1=1"}
+    ORDER BY name ASC
+  `).all(roleToFuncao(null));
+}
+
 
 module.exports = {
   getPublicacoes,
@@ -609,6 +680,7 @@ module.exports = {
   getLinhasPeriodo,
   getEscalaSemanalPdfData,
   getPeriodoCompensacaoData,
+  getDisponiveisAgora,
   normalizeTurno,
   normalizeFuncao,
 };
