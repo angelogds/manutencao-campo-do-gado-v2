@@ -5,7 +5,6 @@ const fs = require("fs");
 const router = express.Router();
 
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
-const { ACCESS } = require("../../config/rbac");
 const ctrl = require("./os.controller");
 
 const OS_ACCESS = ["MANUTENCAO", "MECANICO", "PRODUCAO", "ENCARREGADO", "DIRECAO"];
@@ -68,5 +67,6 @@ router.post(
 );
 
 router.post("/:id/status", requireLogin, requireRole(OS_DETALHE_ACCESS), wrap(ctrl.osUpdateStatus, "osUpdateStatus"));
+router.post("/:id/auto-assign", requireLogin, requireRole(["ADMIN", "SUPERVISOR_MANUTENCAO", "MANUTENCAO_SUPERVISOR"]), wrap(ctrl.osAutoAssign, "osAutoAssign"));
 
 module.exports = router;

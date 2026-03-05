@@ -164,6 +164,7 @@ mount("/push", "./modules/push/push.routes");
 mount("/pcm", "./modules/pcm/pcm.routes");
 mount("/equipamentos", "./modules/equipamentos/equipamentos.routes");
 mount("/os", "./modules/os/os.routes");
+mount("/ordens-servico", "./modules/os/os.routes");
 mount("/preventivas", "./modules/preventivas/preventivas.routes");
 mount("/compras", "./modules/compras/compras.routes");
 mount("/fornecedores", "./modules/fornecedores/fornecedores.routes");
