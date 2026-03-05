@@ -1,5 +1,6 @@
 const service = require("./os.service");
 const pushService = require("../push/push.service");
+const { normalizeRole } = require("../../config/rbac");
 
 function mapFilesToPublic(files = []) {
   return (files || []).map((f) => ({
@@ -86,9 +87,13 @@ function osShow(req, res) {
 
   if (!os) return res.status(404).render("errors/404", { title: "Não encontrado" });
 
+  const role = normalizeRole(req.session?.user?.role || "");
+  const canAutoAssign = ["ADMIN", "SUPERVISOR_MANUTENCAO", "MANUTENCAO_SUPERVISOR"].includes(role);
+
   return res.render("os/show", {
     title: `OS #${id}`,
     os,
+    canAutoAssign,
     user: req.session?.user || null,
   });
 }
@@ -218,6 +223,19 @@ async function osUpdateStatus(req, res) {
   }
 }
 
+function osAutoAssign(req, res) {
+  const id = Number(req.params.id);
+  try {
+    const result = service.autoAssign(id);
+    const nomes = (result.equipe || []).map((m) => m.name).join(", ");
+    if (nomes) req.flash("success", `Equipe sugerida: ${nomes}.`);
+    if ((result.avisos || []).length) req.flash("error", result.avisos.join(" "));
+  } catch (err) {
+    req.flash("error", err.message || "Não foi possível sugerir a equipe.");
+  }
+  return res.redirect(`/ordens-servico/${id}`);
+}
+
 module.exports = {
   osIndex,
   osNewForm,
@@ -228,4 +246,5 @@ module.exports = {
   osPausar,
   osClose,
   osUpdateStatus,
+  osAutoAssign,
 };

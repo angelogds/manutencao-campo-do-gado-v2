@@ -3,6 +3,7 @@ const { classifyOSPriority } = require("./os-priority.service");
 const alertsHub = require("../alerts/alerts.hub");
 const alertsService = require("../alerts/alerts.service");
 const pushService = require("../push/push.service");
+const escalaService = require("../escala/escala.service");
 let inspecaoService = null;
 try {
   inspecaoService = require("../inspecao/inspecao.service");
@@ -130,6 +131,25 @@ function listPecasUtilizadas(osId) {
   }
 }
 
+function listAlocacoesEquipe(osId) {
+  if (!tableExists("os_alocacoes")) return [];
+  return db
+    .prepare(
+      `SELECT oa.id,
+              oa.os_id,
+              oa.user_id,
+              oa.papel,
+              oa.created_at,
+              u.name,
+              UPPER(COALESCE(NULLIF(${getTableColumns('users').includes('funcao') ? 'u.funcao' : "''"}, ''), CASE WHEN UPPER(u.role)='MECANICO' THEN 'MECANICO' ELSE 'AUXILIAR' END)) AS funcao
+       FROM os_alocacoes oa
+       JOIN users u ON u.id = oa.user_id
+       WHERE oa.os_id = ?
+       ORDER BY CASE oa.papel WHEN 'RESPONSAVEL' THEN 0 ELSE 1 END, oa.id ASC`
+    )
+    .all(osId);
+}
+
 function getOSById(id) {
   const os = db
     .prepare(
@@ -146,7 +166,134 @@ function getOSById(id) {
     fotos_abertura: listAnexos(id, "ABERTURA"),
     fotos_fechamento: listAnexos(id, "FECHAMENTO"),
     pecas_utilizadas: listPecasUtilizadas(id),
+    alocacoes_equipe: listAlocacoesEquipe(id),
   };
+}
+
+function mapNecessidade({ grau, categoriaServico }) {
+  const complexidade = String(grau || "MEDIA").trim().toUpperCase();
+  const categoria = String(categoriaServico || "").trim().toUpperCase();
+
+  const needsByComplexidade = {
+    BAIXA: ["MONTADOR"],
+    MEDIA: ["MECANICO", "AUXILIAR"],
+    ALTA: ["MECANICO", "AUXILIAR"],
+    CRITICA: ["MECANICO", "MECANICO", "AUXILIAR"],
+  };
+
+  const required = [...(needsByComplexidade[complexidade] || needsByComplexidade.MEDIA)];
+  if (["SOLDAGEM", "CALDEIRA", "HIDRAULICA_PESADA"].includes(categoria) && required[0] !== "MECANICO") {
+    required[0] = "MECANICO";
+  }
+
+  return required;
+}
+
+function normalizeFuncaoEquipe(funcao, role) {
+  const f = String(funcao || "").trim().toUpperCase();
+  if (["MECANICO", "MONTADOR", "AUXILIAR"].includes(f)) return f;
+  return String(role || "").trim().toUpperCase() === "MECANICO" ? "MECANICO" : "AUXILIAR";
+}
+
+function autoAssign(osId, { preferUserId = null } = {}) {
+  if (!tableExists("os_alocacoes")) throw new Error("Tabela de alocações não encontrada. Rode as migrations.");
+
+  const osCols = getOSColumns();
+  const categoriaExpr = osCols.includes('categoria_servico') ? 'categoria_servico' : "NULL AS categoria_servico";
+  const os = db
+    .prepare(`SELECT id, status, grau, ${categoriaExpr} FROM os WHERE id = ?`)
+    .get(Number(osId));
+  if (!os) throw new Error("OS não encontrada.");
+
+  const necessidade = mapNecessidade({ grau: os.grau, categoriaServico: os.categoria_servico });
+  let candidatos = (escalaService.getDisponiveisAgora() || []).map((u) => ({
+    ...u,
+    funcao: normalizeFuncaoEquipe(u.funcao, u.role),
+  }));
+
+  const ocupados = new Set(
+    db
+      .prepare(
+        `SELECT DISTINCT oa.user_id
+         FROM os_alocacoes oa
+         JOIN os o ON o.id = oa.os_id
+         WHERE UPPER(COALESCE(o.status, '')) IN ('EM_ANDAMENTO', 'ANDAMENTO', 'ABERTA')`
+      )
+      .all()
+      .map((r) => Number(r.user_id))
+  );
+
+  candidatos = candidatos.filter((u) => !ocupados.has(Number(u.id)));
+  if (!candidatos.length) return { equipe: [], avisos: ["Sem pessoas disponíveis no turno."] };
+
+  const cargaRows = db
+    .prepare(
+      `SELECT oa.user_id, COUNT(*) AS total
+       FROM os_alocacoes oa
+       JOIN os o ON o.id = oa.os_id
+       WHERE UPPER(COALESCE(o.status, '')) IN ('EM_ANDAMENTO', 'ANDAMENTO', 'ABERTA')
+       GROUP BY oa.user_id`
+    )
+    .all();
+  const cargas = new Map(cargaRows.map((r) => [Number(r.user_id), Number(r.total || 0)]));
+
+  candidatos.sort((a, b) => {
+    const pa = preferUserId && Number(a.id) === Number(preferUserId) ? -1 : 0;
+    const pb = preferUserId && Number(b.id) === Number(preferUserId) ? -1 : 0;
+    if (pa !== pb) return pa - pb;
+    const ca = cargas.get(Number(a.id)) || 0;
+    const cb = cargas.get(Number(b.id)) || 0;
+    if (ca !== cb) return ca - cb;
+    return String(a.name || "").localeCompare(String(b.name || ""), "pt-BR");
+  });
+
+  const escolhidos = [];
+  const avisos = [];
+  const used = new Set();
+
+  const pick = (wanted) => {
+    const direct = candidatos.find((c) => !used.has(c.id) && c.funcao === wanted);
+    if (direct) return direct;
+    if (wanted === "MONTADOR") {
+      return candidatos.find((c) => !used.has(c.id) && c.funcao === "AUXILIAR") || null;
+    }
+    return null;
+  };
+
+  for (const perfil of necessidade) {
+    const p = pick(perfil);
+    if (!p) {
+      if (perfil === "MECANICO") avisos.push("Sem mecânico disponível no turno.");
+      else if (perfil === "MONTADOR") avisos.push("Sem montador/auxiliar disponível no turno.");
+      else avisos.push("Sem auxiliar disponível no turno.");
+      continue;
+    }
+    used.add(p.id);
+    escolhidos.push({ ...p, wanted: perfil });
+  }
+
+  const tx = db.transaction(() => {
+    db.prepare(`DELETE FROM os_alocacoes WHERE os_id = ?`).run(Number(osId));
+
+    const insert = db.prepare(`
+      INSERT INTO os_alocacoes (os_id, user_id, papel, created_at)
+      VALUES (?, ?, ?, datetime('now'))
+    `);
+
+    const responsavelId = (escolhidos.find((s) => s.funcao === "MECANICO") || escolhidos[0] || {}).id || null;
+
+    for (const pessoa of escolhidos) {
+      const papel = Number(pessoa.id) === Number(responsavelId) ? "RESPONSAVEL" : "AUXILIAR";
+      insert.run(Number(osId), Number(pessoa.id), papel);
+    }
+
+    if (responsavelId && getOSColumns().includes("responsavel_user_id")) {
+      db.prepare(`UPDATE os SET responsavel_user_id = ? WHERE id = ?`).run(Number(responsavelId), Number(osId));
+    }
+  });
+  tx();
+
+  return { equipe: listAlocacoesEquipe(Number(osId)), avisos };
 }
 
 function listOS() {
@@ -572,4 +719,5 @@ module.exports = {
   pausarOS,
   concluirOS,
   updateStatus,
+  autoAssign,
 };

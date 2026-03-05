@@ -68,39 +68,22 @@ function resolveUsersTable() {
 
 function buildSolicitacaoItensSelect() {
   const hasItemNome = columnExists('solicitacao_itens', 'item_nome');
-  const hasDescricao = columnExists('solicitacao_itens', 'descricao');
   const hasItemDescricao = columnExists('solicitacao_itens', 'item_descricao');
   const hasQtdSolicitada = columnExists('solicitacao_itens', 'qtd_solicitada');
-  const hasQuantidade = columnExists('solicitacao_itens', 'quantidade');
   const hasEstoqueItemId = columnExists('solicitacao_itens', 'estoque_item_id');
-  const hasItemId = columnExists('solicitacao_itens', 'item_id');
 
   const itemNomeExpr = hasItemNome
     ? "COALESCE(si.item_nome, ei.nome)"
-    : hasDescricao
-      ? "COALESCE(si.descricao, ei.nome)"
-      : 'COALESCE(ei.nome, NULL)';
+    : "COALESCE(si.descricao, ei.nome)";
   const itemDescExpr = hasItemDescricao
-    ? hasDescricao
-      ? "COALESCE(si.item_descricao, si.descricao)"
-      : 'si.item_descricao'
-    : hasDescricao
-      ? 'si.descricao'
-      : 'NULL';
+    ? "COALESCE(si.item_descricao, si.descricao)"
+    : 'si.descricao';
   const qtdExpr = hasQtdSolicitada
-    ? hasQuantidade
-      ? "COALESCE(si.qtd_solicitada, si.quantidade, 0)"
-      : 'COALESCE(si.qtd_solicitada, 0)'
-    : hasQuantidade
-      ? 'COALESCE(si.quantidade, 0)'
-      : '0';
+    ? "COALESCE(si.qtd_solicitada, si.quantidade, 0)"
+    : 'COALESCE(si.quantidade, 0)';
   const itemJoinExpr = hasEstoqueItemId
-    ? hasItemId
-      ? 'COALESCE(si.estoque_item_id, si.item_id)'
-      : 'si.estoque_item_id'
-    : hasItemId
-      ? 'si.item_id'
-      : 'NULL';
+    ? 'COALESCE(si.estoque_item_id, si.item_id)'
+    : 'si.item_id';
 
   return {
     itemNomeExpr,
@@ -268,10 +251,6 @@ function getSolicitacaoDetalhe(id) {
   if (!sol) return null;
 
   const itensSelect = buildSolicitacaoItensSelect();
-
-  if (!tableExists('solicitacao_itens')) {
-    return { ...sol, itens: [], cotacoes: [], anexos: [], historicoPrecos: [], cotacaoSelecionada: null };
-  }
 
   const itens = db.prepare(`
     SELECT si.*, ${itensSelect.itemNomeExpr} AS item_nome, ${itensSelect.itemDescExpr} AS item_descricao,
