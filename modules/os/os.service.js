@@ -249,7 +249,7 @@ function autoAssignEquipe(osId, alocadoPorUserId) {
 
   if (!mecanicosDisponiveis.length) {
     db.prepare(`UPDATE os SET status = 'AGUARDANDO_EQUIPE' WHERE id = ?`).run(Number(osId));
-    return { aguardando: true, aviso: "Sem mecânico disponível no turno (possível indisponibilidade por horário): OS aguardando alocação" };
+    return { aguardando: true, aviso: "Sem mecânico disponível no turno: OS aguardando alocação" };
   }
 
   const ultimoMecanicoId = Number(getConfig("ultimo_mecanico_id") || 0) || null;
