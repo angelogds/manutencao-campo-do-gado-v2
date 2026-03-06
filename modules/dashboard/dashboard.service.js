@@ -173,6 +173,19 @@ function getMotoresResumoDashboard() {
   });
 }
 
+
+function normalizeFuncaoColaborador(funcao) {
+  const raw = String(funcao || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toLowerCase();
+  if (raw.includes('mecan')) return 'mecanico';
+  if (raw.includes('operacional') || raw.includes('apoio')) return 'operacional';
+  if (raw.includes('auxiliar')) return 'auxiliar';
+  return raw;
+}
+
 function getEscalaPainelSemana() {
   return safeGet(() => {
     const semana = db
@@ -255,11 +268,15 @@ function getEscalaPainelSemana() {
       }
     });
 
+    const noturnoResponsavel = alocacoes.find((a) => a.tipo_turno === "plantao" && normalizeFuncaoColaborador(a.funcao) === "mecanico")
+      || alocacoes.find((a) => a.tipo_turno === "noturno" && normalizeFuncaoColaborador(a.funcao) === "mecanico")
+      || null;
+
     return {
       ...semana,
-      diurno_mecanicos: alocacoes.filter((a) => a.tipo_turno === "diurno"),
+      diurno_mecanicos: alocacoes.filter((a) => a.tipo_turno === "diurno" && normalizeFuncaoColaborador(a.funcao) === "mecanico"),
       apoio_operacional: alocacoes.filter((a) => a.tipo_turno === "apoio"),
-      noturno: alocacoes.filter((a) => a.tipo_turno === "noturno"),
+      noturno: noturnoResponsavel ? [noturnoResponsavel] : [],
       folgas_afastamentos: Array.from(folgasAfastamentosMap.values()),
     };
   }, null);
