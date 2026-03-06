@@ -24,74 +24,61 @@ function r2(v) {
 }
 
 function calcRoscaHelicoidal({ D, d, P }) {
-  const Dn = Number(D);
-  const dn = Number(d);
-  const Pn = Number(P);
+  const ext = toNum(D);
+  const interno = toNum(d);
+  const passo = toNum(P);
 
-  const R1 = Dn / 2;
-  const R2 = dn / 2;
-  const C = (Math.PI * (R1 + R2)) / 2;
-  const T = Math.sqrt((Math.PI * (R1 + R2)) ** 2 + Pn ** 2);
+  const R1 = ext / 2;
+  const R2 = interno / 2;
+  const C = Math.PI * ((ext + interno) / 2);
+  const T = Math.sqrt(Math.max(C ** 2 + passo ** 2, 0));
+  const planificacao = passo > 0 ? (360 * C) / passo : 0;
 
   return {
-    entrada: { D: Dn, d: dn, P: Pn },
-    resultado: {
-      R1: Number(R1.toFixed(2)),
-      R2: Number(R2.toFixed(2)),
-      C: Number(C.toFixed(2)),
-      T: Number(T.toFixed(2)),
-    },
-    observacoes: [
-      'Cálculo aproximado para planificação de rosca helicoidal.',
-    ],
+    R1: r2(R1),
+    R2: r2(R2),
+    C: r2(C),
+    T: r2(T),
+    planificacao: r2(planificacao),
+    observacao_tecnica: 'Valores aproximados para marcação de rosca helicoidal em chaparia.',
   };
 }
 
-function calcFuracaoFlange({ D, N, furos }) {
-  const Dn = Number(D);
-  const Nn = Number(N || furos);
+function calcFuracaoFlange({ D, furos }) {
+  const diametro = toNum(D);
+  const nFuros = Math.max(parseInt(furos, 10) || 0, 1);
+  const divisaoAngular = 360 / nFuros;
+  const raio = diametro / 2;
 
-  const raio = Dn / 2;
-  const angulo = 360 / Nn;
-
-  const listaFuros = [];
-  for (let i = 0; i < Nn; i += 1) {
-    listaFuros.push({
-      furo: i + 1,
-      angulo: Number((i * angulo).toFixed(2)),
-    });
-  }
+  const posicionamento = Array.from({ length: nFuros }, (_, i) => ({
+    furo: i + 1,
+    angulo_graus: Number((i * divisaoAngular).toFixed(2)),
+    x: Number((Math.cos((i * divisaoAngular * Math.PI) / 180) * raio).toFixed(2)),
+    y: Number((Math.sin((i * divisaoAngular * Math.PI) / 180) * raio).toFixed(2)),
+  }));
 
   return {
-    entrada: { D: Dn, N: Nn },
-    resultado: {
-      raio: Number(raio.toFixed(2)),
-      anguloEntreFuros: Number(angulo.toFixed(2)),
-      furos: listaFuros,
-    },
-    observacoes: [
-      'Furos distribuídos uniformemente na circunferência.',
-    ],
+    divisao_angular: r2(divisaoAngular),
+    raio_de_marcacao: r2(raio),
+    posicionamento,
+    observacao_tecnica: 'Distribuir os furos em gabarito para garantir concentricidade.',
   };
 }
 
 function calcCilindro({ D, h, E }) {
-  const Dn = Number(D);
-  const hn = Number(h);
-  const En = Number(E || 0);
+  const diametro = toNum(D);
+  const altura = toNum(h);
+  const espessura = toNum(E);
 
-  const comprimento = Math.PI * Dn;
-  const area = comprimento * hn;
+  const desenvolvimento = Math.PI * diametro;
+  const comprimentoChapa = desenvolvimento + (2 * espessura);
+  const area = desenvolvimento * altura;
 
   return {
-    entrada: { D: Dn, h: hn, E: En },
-    resultado: {
-      comprimento: Number(comprimento.toFixed(2)),
-      area: Number(area.toFixed(2)),
-    },
-    observacoes: [
-      'Comprimento calculado sem folga de solda.',
-    ],
+    desenvolvimento: r2(desenvolvimento),
+    comprimento_chapa: r2(comprimentoChapa),
+    area_aproximada: r2(area),
+    observacao_tecnica: 'Considerar folga para solda e ajuste conforme processo de calandragem.',
   };
 }
 
@@ -170,7 +157,7 @@ function calcBocaDeLoboExcentrica({ dPrincipal, dDerivacao, deslocamento }) {
   };
 }
 
-function calcBocaDeLoboAngulo({ dPrincipal, dDerivacao }, fator = 1) {
+function calcBocaDeLoboAngulo({ dPrincipal, dDerivacao, fator }) {
   const D = toNum(dPrincipal);
   const d = toNum(dDerivacao);
   const intersecao = (Math.PI * d) * fator;
@@ -182,20 +169,16 @@ function calcBocaDeLoboAngulo({ dPrincipal, dDerivacao }, fator = 1) {
   };
 }
 
-function calcMaoFrancesa({ base, altura, largura, comprimento }) {
-  const b = Number(base ?? largura);
-  const h = Number(altura ?? comprimento);
-
-  const diagonal = Math.sqrt((b * b) + (h * h));
-
+function calcMaoFrancesa({ diametro, comprimento }) {
+  const d = toNum(diametro);
+  const c = toNum(comprimento);
+  const aba = d * 0.15;
+  const desenvolvimento = (Math.PI * d) + (2 * aba);
   return {
-    entrada: { base: b, altura: h },
-    resultado: {
-      diagonal: Number(diagonal.toFixed(2)),
-    },
-    observacoes: [
-      'Comprimento da barra diagonal da mão francesa.',
-    ],
+    aba_lateral: r2(aba),
+    desenvolvimento_total: r2(desenvolvimento),
+    comprimento: r2(c),
+    observacao_tecnica: 'Perfil mão francesa para suporte e reforço de equipamentos.',
   };
 }
 
@@ -336,10 +319,6 @@ function listOSAbertas() {
 
 module.exports = {
   TIPOS,
-  calcRoscaHelicoidal,
-  calcFuracaoFlange,
-  calcCilindro,
-  calcMaoFrancesa,
   calcularPorTipo,
   salvar,
   getById,

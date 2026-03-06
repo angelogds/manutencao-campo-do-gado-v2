@@ -30,17 +30,8 @@
       <div class="muted">Preencha os campos e clique em calcular.</div>
     <% } else { %>
       <div style="font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;max-height:280px;overflow:auto;">
-        <pre style="margin:0;"><%= JSON.stringify(calculo.resultado?.resultado || calculo.resultado, null, 2) %></pre>
+        <pre style="margin:0;"><%= JSON.stringify(calculo.resultado, null, 2) %></pre>
       </div>
-
-      <% if ((calculo.resultado?.observacoes || []).length) { %>
-        <div class="muted" style="margin-top:8px;"><b>Observações</b></div>
-        <ul style="margin-top:4px;">
-          <% (calculo.resultado.observacoes || []).forEach((obs) => { %>
-            <li><%= obs %></li>
-          <% }) %>
-        </ul>
-      <% } %>
       <form method="POST" action="/tracagem/salvar" style="margin-top:10px;display:grid;gap:8px;">
         <input class="input" name="titulo" placeholder="Título da traçagem" required />
         <div>
