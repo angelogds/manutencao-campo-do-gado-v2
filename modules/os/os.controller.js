@@ -57,8 +57,7 @@ async function osCreate(req, res) {
       opened_by: req.session?.user?.id || null,
     });
 
-    service.autoAssignOS(id, req.session?.user?.id || null);
-
+    const autoResult = service.autoAlocarOS(id);
 
     const fotosAbertura = mapFilesToPublic(req.files?.abertura_fotos || []);
     service.addFotosAberturaFechamento({
@@ -74,8 +73,12 @@ async function osCreate(req, res) {
       url: `/os/${id}`,
     }).catch(() => {});
 
-    req.flash("success", `OS #${id} criada com sucesso.`);
-    return res.redirect("/os");
+    if (autoResult?.aguardando) {
+      req.flash("success", "OS criada, aguardando equipe — clique em Reatribuir automaticamente.");
+    } else {
+      req.flash("success", "OS criada e equipe alocada automaticamente.");
+    }
+    return res.redirect(`/os/${id}`);
   } catch (err) {
     console.error("❌ osCreate:", err);
     req.flash("error", err.message || "Erro ao salvar a OS.");
@@ -91,13 +94,23 @@ function osShow(req, res) {
   if (!os) return res.status(404).render("errors/404", { title: "Não encontrado" });
 
   const role = normalizeRole(req.session?.user?.role || "");
-  const canAutoAssign = ["ADMIN", "SUPERVISOR_MANUTENCAO", "MANUTENCAO_SUPERVISOR"].includes(role);
-  const equipeUsuarios = canAutoAssign ? service.listUsuariosEquipe() : [];
+  const canManageEquipe = ["ADMIN", "SUPERVISOR_MANUTENCAO", "MANUTENCAO_SUPERVISOR"].includes(role);
+
+  let osAtual = os;
+  if (String(osAtual.status || "").toUpperCase() === "AGUARDANDO_EQUIPE" || !osAtual.executor_colaborador_id) {
+    try {
+      service.autoAlocarOS(id);
+      osAtual = service.getOSById(id) || osAtual;
+    } catch (_err) {}
+  }
+
+  const equipeUsuarios = canManageEquipe ? service.listUsuariosEquipe() : [];
 
   return res.render("os/show", {
     title: `OS #${id}`,
-    os,
-    canAutoAssign,
+    os: osAtual,
+    canAutoAssign: canManageEquipe,
+    canManualEditEquipe: canManageEquipe,
     equipeUsuarios,
     user: req.session?.user || null,
   });
@@ -231,13 +244,13 @@ async function osUpdateStatus(req, res) {
 function osAutoAssign(req, res) {
   const id = Number(req.params.id);
   try {
-    const result = service.autoAssignEquipe(id, req.session?.user?.id || null);
+    const result = service.autoAlocarOS(id, { force: true });
     if (result?.aguardando) {
       req.flash("error", result.aviso);
     } else {
       const equipeTxt = result?.auxiliar?.nome
-        ? `${result.mecanico.nome} + ${result.auxiliar.nome}`
-        : result?.mecanico?.nome || "Executor alocado";
+        ? `${result.executor?.nome || result.mecanico?.nome} + ${result.auxiliar.nome}`
+        : result?.executor?.nome || result?.mecanico?.nome || "Executor alocado";
       req.flash("success", `Equipe atribuída: ${equipeTxt}.`);
     }
   } catch (err) {
@@ -251,8 +264,8 @@ function osSetEquipe(req, res) {
   const id = Number(req.params.id);
   try {
     service.setEquipeManual(id, {
-      mecanico_user_id: req.body.mecanico_user_id ? Number(req.body.mecanico_user_id) : null,
-      auxiliar_user_id: req.body.auxiliar_user_id ? Number(req.body.auxiliar_user_id) : null,
+      executor_colaborador_id: req.body.executor_colaborador_id ? Number(req.body.executor_colaborador_id) : null,
+      auxiliar_colaborador_id: req.body.auxiliar_colaborador_id ? Number(req.body.auxiliar_colaborador_id) : null,
     }, req.session?.user?.id || null);
     req.flash("success", "Equipe atualizada com sucesso.");
   } catch (err) {
