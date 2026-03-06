@@ -1,0 +1,31 @@
+<%
+  const A = Number(entrada?.A || 0);
+  const h = Number(entrada?.h || 0);
+  const E = Number(entrada?.E || 0);
+  const C = Number(resultado?.C || 0);
+  const alpha = Number(resultado?.alpha || 0);
+%>
+<svg viewBox="0 0 800 500" role="img" aria-label="Desenho de mão francesa e planificação" style="width:100%;max-width:860px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;">
+  <defs>
+    <marker id="arrowMao" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0f172a" />
+    </marker>
+  </defs>
+
+  <text x="50" y="42" font-size="22" font-weight="700" fill="#0f172a">Mão francesa - peça montada</text>
+  <rect x="80" y="110" width="220" height="16" fill="#cbd5e1" />
+  <rect x="80" y="110" width="16" height="220" fill="#cbd5e1" />
+  <line x1="96" y1="320" x2="300" y2="126" stroke="#334155" stroke-width="12" stroke-linecap="round" />
+
+  <line x1="80" y1="352" x2="300" y2="352" stroke="#0f172a" marker-start="url(#arrowMao)" marker-end="url(#arrowMao)" />
+  <text x="160" y="376" font-size="15">A = <%= A.toFixed(2) %> mm</text>
+
+  <line x1="42" y1="110" x2="42" y2="330" stroke="#0f172a" marker-start="url(#arrowMao)" marker-end="url(#arrowMao)" />
+  <text x="10" y="230" transform="rotate(-90 10,230)" font-size="15">h = <%= h.toFixed(2) %> mm</text>
+
+  <text x="390" y="42" font-size="22" font-weight="700" fill="#0f172a">Planificação da barra</text>
+  <rect x="390" y="150" width="290" height="30" fill="#f1f5f9" stroke="#334155" stroke-width="2" rx="4" />
+  <text x="470" y="142" font-size="15">C = <%= C.toFixed(2) %> mm</text>
+  <text x="395" y="210" font-size="15">E = <%= E.toFixed(2) %> mm</text>
+  <text x="395" y="235" font-size="15">α = <%= alpha.toFixed(2) %>°</text>
+</svg>
