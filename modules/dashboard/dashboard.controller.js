@@ -5,10 +5,9 @@ const alertsService = require('../alerts/alerts.service');
 const webPushService = require('../notifications/webpush.service');
 
 function index(req, res) {
-  const page = Math.max(Number(req.query.page) || 1, 1);
   const cards = service.getCards();
   const osResumo = service.getOSResumoStatus();
-  const osPainel = service.getOSPainel(page, 10);
+  const osPainel = service.getOSPainel(15);
   const osEmAndamento = service.getOSEmAndamento();
   const historicoEquipamentos = service.getHistoricoEquipamentos(10);
   const motoresResumo = service.getMotoresResumoDashboard();

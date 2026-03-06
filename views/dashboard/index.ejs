@@ -139,7 +139,7 @@
       <table class="table compact">
         <thead><tr><th>#</th><th>Equipamento</th><th>Grau</th><th>Status</th><th>Abertura</th><th>Fechamento</th><th style="text-align:right;">Ações</th></tr></thead>
         <tbody>
-          <% if (osItems.length === 0) { %><tr><td colspan="7" style="text-align:center; color:#6b7280;">Nenhuma OS cadastrada.</td></tr><% } %>
+          <% if (osItems.length === 0) { %><tr><td colspan="7" style="text-align:center; color:#6b7280;">Nenhuma OS aberta ou em andamento.</td></tr><% } %>
           <% osItems.forEach(function(o) { var prio = String(o.grau || o.prioridade || 'MEDIA').toUpperCase(); var rowClass = (prio === 'CRITICO' || prio === 'CRÍTICO' || prio === 'ALTO' || prio === 'EMERGENCIAL') ? 'os-row-critico' : ((prio === 'MEDIO' || prio === 'MÉDIO' || prio === 'MEDIA') ? 'os-row-medio' : 'os-row-leve'); %>
             <tr class="<%= rowClass %>">
               <td><%= o.id %></td>
@@ -167,12 +167,7 @@
       </table>
     </div>
     <div class="pagination">
-      <div class="muted-xs">Mostrando <strong><%= osItems.length || 0 %></strong> de <strong><%= safeOSPainel.total || 0 %></strong>.</div>
-      <div style="display:flex; gap:6px;">
-        <% if (safeOSPainel.hasPrev) { %><a class="btn-outline" href="/dashboard?page=<%= safeOSPainel.page - 1 %>">Anterior</a><% } %>
-        <span class="btn-outline" style="pointer-events:none; opacity:.8;">Página <%= safeOSPainel.page || 1 %> de <%= safeOSPainel.totalPages || 1 %></span>
-        <% if (safeOSPainel.hasNext) { %><a class="btn-outline" href="/dashboard?page=<%= safeOSPainel.page + 1 %>">Próxima</a><% } %>
-      </div>
+      <div class="muted-xs">Mostrando <strong><%= osItems.length || 0 %></strong> OS ativas (limite de <strong><%= safeOSPainel.pageSize || 15 %></strong> no painel). Fechadas ficam apenas no histórico do equipamento.</div>
     </div>
   </section>
 
@@ -205,13 +200,21 @@
     <div class="table-wrap"><table class="table compact">
       <thead><tr><th>OS</th><th>Equipamento</th><th>Equipe</th><th>Status</th></tr></thead>
       <tbody>
-        <% if (osAndamento.length === 0) { %><tr><td colspan="4" class="muted-xs">Nenhuma OS em andamento agora.</td></tr><% } %>
+        <% if (osAndamento.length === 0) { %><tr><td colspan="4" class="muted-xs">Nenhuma OS atribuída à equipe no momento.</td></tr><% } %>
         <% osAndamento.forEach(function(o){ %>
           <tr>
             <td><a href="/os/<%= o.id %>">#<%= o.id %></a></td>
             <td><%= o.equipamento || '-' %></td>
-            <td><%= o.auxiliar ? `${o.executor} + ${o.auxiliar}` : (o.executor || '-') %></td>
-            <td><span class="pill-tag pill-gray"><%= o.status || '-' %></span></td>
+            <td><%= o.equipe || '-' %></td>
+            <td>
+              <% if ((o.status || '').toUpperCase() === 'ABERTA') { %>
+                <span class="pill-tag pill-amber">ABERTA</span>
+              <% } else if ((o.status || '').toUpperCase() === 'ANDAMENTO' || (o.status || '').toUpperCase() === 'EM_ANDAMENTO') { %>
+                <span class="pill-tag pill-blue">ANDAMENTO</span>
+              <% } else { %>
+                <span class="pill-tag pill-gray"><%= o.status || '-' %></span>
+              <% } %>
+            </td>
           </tr>
         <% }) %>
       </tbody>
