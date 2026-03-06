@@ -97,7 +97,7 @@ function osShow(req, res) {
   const canManageEquipe = ["ADMIN", "SUPERVISOR_MANUTENCAO", "MANUTENCAO_SUPERVISOR"].includes(role);
 
   let osAtual = os;
-  if (String(osAtual.status || "").toUpperCase() === "AGUARDANDO_EQUIPE" || !osAtual.executor_colaborador_id) {
+  if (String(osAtual.status || "").toUpperCase() === "AGUARDANDO_EQUIPE" && !osAtual.executor_colaborador_id) {
     try {
       service.autoAssignOS(id, req.session?.user?.id || null);
       osAtual = service.getOSById(id) || osAtual;
