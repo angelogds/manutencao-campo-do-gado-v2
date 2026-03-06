@@ -459,7 +459,7 @@ function getTurnoAgora() {
   const h = Number(partMap.hour || 0);
   const m = Number(partMap.minute || 0);
   const min = (h * 60) + m;
-  return (min >= (19 * 60) || min < (5 * 60)) ? "NOITE" : "DIA";
+  return (min >= (19 * 60) || min < (7 * 60)) ? "NOITE" : "DIA";
 }
 
 function getPlantonista(semanaId) {
@@ -474,6 +474,18 @@ function getPlantonista(semanaId) {
       AND IFNULL(c.ativo,1) = 1
     ORDER BY c.nome ASC
   `).all(Number(semanaId)).find((row) => normalizeColaboradorFuncao(row.funcao) === "MECANICO") || null;
+}
+
+function getMecanicosDiurno() {
+  const semana = getSemanaAtual();
+  if (!semana?.id) return [];
+  return getEscalados(semana.id, "diurno", ["MECANICO"]);
+}
+
+function getApoioDiurno() {
+  const semana = getSemanaAtual();
+  if (!semana?.id) return [];
+  return getEscalados(semana.id, "apoio", ["APOIO", "AUXILIAR"]);
 }
 
 function getEscalados(semanaId, tipoTurno, funcoes = []) {
@@ -532,6 +544,11 @@ function listarOcupados() {
     }
   }
   return ocupados;
+}
+
+function isColaboradorOcupado(colaboradorId) {
+  if (!colaboradorId) return false;
+  return listarOcupados().has(Number(colaboradorId));
 }
 
 function persistirAlocacaoOS(osId, executor, auxiliar, turno, modo = "AUTO") {
@@ -604,13 +621,15 @@ function autoAlocarOS(osId, { force = false } = {}) {
   const cols = getOSColumns();
   const os = db.prepare(`
     SELECT id, grau, status,
-           ${cols.includes("executor_colaborador_id") ? "executor_colaborador_id" : "NULL AS executor_colaborador_id"}
+           ${cols.includes("executor_colaborador_id") ? "executor_colaborador_id" : "NULL AS executor_colaborador_id"},
+           ${cols.includes("mecanico_user_id") ? "mecanico_user_id" : "NULL AS mecanico_user_id"},
+           ${cols.includes("turno_alocado") ? "turno_alocado" : "NULL AS turno_alocado"}
     FROM os
     WHERE id = ?
   `).get(Number(osId));
 
   if (!os) throw new Error("OS não encontrada.");
-  if (os.executor_colaborador_id && !force) {
+  if ((os.executor_colaborador_id || os.mecanico_user_id) && !force) {
     return { aguardando: false, turno: os.turno_alocado || null, aviso: "OS já possui executor alocado." };
   }
 
@@ -628,7 +647,7 @@ function autoAlocarOS(osId, { force = false } = {}) {
     if (!plantonista?.id) {
       return marcarAguardandoEquipe(osId, turno, "Sem mecânico plantonista configurado na semana atual.");
     }
-    if (ocupados.has(Number(plantonista.id))) {
+    if (isColaboradorOcupado(Number(plantonista.id))) {
       return marcarAguardandoEquipe(osId, turno, "Plantonista ocupado no momento. OS aguardando equipe.");
     }
 
@@ -636,8 +655,8 @@ function autoAlocarOS(osId, { force = false } = {}) {
     return { aguardando: false, turno: "NOITE", executor: { id: Number(plantonista.id), nome: plantonista.nome }, auxiliar: null };
   }
 
-  const apoioDisponivel = getEscalados(semanaAtual.id, "apoio", ["APOIO", "AUXILIAR"]).filter((c) => !ocupados.has(Number(c.id)));
-  const mecanicosDisponiveis = getEscalados(semanaAtual.id, "diurno", ["MECANICO"]).filter((c) => !ocupados.has(Number(c.id)));
+  const apoioDisponivel = getApoioDiurno().filter((c) => !ocupados.has(Number(c.id)));
+  const mecanicosDisponiveis = getMecanicosDiurno().filter((c) => !ocupados.has(Number(c.id)));
 
   if (grau === "BAIXA") {
     const executor = apoioDisponivel[0] || mecanicosDisponiveis[0];
@@ -1220,7 +1239,10 @@ module.exports = {
   getSemanaAtual,
   getPessoasDoTurnoAtual,
   isUserOcupado,
+  isColaboradorOcupado,
   getPlantonistaNoite,
+  getMecanicosDiurno,
+  getApoioDiurno,
   getPlantonista,
   listarOcupados,
   autoAlocarOS,
