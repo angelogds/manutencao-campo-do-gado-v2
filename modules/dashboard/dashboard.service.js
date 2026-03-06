@@ -315,11 +315,17 @@ function getOSResumoStatus() {
   }, { abertas: 0, andamento: 0, fechadas: 0 });
 }
 
-function getOSPainel(page = 1, pageSize = 10) {
+function getOSPainel(limit = 15) {
   return safeGet(() => {
-    const pagina = Math.max(Number(page) || 1, 1);
-    const tamanho = Math.min(Math.max(Number(pageSize) || 10, 1), 50);
-    const offset = (pagina - 1) * tamanho;
+    const tamanho = Math.min(Math.max(Number(limit) || 15, 1), 50);
+    const osCols = tableExists("os") ? db.prepare("PRAGMA table_info(os)").all().map((c) => c.name) : [];
+    const orderCol = osCols.includes("abertura")
+      ? "o.abertura"
+      : osCols.includes("opened_at")
+      ? "o.opened_at"
+      : osCols.includes("created_at")
+      ? "o.created_at"
+      : "o.id";
 
     const total =
       db
@@ -327,6 +333,7 @@ function getOSPainel(page = 1, pageSize = 10) {
           `
           SELECT COUNT(*) AS total
           FROM os
+          WHERE UPPER(COALESCE(status,'')) IN ('ABERTA','ANDAMENTO','EM_ANDAMENTO','PAUSADA')
         `
         )
         .get()?.total || 0;
@@ -349,31 +356,22 @@ function getOSPainel(page = 1, pageSize = 10) {
           FROM os o
           LEFT JOIN equipamentos e ON e.id = o.equipamento_id
           LEFT JOIN users u ON u.id = o.opened_by
-          ORDER BY o.id ASC
-          LIMIT ? OFFSET ?
+          WHERE UPPER(COALESCE(o.status,'')) IN ('ABERTA','ANDAMENTO','EM_ANDAMENTO','PAUSADA')
+          ORDER BY datetime(${orderCol}) DESC
+          LIMIT ?
         `
       )
-      .all(tamanho, offset);
-
-    const totalPages = Math.max(Math.ceil(total / tamanho), 1);
+      .all(tamanho);
 
     return {
       items: itens,
       total,
-      page: pagina,
       pageSize: tamanho,
-      totalPages,
-      hasPrev: pagina > 1,
-      hasNext: pagina < totalPages,
     };
   }, {
     items: [],
     total: 0,
-    page: 1,
-    pageSize: 10,
-    totalPages: 1,
-    hasPrev: false,
-    hasNext: false,
+    pageSize: 15,
   });
 }
 
