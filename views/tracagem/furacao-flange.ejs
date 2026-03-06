@@ -1,0 +1,14 @@
+<% layout('layout') %>
+<%- include('tracagem/_calc_base', { 
+  titulo: 'Furação de flange',
+  tipo,
+  action: '/tracagem/furacao-flange/calcular',
+  desenho: '⚙️ Flange circular',
+  campos: [
+    { name: 'D', label: 'D (diâmetro)', type: 'number', step: '0.01' },
+    { name: 'furos', label: 'Número de furos', type: 'number', step: '1' },
+  ],
+  calculo,
+  equipamentos,
+  ordensServico
+}) %>
