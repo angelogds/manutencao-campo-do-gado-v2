@@ -57,12 +57,7 @@ async function osCreate(req, res) {
       opened_by: req.session?.user?.id || null,
     });
 
-    let autoResult = null;
-    try {
-      autoResult = service.autoAssignOS(id, req.session?.user?.id || null);
-    } catch (e) {
-      console.error("❌ autoAssignOS:", e && e.stack ? e.stack : e);
-    }
+    const autoResult = service.autoAssignOS(id, req.session?.user?.id || null);
 
     const fotosAbertura = mapFilesToPublic(req.files?.abertura_fotos || []);
     service.addFotosAberturaFechamento({
@@ -105,10 +100,8 @@ function osShow(req, res) {
   if (String(osAtual.status || "").toUpperCase() === "AGUARDANDO_EQUIPE" && !osAtual.executor_colaborador_id) {
     try {
       service.autoAssignOS(id, req.session?.user?.id || null);
-    } catch (e) {
-      console.error("❌ autoAssignOS(osShow):", e && e.stack ? e.stack : e);
-    }
-    osAtual = service.getOSById(id) || osAtual;
+      osAtual = service.getOSById(id) || osAtual;
+    } catch (_err) {}
   }
 
   const equipeUsuarios = canManageEquipe ? service.listUsuariosEquipe() : [];
