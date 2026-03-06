@@ -1,0 +1,15 @@
+<% layout('layout') %>
+<%- include('_calc_base', { 
+  titulo: 'Rosca helicoidal',
+  tipo,
+  action: '/tracagem/rosca-helicoidal/calcular',
+  desenho: '🌀 Passo helicoidal',
+  campos: [
+    { name: 'D', label: 'D (diâmetro externo)', type: 'number', step: '0.01' },
+    { name: 'd', label: 'd (diâmetro interno)', type: 'number', step: '0.01' },
+    { name: 'P', label: 'P (passo)', type: 'number', step: '0.01' },
+  ],
+  calculo,
+  equipamentos,
+  ordensServico
+}) %>
