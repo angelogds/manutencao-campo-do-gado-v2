@@ -79,6 +79,24 @@
 </div>
 
 
+
+<div class="card" style="margin-top:12px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+    <h3 style="margin:0;">Traçagens vinculadas</h3>
+    <a class="btn btn-green" href="/tracagem?os_id=<%= os.id %>">Abrir Traçagem</a>
+  </div>
+  <div class="muted">Cálculos de caldeiraria relacionados a esta OS.</div>
+  <ul style="margin-top:8px;">
+    <% if (!(tracagens||[]).length) { %>
+      <li class="muted">Nenhuma traçagem vinculada.</li>
+    <% } %>
+    <% (tracagens||[]).forEach((t) => { %>
+      <li><a href="/tracagem/<%= t.id %>">#<%= t.id %> - <%= t.titulo || t.tipo %></a> (<%= fmtBR(t.created_at) %>)</li>
+    <% }) %>
+  </ul>
+</div>
+
+
 <div class="card" style="margin-top:12px;">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
     <h3 style="margin:0;">Equipe</h3>

@@ -1,5 +1,7 @@
 const QRCode = require("qrcode");
 const service = require("./equipamentos.service");
+let tracagemService = null;
+try { tracagemService = require('../tracagem/tracagem.service'); } catch (_e) {}
 
 function resolveFoto(file) {
   if (!file) return null;
@@ -59,6 +61,7 @@ async function equipShow(req, res) {
   const qr = service.getQrByEquipamento(id);
   const qrUrl = qr ? `${req.protocol}://${req.get("host")}/equipamentos/qrcode/${qr.token}` : "";
   const qrImage = qrUrl ? await QRCode.toDataURL(qrUrl) : "";
+  const tracagens = tracagemService ? tracagemService.listByEquipamento(id) : [];
 
   return res.render("equipamentos/show", {
     title: equip.nome,
@@ -75,6 +78,7 @@ async function equipShow(req, res) {
     qr,
     qrUrl,
     qrImage,
+    tracagens,
   });
 }
 
@@ -191,6 +195,7 @@ async function qrPublicPage(req, res) {
     title: `QR ${equip.nome}`,
     equip,
     qrImage,
+    tracagens,
     detalhesUrl: req.session?.user ? `/equipamentos/${equip.id}` : `/auth/login?next=${encodeURIComponent(`/equipamentos/${equip.id}`)}`,
     abrirOsUrl: req.session?.user ? `/os/nova?equipamento_id=${equip.id}` : `/auth/login?next=${encodeURIComponent(`/os/nova?equipamento_id=${equip.id}`)}`,
   });

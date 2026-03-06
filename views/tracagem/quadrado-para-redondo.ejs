@@ -1,0 +1,2 @@
+<% layout('layout') %>
+<%- include('_calc_base', { titulo: 'Quadrado para redondo', tipo, action: '/tracagem/quadrado-para-redondo/calcular', desenho: '⬛➡️⭕ Transição quadrado-redondo', campos: [ { name: 'lado', label: 'Lado do quadrado', type: 'number', step: '0.01' }, { name: 'diametro', label: 'Diâmetro de saída', type: 'number', step: '0.01' }, { name: 'altura', label: 'Altura da transição', type: 'number', step: '0.01' } ], calculo, equipamentos, ordensServico }) %>

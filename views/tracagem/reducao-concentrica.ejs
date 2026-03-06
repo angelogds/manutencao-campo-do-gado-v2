@@ -1,0 +1,2 @@
+<% layout('layout') %>
+<%- include('_calc_base', { titulo: 'Redução concêntrica', tipo, action: '/tracagem/reducao-concentrica/calcular', desenho: '⭕↘️⭕ Redução concêntrica', campos: [ { name: 'dMaior', label: 'Diâmetro maior', type: 'number', step: '0.01' }, { name: 'dMenor', label: 'Diâmetro menor', type: 'number', step: '0.01' }, { name: 'altura', label: 'Altura', type: 'number', step: '0.01' } ], calculo, equipamentos, ordensServico }) %>
