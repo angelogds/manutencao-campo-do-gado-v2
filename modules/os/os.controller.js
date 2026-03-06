@@ -57,7 +57,12 @@ async function osCreate(req, res) {
       opened_by: req.session?.user?.id || null,
     });
 
-    const autoResult = service.autoAlocarOS(id);
+    let autoResult = null;
+    try {
+      autoResult = service.autoAssignOS(id, req.session?.user?.id || null);
+    } catch (e) {
+      console.error("❌ autoAssignOS:", e && e.stack ? e.stack : e);
+    }
 
     const fotosAbertura = mapFilesToPublic(req.files?.abertura_fotos || []);
     service.addFotosAberturaFechamento({
@@ -97,11 +102,13 @@ function osShow(req, res) {
   const canManageEquipe = ["ADMIN", "SUPERVISOR_MANUTENCAO", "MANUTENCAO_SUPERVISOR"].includes(role);
 
   let osAtual = os;
-  if (String(osAtual.status || "").toUpperCase() === "AGUARDANDO_EQUIPE" || !osAtual.executor_colaborador_id) {
+  if (String(osAtual.status || "").toUpperCase() === "AGUARDANDO_EQUIPE" && !osAtual.executor_colaborador_id) {
     try {
-      service.autoAlocarOS(id);
-      osAtual = service.getOSById(id) || osAtual;
-    } catch (_err) {}
+      service.autoAssignOS(id, req.session?.user?.id || null);
+    } catch (e) {
+      console.error("❌ autoAssignOS(osShow):", e && e.stack ? e.stack : e);
+    }
+    osAtual = service.getOSById(id) || osAtual;
   }
 
   const equipeUsuarios = canManageEquipe ? service.listUsuariosEquipe() : [];
@@ -244,7 +251,7 @@ async function osUpdateStatus(req, res) {
 function osAutoAssign(req, res) {
   const id = Number(req.params.id);
   try {
-    const result = service.autoAlocarOS(id, { force: true });
+    const result = service.autoAssignOS(id, req.session?.user?.id || null, { force: true });
     if (result?.aguardando) {
       req.flash("error", result.aviso);
     } else {
