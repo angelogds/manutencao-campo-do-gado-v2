@@ -14,171 +14,289 @@ const TIPOS = {
   MAO_FRANCESA: 'mao-francesa',
 };
 
-function toNum(v) {
-  const n = Number(v);
-  return Number.isFinite(n) ? n : 0;
+function toNum(value, fieldName, { allowZero = false } = {}) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) throw new Error(`Campo ${fieldName} inválido. Informe um número válido.`);
+  if (!allowZero && n <= 0) throw new Error(`Campo ${fieldName} deve ser maior que zero.`);
+  return n;
 }
 
-function r2(v) {
-  return Number(v || 0).toFixed(2);
+function toInt(value, fieldName, { min = 1 } = {}) {
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n) || n < min) throw new Error(`Campo ${fieldName} deve ser um inteiro maior ou igual a ${min}.`);
+  return n;
+}
+
+function n2(v) {
+  return Number(Number(v).toFixed(2));
+}
+
+function n4(v) {
+  return Number(Number(v).toFixed(4));
 }
 
 function calcRoscaHelicoidal({ D, d, P }) {
-  const ext = toNum(D);
-  const interno = toNum(d);
-  const passo = toNum(P);
+  const Dn = toNum(D, 'D');
+  const dn = toNum(d, 'd');
+  const Pn = toNum(P, 'P');
 
-  const R1 = ext / 2;
-  const R2 = interno / 2;
-  const C = Math.PI * ((ext + interno) / 2);
-  const T = Math.sqrt(Math.max(C ** 2 + passo ** 2, 0));
-  const planificacao = passo > 0 ? (360 * C) / passo : 0;
+  const R1 = Dn / 2;
+  const R2 = dn / 2;
+  const C = Math.PI * ((Dn + dn) / 4);
+  const T = Math.sqrt(((2 * C) ** 2) + (Pn ** 2));
+  const planificacao = (360 * C) / Pn;
 
   return {
-    R1: r2(R1),
-    R2: r2(R2),
-    C: r2(C),
-    T: r2(T),
-    planificacao: r2(planificacao),
-    observacao_tecnica: 'Valores aproximados para marcação de rosca helicoidal em chaparia.',
+    entrada: { D: Dn, d: dn, P: Pn },
+    resultado: {
+      R1: n2(R1),
+      R2: n2(R2),
+      C: n2(C),
+      T: n2(T),
+      planificacao: n2(planificacao),
+    },
+    observacoes: [
+      'Resultado prático para marcação de rosca helicoidal em chaparia.',
+      'Conferir sentido do avanço e folga de solda antes do corte final.',
+    ],
   };
 }
 
-function calcFuracaoFlange({ D, furos }) {
-  const diametro = toNum(D);
-  const nFuros = Math.max(parseInt(furos, 10) || 0, 1);
-  const divisaoAngular = 360 / nFuros;
-  const raio = diametro / 2;
+function calcFuracaoFlange({ D, N, furos }) {
+  const Dn = toNum(D, 'D');
+  const Nn = toInt(N ?? furos, 'N');
 
-  const posicionamento = Array.from({ length: nFuros }, (_, i) => ({
-    furo: i + 1,
-    angulo_graus: Number((i * divisaoAngular).toFixed(2)),
-    x: Number((Math.cos((i * divisaoAngular * Math.PI) / 180) * raio).toFixed(2)),
-    y: Number((Math.sin((i * divisaoAngular * Math.PI) / 180) * raio).toFixed(2)),
-  }));
+  const raio = Dn / 2;
+  const anguloEntreFuros = 360 / Nn;
+  const furosCalc = Array.from({ length: Nn }, (_, idx) => {
+    const angulo = idx * anguloEntreFuros;
+    return {
+      furo: idx + 1,
+      angulo: n2(angulo),
+      x: n2(Math.cos((angulo * Math.PI) / 180) * raio),
+      y: n2(Math.sin((angulo * Math.PI) / 180) * raio),
+    };
+  });
 
   return {
-    divisao_angular: r2(divisaoAngular),
-    raio_de_marcacao: r2(raio),
-    posicionamento,
-    observacao_tecnica: 'Distribuir os furos em gabarito para garantir concentricidade.',
+    entrada: { D: Dn, N: Nn },
+    resultado: {
+      raio: n2(raio),
+      anguloEntreFuros: n2(anguloEntreFuros),
+      furos: furosCalc,
+    },
+    observacoes: [
+      'Divisão angular uniforme para furação de flange.',
+      'Usar punção de centro para reduzir erro de deslocamento na furadeira.',
+    ],
   };
 }
 
-function calcCilindro({ D, h, E }) {
-  const diametro = toNum(D);
-  const altura = toNum(h);
-  const espessura = toNum(E);
+function calcCilindro({ D, h, H, E }) {
+  const Dn = toNum(D, 'D');
+  const hn = toNum(h ?? H, 'h');
+  const En = toNum(E ?? 0, 'E', { allowZero: true });
 
-  const desenvolvimento = Math.PI * diametro;
-  const comprimentoChapa = desenvolvimento + (2 * espessura);
-  const area = desenvolvimento * altura;
+  const comprimento = Math.PI * Dn;
+  const area = comprimento * hn;
+  const comprimentoComFolga = comprimento + (2 * En);
 
   return {
-    desenvolvimento: r2(desenvolvimento),
-    comprimento_chapa: r2(comprimentoChapa),
-    area_aproximada: r2(area),
-    observacao_tecnica: 'Considerar folga para solda e ajuste conforme processo de calandragem.',
+    entrada: { D: Dn, h: hn, E: En },
+    resultado: {
+      comprimento: n2(comprimento),
+      comprimentoComFolga: n2(comprimentoComFolga),
+      area: n2(area),
+    },
+    observacoes: [
+      'Desenvolvimento básico para cilindro calandrado.',
+      'A folga considera ajuste simples de oficina para fechamento/solda.',
+    ],
   };
 }
 
-function calcCurvaGomos({ diametro, angulo, gomos }) {
-  const d = toNum(diametro);
-  const a = toNum(angulo);
-  const nGomos = Math.max(parseInt(gomos, 10) || 1, 1);
+function calcCurvaGomos({ D, A, G, diametro, angulo, gomos }) {
+  const Dn = toNum(D ?? diametro, 'D');
+  const An = toNum(A ?? angulo, 'A');
+  const Gn = toInt(G ?? gomos, 'G');
 
-  const anguloPorGomo = a / nGomos;
-  const arcoTotal = (Math.PI * d * a) / 360;
-  const desenvolvimentoGomo = arcoTotal / nGomos;
+  const anguloPorGomo = An / Gn;
+  const anguloCorte = anguloPorGomo / 2;
+  const desenvolvimentoBase = Math.PI * Dn;
+  const comprimentoAproximado = desenvolvimentoBase / Gn;
 
   return {
-    angulo_por_gomo: r2(anguloPorGomo),
-    desenvolvimento_gomo: r2(desenvolvimentoGomo),
-    desenvolvimento_total: r2(arcoTotal),
-    medidas_aproximadas_fabricacao: `Cortar ${nGomos} gomos com ângulo de ${r2(anguloPorGomo)}° cada.`,
+    entrada: { D: Dn, A: An, G: Gn },
+    resultado: {
+      anguloPorGomo: n2(anguloPorGomo),
+      anguloCorte: n2(anguloCorte),
+      desenvolvimentoBase: n2(desenvolvimentoBase),
+      comprimentoAproximado: n2(comprimentoAproximado),
+    },
+    observacoes: [
+      'Ângulo de corte aproximado por gomo.',
+      'Resultado inicial para traçagem prática de curva segmentada.',
+    ],
   };
 }
 
-function calcQuadradoParaRedondo({ lado, diametro, altura }) {
-  const l = toNum(lado);
-  const d = toNum(diametro);
-  const h = toNum(altura);
-  const perimetroQuadrado = 4 * l;
-  const perimetroRedondo = Math.PI * d;
-  const transicao = Math.sqrt(((l - d) / 2) ** 2 + h ** 2);
+function calcQuadradoParaRedondo({ L, D, H, lado, diametro, altura }) {
+  const Ln = toNum(L ?? lado, 'L');
+  const Dn = toNum(D ?? diametro, 'D');
+  const Hn = toNum(H ?? altura, 'H');
+
+  const perimetroQuadrado = Ln * 4;
+  const circunferenciaRedondo = Math.PI * Dn;
+  const geratrizAproximada = Math.sqrt((Hn * Hn) + ((((Ln - Dn) / 2) || 0) ** 2));
+
   return {
-    perimetro_quadrado: r2(perimetroQuadrado),
-    perimetro_redondo: r2(perimetroRedondo),
-    geratriz_aproximada: r2(transicao),
-    observacao_tecnica: 'Dividir em 4 pétalas para facilitar planificação da transição.',
+    entrada: { L: Ln, D: Dn, H: Hn },
+    resultado: {
+      perimetroQuadrado: n2(perimetroQuadrado),
+      circunferenciaRedondo: n2(circunferenciaRedondo),
+      geratrizAproximada: n2(geratrizAproximada),
+    },
+    observacoes: [
+      'Resultado aproximado para transição quadrado-redondo.',
+      'Ideal para marcação inicial e conferência de oficina.',
+    ],
   };
 }
 
-function calcReducaoConcentrica({ dMaior, dMenor, altura }) {
-  const D = toNum(dMaior);
-  const d = toNum(dMenor);
-  const h = toNum(altura);
-  const geratriz = Math.sqrt(((D - d) / 2) ** 2 + h ** 2);
-  const desenvolvimentoMaior = Math.PI * D;
-  const desenvolvimentoMenor = Math.PI * d;
+function calcReducaoConcentrica({ D1, D2, H, dMaior, dMenor, altura }) {
+  const D1n = toNum(D1 ?? dMaior, 'D1');
+  const D2n = toNum(D2 ?? dMenor, 'D2');
+  const Hn = toNum(H ?? altura, 'H');
+
+  const R1 = D1n / 2;
+  const R2 = D2n / 2;
+  const diferencaRaios = R1 - R2;
+  const geratriz = Math.sqrt((Hn * Hn) + (diferencaRaios ** 2));
+
   return {
-    geratriz: r2(geratriz),
-    desenvolvimento_maior: r2(desenvolvimentoMaior),
-    desenvolvimento_menor: r2(desenvolvimentoMenor),
-    observacao_tecnica: 'Aplicar folga de solda conforme espessura e processo.',
+    entrada: { D1: D1n, D2: D2n, H: Hn },
+    resultado: {
+      R1: n2(R1),
+      R2: n2(R2),
+      diferencaRaios: n2(diferencaRaios),
+      geratriz: n2(geratriz),
+    },
+    observacoes: [
+      'Cálculo base para tronco de cone concêntrico.',
+      'Usar geratriz para planificação e corte.',
+    ],
   };
 }
 
-function calcSemiCilindro({ diametro, comprimento }) {
-  const d = toNum(diametro);
-  const c = toNum(comprimento);
-  const desenvolvimento = (Math.PI * d) / 2;
-  const area = desenvolvimento * c;
+function calcSemiCilindro({ D, H, E, diametro, comprimento }) {
+  const Dn = toNum(D ?? diametro, 'D');
+  const Hn = toNum(H ?? comprimento, 'H');
+  const En = toNum(E ?? 0, 'E', { allowZero: true });
+
+  const meiaCircunferencia = (Math.PI * Dn) / 2;
+  const area = meiaCircunferencia * Hn;
+
   return {
-    desenvolvimento: r2(desenvolvimento),
-    comprimento_chapa: r2(c),
-    area_aproximada: r2(area),
-    observacao_tecnica: 'Semi-cilindro considera meia circunferência para desenvolvimento.',
+    entrada: { D: Dn, H: Hn, E: En },
+    resultado: {
+      meiaCircunferencia: n2(meiaCircunferencia),
+      area: n2(area),
+    },
+    observacoes: [
+      'Desenvolvimento aproximado de semi-cilindro.',
+      'Não inclui sobra de solda.',
+    ],
   };
 }
 
-function calcBocaDeLoboExcentrica({ dPrincipal, dDerivacao, deslocamento }) {
-  const D = toNum(dPrincipal);
-  const d = toNum(dDerivacao);
-  const off = toNum(deslocamento);
-  const raioBase = D / 2;
-  const raioDerivacao = d / 2;
-  const alongamento = Math.sqrt(off ** 2 + raioDerivacao ** 2);
+function calcBocaLoboExcentrica({ D1, D2, X, H, dPrincipal, dDerivacao, deslocamento, altura }) {
+  const D1n = toNum(D1 ?? dPrincipal, 'D1');
+  const D2n = toNum(D2 ?? dDerivacao, 'D2');
+  const Xn = toNum(X ?? deslocamento, 'X');
+  const Hn = toNum(H ?? altura ?? 0, 'H', { allowZero: true });
+
+  const R1 = D1n / 2;
+  const R2 = D2n / 2;
+  const diferenca = Math.abs(R1 - R2);
+  const geratrizAproximada = Math.sqrt((Hn * Hn) + (Xn * Xn) + (diferenca ** 2));
+
   return {
-    raio_base: r2(raioBase),
-    raio_derivacao: r2(raioDerivacao),
-    alongamento_curva: r2(alongamento),
-    observacao_tecnica: 'Marcar curva em pontos (12 ou mais divisões) por ser excêntrica.',
+    entrada: { D1: D1n, D2: D2n, X: Xn, H: Hn },
+    resultado: {
+      R1: n2(R1),
+      R2: n2(R2),
+      deslocamento: n2(Xn),
+      geratrizAproximada: n2(geratrizAproximada),
+    },
+    observacoes: [
+      'Cálculo aproximado para boca de lobo excêntrica.',
+      'Indicado para traçagem inicial e conferência prática.',
+    ],
   };
 }
 
-function calcBocaDeLoboAngulo({ dPrincipal, dDerivacao, fator }) {
-  const D = toNum(dPrincipal);
-  const d = toNum(dDerivacao);
-  const intersecao = (Math.PI * d) * fator;
-  const abertura = Math.atan2(d, D) * (180 / Math.PI);
+function calcBocaLobo45({ D, H, dPrincipal, altura }) {
+  const Dn = toNum(D ?? dPrincipal, 'D');
+  const Hn = toNum(H ?? altura ?? 0, 'H', { allowZero: true });
+
+  const desenvolvimento = Math.PI * Dn;
+  const fatorCorte = Math.sin((45 * Math.PI) / 180);
+
   return {
-    intersecao_aproximada: r2(intersecao),
-    abertura_aproximada_graus: r2(abertura),
-    observacao_tecnica: 'Executar marcação por pontos na boca e conferir em gabarito.',
+    entrada: { D: Dn, H: Hn },
+    resultado: {
+      angulo: 45,
+      desenvolvimento: n2(desenvolvimento),
+      fatorCorte: n4(fatorCorte),
+    },
+    observacoes: [
+      'Perfil de corte para boca de lobo a 45 graus.',
+      'Usar como base para marcação da interseção.',
+    ],
   };
 }
 
-function calcMaoFrancesa({ diametro, comprimento }) {
-  const d = toNum(diametro);
-  const c = toNum(comprimento);
-  const aba = d * 0.15;
-  const desenvolvimento = (Math.PI * d) + (2 * aba);
+function calcBocaLobo90({ D1, D2, dPrincipal, dDerivacao }) {
+  const D1n = toNum(D1 ?? dPrincipal, 'D1');
+  const D2n = toNum(D2 ?? dDerivacao, 'D2');
+
+  const R1 = D1n / 2;
+  const R2 = D2n / 2;
+  const desenvolvimentoPrincipal = Math.PI * D1n;
+  const desenvolvimentoSecundario = Math.PI * D2n;
+
   return {
-    aba_lateral: r2(aba),
-    desenvolvimento_total: r2(desenvolvimento),
-    comprimento: r2(c),
-    observacao_tecnica: 'Perfil mão francesa para suporte e reforço de equipamentos.',
+    entrada: { D1: D1n, D2: D2n },
+    resultado: {
+      R1: n2(R1),
+      R2: n2(R2),
+      desenvolvimentoPrincipal: n2(desenvolvimentoPrincipal),
+      desenvolvimentoSecundario: n2(desenvolvimentoSecundario),
+    },
+    observacoes: [
+      'Cálculo base para interseção de tubos em 90 graus.',
+      'Usar para marcação da curva de boca de lobo.',
+    ],
+  };
+}
+
+function calcMaoFrancesa({ base, altura, largura, comprimento }) {
+  const baseN = toNum(base ?? largura, 'base');
+  const alturaN = toNum(altura ?? comprimento, 'altura');
+
+  const diagonal = Math.sqrt((baseN ** 2) + (alturaN ** 2));
+
+  return {
+    entrada: { base: baseN, altura: alturaN },
+    resultado: {
+      diagonal: n2(diagonal),
+      base: n2(baseN),
+      altura: n2(alturaN),
+    },
+    observacoes: [
+      'Diagonal útil para corte da mão francesa.',
+      'Conferir esquadro de 90° antes da soldagem final.',
+    ],
   };
 }
 
@@ -199,13 +317,12 @@ function calcularPorTipo(tipo, params) {
     case TIPOS.SEMI_CILINDRO:
       return calcSemiCilindro(params);
     case TIPOS.BOCA_DE_LOBO_EXCENTRICA:
-      return calcBocaDeLoboExcentrica(params);
+      return calcBocaLoboExcentrica(params);
     case TIPOS.BOCA_DE_LOBO_45:
-      return calcBocaDeLoboAngulo(params, 0.75);
+      return calcBocaLobo45(params);
     case TIPOS.BOCA_DE_LOBO_90:
-      return calcBocaDeLoboAngulo(params, 1);
+      return calcBocaLobo90(params);
     case TIPOS.MAO_FRANCESA:
-      return calcMaoFrancesa(params);
     case 'pao-francesa':
       return calcMaoFrancesa(params);
     default:
@@ -319,6 +436,17 @@ function listOSAbertas() {
 
 module.exports = {
   TIPOS,
+  calcRoscaHelicoidal,
+  calcFuracaoFlange,
+  calcCilindro,
+  calcCurvaGomos,
+  calcQuadradoParaRedondo,
+  calcReducaoConcentrica,
+  calcSemiCilindro,
+  calcBocaLoboExcentrica,
+  calcBocaLobo45,
+  calcBocaLobo90,
+  calcMaoFrancesa,
   calcularPorTipo,
   salvar,
   getById,
