@@ -603,35 +603,37 @@ function getEscalaSemana() {
 
 function getOSEmAndamento() {
   return safeGet(() => {
-    const grauExpr = resolveOSGrauExpression();
     const osCols = tableExists("os") ? db.prepare("PRAGMA table_info(os)").all().map((c) => c.name) : [];
     const hasExecColab = osCols.includes("executor_colaborador_id");
     const hasAuxColab = osCols.includes("auxiliar_colaborador_id");
-    const hasTurno = osCols.includes("turno_alocado");
+    const orderCol = osCols.includes("abertura")
+      ? "o.abertura"
+      : osCols.includes("opened_at")
+      ? "o.opened_at"
+      : osCols.includes("created_at")
+      ? "o.created_at"
+      : "o.id";
 
-    const execCols = tableExists("os_execucoes") ? db.prepare("PRAGMA table_info(os_execucoes)").all().map((c) => c.name) : [];
-    const executorCol = execCols.includes("executor_user_id") ? "executor_user_id" : "mecanico_user_id";
-    return db.prepare(`
+    const rows = db.prepare(`
       SELECT o.id,
-             COALESCE(e.nome, o.equipamento_manual, o.equipamento) AS equipamento,
-             ${grauExpr} AS grau,
+             COALESCE(e.nome, o.equipamento_manual, o.equipamento, '-') AS equipamento,
              o.status,
-             o.opened_at,
-             COALESCE(u.name, ce.nome, 'Não atribuído') AS executor,
-             COALESCE(ua.name, ca.nome, '') AS auxiliar,
-             ${hasTurno ? "o.turno_alocado" : "NULL"} AS turno_alocado,
-             ex.iniciado_em
+             COALESCE(ce.nome, 'Não atribuído') AS executor_nome,
+             COALESCE(ca.nome, '') AS auxiliar_nome
       FROM os o
       LEFT JOIN equipamentos e ON e.id = o.equipamento_id
-      LEFT JOIN os_execucoes ex ON ex.os_id = o.id AND ex.finalizado_em IS NULL
-      LEFT JOIN users u ON u.id = ex.${executorCol}
-      LEFT JOIN users ua ON ua.id = ex.auxiliar_user_id
       LEFT JOIN colaboradores ce ON ce.id = ${hasExecColab ? "o.executor_colaborador_id" : "NULL"}
       LEFT JOIN colaboradores ca ON ca.id = ${hasAuxColab ? "o.auxiliar_colaborador_id" : "NULL"}
-      WHERE UPPER(COALESCE(o.status,'')) IN ('ANDAMENTO','EM_ANDAMENTO')
-      ORDER BY datetime(COALESCE(ex.iniciado_em, o.opened_at)) DESC
-      LIMIT 20
+      WHERE ${hasExecColab ? "o.executor_colaborador_id IS NOT NULL" : "1=1"}
+        AND UPPER(COALESCE(o.status,'')) IN ('ABERTA','ANDAMENTO','EM_ANDAMENTO')
+      ORDER BY datetime(${orderCol}) DESC
+      LIMIT 10
     `).all();
+
+    return rows.map((o) => ({
+      ...o,
+      equipe: o.auxiliar_nome ? `${o.executor_nome} + ${o.auxiliar_nome}` : o.executor_nome,
+    }));
   }, []);
 }
 
