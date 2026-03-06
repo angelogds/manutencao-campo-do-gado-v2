@@ -1,0 +1,23 @@
+<%
+  const R1 = Number(resultado?.R1 || 0);
+  const R2 = Number(resultado?.R2 || 0);
+  const C = Number(resultado?.C || 0);
+  const T = Number(resultado?.T || 0);
+%>
+<svg viewBox="0 0 800 500" role="img" aria-label="Rosca helicoidal e planificação" style="width:100%;max-width:860px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;">
+  <text x="50" y="40" font-size="22" font-weight="700" fill="#0f172a">Rosca helicoidal simplificada</text>
+
+  <line x1="80" y1="140" x2="700" y2="140" stroke="#94a3b8" stroke-width="20" stroke-linecap="round" />
+  <path d="M90 140 C120 90, 170 190, 210 140 C250 90, 300 190, 340 140 C380 90, 430 190, 470 140 C510 90, 560 190, 600 140 C640 90, 680 175, 700 140"
+        fill="none" stroke="#0ea5e9" stroke-width="4" />
+
+  <text x="80" y="205" font-size="15" fill="#0f172a">R1 = <%= R1.toFixed(2) %> mm</text>
+  <text x="240" y="205" font-size="15" fill="#0f172a">R2 = <%= R2.toFixed(2) %> mm</text>
+  <text x="400" y="205" font-size="15" fill="#0f172a">C = <%= C.toFixed(2) %> mm</text>
+  <text x="560" y="205" font-size="15" fill="#0f172a">T = <%= T.toFixed(2) %> mm</text>
+
+  <text x="50" y="275" font-size="22" font-weight="700" fill="#0f172a">Planificação da aleta</text>
+  <polygon points="100,410 680,410 630,320 150,320" fill="#f1f5f9" stroke="#334155" stroke-width="2" />
+  <line x1="100" y1="425" x2="680" y2="425" stroke="#0f172a" stroke-width="1.5" />
+  <text x="330" y="450" font-size="15">T = <%= T.toFixed(2) %> mm</text>
+</svg>

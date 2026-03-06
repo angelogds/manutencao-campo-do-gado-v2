@@ -68,6 +68,7 @@ function calcFuracaoFlange({ D, N, furos }) {
 
   const raio = Dn / 2;
   const anguloEntreFuros = 360 / Nn;
+  const corda = 2 * raio * Math.sin((Math.PI / Nn));
   const furosCalc = Array.from({ length: Nn }, (_, idx) => {
     const angulo = idx * anguloEntreFuros;
     return {
@@ -83,11 +84,12 @@ function calcFuracaoFlange({ D, N, furos }) {
     resultado: {
       raio: n2(raio),
       anguloEntreFuros: n2(anguloEntreFuros),
+      corda: n2(corda),
       furos: furosCalc,
     },
     observacoes: [
       'Divisão angular uniforme para furação de flange.',
-      'Usar punção de centro para reduzir erro de deslocamento na furadeira.',
+      'A corda representa a distância linear entre centros de dois furos adjacentes.',
     ],
   };
 }
@@ -97,20 +99,21 @@ function calcCilindro({ D, h, H, E }) {
   const hn = toNum(h ?? H, 'h');
   const En = toNum(E ?? 0, 'E', { allowZero: true });
 
-  const comprimento = Math.PI * Dn;
-  const area = comprimento * hn;
-  const comprimentoComFolga = comprimento + (2 * En);
+  const A = Math.PI * Dn;
+  const B = hn;
 
   return {
     entrada: { D: Dn, h: hn, E: En },
     resultado: {
-      comprimento: n2(comprimento),
-      comprimentoComFolga: n2(comprimentoComFolga),
-      area: n2(area),
+      A: n2(A),
+      B: n2(B),
+      comprimento: n2(A),
+      comprimentoComFolga: n2(A + (2 * En)),
+      area: n2(A * B),
     },
     observacoes: [
       'Desenvolvimento básico para cilindro calandrado.',
-      'A folga considera ajuste simples de oficina para fechamento/solda.',
+      'A = π·D e B = altura útil da chapa.',
     ],
   };
 }
@@ -280,22 +283,26 @@ function calcBocaLobo90({ D1, D2, dPrincipal, dDerivacao }) {
   };
 }
 
-function calcMaoFrancesa({ base, altura, largura, comprimento }) {
-  const baseN = toNum(base ?? largura, 'base');
-  const alturaN = toNum(altura ?? comprimento, 'altura');
+function calcMaoFrancesa({ A, h, E, base, altura, largura, comprimento }) {
+  const An = toNum(A ?? base ?? largura, 'A');
+  const hn = toNum(h ?? altura ?? comprimento, 'h');
+  const En = toNum(E ?? 0, 'E', { allowZero: true });
 
-  const diagonal = Math.sqrt((baseN ** 2) + (alturaN ** 2));
+  const C = Math.sqrt((An ** 2) + (hn ** 2));
+  const alpha = (Math.atan2(hn, An) * 180) / Math.PI;
 
   return {
-    entrada: { base: baseN, altura: alturaN },
+    entrada: { A: An, h: hn, E: En },
     resultado: {
-      diagonal: n2(diagonal),
-      base: n2(baseN),
-      altura: n2(alturaN),
+      C: n2(C),
+      alpha: n2(alpha),
+      B: n2(En),
+      D: n2(En),
+      diagonal: n2(C),
     },
     observacoes: [
-      'Diagonal útil para corte da mão francesa.',
-      'Conferir esquadro de 90° antes da soldagem final.',
+      'Diagonal calculada por Pitágoras para corte da barra inclinada.',
+      'Ângulo α medido em relação à base A.',
     ],
   };
 }
