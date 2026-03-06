@@ -587,19 +587,31 @@ function getEscalaSemana() {
 function getOSEmAndamento() {
   return safeGet(() => {
     const grauExpr = resolveOSGrauExpression();
+    const osCols = tableExists("os") ? db.prepare("PRAGMA table_info(os)").all().map((c) => c.name) : [];
+    const hasExecColab = osCols.includes("executor_colaborador_id");
+    const hasAuxColab = osCols.includes("auxiliar_colaborador_id");
+    const hasTurno = osCols.includes("turno_alocado");
+
     const execCols = tableExists("os_execucoes") ? db.prepare("PRAGMA table_info(os_execucoes)").all().map((c) => c.name) : [];
     const executorCol = execCols.includes("executor_user_id") ? "executor_user_id" : "mecanico_user_id";
     return db.prepare(`
-      SELECT o.id, COALESCE(e.nome, o.equipamento_manual, o.equipamento) AS equipamento, ${grauExpr} AS grau, o.status, o.opened_at,
-             COALESCE(u.name, 'Não atribuído') AS executor,
-             COALESCE(ua.name, '') AS auxiliar,
+      SELECT o.id,
+             COALESCE(e.nome, o.equipamento_manual, o.equipamento) AS equipamento,
+             ${grauExpr} AS grau,
+             o.status,
+             o.opened_at,
+             COALESCE(ce.nome, u.name, 'Não atribuído') AS executor,
+             COALESCE(ca.nome, ua.name, '') AS auxiliar,
+             ${hasTurno ? "o.turno_alocado" : "NULL"} AS turno_alocado,
              ex.iniciado_em
       FROM os o
       LEFT JOIN equipamentos e ON e.id = o.equipamento_id
       LEFT JOIN os_execucoes ex ON ex.os_id = o.id AND ex.finalizado_em IS NULL
       LEFT JOIN users u ON u.id = ex.${executorCol}
       LEFT JOIN users ua ON ua.id = ex.auxiliar_user_id
-      WHERE UPPER(COALESCE(o.status,'')) IN ('ANDAMENTO','EM_ANDAMENTO')
+      LEFT JOIN colaboradores ce ON ce.id = ${hasExecColab ? "o.executor_colaborador_id" : "NULL"}
+      LEFT JOIN colaboradores ca ON ca.id = ${hasAuxColab ? "o.auxiliar_colaborador_id" : "NULL"}
+      WHERE UPPER(COALESCE(o.status,'')) IN ('ABERTA','ANDAMENTO','EM_ANDAMENTO')
       ORDER BY datetime(COALESCE(ex.iniciado_em, o.opened_at)) DESC
       LIMIT 20
     `).all();
