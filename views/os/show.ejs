@@ -47,12 +47,13 @@
       <div><b>Início:</b> <%= os.data_inicio ? fmtBR(os.data_inicio) : (os.execucao_iniciada_em ? fmtBR(os.execucao_iniciada_em) : '-') %></div>
       <div><b>Conclusão:</b> <%= os.data_conclusao ? fmtBR(os.data_conclusao) : '-' %></div>
       <div><b>Turno da alocação:</b> <%= os.turno_alocado || os.execucao_ativa?.turno_alocacao || '-' %>
-        <% if (os.execucao_ativa?.turno_alocacao === 'NOITE') { %>
-          <span class="badge-funcao func-mon" style="margin-left:6px;">Plantonista</span>
+        <% if ((os.turno_alocado || os.execucao_ativa?.turno_alocacao) === 'NOITE' && (os.executor_nome || '').trim()) { %>
+          <span class="badge-funcao func-mon" style="margin-left:6px;">PLANTONISTA</span>
         <% } %>
       </div>
       <div><b>Executor em andamento:</b> <%= os.executor_nome || os.execucao_ativa?.executor_nome || '-' %></div>
       <div><b>Auxiliar em andamento:</b> <%= os.auxiliar_nome || os.execucao_ativa?.auxiliar_nome || '-' %></div>
+      <div><b>Modo da alocação:</b> <%= os.alocacao_modo || '-' %></div>
     </div>
 
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:12px 0"/>
@@ -81,7 +82,7 @@
 <div class="card" style="margin-top:12px;">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
     <h3 style="margin:0;">Equipe</h3>
-    <% if (canAutoAssign && (String(os.status || '').toUpperCase() === 'AGUARDANDO_EQUIPE' || !os.executor_colaborador_id)) { %>
+    <% if (canAutoAssign) { %>
       <form method="POST" action="/os/<%= os.id %>/auto-alocar">
         <button class="btn btn-primary" type="submit">Reatribuir automaticamente</button>
       </form>
@@ -91,6 +92,7 @@
   <div class="muted" style="margin-top:6px;">Executor: <strong><%= os.executor_nome || os.execucao_ativa?.executor_nome || '-' %></strong></div>
   <div class="muted">Auxiliar: <strong><%= os.auxiliar_nome || os.execucao_ativa?.auxiliar_nome || '-' %></strong></div>
   <div class="muted">Turno: <strong><%= os.turno_alocado || os.execucao_ativa?.turno_alocacao || '-' %></strong></div>
+  <div class="muted">Modo: <strong><%= os.alocacao_modo || '-' %></strong></div>
 
   <% if (canManualEditEquipe) { %>
     <% const mecanicosTurno = (equipeUsuarios || []).filter(u => String(u.funcao || '').toLowerCase() === 'mecanico'); %>
