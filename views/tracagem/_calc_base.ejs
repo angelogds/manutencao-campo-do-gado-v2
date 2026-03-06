@@ -20,7 +20,7 @@
           <input class="input" name="<%= campo.name %>" type="<%= campo.type %>" step="<%= campo.step %>" value="<%= calculo?.parametros?.[campo.name] || '' %>" required />
         </div>
       <% }) %>
-      <button class="btn btn-green" type="submit">Calcular</button>
+      <button class="btn btn-green" type="submit">CALCULAR</button>
     </form>
   </div>
 
@@ -32,6 +32,16 @@
       <div style="font-size:13px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;max-height:280px;overflow:auto;">
         <pre style="margin:0;"><%= JSON.stringify(calculo.resultado, null, 2) %></pre>
       </div>
+      <% if (calculo.resultado?.observacoes?.length || calculo.resultado?.observacao_tecnica) { %>
+        <div style="margin-top:8px;">
+          <b>Observações técnicas</b>
+          <ul>
+            <% (calculo.resultado.observacoes || [calculo.resultado.observacao_tecnica]).filter(Boolean).forEach((obs)=> { %>
+              <li><%= obs %></li>
+            <% }) %>
+          </ul>
+        </div>
+      <% } %>
       <form method="POST" action="/tracagem/salvar" style="margin-top:10px;display:grid;gap:8px;">
         <input class="input" name="titulo" placeholder="Título da traçagem" required />
         <div>
