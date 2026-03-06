@@ -426,6 +426,17 @@ function rotateByLastId(disponiveis, lastId) {
   return disponiveis.slice(idx + 1).concat(disponiveis.slice(0, idx + 1));
 }
 
+function pickDisponivelPorOrdem(disponiveis, configKey) {
+  const ordenados = [...(disponiveis || [])].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"));
+  if (!ordenados.length) return null;
+
+  const ultimoId = Number(getConfig(configKey) || 0) || null;
+  const fila = rotateByLastId(ordenados, ultimoId);
+  const escolhido = fila[0] || null;
+  if (escolhido?.id) setConfig(configKey, Number(escolhido.id));
+  return escolhido;
+}
+
 function getUserNameById(userId) {
   if (!userId || !tableExists("users")) return null;
   return db.prepare(`SELECT name FROM users WHERE id = ?`).get(Number(userId))?.name || null;
