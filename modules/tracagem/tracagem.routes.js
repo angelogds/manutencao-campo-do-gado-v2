@@ -24,9 +24,6 @@ router.get('/cilindro', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.ci
 router.post('/cilindro/calcular', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.cilindroCalcular));
 router.get('/curva-gomos', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.curvaForm));
 router.post('/curva-gomos/calcular', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.curvaCalcular));
-
-router.post('/rosca/calcular', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.roscaCalcular));
-router.post('/flange/calcular', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.flangeCalcular));
 router.get('/quadrado-para-redondo', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.quadradoRedondoForm));
 router.post('/quadrado-para-redondo/calcular', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.quadradoRedondoCalcular));
 router.get('/reducao-concentrica', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.reducaoConcentricaForm));
