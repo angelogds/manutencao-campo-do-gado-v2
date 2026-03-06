@@ -600,8 +600,8 @@ function getOSEmAndamento() {
              ${grauExpr} AS grau,
              o.status,
              o.opened_at,
-             COALESCE(ce.nome, u.name, 'Não atribuído') AS executor,
-             COALESCE(ca.nome, ua.name, '') AS auxiliar,
+             COALESCE(u.name, ce.nome, 'Não atribuído') AS executor,
+             COALESCE(ua.name, ca.nome, '') AS auxiliar,
              ${hasTurno ? "o.turno_alocado" : "NULL"} AS turno_alocado,
              ex.iniciado_em
       FROM os o

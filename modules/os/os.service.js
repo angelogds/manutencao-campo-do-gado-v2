@@ -378,19 +378,21 @@ function getOSById(id) {
   const os = db.prepare(`
     SELECT o.*,
            ce.nome AS executor_nome,
-           ca.nome AS auxiliar_nome
+           ca.nome AS auxiliar_nome,
+           ue.name AS executor_user_nome,
+           ua.name AS auxiliar_user_nome
     FROM os o
     LEFT JOIN colaboradores ce ON ce.id = ${hasExecColab ? "o.executor_colaborador_id" : "NULL"}
     LEFT JOIN colaboradores ca ON ca.id = ${hasAuxColab ? "o.auxiliar_colaborador_id" : "NULL"}
+    LEFT JOIN users ue ON ue.id = o.mecanico_user_id
+    LEFT JOIN users ua ON ua.id = o.auxiliar_user_id
     WHERE o.id = ?
   `).get(Number(id));
 
   if (!os) return null;
 
-  const executorNome = os.executor_nome
-    || (os.mecanico_user_id ? db.prepare(`SELECT name FROM users WHERE id = ?`).get(os.mecanico_user_id)?.name : null);
-  const auxiliarNome = os.auxiliar_nome
-    || (os.auxiliar_user_id ? db.prepare(`SELECT name FROM users WHERE id = ?`).get(os.auxiliar_user_id)?.name : null);
+  const executorNome = os.executor_user_nome || os.executor_nome || null;
+  const auxiliarNome = os.auxiliar_user_nome || os.auxiliar_nome || null;
 
   return {
     ...os,
@@ -426,8 +428,27 @@ function rotateByLastId(disponiveis, lastId) {
   return disponiveis.slice(idx + 1).concat(disponiveis.slice(0, idx + 1));
 }
 
-function pickDisponivelPorOrdem(disponiveis, configKey) {
-  const ordenados = [...(disponiveis || [])].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"));
+function pickDisponivelPorOrdem(disponiveis, configKey, prioridades = []) {
+  const prioridadeNormalizada = (prioridades || []).map((nome) => String(nome || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase());
+
+  const getPrioridade = (nome) => {
+    const n = String(nome || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+    const idx = prioridadeNormalizada.findIndex((p) => n.includes(p));
+    return idx < 0 ? 999 : idx;
+  };
+
+  const ordenados = [...(disponiveis || [])].sort((a, b) => {
+    const pa = getPrioridade(a.nome);
+    const pb = getPrioridade(b.nome);
+    if (pa !== pb) return pa - pb;
+    return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR");
+  });
   if (!ordenados.length) return null;
 
   const ultimoId = Number(getConfig(configKey) || 0) || null;
@@ -704,16 +725,18 @@ function autoAlocarOS(osId, { force = false } = {}) {
   const mecanicosDisponiveis = getMecanicosDiurno().filter((c) => !isColaboradorOcupado(c.id));
 
   if (grau === "BAIXA") {
-    const executor = apoioDisponivel[0] || mecanicosDisponiveis[0] || null;
+    const executor = pickDisponivelPorOrdem(apoioDisponivel, "ultimo_executor_baixa_id", ["Junior", "Júnior"])
+      || pickDisponivelPorOrdem(mecanicosDisponiveis, "ultimo_executor_baixa_id")
+      || null;
     if (!executor) return marcarAguardandoEquipe(Number(osId), "DIA", "Sem executor disponível no turno: OS aguardando alocação.");
     persistirAlocacaoOS(Number(osId), executor, null, "DIA", "AUTO");
     return { aguardando: false, turno: "DIA", executor, auxiliar: null };
   }
 
-  const executor = mecanicosDisponiveis[0] || null;
+  const executor = pickDisponivelPorOrdem(mecanicosDisponiveis, "ultimo_executor_mecanico_id") || null;
   if (!executor) return marcarAguardandoEquipe(Number(osId), "DIA", "Sem executor disponível no turno: OS aguardando alocação.");
 
-  const auxiliar = apoioDisponivel[0] || null;
+  const auxiliar = pickDisponivelPorOrdem(apoioDisponivel, "ultimo_auxiliar_apoio_id") || null;
   persistirAlocacaoOS(Number(osId), executor, auxiliar, "DIA", "AUTO");
   return { aguardando: false, turno: "DIA", executor, auxiliar };
 }
