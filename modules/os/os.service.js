@@ -131,8 +131,8 @@ function isUserOcupado(userId) {
 }
 
 function getPlantonistaNoite() {
-  const semana = getSemanaAtual();
-  return semana?.id ? getPlantonista(semana.id) : null;
+  const candidatos = getColaboradoresTurnoAtual("NOITE");
+  return candidatos.find((c) => normalizeColaboradorFuncao(c.funcao) === "MECANICO") || null;
 }
 
 function listEquipamentosAtivos() {
@@ -371,26 +371,26 @@ function listUsuariosEquipe() {
 }
 
 function getOSById(id) {
-  const os = db
-    .prepare(
-      `SELECT *
-       FROM os
-       WHERE id = ?`
-    )
-    .get(id);
+  const osCols = getOSColumns();
+  const hasExecColab = osCols.includes("executor_colaborador_id");
+  const hasAuxColab = osCols.includes("auxiliar_colaborador_id");
+
+  const os = db.prepare(`
+    SELECT o.*,
+           ce.nome AS executor_nome,
+           ca.nome AS auxiliar_nome
+    FROM os o
+    LEFT JOIN colaboradores ce ON ce.id = ${hasExecColab ? "o.executor_colaborador_id" : "NULL"}
+    LEFT JOIN colaboradores ca ON ca.id = ${hasAuxColab ? "o.auxiliar_colaborador_id" : "NULL"}
+    WHERE o.id = ?
+  `).get(Number(id));
 
   if (!os) return null;
 
-  const executorColabId = os.executor_colaborador_id || null;
-  const auxiliarColabId = os.auxiliar_colaborador_id || null;
-
-  const executorNome = executorColabId
-    ? db.prepare(`SELECT nome FROM colaboradores WHERE id = ?`).get(Number(executorColabId))?.nome
-    : (os.mecanico_user_id ? db.prepare(`SELECT name FROM users WHERE id = ?`).get(os.mecanico_user_id)?.name : null);
-
-  const auxiliarNome = auxiliarColabId
-    ? db.prepare(`SELECT nome FROM colaboradores WHERE id = ?`).get(Number(auxiliarColabId))?.nome
-    : (os.auxiliar_user_id ? db.prepare(`SELECT name FROM users WHERE id = ?`).get(os.auxiliar_user_id)?.name : null);
+  const executorNome = os.executor_nome
+    || (os.mecanico_user_id ? db.prepare(`SELECT name FROM users WHERE id = ?`).get(os.mecanico_user_id)?.name : null);
+  const auxiliarNome = os.auxiliar_nome
+    || (os.auxiliar_user_id ? db.prepare(`SELECT name FROM users WHERE id = ?`).get(os.auxiliar_user_id)?.name : null);
 
   return {
     ...os,
@@ -431,21 +431,19 @@ function getUserNameById(userId) {
   return db.prepare(`SELECT name FROM users WHERE id = ?`).get(Number(userId))?.name || null;
 }
 
-function getSemanaAtual() {
+function getSemanaAtualEscala() {
   if (!tableExists("escala_semanas")) return null;
-  const hoje = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-
   return db.prepare(`
     SELECT id, semana_numero, data_inicio, data_fim
     FROM escala_semanas
-    WHERE ? BETWEEN data_inicio AND data_fim
+    WHERE date('now','localtime') BETWEEN data_inicio AND data_fim
+    ORDER BY id DESC
     LIMIT 1
-  `).get(hoje) || null;
+  `).get() || null;
+}
+
+function getSemanaAtual() {
+  return getSemanaAtualEscala();
 }
 
 function getTurnoAgora() {
@@ -459,7 +457,43 @@ function getTurnoAgora() {
   const h = Number(partMap.hour || 0);
   const m = Number(partMap.minute || 0);
   const min = (h * 60) + m;
-  return (min >= (19 * 60) || min < (7 * 60)) ? "NOITE" : "DIA";
+  return (min >= (19 * 60) || min < (6 * 60)) ? "NOITE" : "DIA";
+}
+
+function getColaboradoresTurnoAtual(turno) {
+  const semana = getSemanaAtualEscala();
+  if (!semana?.id || !tableExists("escala_alocacoes") || !tableExists("colaboradores")) return [];
+
+  const turnoNormalizado = String(turno || "").toUpperCase() === "NOITE" ? "NOITE" : "DIA";
+  const tipos = turnoNormalizado === "NOITE" ? ["plantao", "noturno"] : ["diurno", "apoio"];
+  const placeholders = tipos.map(() => "?").join(",");
+
+  return db.prepare(`
+    SELECT c.id AS colaborador_id,
+           c.user_id,
+           c.nome,
+           c.funcao,
+           a.tipo_turno
+    FROM escala_alocacoes a
+    JOIN colaboradores c ON c.id = a.colaborador_id
+    WHERE a.semana_id = ?
+      AND a.tipo_turno IN (${placeholders})
+      AND IFNULL(c.ativo,1)=1
+    ORDER BY CASE LOWER(a.tipo_turno)
+              WHEN 'plantao' THEN 0
+              WHEN 'noturno' THEN 1
+              WHEN 'diurno' THEN 0
+              WHEN 'apoio' THEN 1
+              ELSE 9 END,
+             c.nome ASC
+  `).all(Number(semana.id), ...tipos).map((row) => ({
+    colaborador_id: Number(row.colaborador_id),
+    id: Number(row.colaborador_id),
+    user_id: row.user_id ? Number(row.user_id) : null,
+    nome: row.nome,
+    funcao: normalizeColaboradorFuncao(row.funcao),
+    tipo_turno: String(row.tipo_turno || "").toLowerCase(),
+  }));
 }
 
 function getPlantonista(semanaId) {
@@ -477,15 +511,11 @@ function getPlantonista(semanaId) {
 }
 
 function getMecanicosDiurno() {
-  const semana = getSemanaAtual();
-  if (!semana?.id) return [];
-  return getEscalados(semana.id, "diurno", ["MECANICO"]);
+  return getColaboradoresTurnoAtual("DIA").filter((c) => c.tipo_turno === "diurno" && normalizeColaboradorFuncao(c.funcao) === "MECANICO");
 }
 
 function getApoioDiurno() {
-  const semana = getSemanaAtual();
-  if (!semana?.id) return [];
-  return getEscalados(semana.id, "apoio", ["APOIO", "AUXILIAR"]);
+  return getColaboradoresTurnoAtual("DIA").filter((c) => c.tipo_turno === "apoio" && ["APOIO", "AUXILIAR"].includes(normalizeColaboradorFuncao(c.funcao)));
 }
 
 function getEscalados(semanaId, tipoTurno, funcoes = []) {
@@ -547,8 +577,18 @@ function listarOcupados() {
 }
 
 function isColaboradorOcupado(colaboradorId) {
-  if (!colaboradorId) return false;
-  return listarOcupados().has(Number(colaboradorId));
+  if (!colaboradorId || !tableExists("os")) return false;
+  const cols = getOSColumns();
+  if (!cols.includes("executor_colaborador_id") || !cols.includes("auxiliar_colaborador_id")) return false;
+
+  const row = db.prepare(`
+    SELECT 1
+    FROM os
+    WHERE UPPER(COALESCE(status,'')) IN ('ABERTA','AGUARDANDO_EQUIPE','ANDAMENTO','PAUSADA')
+      AND (executor_colaborador_id = ? OR auxiliar_colaborador_id = ?)
+    LIMIT 1
+  `).get(Number(colaboradorId), Number(colaboradorId));
+  return !!row;
 }
 
 function persistirAlocacaoOS(osId, executor, auxiliar, turno, modo = "AUTO") {
@@ -620,100 +660,51 @@ function marcarAguardandoEquipe(osId, turno, aviso) {
 function autoAlocarOS(osId, { force = false } = {}) {
   const cols = getOSColumns();
   const os = db.prepare(`
-    SELECT id, grau, status,
+    SELECT id,
+           ${cols.includes("grau") ? "grau" : "'MEDIA' AS grau"},
+           ${cols.includes("status") ? "status" : "NULL AS status"},
            ${cols.includes("executor_colaborador_id") ? "executor_colaborador_id" : "NULL AS executor_colaborador_id"},
-           ${cols.includes("mecanico_user_id") ? "mecanico_user_id" : "NULL AS mecanico_user_id"},
-           ${cols.includes("turno_alocado") ? "turno_alocado" : "NULL AS turno_alocado"}
+           ${cols.includes("alocacao_modo") ? "alocacao_modo" : "NULL AS alocacao_modo"}
     FROM os
     WHERE id = ?
   `).get(Number(osId));
 
   if (!os) throw new Error("OS não encontrada.");
-  if ((os.executor_colaborador_id || os.mecanico_user_id) && !force) {
-    return { aguardando: false, turno: os.turno_alocado || null, aviso: "OS já possui executor alocado." };
+  if (os.executor_colaborador_id && !force) {
+    if (cols.includes("alocacao_modo") && !["AUTO", "MANUAL"].includes(String(os.alocacao_modo || "").toUpperCase())) {
+      db.prepare(`UPDATE os SET alocacao_modo = 'AUTO' WHERE id = ?`).run(Number(osId));
+    }
+    return { aguardando: false, aviso: "OS já possui executor alocado." };
   }
 
-  const semanaAtual = getSemanaAtual();
-  if (!semanaAtual?.id) {
-    return marcarAguardandoEquipe(osId, getTurnoAgora(), "OS criada, aguardando equipe — semana de escala não encontrada.");
-  }
-
-  const turno = getTurnoAgora();
-  const grau = normalizeGrau(os.grau);
-  const ocupados = listarOcupados();
+  const turno = getTurnoAtual();
 
   if (turno === "NOITE") {
-    const plantonista = getPlantonista(semanaAtual.id);
-    if (!plantonista?.id) {
-      return marcarAguardandoEquipe(osId, turno, "Sem mecânico plantonista configurado na semana atual.");
+    const plantonista = getPlantonistaNoite();
+    if (plantonista?.id && !isColaboradorOcupado(plantonista.id)) {
+      persistirAlocacaoOS(Number(osId), plantonista, null, "NOITE", "AUTO");
+      return { aguardando: false, turno: "NOITE", executor: plantonista, auxiliar: null };
     }
-    if (isColaboradorOcupado(Number(plantonista.id))) {
-      return marcarAguardandoEquipe(osId, turno, "Plantonista ocupado no momento. OS aguardando equipe.");
-    }
-
-    persistirAlocacaoOS(osId, plantonista, null, "NOITE", "AUTO");
-    return { aguardando: false, turno: "NOITE", executor: { id: Number(plantonista.id), nome: plantonista.nome }, auxiliar: null };
+    return marcarAguardandoEquipe(Number(osId), "NOITE", "Sem executor disponível no turno: OS aguardando alocação.");
   }
 
-  const apoioDisponivel = getApoioDiurno().filter((c) => !ocupados.has(Number(c.id)));
-  const mecanicosDisponiveis = getMecanicosDiurno().filter((c) => !ocupados.has(Number(c.id)));
+  const grau = normalizeGrau(os.grau);
+  const apoioDisponivel = getApoioDiurno().filter((c) => !isColaboradorOcupado(c.id));
+  const mecanicosDisponiveis = getMecanicosDiurno().filter((c) => !isColaboradorOcupado(c.id));
 
   if (grau === "BAIXA") {
-    const executor = apoioDisponivel[0] || mecanicosDisponiveis[0];
-    if (!executor) return marcarAguardandoEquipe(osId, "DIA", "Sem executor disponível no turno: OS aguardando alocação.");
-    persistirAlocacaoOS(osId, executor, null, "DIA", "AUTO");
-    return { aguardando: false, turno: "DIA", executor: { id: Number(executor.id), nome: executor.nome }, auxiliar: null };
+    const executor = apoioDisponivel[0] || mecanicosDisponiveis[0] || null;
+    if (!executor) return marcarAguardandoEquipe(Number(osId), "DIA", "Sem executor disponível no turno: OS aguardando alocação.");
+    persistirAlocacaoOS(Number(osId), executor, null, "DIA", "AUTO");
+    return { aguardando: false, turno: "DIA", executor, auxiliar: null };
   }
 
-  const pares = tableExists("equipe_pares")
-    ? db.prepare(`
-      SELECT p.mecanico_colaborador_id, p.auxiliar_colaborador_id,
-             cm.nome AS mecanico_nome, cm.user_id AS mecanico_user_id,
-             ca.nome AS auxiliar_nome, ca.user_id AS auxiliar_user_id
-      FROM equipe_pares p
-      JOIN colaboradores cm ON cm.id = p.mecanico_colaborador_id
-      JOIN colaboradores ca ON ca.id = p.auxiliar_colaborador_id
-      WHERE IFNULL(p.ativo,1)=1
-      ORDER BY p.ordem ASC, p.id ASC
-    `).all()
-    : [];
+  const executor = mecanicosDisponiveis[0] || null;
+  if (!executor) return marcarAguardandoEquipe(Number(osId), "DIA", "Sem executor disponível no turno: OS aguardando alocação.");
 
-  const diurnoIds = new Set(getEscalados(semanaAtual.id, "diurno", ["MECANICO"]).map((c) => Number(c.id)));
-  const apoioIds = new Set(getEscalados(semanaAtual.id, "apoio", ["APOIO", "AUXILIAR"]).map((c) => Number(c.id)));
-
-  for (const par of pares) {
-    const mecanicoOk = diurnoIds.has(Number(par.mecanico_colaborador_id)) && !ocupados.has(Number(par.mecanico_colaborador_id));
-    const auxiliarOk = apoioIds.has(Number(par.auxiliar_colaborador_id)) && !ocupados.has(Number(par.auxiliar_colaborador_id));
-    if (!mecanicoOk || !auxiliarOk) continue;
-
-    const executor = {
-      id: Number(par.mecanico_colaborador_id),
-      nome: par.mecanico_nome,
-      user_id: par.mecanico_user_id,
-    };
-    const auxiliar = {
-      id: Number(par.auxiliar_colaborador_id),
-      nome: par.auxiliar_nome,
-      user_id: par.auxiliar_user_id,
-    };
-
-    persistirAlocacaoOS(osId, executor, auxiliar, "DIA", "AUTO");
-    return { aguardando: false, turno: "DIA", executor, auxiliar };
-  }
-
-  const mecanicoFallback = mecanicosDisponiveis[0] || null;
-  if (mecanicoFallback) {
-    persistirAlocacaoOS(osId, mecanicoFallback, null, "DIA", "AUTO");
-    return {
-      aguardando: false,
-      turno: "DIA",
-      executor: { id: Number(mecanicoFallback.id), nome: mecanicoFallback.nome },
-      auxiliar: null,
-      aviso: "Equipe completa indisponível. OS alocada somente com mecânico.",
-    };
-  }
-
-  return marcarAguardandoEquipe(osId, "DIA", "Sem equipe disponível no turno diurno.");
+  const auxiliar = apoioDisponivel[0] || null;
+  persistirAlocacaoOS(Number(osId), executor, auxiliar, "DIA", "AUTO");
+  return { aguardando: false, turno: "DIA", executor, auxiliar };
 }
 
 function autoAssignOS(osId, _alocadoPorUserId = null, opts = {}) {
@@ -1237,7 +1228,9 @@ module.exports = {
   getTurnoAgora,
   getEscalaSemanaAtual,
   getSemanaAtual,
+  getSemanaAtualEscala,
   getPessoasDoTurnoAtual,
+  getColaboradoresTurnoAtual,
   isUserOcupado,
   isColaboradorOcupado,
   getPlantonistaNoite,

@@ -82,7 +82,7 @@
 <div class="card" style="margin-top:12px;">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
     <h3 style="margin:0;">Equipe</h3>
-    <% if (canAutoAssign && (String(os.status || '').toUpperCase() === 'AGUARDANDO_EQUIPE' || !os.executor_colaborador_id)) { %>
+    <% if (canAutoAssign) { %>
       <form method="POST" action="/os/<%= os.id %>/auto-alocar">
         <button class="btn btn-primary" type="submit">Reatribuir automaticamente</button>
       </form>
