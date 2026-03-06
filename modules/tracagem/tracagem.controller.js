@@ -1,0 +1,191 @@
+const PDFDocument = require('pdfkit');
+const service = require('./tracagem.service');
+
+const LABELS = {
+  'rosca-helicoidal': 'Rosca helicoidal',
+  'furacao-flange': 'Furação de flange',
+  cilindro: 'Cilindro',
+  'curva-gomos': 'Curva de gomos',
+  'quadrado-para-redondo': 'Quadrado para redondo',
+  'reducao-concentrica': 'Redução concêntrica',
+  'semi-cilindro': 'Semi-cilíndro',
+  'boca-de-lobo-excentrica': 'Boca de lobo excêntrica',
+  'boca-de-lobo-45-graus': 'Boca de lobo 45 graus',
+  'boca-de-lobo-90-graus': 'Boca de lobo 90 graus',
+  'mao-francesa': 'Mão francesa',
+  'pao-francesa': 'Mão francesa',
+};
+
+function baseRender(req, res, view, payload = {}) {
+  return res.render(view, {
+    title: payload.title || 'Traçagem',
+    activeMenu: 'tracagem',
+    ...payload,
+  });
+}
+
+function index(req, res) {
+  return baseRender(req, res, 'tracagem/index', { title: 'Traçagem' });
+}
+
+function lista(req, res) {
+  const filtros = {
+    tipo: req.query.tipo || '',
+    equipamento_id: req.query.equipamento_id || '',
+    os_id: req.query.os_id || '',
+    periodo_inicio: req.query.periodo_inicio || '',
+    periodo_fim: req.query.periodo_fim || '',
+  };
+
+  const tracagens = service.list(filtros);
+  return baseRender(req, res, 'tracagem/lista', {
+    title: 'Histórico de traçagem',
+    filtros,
+    tracagens,
+    equipamentos: service.listEquipamentos(),
+    ordensServico: service.listOSAbertas(),
+    labels: LABELS,
+  });
+}
+
+function show(req, res) {
+  const tracagem = service.getById(req.params.id);
+  if (!tracagem) return res.status(404).render('errors/404', { title: 'Não encontrado' });
+
+  return baseRender(req, res, 'tracagem/show', {
+    title: `Traçagem #${tracagem.id}`,
+    tracagem,
+    labels: LABELS,
+  });
+}
+
+function renderCalc(tipo, viewName, title) {
+  return (req, res) => baseRender(req, res, `tracagem/${viewName}`, {
+    title,
+    tipo,
+    labels: LABELS,
+    equipamentos: service.listEquipamentos(),
+    ordensServico: service.listOSAbertas(),
+    calculo: null,
+  });
+}
+
+function calcular(tipo, viewName, title) {
+  return (req, res) => {
+    try {
+      const resultado = service.calcularPorTipo(tipo, req.body);
+      return baseRender(req, res, `tracagem/${viewName}`, {
+        title,
+        tipo,
+        labels: LABELS,
+        equipamentos: service.listEquipamentos(),
+        ordensServico: service.listOSAbertas(),
+        calculo: {
+          parametros: req.body,
+          resultado,
+        },
+      });
+    } catch (err) {
+      req.flash('error', err.message || 'Erro ao calcular traçagem.');
+      return res.redirect(`/tracagem/${tipo}`);
+    }
+  };
+}
+
+function salvar(req, res) {
+  try {
+    const tipo = req.body.tipo;
+    const parametros = JSON.parse(req.body.parametros_json || '{}');
+    const resultado = JSON.parse(req.body.resultado_json || '{}');
+
+    const id = service.salvar({
+      tipo,
+      titulo: req.body.titulo,
+      equipamento_id: req.body.equipamento_id ? Number(req.body.equipamento_id) : null,
+      os_id: req.body.os_id ? Number(req.body.os_id) : null,
+      usuario_id: req.session?.user?.id || null,
+      parametros,
+      resultado,
+    });
+
+    req.flash('success', `Traçagem #${id} salva com sucesso.`);
+    return res.redirect(`/tracagem/${id}`);
+  } catch (err) {
+    req.flash('error', err.message || 'Erro ao salvar traçagem.');
+    return res.redirect('/tracagem');
+  }
+}
+
+function jsonToLines(title, obj = {}) {
+  const lines = [title];
+  Object.entries(obj || {}).forEach(([k, v]) => {
+    if (Array.isArray(v)) {
+      lines.push(`- ${k}:`);
+      v.forEach((item) => lines.push(`  • ${JSON.stringify(item)}`));
+    } else {
+      lines.push(`- ${k}: ${v}`);
+    }
+  });
+  return lines;
+}
+
+function gerarPdf(req, res) {
+  const tracagem = service.getById(req.params.id);
+  if (!tracagem) return res.status(404).render('errors/404', { title: 'Não encontrado' });
+
+  const filename = `tracagem_${tracagem.tipo}_${tracagem.id}.pdf`;
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+  const doc = new PDFDocument({ margin: 40 });
+  doc.pipe(res);
+
+  doc.fontSize(18).text('Relatório Técnico de Traçagem', { align: 'center' });
+  doc.moveDown();
+  doc.fontSize(12).text(`Título: ${tracagem.titulo || '-'}`);
+  doc.text(`Tipo: ${LABELS[tracagem.tipo] || tracagem.tipo}`);
+  doc.text(`Data: ${tracagem.created_at || '-'}`);
+  doc.text(`Usuário responsável: ${tracagem.usuario_nome || '-'}`);
+  doc.text(`OS vinculada: ${tracagem.os_id || '-'}`);
+  doc.text(`Equipamento vinculado: ${tracagem.equipamento_nome || '-'}`);
+  doc.moveDown();
+
+  jsonToLines('Parâmetros informados:', tracagem.parametros).forEach((line) => doc.text(line));
+  doc.moveDown();
+  jsonToLines('Resultados calculados:', tracagem.resultado).forEach((line) => doc.text(line));
+  doc.moveDown();
+
+  doc.rect(doc.x, doc.y, 220, 90).stroke();
+  doc.text('Desenho ilustrativo', doc.x + 50, doc.y + 35);
+  doc.end();
+}
+
+module.exports = {
+  index,
+  lista,
+  show,
+  roscaForm: renderCalc('rosca-helicoidal', 'rosca-helicoidal', 'Rosca helicoidal'),
+  roscaCalcular: calcular('rosca-helicoidal', 'rosca-helicoidal', 'Rosca helicoidal'),
+  flangeForm: renderCalc('furacao-flange', 'furacao-flange', 'Furação de flange'),
+  flangeCalcular: calcular('furacao-flange', 'furacao-flange', 'Furação de flange'),
+  cilindroForm: renderCalc('cilindro', 'cilindro', 'Cilindro'),
+  cilindroCalcular: calcular('cilindro', 'cilindro', 'Cilindro'),
+  curvaForm: renderCalc('curva-gomos', 'curva-gomos', 'Curva de gomos'),
+  curvaCalcular: calcular('curva-gomos', 'curva-gomos', 'Curva de gomos'),
+  quadradoRedondoForm: renderCalc('quadrado-para-redondo', 'quadrado-para-redondo', 'Quadrado para redondo'),
+  quadradoRedondoCalcular: calcular('quadrado-para-redondo', 'quadrado-para-redondo', 'Quadrado para redondo'),
+  reducaoConcentricaForm: renderCalc('reducao-concentrica', 'reducao-concentrica', 'Redução concêntrica'),
+  reducaoConcentricaCalcular: calcular('reducao-concentrica', 'reducao-concentrica', 'Redução concêntrica'),
+  semiCilindroForm: renderCalc('semi-cilindro', 'semi-cilindro', 'Semi-cilíndro'),
+  semiCilindroCalcular: calcular('semi-cilindro', 'semi-cilindro', 'Semi-cilíndro'),
+  bocaLoboExcentricaForm: renderCalc('boca-de-lobo-excentrica', 'boca-de-lobo-excentrica', 'Boca de lobo excêntrica'),
+  bocaLoboExcentricaCalcular: calcular('boca-de-lobo-excentrica', 'boca-de-lobo-excentrica', 'Boca de lobo excêntrica'),
+  bocaLobo45Form: renderCalc('boca-de-lobo-45-graus', 'boca-de-lobo-45-graus', 'Boca de lobo 45 graus'),
+  bocaLobo45Calcular: calcular('boca-de-lobo-45-graus', 'boca-de-lobo-45-graus', 'Boca de lobo 45 graus'),
+  bocaLobo90Form: renderCalc('boca-de-lobo-90-graus', 'boca-de-lobo-90-graus', 'Boca de lobo 90 graus'),
+  bocaLobo90Calcular: calcular('boca-de-lobo-90-graus', 'boca-de-lobo-90-graus', 'Boca de lobo 90 graus'),
+  maoFrancesaForm: renderCalc('mao-francesa', 'mao-francesa', 'Mão francesa'),
+  maoFrancesaCalcular: calcular('mao-francesa', 'mao-francesa', 'Mão francesa'),
+  salvar,
+  gerarPdf,
+};

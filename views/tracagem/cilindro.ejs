@@ -1,0 +1,15 @@
+<% layout('layout') %>
+<%- include('tracagem/_calc_base', { 
+  titulo: 'Cilindro',
+  tipo,
+  action: '/tracagem/cilindro/calcular',
+  desenho: '🛢️ Desenvolvimento de cilindro',
+  campos: [
+    { name: 'D', label: 'D (diâmetro)', type: 'number', step: '0.01' },
+    { name: 'h', label: 'h (altura)', type: 'number', step: '0.01' },
+    { name: 'E', label: 'E (espessura)', type: 'number', step: '0.01' },
+  ],
+  calculo,
+  equipamentos,
+  ordensServico
+}) %>
