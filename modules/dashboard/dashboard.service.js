@@ -611,7 +611,7 @@ function getOSEmAndamento() {
       LEFT JOIN users ua ON ua.id = ex.auxiliar_user_id
       LEFT JOIN colaboradores ce ON ce.id = ${hasExecColab ? "o.executor_colaborador_id" : "NULL"}
       LEFT JOIN colaboradores ca ON ca.id = ${hasAuxColab ? "o.auxiliar_colaborador_id" : "NULL"}
-      WHERE UPPER(COALESCE(o.status,'')) IN ('ABERTA','ANDAMENTO','EM_ANDAMENTO')
+      WHERE UPPER(COALESCE(o.status,'')) IN ('ANDAMENTO','EM_ANDAMENTO')
       ORDER BY datetime(COALESCE(ex.iniciado_em, o.opened_at)) DESC
       LIMIT 20
     `).all();

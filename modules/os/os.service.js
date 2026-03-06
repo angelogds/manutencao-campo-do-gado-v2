@@ -131,14 +131,8 @@ function isUserOcupado(userId) {
 }
 
 function getPlantonistaNoite() {
-  const candidatos = getColaboradoresTurnoAtual("NOITE")
-    .filter((c) => normalizeColaboradorFuncao(c.funcao) === "MECANICO");
-
-  const plantao = candidatos.filter((c) => c.tipo_turno === "plantao");
-  if (plantao.length) return plantao[0];
-
-  const noturno = candidatos.filter((c) => c.tipo_turno === "noturno");
-  return noturno[0] || candidatos[0] || null;
+  const candidatos = getColaboradoresTurnoAtual("NOITE");
+  return candidatos.find((c) => normalizeColaboradorFuncao(c.funcao) === "MECANICO") || null;
 }
 
 function listEquipamentosAtivos() {
@@ -710,18 +704,16 @@ function autoAlocarOS(osId, { force = false } = {}) {
   const mecanicosDisponiveis = getMecanicosDiurno().filter((c) => !isColaboradorOcupado(c.id));
 
   if (grau === "BAIXA") {
-    const executor = pickDisponivelPorOrdem(apoioDisponivel, "rr_apoio_diurno_id")
-      || pickDisponivelPorOrdem(mecanicosDisponiveis, "rr_mecanico_diurno_id")
-      || null;
+    const executor = apoioDisponivel[0] || mecanicosDisponiveis[0] || null;
     if (!executor) return marcarAguardandoEquipe(Number(osId), "DIA", "Sem executor disponível no turno: OS aguardando alocação.");
     persistirAlocacaoOS(Number(osId), executor, null, "DIA", "AUTO");
     return { aguardando: false, turno: "DIA", executor, auxiliar: null };
   }
 
-  const executor = pickDisponivelPorOrdem(mecanicosDisponiveis, "rr_mecanico_diurno_id");
+  const executor = mecanicosDisponiveis[0] || null;
   if (!executor) return marcarAguardandoEquipe(Number(osId), "DIA", "Sem executor disponível no turno: OS aguardando alocação.");
 
-  const auxiliar = pickDisponivelPorOrdem(apoioDisponivel.filter((c) => Number(c.id) !== Number(executor?.id || 0)), "rr_apoio_diurno_id") || null;
+  const auxiliar = apoioDisponivel[0] || null;
   persistirAlocacaoOS(Number(osId), executor, auxiliar, "DIA", "AUTO");
   return { aguardando: false, turno: "DIA", executor, auxiliar };
 }
