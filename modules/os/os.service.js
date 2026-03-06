@@ -631,10 +631,10 @@ function isColaboradorOcupado(colaboradorId) {
   return !!row;
 }
 
-function isColaboradorDisponivel(colaboradorId, turno = null) {
+function isColaboradorDisponivel(colaboradorId) {
   const id = Number(colaboradorId || 0);
   if (!id) return false;
-  const turnoAtual = String(turno || getTurnoAtual() || "").toUpperCase() === "NOITE" ? "NOITE" : "DIA";
+  const turnoAtual = getTurnoAtual();
   const escalados = getColaboradoresTurnoAtual(turnoAtual);
   const estaEscalado = escalados.some((c) => Number(c.id) === id);
   if (!estaEscalado) return false;
@@ -731,7 +731,7 @@ function autoAlocarOS(osId, { force = false } = {}) {
 
   if (turno === "NOITE") {
     const plantonista = getPlantonistaNoite();
-    if (plantonista?.id && isColaboradorDisponivel(plantonista.id, "NOITE")) {
+    if (plantonista?.id && isColaboradorDisponivel(plantonista.id)) {
       persistirAlocacaoOS(Number(osId), plantonista, null, "NOITE", "AUTO");
       return { aguardando: false, turno: "NOITE", executor: plantonista, auxiliar: null };
     }
@@ -739,8 +739,8 @@ function autoAlocarOS(osId, { force = false } = {}) {
   }
 
   const grau = normalizeGrau(os.grau);
-  const apoioDisponivel = getApoioDiurno().filter((c) => isColaboradorDisponivel(c.id, "DIA"));
-  const mecanicosDisponiveis = getMecanicosDiurno().filter((c) => isColaboradorDisponivel(c.id, "DIA"));
+  const apoioDisponivel = getApoioDiurno().filter((c) => isColaboradorDisponivel(c.id));
+  const mecanicosDisponiveis = getMecanicosDiurno().filter((c) => isColaboradorDisponivel(c.id));
 
   if (grau === "BAIXA") {
     const executor = apoioDisponivel[0]
