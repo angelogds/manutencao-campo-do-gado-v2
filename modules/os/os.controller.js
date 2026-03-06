@@ -1,5 +1,7 @@
 const service = require("./os.service");
 const pushService = require("../push/push.service");
+let tracagemService = null;
+try { tracagemService = require('../tracagem/tracagem.service'); } catch (_e) {}
 const { normalizeRole } = require("../../config/rbac");
 
 function mapFilesToPublic(files = []) {
@@ -112,6 +114,7 @@ function osShow(req, res) {
   }
 
   const equipeUsuarios = canManageEquipe ? service.listUsuariosEquipe() : [];
+  const tracagens = tracagemService ? tracagemService.listByOS(id) : [];
 
   return res.render("os/show", {
     title: `OS #${id}`,
@@ -119,6 +122,7 @@ function osShow(req, res) {
     canAutoAssign: canManageEquipe,
     canManualEditEquipe: canManageEquipe,
     equipeUsuarios,
+    tracagens,
     user: req.session?.user || null,
   });
 }

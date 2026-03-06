@@ -178,6 +178,7 @@ mount("/demandas", "./modules/demandas/demandas.routes");
 mount("/motores", "./modules/motores/motores.routes");
 mount("/inspecao", "./modules/inspecao/inspecao.routes");
 mount("/inspection", "./modules/inspection/inspecao.routes");
+mount("/tracagem", "./modules/tracagem/tracagem.routes");
 
 try {
   const osService = require("./modules/os/os.service");

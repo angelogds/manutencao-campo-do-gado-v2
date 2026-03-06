@@ -34,6 +34,7 @@
       <a class="tab <%= tab==='pecas'?'active':'' %>" href="?tab=pecas">Peças / Lista técnica</a>
       <a class="tab <%= tab==='documentos'?'active':'' %>" href="?tab=documentos">Documentos</a>
       <a class="tab <%= tab==='qrcode'?'active':'' %>" href="?tab=qrcode">QR Code</a>
+      <a class="tab <%= tab==='tracagem'?'active':'' %>" href="?tab=tracagem">Traçagens</a>
     </div>
 
     <div class="card">
@@ -123,6 +124,13 @@
           })();
         </script>
         <div class="table-wrap"><table class="table"><thead><tr><th>Tipo</th><th>Descrição</th><th>Emissão</th><th>Validade</th><th>Responsável</th><th>Ações</th></tr></thead><tbody><% if(!documentos.length){ %><tr><td colspan="6">Sem documentos anexados.</td></tr><% } %><% documentos.forEach(d=>{ %><tr><td><%= d.tipo_documento %></td><td><%= d.descricao || '-' %></td><td><%= d.data_emissao || '-' %></td><td><%= d.validade || '-' %></td><td><%= d.responsavel || '-' %></td><td><a class="btn" href="<%= d.caminho_arquivo %>" download>Baixar</a><form method="POST" action="/equipamentos/<%= equip.id %>/documentos/<%= d.id %>/remover" style="display:inline;"><button class="btn btn-red">Remover</button></form></td></tr><% }) %></tbody></table></div>
+      <% } else if (tab === 'tracagem') { %>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <h3>Traçagens relacionadas</h3>
+          <a class="btn btn-green" href="/tracagem">Abrir Traçagem</a>
+        </div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>ID</th><th>Título</th><th>Tipo</th><th>Data</th><th></th></tr></thead><tbody><% if(!tracagens.length){ %><tr><td colspan="5">Sem traçagens vinculadas a este equipamento.</td></tr><% } %><% tracagens.forEach(t=>{ %><tr><td>#<%= t.id %></td><td><%= t.titulo || '-' %></td><td><%= t.tipo %></td><td><%= fmtBR(t.created_at) %></td><td><a class="btn" href="/tracagem/<%= t.id %>">Abrir</a></td></tr><% }) %></tbody></table></div>
+
       <% } else if (tab === 'qrcode') { %>
         <% if (qrImage) { %><img src="<%= qrImage %>" style="max-width:260px;"/><p><a href="<%= qrUrl %>" target="_blank"><%= qrUrl %></a></p><a class="btn" href="/equipamentos/<%= equip.id %>/qrcode/print" target="_blank">Imprimir QR Code</a><% } else { %><p>Ainda sem QR Code. Use o botão de gerar.</p><% } %>
       <% } else { %>

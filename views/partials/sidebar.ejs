@@ -25,6 +25,7 @@
   const canUsuarios = can('usuarios');
   const canEscala = can('escala');
   const canInspecao = can('inspecao_view');
+  const canTracagem = can('tracagem_view');
 
   const currentPcmSection = (typeof activePcmSection !== 'undefined' ? activePcmSection : '');
 %>
@@ -83,6 +84,11 @@
 
     <% if (canInspecao) { %>
       <a class="nav-item <%= activeMenu === 'inspecao' ? 'active' : '' %>" href="/inspecao">🛡️ Inspeção (PAC 01)</a>
+    <% } %>
+
+
+    <% if (canTracagem) { %>
+      <a class="nav-item <%= activeMenu === 'tracagem' ? 'active' : '' %>" href="/tracagem">Traçagem</a>
     <% } %>
 
     <% if (canAvisos) { %>

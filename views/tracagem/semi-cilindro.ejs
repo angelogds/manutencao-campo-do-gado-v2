@@ -1,0 +1,2 @@
+<% layout('layout') %>
+<%- include('tracagem/_calc_base', { titulo: 'Semi-cilíndro', tipo, action: '/tracagem/semi-cilindro/calcular', desenho: '◐ Desenvolvimento semi-cilindro', campos: [ { name: 'diametro', label: 'Diâmetro', type: 'number', step: '0.01' }, { name: 'comprimento', label: 'Comprimento', type: 'number', step: '0.01' } ], calculo, equipamentos, ordensServico }) %>
