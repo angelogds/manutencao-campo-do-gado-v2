@@ -87,8 +87,8 @@ function getPessoasDoTurnoAtual() {
 
   const turnoAtual = getTurnoAtual();
   const turnosPermitidos = turnoAtual === "NOITE"
-    ? ["noturno", "plantao"]
-    : ["diurno", "apoio", "plantao"];
+    ? ["plantao", "noturno"]
+    : ["diurno", "apoio"];
 
   const placeholders = turnosPermitidos.map(() => "?").join(",");
   const usersJoin = tableExists("users");
@@ -391,8 +391,8 @@ function getOSById(id) {
 
   if (!os) return null;
 
-  const executorNome = os.executor_user_nome || os.executor_nome || null;
-  const auxiliarNome = os.auxiliar_user_nome || os.auxiliar_nome || null;
+  const executorNome = os.executor_nome || os.executor_user_nome || null;
+  const auxiliarNome = os.auxiliar_nome || os.auxiliar_user_nome || null;
 
   return {
     ...os,

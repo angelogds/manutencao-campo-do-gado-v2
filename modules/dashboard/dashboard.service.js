@@ -173,6 +173,19 @@ function getMotoresResumoDashboard() {
   });
 }
 
+
+function normalizeFuncaoColaborador(funcao) {
+  const raw = String(funcao || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+    .toLowerCase();
+  if (raw.includes('mecan')) return 'mecanico';
+  if (raw.includes('operacional') || raw.includes('apoio')) return 'operacional';
+  if (raw.includes('auxiliar')) return 'auxiliar';
+  return raw;
+}
+
 function getEscalaPainelSemana() {
   return safeGet(() => {
     const semana = db
