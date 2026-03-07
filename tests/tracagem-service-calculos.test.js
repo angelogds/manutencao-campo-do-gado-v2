@@ -3,14 +3,25 @@ const assert = require('node:assert/strict');
 
 const service = require('../modules/tracagem/tracagem.service');
 
-test('calcRoscaHelicoidal returns padrão entrada/resultado/observacoes', () => {
+function assertPadrao(out) {
+  assert.ok(out.entrada);
+  assert.ok(out.resultado);
+  assert.ok(out.planificacao);
+  assert.ok(Array.isArray(out.observacoes));
+  assert.ok(out.planificacao.labels);
+  assert.ok(Array.isArray(out.planificacao.pontos));
+  assert.ok(Array.isArray(out.planificacao.linhas));
+  assert.ok(Array.isArray(out.planificacao.divisoes));
+}
+
+test('calcRoscaHelicoidal returns padrão entrada/resultado/planificacao/observacoes', () => {
   const out = service.calcRoscaHelicoidal({ D: 100, d: 60, P: 20 });
   assert.deepEqual(out.entrada, { D: 100, d: 60, P: 20 });
   assert.equal(out.resultado.R1, 50);
   assert.equal(out.resultado.R2, 30);
   assert.equal(out.resultado.C, 125.66);
   assert.equal(out.resultado.T, 252.12);
-  assert.ok(Array.isArray(out.observacoes));
+  assertPadrao(out);
 });
 
 test('calcFuracaoFlange uses N and returns furos list + corda', () => {
@@ -21,6 +32,7 @@ test('calcFuracaoFlange uses N and returns furos list + corda', () => {
   assert.equal(out.resultado.corda, 141.42);
   assert.equal(out.resultado.furos.length, 4);
   assert.equal(out.resultado.furos[1].angulo, 90);
+  assertPadrao(out);
 });
 
 test('calcCilindro returns A and B', () => {
@@ -28,6 +40,7 @@ test('calcCilindro returns A and B', () => {
   assert.deepEqual(out.entrada, { D: 100, h: 50, E: 3 });
   assert.equal(out.resultado.A, 314.16);
   assert.equal(out.resultado.B, 50);
+  assertPadrao(out);
 });
 
 test('calcMaoFrancesa computes diagonal/alpha from A and h', () => {
@@ -37,4 +50,5 @@ test('calcMaoFrancesa computes diagonal/alpha from A and h', () => {
   assert.equal(out.resultado.alpha, 53.13);
   assert.equal(out.resultado.B, 10);
   assert.equal(out.resultado.D, 10);
+  assertPadrao(out);
 });

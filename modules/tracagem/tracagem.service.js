@@ -35,6 +35,24 @@ function n4(v) {
   return Number(Number(v).toFixed(4));
 }
 
+function emptyPlanificacao() {
+  return {
+    labels: {},
+    pontos: [],
+    linhas: [],
+    divisoes: [],
+  };
+}
+
+function buildResult({ entrada, resultado, planificacao, observacoes }) {
+  return {
+    entrada,
+    resultado,
+    planificacao: planificacao || emptyPlanificacao(),
+    observacoes: observacoes || [],
+  };
+}
+
 function calcRoscaHelicoidal({ D, d, P }) {
   const Dn = toNum(D, 'D');
   const dn = toNum(d, 'd');
@@ -46,7 +64,7 @@ function calcRoscaHelicoidal({ D, d, P }) {
   const T = Math.sqrt(((2 * C) ** 2) + (Pn ** 2));
   const planificacao = (360 * C) / Pn;
 
-  return {
+  return buildResult({
     entrada: { D: Dn, d: dn, P: Pn },
     resultado: {
       R1: n2(R1),
@@ -55,11 +73,27 @@ function calcRoscaHelicoidal({ D, d, P }) {
       T: n2(T),
       planificacao: n2(planificacao),
     },
+    planificacao: {
+      labels: { R1: n2(R1), R2: n2(R2), C: n2(C), T: n2(T), P: Pn },
+      pontos: [
+        { nome: 'A', x: 120, y: 420 },
+        { nome: 'B', x: 680, y: 420 },
+        { nome: 'C', x: 640, y: 300 },
+        { nome: 'D', x: 160, y: 300 },
+      ],
+      linhas: [
+        { de: 'A', para: 'B', tipo: 'base' },
+        { de: 'B', para: 'C', tipo: 'geratriz' },
+        { de: 'C', para: 'D', tipo: 'topo' },
+        { de: 'D', para: 'A', tipo: 'geratriz' },
+      ],
+      divisoes: [{ indice: 1, descricao: 'passo P', valor: Pn }],
+    },
     observacoes: [
       'Resultado prático para marcação de rosca helicoidal em chaparia.',
       'Conferir sentido do avanço e folga de solda antes do corte final.',
     ],
-  };
+  });
 }
 
 function calcFuracaoFlange({ D, N, furos }) {
@@ -79,7 +113,7 @@ function calcFuracaoFlange({ D, N, furos }) {
     };
   });
 
-  return {
+  return buildResult({
     entrada: { D: Dn, N: Nn },
     resultado: {
       raio: n2(raio),
@@ -87,11 +121,17 @@ function calcFuracaoFlange({ D, N, furos }) {
       corda: n2(corda),
       furos: furosCalc,
     },
+    planificacao: {
+      labels: { D: Dn, N: Nn, corda: n2(corda), anguloEntreFuros: n2(anguloEntreFuros) },
+      pontos: furosCalc.map((f) => ({ nome: `F${f.furo}`, x: f.x, y: f.y })),
+      linhas: furosCalc.length > 1 ? [{ de: 'F1', para: 'F2', tipo: 'corda' }] : [],
+      divisoes: furosCalc.map((f) => ({ indice: f.furo, angulo: f.angulo })),
+    },
     observacoes: [
       'Divisão angular uniforme para furação de flange.',
       'A corda representa a distância linear entre centros de dois furos adjacentes.',
     ],
-  };
+  });
 }
 
 function calcCilindro({ D, h, H, E }) {
@@ -102,7 +142,7 @@ function calcCilindro({ D, h, H, E }) {
   const A = Math.PI * Dn;
   const B = hn;
 
-  return {
+  return buildResult({
     entrada: { D: Dn, h: hn, E: En },
     resultado: {
       A: n2(A),
@@ -111,11 +151,27 @@ function calcCilindro({ D, h, H, E }) {
       comprimentoComFolga: n2(A + (2 * En)),
       area: n2(A * B),
     },
+    planificacao: {
+      labels: { A: n2(A), B: n2(B), E: En },
+      pontos: [
+        { nome: 'P1', x: 140, y: 420 },
+        { nome: 'P2', x: 660, y: 420 },
+        { nome: 'P3', x: 660, y: 260 },
+        { nome: 'P4', x: 140, y: 260 },
+      ],
+      linhas: [
+        { de: 'P1', para: 'P2', tipo: 'A' },
+        { de: 'P2', para: 'P3', tipo: 'B' },
+        { de: 'P3', para: 'P4', tipo: 'A' },
+        { de: 'P4', para: 'P1', tipo: 'B' },
+      ],
+      divisoes: [],
+    },
     observacoes: [
       'Desenvolvimento básico para cilindro calandrado.',
       'A = π·D e B = altura útil da chapa.',
     ],
-  };
+  });
 }
 
 function calcCurvaGomos({ D, A, G, diametro, angulo, gomos }) {
@@ -128,7 +184,12 @@ function calcCurvaGomos({ D, A, G, diametro, angulo, gomos }) {
   const desenvolvimentoBase = Math.PI * Dn;
   const comprimentoAproximado = desenvolvimentoBase / Gn;
 
-  return {
+  const divisoes = Array.from({ length: Gn + 1 }, (_, i) => ({
+    indice: i,
+    medida: n2((desenvolvimentoBase / Gn) * i),
+  }));
+
+  return buildResult({
     entrada: { D: Dn, A: An, G: Gn },
     resultado: {
       anguloPorGomo: n2(anguloPorGomo),
@@ -136,11 +197,17 @@ function calcCurvaGomos({ D, A, G, diametro, angulo, gomos }) {
       desenvolvimentoBase: n2(desenvolvimentoBase),
       comprimentoAproximado: n2(comprimentoAproximado),
     },
+    planificacao: {
+      labels: { A: An, P: n2(anguloPorGomo), D: Dn },
+      pontos: [],
+      linhas: [],
+      divisoes,
+    },
     observacoes: [
       'Ângulo de corte aproximado por gomo.',
       'Resultado inicial para traçagem prática de curva segmentada.',
     ],
-  };
+  });
 }
 
 function calcQuadradoParaRedondo({ L, D, H, lado, diametro, altura }) {
@@ -152,18 +219,29 @@ function calcQuadradoParaRedondo({ L, D, H, lado, diametro, altura }) {
   const circunferenciaRedondo = Math.PI * Dn;
   const geratrizAproximada = Math.sqrt((Hn * Hn) + ((((Ln - Dn) / 2) || 0) ** 2));
 
-  return {
+  const setores = Array.from({ length: 4 }, (_, idx) => ({
+    indice: idx + 1,
+    medida: n2(circunferenciaRedondo / 4),
+  }));
+
+  return buildResult({
     entrada: { L: Ln, D: Dn, H: Hn },
     resultado: {
       perimetroQuadrado: n2(perimetroQuadrado),
       circunferenciaRedondo: n2(circunferenciaRedondo),
       geratrizAproximada: n2(geratrizAproximada),
     },
+    planificacao: {
+      labels: { AA: n2(Ln), AB: n2(Dn), C: n2(geratrizAproximada) },
+      pontos: [],
+      linhas: [],
+      divisoes: setores,
+    },
     observacoes: [
       'Resultado aproximado para transição quadrado-redondo.',
       'Ideal para marcação inicial e conferência de oficina.',
     ],
-  };
+  });
 }
 
 function calcReducaoConcentrica({ D1, D2, H, dMaior, dMenor, altura }) {
@@ -176,7 +254,7 @@ function calcReducaoConcentrica({ D1, D2, H, dMaior, dMenor, altura }) {
   const diferencaRaios = R1 - R2;
   const geratriz = Math.sqrt((Hn * Hn) + (diferencaRaios ** 2));
 
-  return {
+  return buildResult({
     entrada: { D1: D1n, D2: D2n, H: Hn },
     resultado: {
       R1: n2(R1),
@@ -184,11 +262,12 @@ function calcReducaoConcentrica({ D1, D2, H, dMaior, dMenor, altura }) {
       diferencaRaios: n2(diferencaRaios),
       geratriz: n2(geratriz),
     },
+    planificacao: emptyPlanificacao(),
     observacoes: [
       'Cálculo base para tronco de cone concêntrico.',
       'Usar geratriz para planificação e corte.',
     ],
-  };
+  });
 }
 
 function calcSemiCilindro({ D, H, E, diametro, comprimento }) {
@@ -199,17 +278,18 @@ function calcSemiCilindro({ D, H, E, diametro, comprimento }) {
   const meiaCircunferencia = (Math.PI * Dn) / 2;
   const area = meiaCircunferencia * Hn;
 
-  return {
+  return buildResult({
     entrada: { D: Dn, H: Hn, E: En },
     resultado: {
       meiaCircunferencia: n2(meiaCircunferencia),
       area: n2(area),
     },
+    planificacao: emptyPlanificacao(),
     observacoes: [
       'Desenvolvimento aproximado de semi-cilindro.',
       'Não inclui sobra de solda.',
     ],
-  };
+  });
 }
 
 function calcBocaLoboExcentrica({ D1, D2, X, H, dPrincipal, dDerivacao, deslocamento, altura }) {
@@ -223,7 +303,7 @@ function calcBocaLoboExcentrica({ D1, D2, X, H, dPrincipal, dDerivacao, deslocam
   const diferenca = Math.abs(R1 - R2);
   const geratrizAproximada = Math.sqrt((Hn * Hn) + (Xn * Xn) + (diferenca ** 2));
 
-  return {
+  return buildResult({
     entrada: { D1: D1n, D2: D2n, X: Xn, H: Hn },
     resultado: {
       R1: n2(R1),
@@ -231,11 +311,12 @@ function calcBocaLoboExcentrica({ D1, D2, X, H, dPrincipal, dDerivacao, deslocam
       deslocamento: n2(Xn),
       geratrizAproximada: n2(geratrizAproximada),
     },
+    planificacao: emptyPlanificacao(),
     observacoes: [
       'Cálculo aproximado para boca de lobo excêntrica.',
       'Indicado para traçagem inicial e conferência prática.',
     ],
-  };
+  });
 }
 
 function calcBocaLobo45({ D, H, dPrincipal, altura }) {
@@ -245,18 +326,19 @@ function calcBocaLobo45({ D, H, dPrincipal, altura }) {
   const desenvolvimento = Math.PI * Dn;
   const fatorCorte = Math.sin((45 * Math.PI) / 180);
 
-  return {
+  return buildResult({
     entrada: { D: Dn, H: Hn },
     resultado: {
       angulo: 45,
       desenvolvimento: n2(desenvolvimento),
       fatorCorte: n4(fatorCorte),
     },
+    planificacao: emptyPlanificacao(),
     observacoes: [
       'Perfil de corte para boca de lobo a 45 graus.',
       'Usar como base para marcação da interseção.',
     ],
-  };
+  });
 }
 
 function calcBocaLobo90({ D1, D2, dPrincipal, dDerivacao }) {
@@ -268,7 +350,7 @@ function calcBocaLobo90({ D1, D2, dPrincipal, dDerivacao }) {
   const desenvolvimentoPrincipal = Math.PI * D1n;
   const desenvolvimentoSecundario = Math.PI * D2n;
 
-  return {
+  return buildResult({
     entrada: { D1: D1n, D2: D2n },
     resultado: {
       R1: n2(R1),
@@ -276,11 +358,12 @@ function calcBocaLobo90({ D1, D2, dPrincipal, dDerivacao }) {
       desenvolvimentoPrincipal: n2(desenvolvimentoPrincipal),
       desenvolvimentoSecundario: n2(desenvolvimentoSecundario),
     },
+    planificacao: emptyPlanificacao(),
     observacoes: [
       'Cálculo base para interseção de tubos em 90 graus.',
       'Usar para marcação da curva de boca de lobo.',
     ],
-  };
+  });
 }
 
 function calcMaoFrancesa({ A, h, E, base, altura, largura, comprimento }) {
@@ -291,7 +374,7 @@ function calcMaoFrancesa({ A, h, E, base, altura, largura, comprimento }) {
   const C = Math.sqrt((An ** 2) + (hn ** 2));
   const alpha = (Math.atan2(hn, An) * 180) / Math.PI;
 
-  return {
+  return buildResult({
     entrada: { A: An, h: hn, E: En },
     resultado: {
       C: n2(C),
@@ -300,11 +383,25 @@ function calcMaoFrancesa({ A, h, E, base, altura, largura, comprimento }) {
       D: n2(En),
       diagonal: n2(C),
     },
+    planificacao: {
+      labels: { A: An, h: hn, E: En, C: n2(C), B: n2(En), D: n2(En), alpha: n2(alpha) },
+      pontos: [
+        { nome: 'A', x: 90, y: 320 },
+        { nome: 'B', x: 310, y: 320 },
+        { nome: 'C', x: 90, y: 120 },
+      ],
+      linhas: [
+        { de: 'A', para: 'B', tipo: 'A' },
+        { de: 'A', para: 'C', tipo: 'h' },
+        { de: 'C', para: 'B', tipo: 'C' },
+      ],
+      divisoes: [],
+    },
     observacoes: [
       'Diagonal calculada por Pitágoras para corte da barra inclinada.',
       'Ângulo α medido em relação à base A.',
     ],
-  };
+  });
 }
 
 function calcularPorTipo(tipo, params) {

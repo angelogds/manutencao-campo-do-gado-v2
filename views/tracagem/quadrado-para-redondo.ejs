@@ -1,15 +1,41 @@
 <% layout('layout') %>
-<%- include('_calc_base', {
-  titulo: 'Quadrado para redondo',
-  tipo,
-  action: '/tracagem/quadrado-redondo/calcular',
-  desenho: '⬛➡️⭕ Transição quadrado-redondo',
-  campos: [
-    { name: 'L', label: 'L (lado quadrado)', type: 'number', step: '0.01' },
-    { name: 'D', label: 'D (diâmetro redondo)', type: 'number', step: '0.01' },
-    { name: 'H', label: 'H (altura)', type: 'number', step: '0.01' },
-  ],
-  calculo,
-  equipamentos,
-  ordensServico
-}) %>
+<style>
+  .tr-page{display:grid;gap:14px}.tr-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px}
+  .tr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:920px){.tr-grid{grid-template-columns:1fr}}
+</style>
+
+<div class="tr-page">
+  <div style="display:flex;justify-content:space-between;align-items:center;"><h1>Retângulo para redondo</h1><a class="btn" href="/tracagem">Voltar</a></div>
+
+  <div class="tr-card">
+    <form method="POST" action="/tracagem/quadrado-redondo/calcular" style="display:grid;gap:10px;">
+      <div class="tr-grid">
+        <div><label>L (lado do retângulo)</label><input class="input" name="L" type="number" step="0.01" required value="<%= calculo?.parametros?.L || '' %>"></div>
+        <div><label>D (diâmetro redondo)</label><input class="input" name="D" type="number" step="0.01" required value="<%= calculo?.parametros?.D || '' %>"></div>
+        <div><label>H (altura)</label><input class="input" name="H" type="number" step="0.01" required value="<%= calculo?.parametros?.H || '' %>"></div>
+      </div>
+      <div><button class="btn btn-green" type="submit">CALCULAR</button></div>
+    </form>
+  </div>
+
+  <% if (calculo?.resultado) { const entrada = calculo.resultado.entrada; const resultado = calculo.resultado.resultado; const observacoes = calculo.resultado.observacoes || []; const planificacao = calculo.resultado.planificacao || {}; %>
+    <div class="tr-card"><%- include('partials/svg/retangulo-redondo-svg', { entrada, resultado, planificacao }) %></div>
+    <div class="tr-card">
+      <h3>Planificação</h3>
+      <p>AA = <b><%= (planificacao.labels?.AA || entrada.L).toFixed(2) %> mm</b></p>
+      <p>AB = <b><%= (planificacao.labels?.AB || entrada.D).toFixed(2) %> mm</b></p>
+      <p>C = <b><%= (planificacao.labels?.C || resultado.geratrizAproximada).toFixed(2) %> mm</b></p>
+    </div>
+    <div class="tr-card">
+      <h3>Resultados numéricos</h3>
+      <ul>
+        <li>Perímetro retângulo = <%= resultado.perimetroQuadrado.toFixed(2) %> mm</li>
+        <li>Circunferência redondo = <%= resultado.circunferenciaRedondo.toFixed(2) %> mm</li>
+        <li>Geratriz aproximada C = <%= resultado.geratrizAproximada.toFixed(2) %> mm</li>
+      </ul>
+      <h3>Observações técnicas</h3>
+      <ul><% observacoes.forEach((obs)=> { %><li><%= obs %></li><% }) %></ul>
+    </div>
+  <% } %>
+</div>
