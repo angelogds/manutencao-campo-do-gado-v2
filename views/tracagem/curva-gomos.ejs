@@ -1,15 +1,40 @@
 <% layout('layout') %>
-<%- include('_calc_base', {
-  titulo: 'Curva de gomos',
-  tipo,
-  action: '/tracagem/curva-gomos/calcular',
-  desenho: '↪️ Segmentação por gomos',
-  campos: [
-    { name: 'D', label: 'D (diâmetro)', type: 'number', step: '0.01' },
-    { name: 'A', label: 'A (ângulo total)', type: 'number', step: '0.01' },
-    { name: 'G', label: 'G (nº de gomos)', type: 'number', step: '1' },
-  ],
-  calculo,
-  equipamentos,
-  ordensServico
-}) %>
+<style>
+  .tr-page{display:grid;gap:14px}.tr-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px}
+  .tr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:920px){.tr-grid{grid-template-columns:1fr}}
+</style>
+
+<div class="tr-page">
+  <div style="display:flex;justify-content:space-between;align-items:center;"><h1>Curva de gomos</h1><a class="btn" href="/tracagem">Voltar</a></div>
+
+  <div class="tr-card">
+    <form method="POST" action="/tracagem/curva-gomos/calcular" style="display:grid;gap:10px;">
+      <div class="tr-grid">
+        <div><label>D (diâmetro)</label><input class="input" name="D" type="number" step="0.01" required value="<%= calculo?.parametros?.D || '' %>"></div>
+        <div><label>A (ângulo total)</label><input class="input" name="A" type="number" step="0.01" required value="<%= calculo?.parametros?.A || '' %>"></div>
+        <div><label>G (nº de gomos)</label><input class="input" name="G" type="number" step="1" required value="<%= calculo?.parametros?.G || '' %>"></div>
+      </div>
+      <div><button class="btn btn-green" type="submit">CALCULAR</button></div>
+    </form>
+  </div>
+
+  <% if (calculo?.resultado) { const entrada = calculo.resultado.entrada; const resultado = calculo.resultado.resultado; const observacoes = calculo.resultado.observacoes || []; const planificacao = calculo.resultado.planificacao || {}; %>
+    <div class="tr-card"><%- include('partials/svg/curva-gomos-svg', { entrada, resultado, planificacao }) %></div>
+    <div class="tr-card">
+      <h3>Planificação</h3>
+      <p>A = <b><%= entrada.A.toFixed(2) %>°</b></p>
+      <p>P = <b><%= resultado.anguloPorGomo.toFixed(2) %>°</b></p>
+    </div>
+    <div class="tr-card">
+      <h3>Resultados numéricos</h3>
+      <ul>
+        <li>Ângulo por gomo = <%= resultado.anguloPorGomo.toFixed(2) %>°</li>
+        <li>Ângulo de corte = <%= resultado.anguloCorte.toFixed(2) %>°</li>
+        <li>Desenvolvimento base = <%= resultado.desenvolvimentoBase.toFixed(2) %> mm</li>
+      </ul>
+      <h3>Observações técnicas</h3>
+      <ul><% observacoes.forEach((obs)=> { %><li><%= obs %></li><% }) %></ul>
+    </div>
+  <% } %>
+</div>
