@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const PDFDocument = require('pdfkit');
 const service = require('./tracagem.service');
 
 
@@ -309,6 +310,60 @@ function renderPdfReport(res, tracagem, filename) {
   drawDataSection(doc, 'Observações técnicas', { observacoes });
 
   doc.end();
+}
+
+function gerarPdfCalculo(req, res) {
+  try {
+    const tipo = req.body.tipo;
+    const parametros = JSON.parse(req.body.parametros_json || '{}');
+    const resultado = JSON.parse(req.body.resultado_json || '{}');
+    const tracagem = {
+      id: 'calculo',
+      tipo,
+      titulo: req.body.titulo || `Cálculo de ${LABELS[tipo] || tipo || 'traçagem'}`,
+      created_at: new Date().toISOString(),
+      usuario_nome: req.session?.user?.name || req.session?.user?.username || '-',
+      parametros,
+      resultado,
+      os_id: req.body.os_id || '-',
+      equipamento_nome: req.body.equipamento_nome || '-',
+    };
+
+    const filename = `tracagem_${tracagem.tipo || 'calculo'}_${Date.now()}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    const doc = new PDFDocument({ margin: 40 });
+    doc.pipe(res);
+
+    doc.fontSize(20).text('Manutenção Campo do Gado', { align: 'center' });
+    doc.fontSize(16).text('Relatório Técnico de Traçagem', { align: 'center' });
+    doc.moveDown(0.8);
+    doc.fontSize(12).text(`Título do cálculo: ${tracagem.titulo || '-'}`);
+    doc.text(`Tipo: ${LABELS[tracagem.tipo] || tracagem.tipo || '-'}`);
+    doc.text(`Data: ${tracagem.created_at || '-'}`);
+    doc.text(`Usuário responsável: ${tracagem.usuario_nome || '-'}`);
+    doc.text(`Unidade utilizada: ${tracagem.parametros?.unidade || 'mm'}`);
+    doc.moveDown();
+
+    doc.fontSize(13).text('Parâmetros informados', { underline: true });
+    jsonToLines('', tracagem.parametros).slice(1).forEach((line) => doc.fontSize(11).text(line));
+    doc.moveDown();
+    doc.fontSize(13).text('Resultados calculados', { underline: true });
+    jsonToLines('', tracagem.resultado).slice(1).forEach((line) => doc.fontSize(11).text(line));
+    doc.moveDown();
+
+    const divs = tracagem.resultado?.planificacao?.divisoes || [];
+    if (Array.isArray(divs) && divs.length) {
+      doc.fontSize(13).text('Tabela de pontos/divisões', { underline: true });
+      divs.slice(0, 20).forEach((d) => doc.fontSize(10).text(`• ${JSON.stringify(d)}`));
+    }
+
+    doc.end();
+  } catch (err) {
+    req.flash('error', err.message || 'Erro ao gerar PDF.');
+    return res.redirect('back');
+  }
 }
 
 function gerarPdf(req, res) {
