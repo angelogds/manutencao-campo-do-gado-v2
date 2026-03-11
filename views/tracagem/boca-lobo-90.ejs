@@ -26,5 +26,14 @@
       <div>Desenvolvimento principal = <%= resultado.P.toFixed(2) %> mm</div>
       <div>Desenvolvimento secundário = <%= resultado.A.toFixed(2) %> mm</div>
     </div></div>
+
+    <div class="tr-card">
+      <form method="POST" action="/tracagem/pdf-calculo" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+        <input type="hidden" name="tipo" value="boca-de-lobo-90">
+        <input type="hidden" name="parametros_json" value='<%- JSON.stringify(calculo.parametros || {}) %>'>
+        <input type="hidden" name="resultado_json" value='<%- JSON.stringify(calculo.resultado || {}) %>'>
+        <button class="btn btn-green" type="submit">Gerar PDF</button>
+      </form>
+    </div>
   <% } %>
 </div>

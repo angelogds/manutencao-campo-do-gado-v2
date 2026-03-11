@@ -112,6 +112,8 @@ function calcRoscaHelicoidal(params) {
     resultado: {
       R1_dev: n2(R1_dev),
       R2_dev: n2(R2_dev),
+      C1: n2(L_ext),
+      T: n2(w),
       angulo_dev: n2(angulo_dev),
       L_ext: n2(L_ext),
       L_int: n2(L_int),
@@ -176,7 +178,7 @@ function calcCilindro(params) {
 
   return buildResult({
     entrada: { D: n2(D), h: n2(h), E: n2(E), folgaSolda: n2(folgaSolda), unidadeEntrada: unidade, unidadeInterna: 'mm' },
-    resultado: { A: n2(A), B: n2(B), comprimentoChapa: n2(A), comprimentoComFolga: n2(A + folgaSolda), area: n2(area) },
+    resultado: { A: n2(A), B: n2(B), comprimento: n2(A), comprimentoChapa: n2(A), comprimentoComFolga: n2(A + folgaSolda), area: n2(area) },
     planificacao: { labels: { A: n2(A), B: n2(B) }, pontos: [], linhas: [], divisoes: [] },
     observacoes: ['A = πD e B = altura útil da chapa.'],
   });
@@ -212,9 +214,26 @@ function calcCurvaGomos(params) {
     divisoes.push({ indice: i, medida: n2(i * passoDivisao), altura: n2(h) });
   }
 
+  const medidasA = divisoes.slice(1, 8).map((p, idx) => ({ indice: idx + 1, valor: n2(p.altura) }));
+
   return buildResult({
     entrada: { D: n2(D), R: n2(R), A: n2(angulo), E: n2(E), G, N, unidadeEntrada: unidade, unidadeInterna: 'mm' },
-    resultado: { anguloPorGomo: n2(beta), anguloMitra: n2(anguloMitra), perimetro: n2(perimetro), passoDivisao: n2(passoDivisao), desenvolvimentoGomo: n2(perimetro / G) },
+    resultado: {
+      anguloPorGomo: n2(beta),
+      anguloMitra: n2(anguloMitra),
+      perimetro: n2(perimetro),
+      passe: n2(passoDivisao),
+      passoDivisao: n2(passoDivisao),
+      desenvolvimentoGomo: n2(perimetro / G),
+      medidasA,
+      A1: medidasA[0]?.valor || 0,
+      A2: medidasA[1]?.valor || 0,
+      A3: medidasA[2]?.valor || 0,
+      A4: medidasA[3]?.valor || 0,
+      A5: medidasA[4]?.valor || 0,
+      A6: medidasA[5]?.valor || 0,
+      A7: medidasA[6]?.valor || 0,
+    },
     planificacao: { labels: { D: n2(D), R: n2(R), A: n2(angulo), G, N }, pontos, linhas: [], divisoes },
     observacoes: ['Para melhor precisão, usar 12 divisões no mínimo. Para acabamento fino, usar 24 divisões.'],
   });
@@ -245,11 +264,14 @@ function calcQuadradoParaRedondo(params) {
   }
 
   const comprimentos = pontos.map((p) => p.trueLength);
+  const geratrizAproximada = comprimentos.reduce((acc, v) => acc + v, 0) / (comprimentos.length || 1);
   return buildResult({
     entrada: { A: n2(A), B: n2(B), D: n2(D), h: n2(h), E: n2(E), N, unidadeEntrada: unidade, unidadeInterna: 'mm' },
     resultado: {
       perimetroRetangulo: n2(perimetroRetangulo),
+      perimetroQuadrado: n2(perimetroRetangulo),
       circunferenciaRedondo: n2(circunferenciaRedondo),
+      geratrizAproximada: n2(geratrizAproximada),
       comprimentosVerdadeiros: comprimentos,
       AA: n2(A), AB: n2(B), A1: comprimentos[0], A2: comprimentos[1], A3: comprimentos[2], A4: comprimentos[3], B1: comprimentos[Math.floor(N / 2)],
     },
@@ -335,9 +357,11 @@ function calcBocaLobo90(params) {
   const N = toEvenInt(params.N ?? 12, 'N', { min: 8, allowedAnyEven: true });
 
   const pontos = gerarIntersecaoBoca({ D, d, angulo: 90, N });
+  const R1 = D / 2;
+  const R2 = d / 2;
   return buildResult({
     entrada: { D: n2(D), d: n2(d), h: n2(h), E: n2(E), N, unidadeEntrada: unidade, unidadeInterna: 'mm' },
-    resultado: { P: n2(Math.PI * d), A: n2((Math.PI * d) / N), alturas: pontos.map((p) => p.altura), pontos },
+    resultado: { R1: n2(R1), R2: n2(R2), P: n2(Math.PI * d), A: n2((Math.PI * d) / N), alturas: pontos.map((p) => p.altura), pontos },
     planificacao: { labels: { D: n2(D), d: n2(d), N }, pontos, linhas: [], divisoes: pontos },
     observacoes: ['Os cálculos são gerados por pontos. Sempre conferir posição de montagem antes do corte.'],
   });
@@ -373,9 +397,21 @@ function calcBocaLoboExcentrica(params) {
   if (Math.abs(C) >= (D - d) / 2) throw new Error('Geometria inválida para os valores informados.');
 
   const pontos = gerarIntersecaoBoca({ D, d, angulo: 90, N, C });
+  const R1 = D / 2;
+  const R2 = d / 2;
+  const geratrizAproximada = pontos.reduce((acc, p) => acc + Math.abs(p.altura), 0) / (pontos.length || 1);
   return buildResult({
     entrada: { D: n2(D), d: n2(d), h: n2(h), C: n2(C), E: n2(E), N, unidadeEntrada: unidade, unidadeInterna: 'mm' },
-    resultado: { P: n2(Math.PI * d), A: n2((Math.PI * d) / N), alturas: pontos.map((p) => p.altura), pontos },
+    resultado: {
+      R1: n2(R1),
+      R2: n2(R2),
+      deslocamento: n2(C),
+      geratrizAproximada: n2(geratrizAproximada),
+      P: n2(Math.PI * d),
+      A: n2((Math.PI * d) / N),
+      alturas: pontos.map((p) => p.altura),
+      pontos,
+    },
     planificacao: { labels: { D: n2(D), d: n2(d), C: n2(C), N }, pontos, linhas: [], divisoes: pontos },
     observacoes: ['Os cálculos são gerados por pontos. Sempre conferir posição de montagem antes do corte.'],
   });

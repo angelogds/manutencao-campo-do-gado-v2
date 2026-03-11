@@ -10,8 +10,10 @@
   <div style="display:flex;justify-content:space-between;align-items:center;"><h1>Boca de lobo 45°</h1><a class="btn" href="/tracagem">Voltar</a></div>
   <div class="tr-card"><form method="POST" action="/tracagem/boca-de-lobo-45/calcular" style="display:grid;gap:10px;">
     <div class="tr-grid">
-      <div><label>D (diâmetro)</label><input class="input" name="D" type="number" step="0.01" required value="<%= calculo?.parametros?.D || '' %>"></div>
-      <div><label>H (projeção opcional)</label><input class="input" name="H" type="number" step="0.01" required value="<%= calculo?.parametros?.H || '' %>"></div>
+      <div><label>D (tubo principal)</label><input class="input" name="D" type="number" step="0.01" required value="<%= calculo?.parametros?.D || "" %>"></div>
+      <div><label>d (tubo derivação)</label><input class="input" name="d" type="number" step="0.01" required value="<%= calculo?.parametros?.d || "" %>"></div>
+      <div><label>α (ângulo)</label><input class="input" name="alpha" type="number" step="0.01" value="<%= calculo?.parametros?.alpha || 45 %>"></div>
+      <div><label>N (divisões)</label><input class="input" name="N" type="number" step="1" value="<%= calculo?.parametros?.N || 12 %>"></div>
     </div>
     <div class="tr-grid">
       <div><label>Unidade</label><select class="input" name="unidade"><option value="mm" <%= (calculo?.parametros?.unidade || "mm") === "mm" ? "selected" : "" %>>mm</option><option value="cm" <%= calculo?.parametros?.unidade === "cm" ? "selected" : "" %>>cm</option></select></div>
@@ -23,8 +25,17 @@
     <div class="tr-card"><h3>Planificação</h3><img src="/img/tracagem/planificacoes/boca-de-lobo-45-planificacao.png" class="img-tecnica img-planificacao" alt="Boca de lobo 45° - planificação"></div>
     <div class="tr-card"><h3>Resultados</h3><div class="resultado">
       <div>Desenvolvimento = <%= resultado.desenvolvimento.toFixed(2) %> mm</div>
-      <div>Desenvolvimento = <%= resultado.desenvolvimento.toFixed(2) %> mm</div>
+      <div>Passe (A) = <%= (resultado.pontos?.[1]?.xPlano || 0).toFixed(2) %> mm</div>
       <div>Pontos calculados = <%= resultado.pontos?.length || 0 %></div>
     </div></div>
+
+    <div class="tr-card">
+      <form method="POST" action="/tracagem/pdf-calculo" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+        <input type="hidden" name="tipo" value="boca-de-lobo-45">
+        <input type="hidden" name="parametros_json" value='<%- JSON.stringify(calculo.parametros || {}) %>'>
+        <input type="hidden" name="resultado_json" value='<%- JSON.stringify(calculo.resultado || {}) %>'>
+        <button class="btn btn-green" type="submit">Gerar PDF</button>
+      </form>
+    </div>
   <% } %>
 </div>
