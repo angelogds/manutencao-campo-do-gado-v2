@@ -34,11 +34,21 @@
     <div class="tr-card">
       <h3>Resultados</h3>
       <div class="resultado">
-        <div>R1 = <%= resultado.R1_dev.toFixed(2) %></div>
-        <div>R2 = <%= resultado.R2_dev.toFixed(2) %></div>
-        <div>L ext = <%= resultado.L_ext.toFixed(2) %> mm</div>
+        <div>R1 = <%= resultado.R1_dev.toFixed(2) %> mm</div>
+        <div>R2 = <%= resultado.R2_dev.toFixed(2) %> mm</div>
+        <div>C1 = <%= resultado.C1.toFixed(2) %> mm</div>
+        <div>T (largura) = <%= resultado.T.toFixed(2) %> mm</div>
         <div>Ângulo = <%= resultado.angulo_dev.toFixed(2) %>°</div>
       </div>
+    </div>
+
+    <div class="tr-card">
+      <form method="POST" action="/tracagem/pdf-calculo" style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;">
+        <input type="hidden" name="tipo" value="rosca-helicoidal">
+        <input type="hidden" name="parametros_json" value='<%- JSON.stringify(calculo.parametros || {}) %>'>
+        <input type="hidden" name="resultado_json" value='<%- JSON.stringify(calculo.resultado || {}) %>'>
+        <button class="btn btn-green" type="submit">Gerar PDF</button>
+      </form>
     </div>
   <% } %>
 </div>
