@@ -54,6 +54,7 @@ router.get('/pao-francesa', requireLogin, requireRole(VIEW_ACCESS), (_req, res) 
 router.post('/pao-francesa/calcular', requireLogin, requireRole(MANAGE_ACCESS), (_req, res) => res.redirect('/tracagem/mao-francesa'));
 
 router.post('/salvar', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.salvar));
+router.post('/pdf-calculo', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.gerarPdfCalculo));
 router.get('/:id/pdf', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.gerarPdf));
 router.get('/:id', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.show));
 
