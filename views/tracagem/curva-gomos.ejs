@@ -4,6 +4,13 @@
   .tr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   .img-tecnica{width:100%;max-width:980px;display:block;margin:0 auto;border:1px solid #e2e8f0;border-radius:12px;background:#fff;object-fit:contain}
   .img-planificacao{max-width:760px}.resultado{display:grid;gap:6px;font-size:1rem}
+  .planificacao-title{text-align:center;margin-bottom:10px}
+  .planificacao-info{margin-top:12px;border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc;display:grid;gap:8px}
+  .planificacao-info h4{margin:0;font-size:1rem}
+  .planificacao-info p{margin:0}
+  .tr-table{width:100%;border-collapse:collapse}
+  .tr-table th,.tr-table td{padding:10px;border-bottom:1px solid #e2e8f0;text-align:left}
+  .tr-table th{background:#f8fafc;font-weight:700}
   @media(max-width:920px){.tr-grid{grid-template-columns:1fr}}
 </style>
 <div class="tr-page">
@@ -23,8 +30,38 @@
     <img src="/img/tracagem/planificacoes/curva-gomos-peca.png" class="img-tecnica" alt="Curva de gomos - peça">
     <div><button class="btn btn-green" type="submit">CALCULAR</button></div>
   </form></div>
-  <% if (calculo?.resultado) { const resultado = calculo.resultado.resultado; %>
-    <div class="tr-card"><h3>Planificação</h3><img src="/img/tracagem/planificacoes/curva-gomos-planificacao.png" class="img-tecnica img-planificacao" alt="Curva de gomos - planificação"></div>
+  <% if (calculo?.resultado) { const resultado = calculo.resultado.resultado; const entrada = calculo.resultado.entrada; const divisoes = calculo.resultado.planificacao?.divisoes || []; const tabelaDivisoes = divisoes.slice(1); %>
+    <div class="tr-card">
+      <h3 class="planificacao-title">Planificação</h3>
+      <img src="/img/tracagem/planificacoes/curva-gomos-planificacao.png" class="img-tecnica img-planificacao" alt="Curva de gomos - planificação">
+      <div class="planificacao-info">
+        <h4>Informações principais</h4>
+        <p>P = <b><%= resultado.perimetro.toFixed(2) %> mm</b></p>
+        <p>A = <b><%= resultado.passoDivisao.toFixed(2) %> mm</b></p>
+        <p>Divisões = <b><%= entrada.N %></b></p>
+      </div>
+    </div>
+
+    <div class="tr-card">
+      <h3>Tabela de traçagem</h3>
+      <table class="tr-table">
+        <thead>
+          <tr>
+            <th>Divisão</th>
+            <th>Medida (mm)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% tabelaDivisoes.forEach((item) => { %>
+            <tr>
+              <td><%= item.indice %></td>
+              <td><%= Number(item.altura || 0).toFixed(2) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
     <div class="tr-card"><h3>Resultados</h3><div class="resultado">
       <div>Ângulo por gomo = <%= resultado.anguloPorGomo.toFixed(2) %>°</div><div>Ângulo de corte = <%= resultado.anguloMitra.toFixed(2) %>°</div>
       <div>Passe = <%= resultado.passe.toFixed(2) %> mm</div><div>Comprimento aproximado = <%= resultado.desenvolvimentoGomo.toFixed(2) %> mm</div>
