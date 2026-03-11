@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const PDFDocument = require('pdfkit');
 const service = require('./tracagem.service');
 
 function getPdfDocumentClass() {
@@ -209,14 +208,12 @@ function resolveImagePath(tipo, sufixo) {
   return candidates.find((candidate) => fs.existsSync(candidate)) || null;
 }
 
-function drawSectionTitle(doc, title) {
-  doc.moveDown(0.2);
-  doc.fillColor(PDF_STYLE.green).fontSize(12).text(title, { underline: true });
-  doc.fillColor(PDF_STYLE.text);
-}
-
-function ensurePageSpace(doc, needed = 120) {
-  if (doc.y + needed > doc.page.height - 50) doc.addPage();
+function drawSectionTitle(doc, title, y) {
+  doc.fillColor(PDF_STYLE.green).fontSize(10).font('Helvetica-Bold').text(title.toUpperCase(), 36, y, {
+    width: doc.page.width - 72,
+    align: 'center',
+  });
+  doc.fillColor(PDF_STYLE.text).font('Helvetica');
 }
 
 function formatNumber(value) {
@@ -261,24 +258,34 @@ function buildFormattedData(tracagem) {
       };
     });
 
-  const resultadosFormatados = [];
-  [['R1', resultado.R1_dev], ['R1', resultado.R1], ['R2', resultado.R2_dev], ['R2', resultado.R2], ['T', resultado.T], ['C', resultado.C], ['C1', resultado.C1], ['Ângulo', resultado.angulo_dev], ['Ângulo', resultado.angulo_setor], ['A', resultado.A], ['B', resultado.B]].forEach(([label, value]) => {
-    if (value === null || value === undefined) return;
-    resultadosFormatados.push({
+  const medidasPlanificacaoFormatadas = [];
+  const medidasMapeadas = new Map([
+    ['R1', resultado.R1_dev ?? resultado.R1],
+    ['R2', resultado.R2_dev ?? resultado.R2],
+    ['T', resultado.T ?? resultado.B],
+    ['C1', resultado.C1 ?? resultado.C ?? resultado.A],
+    ['Ângulo', resultado.angulo_dev ?? resultado.angulo_setor],
+  ]);
+
+  medidasMapeadas.forEach((value, label) => {
+    if (value === null || value === undefined || value === '') return;
+    const key = label === 'Ângulo' ? 'angulo_dev' : label;
+    medidasPlanificacaoFormatadas.push({
       medida: label,
-      legenda: PLAN_LEGENDS[`${label === 'Ângulo' ? 'angulo_dev' : label}`] || PLAN_LEGENDS[label] || label,
+      legenda: PLAN_LEGENDS[key] || label,
       valor: label === 'Ângulo' ? `${formatNumber(Number(value))}°` : formatValue(value, unidade),
     });
   });
 
   Object.entries(labels).forEach(([key, value]) => {
     if (['pontos', 'linhas', 'divisoes'].includes(key)) return;
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return;
     const medida = key.toUpperCase().includes('ANGULO') ? 'Ângulo' : key.replace('_dev', '').replace('_setor', '').toUpperCase();
-    const labelExists = resultadosFormatados.some((item) => item.legenda === (PLAN_LEGENDS[key] || key));
-    if (labelExists || value === null || value === undefined || Number.isNaN(Number(value))) return;
-    resultadosFormatados.push({
+    if (medidasPlanificacaoFormatadas.some((item) => item.medida === medida)) return;
+    if (!['R1', 'R2', 'T', 'C', 'C1', 'Ângulo'].includes(medida)) return;
+    medidasPlanificacaoFormatadas.push({
       medida,
-      legenda: PLAN_LEGENDS[key] || key,
+      legenda: PLAN_LEGENDS[key] || PLAN_LEGENDS[medida] || medida,
       valor: medida === 'Ângulo' ? `${formatNumber(Number(value))}°` : formatValue(value, unidade),
     });
   });
@@ -294,23 +301,25 @@ function buildFormattedData(tracagem) {
   return {
     identificacao,
     parametrosFormatados,
-    resultadosFormatados,
-    planificacaoFormatada: resultadosFormatados,
+    medidasPlanificacaoFormatadas,
     observacoesFormatadas,
-    imagensDaPeca: resolveImagePath(tracagem.tipo, 'peca'),
-    imagensDaPlanificacao: resolveImagePath(tracagem.tipo, 'planificacao'),
+    imagemPeca: resolveImagePath(tracagem.tipo, 'peca'),
+    imagemPlanificacao: resolveImagePath(tracagem.tipo, 'planificacao'),
+    logoManutencao: path.join(process.cwd(), 'public', 'IMG', 'logo_menu.png.png'),
     unidade,
   };
 }
 
 function drawSimpleTable(doc, x, y, width, rows, headers) {
-  const rowHeight = 20;
+  const rowHeight = 16;
   const colWidths = headers.map((h) => h.width);
 
-  doc.fillColor(PDF_STYLE.green).rect(x, y, width, rowHeight).fill();
+  doc.fillColor(PDF_STYLE.green).roundedRect(x, y, width, rowHeight, 4).fill();
   let currentX = x;
   headers.forEach((header, index) => {
-    doc.fillColor('#ffffff').fontSize(9).text(header.label, currentX + 6, y + 6, { width: colWidths[index] - 12 });
+    doc.fillColor('#ffffff').fontSize(8).font('Helvetica-Bold').text(header.label, currentX, y + 4.5, {
+      width: colWidths[index], align: 'center',
+    });
     currentX += colWidths[index];
   });
 
@@ -322,7 +331,7 @@ function drawSimpleTable(doc, x, y, width, rows, headers) {
 
     currentX = x;
     headers.forEach((header, index) => {
-      doc.fillColor(PDF_STYLE.text).fontSize(9).text(row[header.key] || '-', currentX + 6, currentY + 6, { width: colWidths[index] - 12 });
+      doc.fillColor(PDF_STYLE.text).fontSize(8).font('Helvetica').text(String(row[header.key] || '-'), currentX + 4, currentY + 4, { width: colWidths[index] - 8 });
       currentX += colWidths[index];
     });
     currentY += rowHeight;
@@ -332,82 +341,70 @@ function drawSimpleTable(doc, x, y, width, rows, headers) {
 }
 
 function drawHeader(doc, tracagem, dados) {
-  const width = doc.page.width - 80;
-  doc.roundedRect(40, 30, width, 105, 10).fillAndStroke(PDF_STYLE.green, PDF_STYLE.green);
+  const width = doc.page.width - 72;
+  doc.roundedRect(36, 26, width, 88, 10).fillAndStroke(PDF_STYLE.green, PDF_STYLE.green);
 
-  const logo = path.join(process.cwd(), 'public', 'IMG', 'logopdf_campo_do_gado.png.png');
-  if (fs.existsSync(logo)) {
-    doc.image(logo, 50, 48, { fit: [80, 35] });
+  if (dados.logoManutencao && fs.existsSync(dados.logoManutencao)) {
+    doc.save();
+    doc.roundedRect((doc.page.width / 2) - 22, 33, 44, 44, 8).clip();
+    doc.image(dados.logoManutencao, (doc.page.width / 2) - 22, 33, { fit: [44, 44], align: 'center', valign: 'center' });
+    doc.restore();
   }
 
-  doc.fillColor('#ffffff').fontSize(15).text('MANUTENÇÃO CAMPO DO GADO', 145, 46);
-  doc.fontSize(10).text('RELATÓRIO TÉCNICO DE TRAÇAGEM', 145, 66);
-
-  const info = dados.identificacao;
-  doc.fontSize(9)
-    .text(`Tipo: ${info[0].valor}`, 380, 45, { width: 190, align: 'right' })
-    .text(`Data: ${info[1].valor}`, 380, 59, { width: 190, align: 'right' })
-    .text(`Usuário: ${info[2].valor}`, 380, 73, { width: 190, align: 'right' })
-    .text(`Unidade: ${info[3].valor}`, 380, 87, { width: 190, align: 'right' });
+  doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(14).text('MANUTENÇÃO CAMPO DO GADO', 36, 80, {
+    width,
+    align: 'center',
+  });
+  doc.font('Helvetica').fontSize(9.5).text('RELATÓRIO TÉCNICO DE TRAÇAGEM', 36, 96, { width, align: 'center' });
 
   doc.fillColor(PDF_STYLE.text);
-  doc.y = 150;
+  doc.y = 120;
 }
 
 function drawIdentification(doc, dados) {
-  ensurePageSpace(doc, 120);
-  drawSectionTitle(doc, 'Identificação');
+  drawSectionTitle(doc, 'Identificação', doc.y);
   const rows = dados.identificacao.map((item) => ({ campo: item.campo, valor: item.valor }));
-  doc.y = drawSimpleTable(doc, 40, doc.y + 6, 530, rows, [
-    { label: 'Campo', key: 'campo', width: 200 },
-    { label: 'Valor', key: 'valor', width: 330 },
-  ]) + 8;
-}
-
-function drawParametros(doc, dados) {
-  ensurePageSpace(doc, 140);
-  drawSectionTitle(doc, 'Parâmetros informados');
-  const rows = dados.parametrosFormatados.length ? dados.parametrosFormatados : [{ parametro: '-', descricao: 'Sem parâmetros disponíveis', valor: '-' }];
-  doc.y = drawSimpleTable(doc, 40, doc.y + 6, 530, rows, [
-    { label: 'Parâmetro', key: 'parametro', width: 100 },
-    { label: 'Descrição', key: 'descricao', width: 250 },
-    { label: 'Valor', key: 'valor', width: 180 },
+  doc.y = drawSimpleTable(doc, 36, doc.y + 14, doc.page.width - 72, rows, [
+    { label: 'Campo', key: 'campo', width: 160 },
+    { label: 'Valor', key: 'valor', width: doc.page.width - 232 },
   ]) + 8;
 }
 
 function drawTwoColumnSection(doc, title, leftTitle, rightTitle, leftImage, rightRows, rightHeaders) {
-  ensurePageSpace(doc, 250);
-  drawSectionTitle(doc, title);
-  const startY = doc.y + 8;
-  const leftX = 40;
-  const rightX = 312;
-  const colWidth = 258;
+  drawSectionTitle(doc, title, doc.y + 2);
+  const startY = doc.y + 16;
+  const leftX = 36;
+  const rightX = 303;
+  const colWidth = 273;
+  const blockHeight = 144;
 
-  doc.fillColor('#ffffff').roundedRect(leftX, startY, colWidth, 200, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
-  doc.fillColor(PDF_STYLE.green).fontSize(10).text(leftTitle, leftX, startY + 8, { width: colWidth, align: 'center' });
+  doc.fillColor('#ffffff').roundedRect(leftX, startY, colWidth, blockHeight, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
+  doc.fillColor(PDF_STYLE.green).fontSize(9).font('Helvetica-Bold').text(leftTitle, leftX, startY + 6, { width: colWidth, align: 'center' });
   if (leftImage && fs.existsSync(leftImage)) {
-    doc.image(leftImage, leftX + 8, startY + 24, { fit: [colWidth - 16, 168], align: 'center', valign: 'center' });
+    doc.image(leftImage, leftX + 8, startY + 22, { fit: [colWidth - 16, blockHeight - 30], align: 'center', valign: 'center' });
   } else {
-    doc.fillColor(PDF_STYLE.muted).fontSize(9).text('Imagem não disponível', leftX, startY + 92, { width: colWidth, align: 'center' });
+    doc.fillColor(PDF_STYLE.muted).fontSize(8).font('Helvetica').text('Imagem não disponível', leftX, startY + 64, { width: colWidth, align: 'center' });
   }
 
-  doc.fillColor('#ffffff').roundedRect(rightX, startY, colWidth, 200, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
-  doc.fillColor(PDF_STYLE.green).fontSize(10).text(rightTitle, rightX, startY + 8, { width: colWidth, align: 'center' });
+  doc.fillColor('#ffffff').roundedRect(rightX, startY, colWidth, blockHeight, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
+  doc.fillColor(PDF_STYLE.green).fontSize(9).font('Helvetica-Bold').text(rightTitle, rightX, startY + 6, { width: colWidth, align: 'center' });
   const rows = rightRows.length ? rightRows : [{ [rightHeaders[0].key]: '-', [rightHeaders[1].key]: '-', [rightHeaders[2].key]: '-' }];
-  drawSimpleTable(doc, rightX + 6, startY + 28, colWidth - 12, rows.slice(0, 7), rightHeaders.map((header) => ({ ...header, width: Math.floor((colWidth - 12) * header.weight) })));
+  drawSimpleTable(doc, rightX + 6, startY + 21, colWidth - 12, rows.slice(0, 6), rightHeaders.map((header) => ({ ...header, width: Math.floor((colWidth - 12) * header.weight) })));
 
   doc.fillColor(PDF_STYLE.text);
-  doc.y = startY + 210;
+  doc.font('Helvetica');
+  doc.y = startY + blockHeight + 8;
 }
 
 function drawObservacoes(doc, dados) {
-  ensurePageSpace(doc, 120);
-  drawSectionTitle(doc, 'Observações técnicas');
-  doc.moveDown(0.3);
-  dados.observacoesFormatadas.forEach((obs) => {
-    doc.fontSize(10).fillColor(PDF_STYLE.text).text(`• ${obs}`);
+  drawSectionTitle(doc, 'Observações técnicas', doc.y + 2);
+  const itens = dados.observacoesFormatadas.slice(0, 3);
+  let y = doc.y + 16;
+  itens.forEach((obs) => {
+    doc.fontSize(8.5).fillColor(PDF_STYLE.text).text(`• ${obs}`, 44, y, { width: doc.page.width - 88, lineGap: 1 });
+    y += 13;
   });
-  doc.moveDown(0.5);
+  doc.y = y;
 }
 
 function drawFooter(doc) {
@@ -429,19 +426,18 @@ function renderPdfReport(res, tracagem, filename) {
   }
 
   const dados = buildFormattedData(tracagem);
-  const doc = new PdfDocumentClass({ margin: 40 });
+  const doc = new PdfDocumentClass({ margin: 24, size: 'A4' });
   doc.pipe(res);
 
   drawHeader(doc, tracagem, dados);
   drawIdentification(doc, dados);
-  drawParametros(doc, dados);
 
   drawTwoColumnSection(
     doc,
     'Peça + parâmetros',
     'Imagem da peça',
     'Parâmetros informados',
-    dados.imagensDaPeca,
+    dados.imagemPeca,
     dados.parametrosFormatados.map((item) => ({ p: item.parametro, d: item.descricao, v: item.valor })),
     [
       { label: 'Parâmetro', key: 'p', weight: 0.25 },
@@ -455,8 +451,8 @@ function renderPdfReport(res, tracagem, filename) {
     'Planificação + medidas',
     'Imagem da planificação',
     'Medidas da planificação',
-    dados.imagensDaPlanificacao,
-    dados.planificacaoFormatada.map((item) => ({ m: item.medida, l: item.legenda, v: item.valor })),
+    dados.imagemPlanificacao,
+    dados.medidasPlanificacaoFormatadas.map((item) => ({ m: item.medida, l: item.legenda, v: item.valor })),
     [
       { label: 'Medida', key: 'm', weight: 0.22 },
       { label: 'Legenda', key: 'l', weight: 0.48 },
