@@ -3,6 +3,17 @@ const path = require('path');
 const PDFDocument = require('pdfkit');
 const service = require('./tracagem.service');
 
+
+function getPdfDocumentClass() {
+  try {
+    // Lazy-load para não derrubar o módulo /tracagem inteiro caso falte dependência de PDF.
+    // eslint-disable-next-line global-require
+    return require('pdfkit');
+  } catch (_err) {
+    return null;
+  }
+}
+
 const LABELS = {
   'rosca-helicoidal': 'Rosca helicoidal',
   'furacao-flange': 'Furação de flange',
@@ -279,6 +290,12 @@ function renderPdfReport(res, tracagem, filename) {
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
+  const PDFDocument = getPdfDocumentClass();
+  if (!PDFDocument) {
+    res.status(503).send('PDF temporariamente indisponível. Verifique a dependência pdfkit no servidor.');
+    return;
+  }
+
   const doc = new PDFDocument({ margin: 40 });
   doc.pipe(res);
 
@@ -343,6 +360,39 @@ function gerarPdfCalculo(req, res) {
     }
 
     doc.end();
+  } catch (err) {
+    req.flash('error', err.message || 'Erro ao gerar PDF.');
+    return res.redirect('back');
+  }
+}
+
+function gerarPdf(req, res) {
+  const tracagem = service.getById(req.params.id);
+  if (!tracagem) return res.status(404).render('errors/404', { title: 'Não encontrado' });
+
+  const filename = `tracagem_${tracagem.tipo}_${tracagem.id}.pdf`;
+  return renderPdfReport(res, tracagem, filename);
+}
+
+function gerarPdfCalculo(req, res) {
+  try {
+    const tipo = req.body.tipo;
+    const parametros = JSON.parse(req.body.parametros_json || '{}');
+    const resultado = JSON.parse(req.body.resultado_json || '{}');
+    const tracagem = {
+      id: 'calculo',
+      tipo,
+      titulo: req.body.titulo || `Cálculo de ${LABELS[tipo] || tipo || 'traçagem'}`,
+      created_at: new Date().toISOString(),
+      usuario_nome: req.session?.user?.name || req.session?.user?.username || '-',
+      parametros,
+      resultado,
+      os_id: req.body.os_id || '-',
+      equipamento_nome: req.body.equipamento_nome || '-',
+    };
+
+    const filename = `tracagem_${tracagem.tipo || 'calculo'}_${Date.now()}.pdf`;
+    return renderPdfReport(res, tracagem, filename);
   } catch (err) {
     req.flash('error', err.message || 'Erro ao gerar PDF.');
     return res.redirect('back');
