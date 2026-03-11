@@ -44,3 +44,27 @@ test('mão francesa e validação de entrada inválida', () => {
   assert.equal(out.resultado.C, 500);
   assert.throws(() => service.calcMaoFrancesa({ A: 0, h: 5 }), /medida válida/);
 });
+
+
+test('campos de compatibilidade para telas de traçagem', () => {
+  const rosca = service.calcRoscaHelicoidal({ D: 400, d: 105, P: 360 });
+  assert.equal(Number.isFinite(rosca.resultado.C1), true);
+  assert.equal(Number.isFinite(rosca.resultado.T), true);
+
+  const cil = service.calcCilindro({ D: 400, h: 200 });
+  assert.equal(Number.isFinite(cil.resultado.comprimento), true);
+
+  const curva = service.calcCurvaGomos({ D: 400, R: 500, A: 90, G: 6, N: 12 });
+  assert.equal(Number.isFinite(curva.resultado.passe), true);
+  assert.equal(Number.isFinite(curva.resultado.A7), true);
+
+  const b90 = service.calcBocaLobo90({ D: 300, d: 150, N: 12 });
+  assert.equal(Number.isFinite(b90.resultado.R1), true);
+
+  const bex = service.calcBocaLoboExcentrica({ D: 300, d: 150, C: 10, N: 12 });
+  assert.equal(Number.isFinite(bex.resultado.deslocamento), true);
+
+  const qpr = service.calcQuadradoParaRedondo({ A: 120, B: 80, D: 100, h: 150, N: 12 });
+  assert.equal(Number.isFinite(qpr.resultado.perimetroQuadrado), true);
+  assert.equal(Number.isFinite(qpr.resultado.geratrizAproximada), true);
+});
