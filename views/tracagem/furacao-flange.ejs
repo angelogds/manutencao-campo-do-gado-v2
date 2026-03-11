@@ -12,8 +12,9 @@
   <div class="tr-card">
     <form method="POST" action="/tracagem/furacao-flange/calcular" style="display:grid;gap:10px;">
       <div class="tr-grid">
-        <div><label>D (diâmetro)</label><input class="input" name="D" type="number" step="0.01" required value="<%= calculo?.parametros?.D || '' %>"></div>
+        <div><label>PCD (diâmetro do círculo dos furos)</label><input class="input" name="D" type="number" step="0.01" required value="<%= calculo?.parametros?.D || '' %>"></div>
         <div><label>N (número de furos)</label><input class="input" name="N" type="number" step="1" required value="<%= calculo?.parametros?.N || calculo?.parametros?.furos || '' %>"></div>
+        <div><label>Unidade</label><select class="input" name="unidade"><option value="mm" <%= (calculo?.parametros?.unidade || "mm") === "mm" ? "selected" : "" %>>mm</option><option value="cm" <%= calculo?.parametros?.unidade === "cm" ? "selected" : "" %>>cm</option></select></div>
       </div>
       <img src="/img/tracagem/planificacoes/furacao-flange-peca.png" class="img-tecnica" alt="Furação de flange - peça">
       <div><button class="btn btn-green" type="submit">CALCULAR</button></div>
@@ -25,7 +26,7 @@
       <div>Raio = <%= resultado.raio.toFixed(2) %> mm</div>
       <div>Ângulo entre furos = <%= resultado.anguloEntreFuros.toFixed(2) %>°</div>
       <div>Corda = <%= resultado.corda.toFixed(2) %> mm</div>
-      <div>Lista de furos: <%= resultado.furos?.length || 0 %> posições</div>
+      <div>Lista de furos: <%= resultado.tabelaFuros?.length || 0 %> posições</div>
     </div></div>
   <% } %>
 </div>

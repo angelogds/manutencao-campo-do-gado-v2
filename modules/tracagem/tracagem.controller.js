@@ -11,9 +11,11 @@ const LABELS = {
   'semi-cilindro': 'Semi-cilindro',
   'boca-de-lobo-excentrica': 'Boca de lobo excêntrica',
   'boca-lobo-excentrica': 'Boca de lobo excêntrica',
-  'boca-lobo-45': 'Boca de lobo 45 graus',
+  'boca-de-lobo-45': 'Boca de lobo (ângulo variável)',
+  'boca-de-lobo-90': 'Boca de lobo 90 graus',
+  'boca-lobo-45': 'Boca de lobo (ângulo variável)',
   'boca-lobo-90': 'Boca de lobo 90 graus',
-  'boca-de-lobo-45-graus': 'Boca de lobo 45 graus',
+  'boca-de-lobo-45-graus': 'Boca de lobo (ângulo variável)',
   'boca-de-lobo-90-graus': 'Boca de lobo 90 graus',
   'mao-francesa': 'Mão francesa',
   'pao-francesa': 'Mão francesa',
@@ -143,23 +145,41 @@ function gerarPdf(req, res) {
   const doc = new PDFDocument({ margin: 40 });
   doc.pipe(res);
 
-  doc.fontSize(18).text('Relatório Técnico de Traçagem', { align: 'center' });
-  doc.moveDown();
-  doc.fontSize(12).text(`Título: ${tracagem.titulo || '-'}`);
+  doc.fontSize(20).text('Manutenção Campo do Gado', { align: 'center' });
+  doc.fontSize(16).text('Relatório Técnico de Traçagem', { align: 'center' });
+  doc.moveDown(0.8);
+  doc.fontSize(12).text(`Título do cálculo: ${tracagem.titulo || '-'}`);
   doc.text(`Tipo: ${LABELS[tracagem.tipo] || tracagem.tipo}`);
   doc.text(`Data: ${tracagem.created_at || '-'}`);
   doc.text(`Usuário responsável: ${tracagem.usuario_nome || '-'}`);
+  doc.text(`Unidade utilizada: ${tracagem.parametros?.unidade || 'mm'}`);
   doc.text(`OS vinculada: ${tracagem.os_id || '-'}`);
   doc.text(`Equipamento vinculado: ${tracagem.equipamento_nome || '-'}`);
   doc.moveDown();
 
-  jsonToLines('Parâmetros informados:', tracagem.parametros).forEach((line) => doc.text(line));
+  doc.fontSize(13).text('Parâmetros informados', { underline: true });
+  jsonToLines('', tracagem.parametros).slice(1).forEach((line) => doc.fontSize(11).text(line));
   doc.moveDown();
-  jsonToLines('Resultados calculados:', tracagem.resultado).forEach((line) => doc.text(line));
+  doc.fontSize(13).text('Resultados calculados', { underline: true });
+  jsonToLines('', tracagem.resultado).slice(1).forEach((line) => doc.fontSize(11).text(line));
   doc.moveDown();
 
-  doc.rect(doc.x, doc.y, 220, 90).stroke();
-  doc.text('Desenho ilustrativo', doc.x + 50, doc.y + 35);
+  const divs = tracagem.resultado?.planificacao?.divisoes || [];
+  if (Array.isArray(divs) && divs.length) {
+    doc.fontSize(13).text('Tabela de pontos/divisões', { underline: true });
+    divs.slice(0, 20).forEach((d) => doc.fontSize(10).text(`• ${JSON.stringify(d)}`));
+    doc.moveDown();
+  }
+
+  doc.fontSize(12).text('Observações técnicas', { underline: true });
+  (tracagem.resultado?.observacoes || ['Conferir folga, solda, sentido de montagem e espessura da chapa antes do corte final.'])
+    .forEach((o) => doc.fontSize(10).text(`- ${o}`));
+
+  doc.moveDown();
+  doc.rect(doc.x, doc.y, 420, 120).stroke();
+  doc.text('Bloco visual de planificação (reserva para desenho técnico / QR Code / assinatura).', doc.x + 10, doc.y + 10, { width: 380 });
+  doc.moveDown(6);
+  doc.fontSize(10).text('Conferir folga, solda, sentido de montagem e espessura da chapa antes do corte final.');
   doc.end();
 }
 
@@ -183,10 +203,10 @@ module.exports = {
   semiCilindroCalcular: calcular('semi-cilindro', 'semi-cilindro', 'Semi-cilíndro'),
   bocaLoboExcentricaForm: renderCalc('boca-de-lobo-excentrica', 'boca-lobo-excentrica', 'Boca de lobo excêntrica'),
   bocaLoboExcentricaCalcular: calcular('boca-de-lobo-excentrica', 'boca-lobo-excentrica', 'Boca de lobo excêntrica'),
-  bocaLobo45Form: renderCalc('boca-de-lobo-45-graus', 'boca-lobo-45', 'Boca de lobo 45 graus'),
-  bocaLobo45Calcular: calcular('boca-de-lobo-45-graus', 'boca-lobo-45', 'Boca de lobo 45 graus'),
-  bocaLobo90Form: renderCalc('boca-de-lobo-90-graus', 'boca-lobo-90', 'Boca de lobo 90 graus'),
-  bocaLobo90Calcular: calcular('boca-de-lobo-90-graus', 'boca-lobo-90', 'Boca de lobo 90 graus'),
+  bocaLobo45Form: renderCalc('boca-de-lobo-45', 'boca-lobo-45', 'Boca de lobo (ângulo variável)'),
+  bocaLobo45Calcular: calcular('boca-de-lobo-45', 'boca-lobo-45', 'Boca de lobo (ângulo variável)'),
+  bocaLobo90Form: renderCalc('boca-de-lobo-90', 'boca-lobo-90', 'Boca de lobo 90 graus'),
+  bocaLobo90Calcular: calcular('boca-de-lobo-90', 'boca-lobo-90', 'Boca de lobo 90 graus'),
   maoFrancesaForm: renderCalc('mao-francesa', 'mao-francesa', 'Mão francesa'),
   maoFrancesaCalcular: calcular('mao-francesa', 'mao-francesa', 'Mão francesa'),
   salvar,

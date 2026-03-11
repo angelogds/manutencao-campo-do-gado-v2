@@ -14,6 +14,9 @@
       <div><label>h (altura)</label><input class="input" name="h" type="number" step="0.01" required value="<%= calculo?.parametros?.h || '' %>"></div>
       <div><label>E (espessura)</label><input class="input" name="E" type="number" step="0.01" required value="<%= calculo?.parametros?.E || '' %>"></div>
     </div>
+    <div class="tr-grid">
+      <div><label>Unidade</label><select class="input" name="unidade"><option value="mm" <%= (calculo?.parametros?.unidade || "mm") === "mm" ? "selected" : "" %>>mm</option><option value="cm" <%= calculo?.parametros?.unidade === "cm" ? "selected" : "" %>>cm</option></select></div>
+    </div>
     <img src="/img/tracagem/planificacoes/mao-francesa-peca.png" class="img-tecnica" alt="Mão francesa - peça">
     <div><button class="btn btn-green" type="submit">CALCULAR</button></div>
   </form></div>

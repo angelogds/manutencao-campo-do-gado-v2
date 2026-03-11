@@ -13,6 +13,12 @@
       <div><label>D (diâmetro)</label><input class="input" name="D" type="number" step="0.01" required value="<%= calculo?.parametros?.D || '' %>"></div>
       <div><label>A (ângulo total)</label><input class="input" name="A" type="number" step="0.01" required value="<%= calculo?.parametros?.A || '' %>"></div>
       <div><label>G (nº de gomos)</label><input class="input" name="G" type="number" step="1" required value="<%= calculo?.parametros?.G || '' %>"></div>
+      <div><label>R (raio da curva na linha de centro)</label><input class="input" name="R" type="number" step="0.01" required value="<%= calculo?.parametros?.R || '' %>"></div>
+      <div><label>E (espessura)</label><input class="input" name="E" type="number" step="0.01" value="<%= calculo?.parametros?.E || '' %>"></div>
+      <div><label>N (divisões)</label><input class="input" name="N" type="number" step="1" value="<%= calculo?.parametros?.N || 12 %>"></div>
+    </div>
+    <div class="tr-grid">
+      <div><label>Unidade</label><select class="input" name="unidade"><option value="mm" <%= (calculo?.parametros?.unidade || "mm") === "mm" ? "selected" : "" %>>mm</option><option value="cm" <%= calculo?.parametros?.unidade === "cm" ? "selected" : "" %>>cm</option></select></div>
     </div>
     <img src="/img/tracagem/planificacoes/curva-gomos-peca.png" class="img-tecnica" alt="Curva de gomos - peça">
     <div><button class="btn btn-green" type="submit">CALCULAR</button></div>
@@ -20,8 +26,8 @@
   <% if (calculo?.resultado) { const resultado = calculo.resultado.resultado; %>
     <div class="tr-card"><h3>Planificação</h3><img src="/img/tracagem/planificacoes/curva-gomos-planificacao.png" class="img-tecnica img-planificacao" alt="Curva de gomos - planificação"></div>
     <div class="tr-card"><h3>Resultados</h3><div class="resultado">
-      <div>Ângulo por gomo = <%= resultado.anguloPorGomo.toFixed(2) %>°</div><div>Ângulo de corte = <%= resultado.anguloCorte.toFixed(2) %>°</div>
-      <div>Desenvolvimento base = <%= resultado.desenvolvimentoBase.toFixed(2) %> mm</div><div>Comprimento aproximado = <%= resultado.comprimentoAproximado.toFixed(2) %> mm</div>
+      <div>Ângulo por gomo = <%= resultado.anguloPorGomo.toFixed(2) %>°</div><div>Ângulo de corte = <%= resultado.anguloMitra.toFixed(2) %>°</div>
+      <div>Desenvolvimento base = <%= resultado.perimetro.toFixed(2) %> mm</div><div>Comprimento aproximado = <%= resultado.desenvolvimentoGomo.toFixed(2) %> mm</div>
     </div></div>
   <% } %>
 </div>

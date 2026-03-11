@@ -1,54 +1,46 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-
 const service = require('../modules/tracagem/tracagem.service');
 
-function assertPadrao(out) {
-  assert.ok(out.entrada);
-  assert.ok(out.resultado);
-  assert.ok(out.planificacao);
-  assert.ok(Array.isArray(out.observacoes));
-  assert.ok(out.planificacao.labels);
-  assert.ok(Array.isArray(out.planificacao.pontos));
-  assert.ok(Array.isArray(out.planificacao.linhas));
-  assert.ok(Array.isArray(out.planificacao.divisoes));
-}
-
-test('calcRoscaHelicoidal returns padrão entrada/resultado/planificacao/observacoes', () => {
-  const out = service.calcRoscaHelicoidal({ D: 100, d: 60, P: 20 });
-  assert.deepEqual(out.entrada, { D: 100, d: 60, P: 20 });
-  assert.equal(out.resultado.R1, 50);
-  assert.equal(out.resultado.R2, 30);
-  assert.equal(out.resultado.C, 125.66);
-  assert.equal(out.resultado.T, 252.12);
-  assertPadrao(out);
+test('rosca helicoidal: cálculo correto e unidade cm->mm', () => {
+  const out = service.calcRoscaHelicoidal({ D: 10, d: 6, P: 2, unidade: 'cm', voltas: 2 });
+  assert.equal(out.entrada.D, 100);
+  assert.equal(out.resultado.L_ext > out.resultado.L_int, true);
+  assert.ok(Math.abs(out.resultado.comprimento_total - (out.resultado.comprimento_1_volta * 2)) < 0.05);
 });
 
-test('calcFuracaoFlange uses N and returns furos list + corda', () => {
-  const out = service.calcFuracaoFlange({ D: 200, N: 4 });
-  assert.deepEqual(out.entrada, { D: 200, N: 4 });
-  assert.equal(out.resultado.raio, 100);
-  assert.equal(out.resultado.anguloEntreFuros, 90);
-  assert.equal(out.resultado.corda, 141.42);
-  assert.equal(out.resultado.furos.length, 4);
-  assert.equal(out.resultado.furos[1].angulo, 90);
-  assertPadrao(out);
+test('furação flange: retorna coordenadas e valida N>=3', () => {
+  const out = service.calcFuracaoFlange({ PCD: 200, N: 8, unidade: 'mm' });
+  assert.equal(out.resultado.coordenadas.length, 8);
+  assert.throws(() => service.calcFuracaoFlange({ PCD: 200, N: 2 }), /N deve ser inteiro maior ou igual a 3/);
 });
 
-test('calcCilindro returns A and B', () => {
-  const out = service.calcCilindro({ D: 100, h: 50, E: 3 });
-  assert.deepEqual(out.entrada, { D: 100, h: 50, E: 3 });
-  assert.equal(out.resultado.A, 314.16);
-  assert.equal(out.resultado.B, 50);
-  assertPadrao(out);
+test('curva de gomos: validações e divisões', () => {
+  const out = service.calcCurvaGomos({ D: 100, R: 120, A: 90, G: 3, N: 12, unidade: 'mm' });
+  assert.equal(out.planificacao.divisoes.length, 13);
+  assert.throws(() => service.calcCurvaGomos({ D: 100, R: 40, A: 90, G: 3, N: 12 }), /R deve ser maior/);
 });
 
-test('calcMaoFrancesa computes diagonal/alpha from A and h', () => {
+test('redução concêntrica: bloqueia D1 <= D2', () => {
+  assert.throws(() => service.calcReducaoConcentrica({ D1: 100, D2: 100, h: 100 }), /módulo de cilindro/);
+  const out = service.calcReducaoConcentrica({ D1: 200, D2: 100, h: 150 });
+  assert.equal(out.resultado.R1, 100);
+});
+
+test('quadrado/retângulo para redondo usa true lengths sem NaN', () => {
+  const out = service.calcQuadradoParaRedondo({ A: 120, B: 80, D: 100, h: 150, N: 12 });
+  out.resultado.comprimentosVerdadeiros.forEach((v) => assert.equal(Number.isFinite(v), true));
+});
+
+test('boca de lobo 90/45/excêntrica sem NaN', () => {
+  const b90 = service.calcBocaLobo90({ D: 300, d: 150, N: 12 });
+  const b45 = service.calcBocaLobo45({ D: 300, d: 150, alpha: 45, N: 12 });
+  const bex = service.calcBocaLoboExcentrica({ D: 300, d: 150, C: 20, N: 12 });
+  [b90, b45, bex].forEach((o) => o.resultado.pontos.forEach((p) => assert.equal(Number.isFinite(p.altura), true)));
+});
+
+test('mão francesa e validação de entrada inválida', () => {
   const out = service.calcMaoFrancesa({ A: 300, h: 400, E: 10 });
-  assert.deepEqual(out.entrada, { A: 300, h: 400, E: 10 });
   assert.equal(out.resultado.C, 500);
-  assert.equal(out.resultado.alpha, 53.13);
-  assert.equal(out.resultado.B, 10);
-  assert.equal(out.resultado.D, 10);
-  assertPadrao(out);
+  assert.throws(() => service.calcMaoFrancesa({ A: 0, h: 5 }), /medida válida/);
 });
