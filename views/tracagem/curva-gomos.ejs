@@ -43,19 +43,23 @@
     </div>
 
     <div class="tr-card">
-      <h3>Tabela de traçagem (valores já divididos por 2)</h3>
+      <h3>Tabela de traçagem (peça pronta + medidas da planificação)</h3>
+      <p style="margin-top:0;color:#475569;">As medidas da planificação são calculadas dividindo a medida real por 2 (ex.: 100 → 50, 120 → 60).</p>
       <table class="tr-table">
         <thead>
           <tr>
             <th>Divisão</th>
-            <th>Medida por lado (mm)</th>
+            <th>Medida real da peça (mm)</th>
+            <th>Medidas da planificação (÷ 2) (mm)</th>
           </tr>
         </thead>
         <tbody>
           <% tabelaDivisoes.forEach((item) => { %>
+            <% const medidaReal = Number(item.altura || item.valor || 0); %>
             <tr>
               <td><%= item.indice %></td>
-              <td><%= Number(item.altura || item.valor || 0).toFixed(2) %></td>
+              <td><%= medidaReal.toFixed(2) %></td>
+              <td><%= (medidaReal / 2).toFixed(2) %></td>
             </tr>
           <% }) %>
         </tbody>
