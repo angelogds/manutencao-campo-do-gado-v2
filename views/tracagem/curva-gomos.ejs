@@ -30,15 +30,15 @@
     <img src="/img/tracagem/planificacoes/curva-gomos-peca.png" class="img-tecnica" alt="Curva de gomos - peça">
     <div><button class="btn btn-green" type="submit">CALCULAR</button></div>
   </form></div>
-  <% if (calculo?.resultado) { const resultado = calculo.resultado.resultado; const entrada = calculo.resultado.entrada; const divisoes = calculo.resultado.planificacao?.divisoes || []; const tabelaDivisoes = divisoes.slice(1); %>
+  <% if (calculo?.resultado) { const resultado = calculo.resultado.resultado; const entrada = calculo.resultado.entrada; const planificacao = calculo.resultado.planificacao || {}; const tabelaDivisoes = planificacao.divisoes || []; %>
     <div class="tr-card">
       <h3 class="planificacao-title">Planificação</h3>
       <img src="/img/tracagem/planificacoes/curva-gomos-planificacao.png" class="img-tecnica img-planificacao" alt="Curva de gomos - planificação">
       <div class="planificacao-info">
         <h4>Informações principais</h4>
-        <p>P = <b><%= resultado.perimetro.toFixed(2) %> mm</b></p>
-        <p>A = <b><%= resultado.passoDivisao.toFixed(2) %> mm</b></p>
-        <p>Divisões = <b><%= entrada.N %></b></p>
+        <p>P = <b><%= Number(planificacao.comprimentoTotal || resultado.comprimentoTotal || resultado.perimetro || 0).toFixed(2) %> mm</b></p>
+        <p>A = <b><%= Number(planificacao.larguraDivisao || resultado.larguraDivisao || resultado.passoDivisao || 0).toFixed(2) %> mm</b></p>
+        <p>Divisões = <b><%= planificacao.numeroDivisoes || entrada.N %></b></p>
       </div>
     </div>
 
@@ -55,7 +55,7 @@
           <% tabelaDivisoes.forEach((item) => { %>
             <tr>
               <td><%= item.indice %></td>
-              <td><%= Number(item.altura || 0).toFixed(2) %></td>
+              <td><%= Number(item.altura || item.valor || 0).toFixed(2) %></td>
             </tr>
           <% }) %>
         </tbody>
@@ -64,7 +64,7 @@
 
     <div class="tr-card"><h3>Resultados</h3><div class="resultado">
       <div>Ângulo por gomo = <%= resultado.anguloPorGomo.toFixed(2) %>°</div><div>Ângulo de corte = <%= resultado.anguloMitra.toFixed(2) %>°</div>
-      <div>Passe = <%= resultado.passe.toFixed(2) %> mm</div><div>Comprimento aproximado = <%= resultado.desenvolvimentoGomo.toFixed(2) %> mm</div>
+      <div>Passe = <%= Number(resultado.passe || 0).toFixed(2) %> mm</div><div>Comprimento aproximado = <%= Number(resultado.desenvolvimentoGomo || 0).toFixed(2) %> mm</div>
       <div>A1..A7 = <%= [resultado.A1,resultado.A2,resultado.A3,resultado.A4,resultado.A5,resultado.A6,resultado.A7].map(v => Number(v||0).toFixed(2)).join(" | ") %></div>
     </div></div>
 
