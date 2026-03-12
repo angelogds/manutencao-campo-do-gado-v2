@@ -31,8 +31,18 @@ test('redução concêntrica: bloqueia D1 <= D2', () => {
 });
 
 test('quadrado/retângulo para redondo usa true lengths sem NaN', () => {
-  const out = service.calcQuadradoParaRedondo({ A: 120, B: 80, D: 100, h: 150, N: 12 });
+  const out = service.calcQuadradoParaRedondo({ A: 120, B: 80, D: 100, H: 150, N: 12 });
   out.resultado.comprimentosVerdadeiros.forEach((v) => assert.equal(Number.isFinite(v), true));
+  assert.equal(Number.isFinite(out.resultado.AA), true);
+  assert.equal(Number.isFinite(out.resultado.AB), true);
+  assert.equal(Number.isFinite(out.resultado.A1), true);
+  assert.equal(Number.isFinite(out.resultado.A2), true);
+  assert.equal(Number.isFinite(out.resultado.A3), true);
+  assert.equal(Number.isFinite(out.resultado.A4), true);
+  assert.equal(Number.isFinite(out.resultado.C), true);
+  assert.equal(out.planificacao.divisoes.length, 12);
+  assert.match(out.planificacao.divisoes[0].trecho, /1-2/);
+  assert.throws(() => service.calcQuadradoParaRedondo({ A: 120, B: 80, D: 100, H: 150, N: 3 }), /N deve ser inteiro maior ou igual a 4/);
 });
 
 test('boca de lobo 90/45/excêntrica sem NaN', () => {
@@ -67,7 +77,9 @@ test('campos de compatibilidade para telas de traçagem', () => {
   const bex = service.calcBocaLoboExcentrica({ D: 300, d: 150, C: 10, N: 12 });
   assert.equal(Number.isFinite(bex.resultado.deslocamento), true);
 
-  const qpr = service.calcQuadradoParaRedondo({ A: 120, B: 80, D: 100, h: 150, N: 12 });
+  const qpr = service.calcQuadradoParaRedondo({ A: 120, B: 80, D: 100, H: 150, N: 12 });
   assert.equal(Number.isFinite(qpr.resultado.perimetroQuadrado), true);
   assert.equal(Number.isFinite(qpr.resultado.geratrizAproximada), true);
+  assert.equal(Number.isFinite(qpr.resultado.C1), true);
+  assert.equal(Number.isFinite(qpr.resultado.C4), true);
 });
