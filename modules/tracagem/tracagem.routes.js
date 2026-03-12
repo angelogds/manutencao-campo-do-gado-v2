@@ -53,9 +53,13 @@ router.post('/mao-francesa/calcular', requireLogin, requireRole(MANAGE_ACCESS), 
 router.get('/pao-francesa', requireLogin, requireRole(VIEW_ACCESS), (_req, res) => res.redirect('/tracagem/mao-francesa'));
 router.post('/pao-francesa/calcular', requireLogin, requireRole(MANAGE_ACCESS), (_req, res) => res.redirect('/tracagem/mao-francesa'));
 
+
+router.get('/equipamentos/search', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.listarEquipamentosVinculo));
+router.post('/relacionar-equipamento', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.relacionarEquipamento));
 router.post('/salvar', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.salvar));
 router.post('/pdf-calculo', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.gerarPdfCalculo));
 router.get('/:id/pdf', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.gerarPdf));
+router.get('/:id/pdf/download', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.baixarPdfVinculado));
 router.get('/:id', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.show));
 
 module.exports = router;

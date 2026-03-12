@@ -67,10 +67,11 @@
         <input type="hidden" name="resultado_json" value="<%= JSON.stringify(calculo.resultado) %>" />
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-green" type="submit">Salvar</button>
-          <button class="btn" type="button" disabled>Gerar PDF</button>
-          <button class="btn" type="button" disabled>Vincular à OS</button>
         </div>
       </form>
+      <div class="tr-card" style="margin-top:10px;">
+        <%- include('partials/relacionar-equipamento', { tipo, calculo, equipamentos, tituloPadrao: 'Traçagem técnica' }) %>
+      </div>
     <% } %>
   </div>
 </div>

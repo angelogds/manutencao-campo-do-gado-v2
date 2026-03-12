@@ -2,6 +2,31 @@ const fs = require('fs');
 const path = require('path');
 const service = require('./tracagem.service');
 
+
+const PDF_STORAGE_DIR = path.join(process.env.UPLOADS_DIR || (fs.existsSync('/data') ? '/data/uploads' : path.join(process.cwd(), 'uploads')), 'tracagem-pdfs');
+
+function ensurePdfStorageDir() {
+  if (!fs.existsSync(PDF_STORAGE_DIR)) fs.mkdirSync(PDF_STORAGE_DIR, { recursive: true });
+}
+
+function slugify(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '') || 'tracagem';
+}
+
+function buildStoredPdfFilename({ tipo, equipamento, createdAt }) {
+  const date = new Date(createdAt || Date.now());
+  const y = String(date.getFullYear());
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const equipCode = slugify(equipamento?.codigo || equipamento?.nome || 'equipamento');
+  return `tracagem-${slugify(tipo)}-equipamento-${equipCode}-${y}-${m}-${d}.pdf`;
+}
+
 function getPdfDocumentClass() {
   try {
     // Lazy-load para não derrubar o módulo /tracagem inteiro caso falte dependência de PDF.
@@ -244,7 +269,9 @@ function buildFormattedData(tracagem) {
     { campo: 'Unidade', valor: unidade },
     { campo: 'OS', valor: tracagem.os_id || '-' },
     { campo: 'Equipamento', valor: tracagem.equipamento_nome || '-' },
-    { campo: 'Código', valor: tracagem.id || '-' },
+    { campo: 'Código equipamento', valor: tracagem.equipamento_codigo || '-' },
+    { campo: 'Setor', valor: tracagem.equipamento_setor || '-' },
+    { campo: 'Traçagem ID', valor: tracagem.id || '-' },
   ];
 
   const parametrosFormatados = Object.entries(entrada)
@@ -478,19 +505,26 @@ function drawFooter(doc) {
   });
 }
 
-function renderPdfReport(res, tracagem, filename) {
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
+function renderPdfReport(res, tracagem, filename, options = {}) {
   const PdfDocumentClass = getPdfDocumentClass();
   if (!PdfDocumentClass) {
-    res.status(503).send('PDF temporariamente indisponível. Verifique a dependência pdfkit no servidor.');
-    return;
+    if (res) res.status(503).send('PDF temporariamente indisponível. Verifique a dependência pdfkit no servidor.');
+    return null;
   }
 
   const dados = buildFormattedData(tracagem);
   const doc = new PdfDocumentClass({ margin: 24, size: 'A4' });
-  doc.pipe(res);
+
+  if (options.outputPath) {
+    ensurePdfStorageDir();
+    doc.pipe(fs.createWriteStream(options.outputPath));
+  }
+
+  if (res) {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    doc.pipe(res);
+  }
 
   drawHeader(doc, tracagem, dados);
   drawIdentification(doc, dados);
@@ -544,6 +578,7 @@ function renderPdfReport(res, tracagem, filename) {
   drawObservacoes(doc, dados);
   drawFooter(doc);
   doc.end();
+  return doc;
 }
 
 function gerarPdf(req, res) {
@@ -579,6 +614,88 @@ function gerarPdfCalculo(req, res) {
   }
 }
 
+
+
+function listarEquipamentosVinculo(req, res) {
+  const search = req.query.search || '';
+  const equipamentos = service.listEquipamentosParaVinculo(search);
+  return res.json({ equipamentos });
+}
+
+function relacionarEquipamento(req, res) {
+  try {
+    const tipo = req.body.tipo;
+    const equipamentoId = Number(req.body.equipamento_id || 0);
+    if (!equipamentoId) {
+      req.flash('error', 'Selecione um equipamento para relacionar a traçagem.');
+      return res.redirect('back');
+    }
+
+    const equipamento = service.getEquipamentoById(equipamentoId);
+    if (!equipamento) {
+      req.flash('error', 'Equipamento não encontrado.');
+      return res.redirect('back');
+    }
+
+    const parametros = JSON.parse(req.body.parametros_json || '{}');
+    const resultado = JSON.parse(req.body.resultado_json || '{}');
+    const titulo = req.body.titulo || `${LABELS[tipo] || 'Traçagem'} - ${equipamento.nome}`;
+
+    const nowIso = new Date().toISOString();
+    const filename = buildStoredPdfFilename({ tipo, equipamento, createdAt: nowIso });
+    ensurePdfStorageDir();
+    const storedPath = path.join(PDF_STORAGE_DIR, `${Date.now()}-${filename}`);
+
+    const tracagemPdfContext = {
+      id: 'vinculo',
+      tipo,
+      titulo,
+      created_at: nowIso,
+      usuario_nome: req.session?.user?.name || req.session?.user?.username || '-',
+      parametros,
+      resultado,
+      os_id: req.body.os_id || '-',
+      equipamento_nome: equipamento.nome,
+      equipamento_codigo: equipamento.codigo || '-',
+      equipamento_setor: equipamento.setor || '-',
+    };
+
+    renderPdfReport(null, tracagemPdfContext, filename, { outputPath: storedPath });
+
+    const id = service.salvarComPdf({
+      tipo,
+      titulo,
+      equipamento_id: equipamentoId,
+      os_id: req.body.os_id ? Number(req.body.os_id) : null,
+      usuario_id: req.session?.user?.id || null,
+      parametros,
+      resultado,
+      pdf_filename: filename,
+      pdf_path: `/uploads/tracagem-pdfs/${path.basename(storedPath)}`,
+    });
+
+    req.flash('success', 'Traçagem vinculada ao equipamento com sucesso.');
+    return res.redirect(`/equipamentos/${equipamentoId}?tab=tracagem`);
+  } catch (err) {
+    req.flash('error', err.message || 'Erro ao relacionar traçagem ao equipamento.');
+    return res.redirect('back');
+  }
+}
+
+function baixarPdfVinculado(req, res) {
+  const tracagem = service.getById(req.params.id);
+  if (!tracagem) return res.status(404).render('errors/404', { title: 'Não encontrado' });
+
+  const pdfPath = tracagem.pdf_path ? path.join(process.cwd(), tracagem.pdf_path.replace(/^\//, '')) : null;
+  if (pdfPath && fs.existsSync(pdfPath)) {
+    const filename = tracagem.pdf_filename || path.basename(pdfPath);
+    return res.download(pdfPath, filename);
+  }
+
+  const filename = tracagem.pdf_filename || `tracagem_${tracagem.tipo}_${tracagem.id}.pdf`;
+  return renderPdfReport(res, tracagem, filename);
+}
+
 module.exports = {
   index,
   lista,
@@ -608,4 +725,7 @@ module.exports = {
   salvar,
   gerarPdf,
   gerarPdfCalculo,
+  listarEquipamentosVinculo,
+  relacionarEquipamento,
+  baixarPdfVinculado,
 };
