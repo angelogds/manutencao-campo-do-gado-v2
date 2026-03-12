@@ -288,7 +288,9 @@ function buildFormattedData(tracagem) {
     { campo: 'Unidade', valor: unidade },
     { campo: 'OS', valor: tracagem.os_id || '-' },
     { campo: 'Equipamento', valor: tracagem.equipamento_nome || '-' },
-    { campo: 'Código', valor: tracagem.id || '-' },
+    { campo: 'Código equipamento', valor: tracagem.equipamento_codigo || '-' },
+    { campo: 'Setor', valor: tracagem.equipamento_setor || '-' },
+    { campo: 'Traçagem ID', valor: tracagem.id || '-' },
   ];
 
   const parametrosFormatados = Object.entries(entrada)

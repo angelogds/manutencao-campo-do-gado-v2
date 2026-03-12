@@ -41,5 +41,9 @@
       <h3>Observações técnicas</h3>
       <ul><% observacoes.forEach((obs)=> { %><li><%= obs %></li><% }) %></ul>
     </div>
+
+    <div class="tr-card">
+      <%- include('partials/relacionar-equipamento', { tipo: 'quadrado-para-redondo', calculo, equipamentos, tituloPadrao: 'Retângulo para redondo' }) %>
+    </div>
   <% } %>
 </div>

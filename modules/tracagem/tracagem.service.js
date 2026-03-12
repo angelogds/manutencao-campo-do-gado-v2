@@ -617,7 +617,7 @@ function updatePdfInfo(id, { pdf_filename, pdf_path }) {
 
 function getById(id) {
   const row = db.prepare(`
-    SELECT t.*, u.name AS usuario_nome, o.id AS os_codigo, e.nome AS equipamento_nome
+    SELECT t.*, u.name AS usuario_nome, o.id AS os_codigo, e.nome AS equipamento_nome, e.codigo AS equipamento_codigo, e.setor AS equipamento_setor
     FROM tracagens t
     LEFT JOIN users u ON u.id = t.usuario_id
     LEFT JOIN os o ON o.id = t.os_id
