@@ -285,42 +285,106 @@ function calcCurvaGomos(params) {
 
 function calcQuadradoParaRedondo(params) {
   const unidade = getUnidade(params);
-  const A = normalizarMedida(params.A ?? params.L ?? params.lado, unidade);
-  const B = normalizarMedida(params.B ?? params.L ?? params.lado, unidade);
+  const A = normalizarMedida(params.A ?? params.ladoQuadrado ?? params.lado, unidade);
+  const B = normalizarMedida(params.B ?? params.ladoRetangulo ?? params.lado2, unidade);
   const D = normalizarMedida(params.D ?? params.diametro, unidade);
-  const h = normalizarMedida(params.h ?? params.H ?? params.altura, unidade);
+  const H = normalizarMedida(params.H ?? params.h ?? params.altura, unidade);
   const E = normalizarEspessura(params.E, unidade);
-  const N = toEvenInt(params.N ?? 12, 'N', { min: 8, allowedAnyEven: true });
+  const N = toIntMin(params.N ?? 12, 'N', 4);
 
   const r = D / 2;
   const perimetroRetangulo = 2 * (A + B);
+  const perimetroQuadradoReferencia = A * 4;
   const circunferenciaRedondo = Math.PI * D;
+  const cTrecho = circunferenciaRedondo / N;
+
+  function pontoNoRetanguloPorArco(sArco) {
+    const p = ((sArco % perimetroRetangulo) + perimetroRetangulo) % perimetroRetangulo;
+    const metadeA = A / 2;
+    const metadeB = B / 2;
+
+    if (p <= A) return { x: -metadeA + p, y: -metadeB };
+    if (p <= A + B) return { x: metadeA, y: -metadeB + (p - A) };
+    if (p <= (2 * A) + B) return { x: metadeA - (p - (A + B)), y: metadeB };
+    return { x: -metadeA, y: metadeB - (p - ((2 * A) + B)) };
+  }
 
   const pontos = [];
   for (let i = 0; i < N; i += 1) {
     const t = (2 * Math.PI * i) / N;
     const xr = r * Math.cos(t);
     const yr = r * Math.sin(t);
-    const xTop = (A / 2) * Math.sign(Math.cos(t));
-    const yTop = (B / 2) * Math.sign(Math.sin(t));
-    const trueLength = safeSqrt(h ** 2 + (xTop - xr) ** 2 + (yTop - yr) ** 2, 'true_length');
-    pontos.push({ indice: i + 1, trueLength: n2(trueLength), x: n2(i * (circunferenciaRedondo / N)) });
+    const pTopo = pontoNoRetanguloPorArco(i * (perimetroRetangulo / N));
+    const trueLength = safeSqrt(H ** 2 + (pTopo.x - xr) ** 2 + (pTopo.y - yr) ** 2, 'true_length');
+    pontos.push({
+      indice: i + 1,
+      trueLength: n2(trueLength),
+      x: n2(i * cTrecho),
+      y: n2(trueLength),
+      xTopo: n2(pTopo.x),
+      yTopo: n2(pTopo.y),
+      xBase: n2(xr),
+      yBase: n2(yr),
+    });
   }
 
   const comprimentos = pontos.map((p) => p.trueLength);
+  const mediaCantos = [0, Math.floor(N / 4), Math.floor(N / 2), Math.floor((3 * N) / 4)]
+    .map((idx) => comprimentos[idx] || comprimentos[0] || 0);
+  const segmentosC = Array.from({ length: Math.min(4, N) }, (_, idx) => ({
+    trecho: `${idx + 1}-${(idx + 2) <= N ? idx + 2 : 1}`,
+    valor: n2(cTrecho),
+  }));
   const geratrizAproximada = comprimentos.reduce((acc, v) => acc + v, 0) / (comprimentos.length || 1);
+
   return buildResult({
-    entrada: { A: n2(A), B: n2(B), D: n2(D), h: n2(h), E: n2(E), N, unidadeEntrada: unidade, unidadeInterna: 'mm' },
+    entrada: { A: n2(A), B: n2(B), D: n2(D), H: n2(H), E: n2(E), N, unidadeEntrada: unidade, unidadeInterna: 'mm' },
     resultado: {
       perimetroRetangulo: n2(perimetroRetangulo),
-      perimetroQuadrado: n2(perimetroRetangulo),
+      perimetroQuadrado: n2(perimetroQuadradoReferencia),
       circunferenciaRedondo: n2(circunferenciaRedondo),
       geratrizAproximada: n2(geratrizAproximada),
+      C: n2(cTrecho),
+      C1: segmentosC[0]?.valor || 0,
+      C2: segmentosC[1]?.valor || 0,
+      C3: segmentosC[2]?.valor || 0,
+      C4: segmentosC[3]?.valor || 0,
       comprimentosVerdadeiros: comprimentos,
-      AA: n2(A), AB: n2(B), A1: comprimentos[0], A2: comprimentos[1], A3: comprimentos[2], A4: comprimentos[3], B1: comprimentos[Math.floor(N / 2)],
+      AA: n2(A),
+      AB: n2(B),
+      A1: n2(mediaCantos[0]),
+      A2: n2(mediaCantos[1]),
+      A3: n2(mediaCantos[2]),
+      A4: n2(mediaCantos[3]),
     },
-    planificacao: { labels: { A: n2(A), B: n2(B), D: n2(D), h: n2(h) }, pontos, linhas: [], divisoes: pontos },
-    observacoes: ['Quanto maior o número de divisões, melhor a aproximação da transição.'],
+    planificacao: {
+      labels: {
+        A: n2(A),
+        B: n2(B),
+        D: n2(D),
+        H: n2(H),
+        AA: n2(A),
+        AB: n2(B),
+        C: n2(cTrecho),
+        A1: n2(mediaCantos[0]),
+        A2: n2(mediaCantos[1]),
+        A3: n2(mediaCantos[2]),
+        A4: n2(mediaCantos[3]),
+      },
+      pontos,
+      linhas: [],
+      segmentosC,
+      divisoes: pontos.map((ponto, idx) => ({
+        indice: ponto.indice,
+        trecho: `${ponto.indice}-${((idx + 1) % N) + 1}`,
+        cTrecho: n2(cTrecho),
+        altura: ponto.trueLength,
+      })),
+    },
+    observacoes: [
+      'As geratrizes foram calculadas por triangulação ponto a ponto entre retângulo e redondo.',
+      'C representa o passo da planificação entre divisões sucessivas na base redonda.',
+    ],
   });
 }
 
