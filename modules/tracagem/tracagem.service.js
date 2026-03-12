@@ -562,16 +562,44 @@ function calcularPorTipo(tipo, params) {
   }
 }
 
+
+function mapModuloOrigem(tipo) {
+  return String(tipo || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/(^_|_$)/g, '');
+}
+
+function buildDadosCalculoJson(parametros = {}, resultado = {}) {
+  return {
+    parametros,
+    resultados: resultado,
+    unidade: parametros.unidade || resultado?.entrada?.unidadeEntrada || 'mm',
+    divisoes: parametros.N ?? parametros.divisoes ?? resultado?.entrada?.N ?? null,
+    espessura: parametros.E ?? resultado?.entrada?.E ?? null,
+    origem: 'tracagem',
+  };
+}
+
 function salvar({ tipo, titulo, equipamento_id, os_id, usuario_id, parametros, resultado }) {
   const info = db.prepare(`
     INSERT INTO tracagens (
-      tipo, titulo, equipamento_id, os_id, usuario_id, parametros_json, resultado_json, updated_at
+      tipo, modulo_origem, titulo, equipamento_id, os_id, usuario_id, criado_por, parametros_json, resultado_json, dados_calculo_json, updated_at
     ) VALUES (
-      @tipo, @titulo, @equipamento_id, @os_id, @usuario_id, @parametros_json, @resultado_json, datetime('now')
+      @tipo, @modulo_origem, @titulo, @equipamento_id, @os_id, @usuario_id, @criado_por, @parametros_json, @resultado_json, @dados_calculo_json, datetime('now')
     )
   `).run({
-    tipo, titulo: titulo || null, equipamento_id: equipamento_id || null, os_id: os_id || null, usuario_id: usuario_id || null,
-    parametros_json: JSON.stringify(parametros || {}), resultado_json: JSON.stringify(resultado || {}),
+    tipo,
+    modulo_origem: mapModuloOrigem(tipo),
+    titulo: titulo || null,
+    equipamento_id: equipamento_id || null,
+    os_id: os_id || null,
+    usuario_id: usuario_id || null,
+    criado_por: usuario_id || null,
+    parametros_json: JSON.stringify(parametros || {}),
+    resultado_json: JSON.stringify(resultado || {}),
+    dados_calculo_json: JSON.stringify(buildDadosCalculoJson(parametros, resultado)),
   });
   return Number(info.lastInsertRowid);
 }
@@ -579,20 +607,23 @@ function salvar({ tipo, titulo, equipamento_id, os_id, usuario_id, parametros, r
 function salvarComPdf({ tipo, titulo, equipamento_id, os_id, usuario_id, parametros, resultado, pdf_filename, pdf_path }) {
   const info = db.prepare(`
     INSERT INTO tracagens (
-      tipo, titulo, equipamento_id, os_id, usuario_id, parametros_json, resultado_json,
+      tipo, modulo_origem, titulo, equipamento_id, os_id, usuario_id, criado_por, parametros_json, resultado_json, dados_calculo_json,
       pdf_filename, pdf_path, pdf_generated_at, updated_at
     ) VALUES (
-      @tipo, @titulo, @equipamento_id, @os_id, @usuario_id, @parametros_json, @resultado_json,
+      @tipo, @modulo_origem, @titulo, @equipamento_id, @os_id, @usuario_id, @criado_por, @parametros_json, @resultado_json, @dados_calculo_json,
       @pdf_filename, @pdf_path, datetime('now'), datetime('now')
     )
   `).run({
     tipo,
+    modulo_origem: mapModuloOrigem(tipo),
     titulo: titulo || null,
     equipamento_id: equipamento_id || null,
     os_id: os_id || null,
     usuario_id: usuario_id || null,
+    criado_por: usuario_id || null,
     parametros_json: JSON.stringify(parametros || {}),
     resultado_json: JSON.stringify(resultado || {}),
+    dados_calculo_json: JSON.stringify(buildDadosCalculoJson(parametros, resultado)),
     pdf_filename: pdf_filename || null,
     pdf_path: pdf_path || null,
   });
@@ -696,6 +727,24 @@ function listOSAbertas() {
   return db.prepare('SELECT id, status FROM os ORDER BY id DESC LIMIT 200').all();
 }
 
+
+function saveTracagem(payload) {
+  return salvarComPdf(payload);
+}
+
+function vincularEquipamento({ tracagem_id, equipamento_id }) {
+  db.prepare(`
+    UPDATE tracagens
+    SET equipamento_id = @equipamento_id,
+        updated_at = datetime('now')
+    WHERE id = @tracagem_id
+  `).run({ tracagem_id: Number(tracagem_id), equipamento_id: Number(equipamento_id) });
+}
+
+function listarTracagensPorEquipamento(equipamentoId) {
+  return listByEquipamento(equipamentoId);
+}
+
 module.exports = {
   TIPOS,
   n2,
@@ -717,6 +766,9 @@ module.exports = {
   calcularPorTipo,
   salvar,
   salvarComPdf,
+  saveTracagem,
+  vincularEquipamento,
+  listarTracagensPorEquipamento,
   updatePdfInfo,
   getById,
   list,

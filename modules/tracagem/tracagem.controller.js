@@ -24,7 +24,7 @@ function buildStoredPdfFilename({ tipo, equipamento, createdAt }) {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   const equipCode = slugify(equipamento?.codigo || equipamento?.nome || 'equipamento');
-  return `tracagem-${slugify(tipo)}-equipamento-${equipCode}-${y}-${m}-${d}.pdf`;
+  return `tracagem-${slugify(tipo)}-${equipCode}-${y}-${m}-${d}.pdf`;
 }
 
 function getPdfDocumentClass() {
@@ -633,6 +633,8 @@ function gerarPdfCalculo(req, res) {
       resultado,
       os_id: req.body.os_id || '-',
       equipamento_nome: req.body.equipamento_nome || '-',
+      equipamento_codigo: req.body.equipamento_codigo || '-',
+      equipamento_setor: req.body.equipamento_setor || '-',
     };
 
     const filename = `tracagem_${tracagem.tipo || 'calculo'}_${Date.now()}.pdf`;
@@ -644,6 +646,24 @@ function gerarPdfCalculo(req, res) {
 }
 
 
+
+
+function tracagensIndex(req, res) {
+  return lista(req, res);
+}
+
+function tracagensVincular(req, res) {
+  return relacionarEquipamento(req, res);
+}
+
+function tracagensPorEquipamento(req, res) {
+  const tracagens = service.listarTracagensPorEquipamento(req.params.id);
+  return res.json({ tracagens });
+}
+
+function tracagensPdf(req, res) {
+  return baixarPdfVinculado(req, res);
+}
 
 function listarEquipamentosVinculo(req, res) {
   const search = req.query.search || '';
@@ -685,11 +705,13 @@ function relacionarEquipamento(req, res) {
       resultado,
       os_id: req.body.os_id || '-',
       equipamento_nome: equipamento.nome,
+      equipamento_codigo: equipamento.codigo || '-',
+      equipamento_setor: equipamento.setor || '-',
     };
 
     renderPdfReport(null, tracagemPdfContext, filename, { outputPath: storedPath });
 
-    const id = service.salvarComPdf({
+    const id = service.saveTracagem({
       tipo,
       titulo,
       equipamento_id: equipamentoId,
@@ -755,4 +777,8 @@ module.exports = {
   listarEquipamentosVinculo,
   relacionarEquipamento,
   baixarPdfVinculado,
+  tracagensIndex,
+  tracagensVincular,
+  tracagensPorEquipamento,
+  tracagensPdf,
 };

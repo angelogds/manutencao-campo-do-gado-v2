@@ -17,7 +17,7 @@
     <button class="btn btn-green" type="submit">Gerar PDF</button>
   </form>
 
-  <button class="btn" id="open-relacionar" type="button">Relacionar ao equipamento</button>
+  <button class="btn btn-green" id="open-relacionar" type="button">Relacionar ao equipamento</button>
 </div>
 
 <div class="modal-overlay" id="modal-relacionar" aria-hidden="true">
@@ -33,19 +33,19 @@
         <table class="equip-table">
           <thead>
             <tr>
-              <th>Nome</th>
               <th>Código</th>
-              <th>Setor</th>
+              <th>Nome</th>
               <th>Tipo</th>
+              <th>Setor</th>
             </tr>
           </thead>
           <tbody id="equip-tbody">
             <% (equipamentos || []).forEach((equip) => { %>
               <tr class="equip-row" data-id="<%= equip.id %>" data-nome="<%= equip.nome %>" data-codigo="<%= equip.codigo || '' %>" data-setor="<%= equip.setor || '' %>">
-                <td><%= equip.nome %></td>
                 <td><%= equip.codigo || '-' %></td>
-                <td><%= equip.setor || '-' %></td>
+                <td><%= equip.nome %></td>
                 <td><%= equip.tipo || '-' %></td>
+                <td><%= equip.setor || '-' %></td>
               </tr>
             <% }) %>
           </tbody>

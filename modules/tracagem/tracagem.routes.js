@@ -62,4 +62,5 @@ router.get('/:id/pdf', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.ger
 router.get('/:id/pdf/download', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.baixarPdfVinculado));
 router.get('/:id', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.show));
 
+
 module.exports = router;
