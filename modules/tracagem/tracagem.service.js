@@ -512,6 +512,45 @@ function salvar({ tipo, titulo, equipamento_id, os_id, usuario_id, parametros, r
   return Number(info.lastInsertRowid);
 }
 
+function salvarComPdf({ tipo, titulo, equipamento_id, os_id, usuario_id, parametros, resultado, pdf_filename, pdf_path }) {
+  const info = db.prepare(`
+    INSERT INTO tracagens (
+      tipo, titulo, equipamento_id, os_id, usuario_id, parametros_json, resultado_json,
+      pdf_filename, pdf_path, pdf_generated_at, updated_at
+    ) VALUES (
+      @tipo, @titulo, @equipamento_id, @os_id, @usuario_id, @parametros_json, @resultado_json,
+      @pdf_filename, @pdf_path, datetime('now'), datetime('now')
+    )
+  `).run({
+    tipo,
+    titulo: titulo || null,
+    equipamento_id: equipamento_id || null,
+    os_id: os_id || null,
+    usuario_id: usuario_id || null,
+    parametros_json: JSON.stringify(parametros || {}),
+    resultado_json: JSON.stringify(resultado || {}),
+    pdf_filename: pdf_filename || null,
+    pdf_path: pdf_path || null,
+  });
+
+  return Number(info.lastInsertRowid);
+}
+
+function updatePdfInfo(id, { pdf_filename, pdf_path }) {
+  db.prepare(`
+    UPDATE tracagens
+    SET pdf_filename = @pdf_filename,
+        pdf_path = @pdf_path,
+        pdf_generated_at = datetime('now'),
+        updated_at = datetime('now')
+    WHERE id = @id
+  `).run({
+    id: Number(id),
+    pdf_filename: pdf_filename || null,
+    pdf_path: pdf_path || null,
+  });
+}
+
 function getById(id) {
   const row = db.prepare(`
     SELECT t.*, u.name AS usuario_nome, o.id AS os_codigo, e.nome AS equipamento_nome
@@ -553,11 +592,40 @@ function listByOS(osId) {
 }
 
 function listByEquipamento(equipamentoId) {
-  return db.prepare('SELECT id, tipo, titulo, created_at FROM tracagens WHERE equipamento_id = ? ORDER BY datetime(created_at) DESC').all(Number(equipamentoId));
+  return db.prepare(`
+    SELECT id, tipo, titulo, created_at, pdf_filename, pdf_path
+    FROM tracagens
+    WHERE equipamento_id = ?
+    ORDER BY datetime(created_at) DESC
+  `).all(Number(equipamentoId));
 }
 
 function listEquipamentos() {
-  return db.prepare('SELECT id, nome FROM equipamentos ORDER BY nome ASC').all();
+  return db.prepare(`
+    SELECT id, nome, COALESCE(codigo, '') AS codigo, COALESCE(setor, '') AS setor, COALESCE(tipo, '') AS tipo
+    FROM equipamentos
+    ORDER BY nome ASC
+  `).all();
+}
+
+function listEquipamentosParaVinculo(search = '') {
+  const query = String(search || '').trim();
+  const hasQuery = query.length > 0;
+  return db.prepare(`
+    SELECT id, nome, COALESCE(codigo, '') AS codigo, COALESCE(setor, '') AS setor, COALESCE(tipo, '') AS tipo
+    FROM equipamentos
+    ${hasQuery ? "WHERE lower(nome) LIKE @q OR lower(codigo) LIKE @q OR lower(setor) LIKE @q" : ''}
+    ORDER BY nome ASC
+    LIMIT 100
+  `).all(hasQuery ? { q: `%${query.toLowerCase()}%` } : {});
+}
+
+function getEquipamentoById(id) {
+  return db.prepare(`
+    SELECT id, nome, COALESCE(codigo, '') AS codigo, COALESCE(setor, '') AS setor, COALESCE(tipo, '') AS tipo
+    FROM equipamentos
+    WHERE id = ?
+  `).get(Number(id)) || null;
 }
 
 function listOSAbertas() {
@@ -584,10 +652,14 @@ module.exports = {
   calcMaoFrancesa,
   calcularPorTipo,
   salvar,
+  salvarComPdf,
+  updatePdfInfo,
   getById,
   list,
   listByOS,
   listByEquipamento,
   listEquipamentos,
+  listEquipamentosParaVinculo,
+  getEquipamentoById,
   listOSAbertas,
 };
