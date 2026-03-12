@@ -72,6 +72,16 @@ const PARAM_DESCRIPTIONS = {
   D2: 'Diâmetro menor',
   C: 'Comprimento auxiliar',
   alpha: 'Ângulo de inclinação',
+  AA: 'AA = lado A do quadrado',
+  AB: 'AB = lado B do retângulo',
+  A1: 'A1 = geratriz por divisão',
+  A2: 'A2 = geratriz por divisão',
+  A3: 'A3 = geratriz por divisão',
+  A4: 'A4 = geratriz por divisão',
+  C1: 'C1 = trecho entre divisões',
+  C2: 'C2 = trecho entre divisões',
+  C3: 'C3 = trecho entre divisões',
+  C4: 'C4 = trecho entre divisões',
 };
 
 const PLAN_LEGENDS = {
@@ -84,6 +94,15 @@ const PLAN_LEGENDS = {
   angulo_setor: 'Ângulo = abertura da planificação',
   A: 'A = comprimento desenvolvido',
   B: 'B = largura / altura útil',
+  AA: 'AA = lado A do quadrado',
+  AB: 'AB = lado B do retângulo',
+  A1: 'A1 = geratriz de fabricação',
+  A2: 'A2 = geratriz de fabricação',
+  A3: 'A3 = geratriz de fabricação',
+  A4: 'A4 = geratriz de fabricação',
+  C2: 'C2 = trecho entre divisões',
+  C3: 'C3 = trecho entre divisões',
+  C4: 'C4 = trecho entre divisões',
 };
 
 function baseRender(req, res, view, payload = {}) {
@@ -295,12 +314,22 @@ function buildFormattedData(tracagem) {
       });
     });
   } else {
-    const medidasMapeadas = new Map([
+  const medidasMapeadas = new Map([
       ['R1', resultado.R1_dev ?? resultado.R1],
       ['R2', resultado.R2_dev ?? resultado.R2],
       ['T', resultado.T ?? resultado.B],
       ['C1', resultado.C1 ?? resultado.C ?? resultado.A],
       ['Ângulo', resultado.angulo_dev ?? resultado.angulo_setor],
+      ['AA', resultado.AA],
+      ['AB', resultado.AB],
+      ['A1', resultado.A1],
+      ['A2', resultado.A2],
+      ['A3', resultado.A3],
+      ['A4', resultado.A4],
+      ['C', resultado.C],
+      ['C2', resultado.C2],
+      ['C3', resultado.C3],
+      ['C4', resultado.C4],
     ]);
 
     medidasMapeadas.forEach((value, label) => {
@@ -318,7 +347,7 @@ function buildFormattedData(tracagem) {
       if (value === null || value === undefined || Number.isNaN(Number(value))) return;
       const medida = key.toUpperCase().includes('ANGULO') ? 'Ângulo' : key.replace('_dev', '').replace('_setor', '').toUpperCase();
       if (medidasPlanificacaoFormatadas.some((item) => item.medida === medida)) return;
-      if (!['R1', 'R2', 'T', 'C', 'C1', 'Ângulo'].includes(medida)) return;
+      if (!['R1', 'R2', 'T', 'C', 'C1', 'C2', 'C3', 'C4', 'AA', 'AB', 'A1', 'A2', 'A3', 'A4', 'Ângulo'].includes(medida)) return;
       medidasPlanificacaoFormatadas.push({
         medida,
         legenda: PLAN_LEGENDS[key] || PLAN_LEGENDS[medida] || medida,
