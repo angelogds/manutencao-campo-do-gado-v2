@@ -129,7 +129,7 @@
           <h3>Traçagens relacionadas</h3>
           <a class="btn btn-green" href="/tracagem">Abrir Traçagem</a>
         </div>
-        <div class="table-wrap"><table class="table"><thead><tr><th>ID</th><th>Título</th><th>Tipo</th><th>Data</th><th></th></tr></thead><tbody><% if(!tracagens.length){ %><tr><td colspan="5">Sem traçagens vinculadas a este equipamento.</td></tr><% } %><% tracagens.forEach(t=>{ %><tr><td>#<%= t.id %></td><td><%= t.titulo || '-' %></td><td><%= t.tipo %></td><td><%= fmtBR(t.created_at) %></td><td><a class="btn" href="/tracagem/<%= t.id %>">Abrir</a></td></tr><% }) %></tbody></table></div>
+        <div class="table-wrap"><table class="table"><thead><tr><th>ID</th><th>Título</th><th>Tipo</th><th>Data</th><th>PDF</th><th>Ações</th></tr></thead><tbody><% if(!tracagens.length){ %><tr><td colspan="6">Sem traçagens vinculadas a este equipamento.</td></tr><% } %><% tracagens.forEach(t=>{ %><tr><td>#<%= t.id %></td><td><%= t.titulo || '-' %></td><td><%= t.tipo %></td><td><%= fmtBR(t.created_at) %></td><td><a class="btn" href="/tracagem/<%= t.id %>/pdf/download" target="_blank">Baixar PDF</a></td><td><a class="btn" href="/tracagem/<%= t.id %>">Visualizar</a></td></tr><% }) %></tbody></table></div>
 
       <% } else if (tab === 'qrcode') { %>
         <% if (qrImage) { %><img src="<%= qrImage %>" style="max-width:260px;"/><p><a href="<%= qrUrl %>" target="_blank"><%= qrUrl %></a></p><a class="btn" href="/equipamentos/<%= equip.id %>/qrcode/print" target="_blank">Imprimir QR Code</a><% } else { %><p>Ainda sem QR Code. Use o botão de gerar.</p><% } %>
