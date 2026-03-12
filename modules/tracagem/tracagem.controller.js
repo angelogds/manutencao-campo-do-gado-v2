@@ -268,8 +268,18 @@ function buildFormattedData(tracagem) {
     const numeroDivisoes = planificacao.numeroDivisoes ?? entrada.N ?? divisoes.length;
 
     medidasPlanificacaoFormatadas.push(
-      { medida: 'P', legenda: 'Comprimento desenvolvido', valor: formatValue(comprimentoTotal, unidade) },
-      { medida: 'A', legenda: 'Largura entre divisões', valor: formatValue(larguraDivisao, unidade) },
+      {
+        medida: 'P',
+        legenda: 'Comprimento desenvolvido',
+        valor: formatValue(comprimentoTotal, unidade),
+        valorNumerico: Number(comprimentoTotal),
+      },
+      {
+        medida: 'A',
+        legenda: 'Largura entre divisões',
+        valor: formatValue(larguraDivisao, unidade),
+        valorNumerico: Number(larguraDivisao),
+      },
       { medida: 'N', legenda: 'Número de divisões', valor: formatValue(numeroDivisoes) },
     );
 
@@ -281,6 +291,7 @@ function buildFormattedData(tracagem) {
         medida: String(indice),
         legenda: `Medida da divisão ${indice}`,
         valor: formatValue(altura, unidade),
+        valorNumerico: Number(altura),
       });
     });
   } else {
@@ -336,20 +347,25 @@ function buildFormattedData(tracagem) {
   };
 }
 
-function drawSimpleTable(doc, x, y, width, rows, headers) {
-  const rowHeight = 16;
+function drawSimpleTable(doc, x, y, width, rows, headers, options = {}) {
+  const rowHeight = options.rowHeight || 16;
+  const headerHeight = options.headerHeight || rowHeight;
+  const headerFontSize = options.headerFontSize || 8;
+  const bodyFontSize = options.bodyFontSize || 8;
+  const paddingX = options.paddingX || 4;
+  const textOffsetY = options.textOffsetY || 4;
   const colWidths = headers.map((h) => h.width);
 
-  doc.fillColor(PDF_STYLE.green).roundedRect(x, y, width, rowHeight, 4).fill();
+  doc.fillColor(PDF_STYLE.green).roundedRect(x, y, width, headerHeight, 4).fill();
   let currentX = x;
   headers.forEach((header, index) => {
-    doc.fillColor('#ffffff').fontSize(8).font('Helvetica-Bold').text(header.label, currentX, y + 4.5, {
+    doc.fillColor('#ffffff').fontSize(headerFontSize).font('Helvetica-Bold').text(header.label, currentX, y + textOffsetY, {
       width: colWidths[index], align: 'center',
     });
     currentX += colWidths[index];
   });
 
-  let currentY = y + rowHeight;
+  let currentY = y + headerHeight;
   rows.forEach((row, idx) => {
     const bg = idx % 2 === 0 ? '#ffffff' : PDF_STYLE.light;
     doc.fillColor(bg).rect(x, currentY, width, rowHeight).fill();
@@ -357,7 +373,7 @@ function drawSimpleTable(doc, x, y, width, rows, headers) {
 
     currentX = x;
     headers.forEach((header, index) => {
-      doc.fillColor(PDF_STYLE.text).fontSize(8).font('Helvetica').text(String(row[header.key] || '-'), currentX + 4, currentY + 4, { width: colWidths[index] - 8 });
+      doc.fillColor(PDF_STYLE.text).fontSize(bodyFontSize).font('Helvetica').text(String(row[header.key] || '-'), currentX + paddingX, currentY + textOffsetY, { width: colWidths[index] - (paddingX * 2) });
       currentX += colWidths[index];
     });
     currentY += rowHeight;
@@ -403,8 +419,20 @@ function drawTwoColumnSection(doc, title, leftTitle, rightTitle, leftImage, righ
   const rightX = 303;
   const colWidth = 273;
   const rows = rightRows.length ? rightRows : [{ [rightHeaders[0].key]: '-', [rightHeaders[1].key]: '-', [rightHeaders[2].key]: '-' }];
-  const manyRows = rows.length > 8;
-  const blockHeight = 144;
+  const compactTable = rows.length > 8;
+  const tableOptions = compactTable
+    ? {
+      rowHeight: 8,
+      headerHeight: 9,
+      headerFontSize: 6.2,
+      bodyFontSize: 6.2,
+      paddingX: 2,
+      textOffsetY: 1.5,
+    }
+    : {};
+  const tableHeaderHeight = tableOptions.headerHeight || 16;
+  const tableRowHeight = tableOptions.rowHeight || 16;
+  const blockHeight = Math.max(144, 28 + tableHeaderHeight + (rows.length * tableRowHeight));
 
   doc.fillColor('#ffffff').roundedRect(leftX, startY, colWidth, blockHeight, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
   doc.fillColor(PDF_STYLE.green).fontSize(9).font('Helvetica-Bold').text(leftTitle, leftX, startY + 6, { width: colWidth, align: 'center' });
@@ -414,22 +442,18 @@ function drawTwoColumnSection(doc, title, leftTitle, rightTitle, leftImage, righ
     doc.fillColor(PDF_STYLE.muted).fontSize(8).font('Helvetica').text('Imagem não disponível', leftX, startY + 64, { width: colWidth, align: 'center' });
   }
 
-  if (!manyRows) {
-    doc.fillColor('#ffffff').roundedRect(rightX, startY, colWidth, blockHeight, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
-    doc.fillColor(PDF_STYLE.green).fontSize(9).font('Helvetica-Bold').text(rightTitle, rightX, startY + 6, { width: colWidth, align: 'center' });
-    drawSimpleTable(doc, rightX + 6, startY + 21, colWidth - 12, rows, rightHeaders.map((header) => ({ ...header, width: Math.floor((colWidth - 12) * header.weight) })));
-    doc.y = startY + blockHeight + 8;
-  } else {
-    doc.fillColor('#ffffff').roundedRect(rightX, startY, colWidth, blockHeight, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
-    doc.fillColor(PDF_STYLE.green).fontSize(9).font('Helvetica-Bold').text(rightTitle, rightX, startY + 6, { width: colWidth, align: 'center' });
-    doc.fillColor(PDF_STYLE.muted).fontSize(8).font('Helvetica').text('Tabela completa abaixo', rightX, startY + 64, { width: colWidth, align: 'center' });
-
-    const tableY = startY + blockHeight + 10;
-    const tableX = 36;
-    const tableWidth = doc.page.width - 72;
-    const tableBottom = drawSimpleTable(doc, tableX, tableY, tableWidth, rows, rightHeaders.map((header) => ({ ...header, width: Math.floor(tableWidth * header.weight) })));
-    doc.y = tableBottom + 8;
-  }
+  doc.fillColor('#ffffff').roundedRect(rightX, startY, colWidth, blockHeight, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
+  doc.fillColor(PDF_STYLE.green).fontSize(9).font('Helvetica-Bold').text(rightTitle, rightX, startY + 6, { width: colWidth, align: 'center' });
+  drawSimpleTable(
+    doc,
+    rightX + 6,
+    startY + 21,
+    colWidth - 12,
+    rows,
+    rightHeaders.map((header) => ({ ...header, width: Math.floor((colWidth - 12) * header.weight) })),
+    tableOptions,
+  );
+  doc.y = startY + blockHeight + 8;
 
   doc.fillColor(PDF_STYLE.text);
   doc.font('Helvetica');
@@ -491,12 +515,30 @@ function renderPdfReport(res, tracagem, filename) {
     'Imagem da planificação',
     'Medidas da planificação',
     dados.imagemPlanificacao,
-    dados.medidasPlanificacaoFormatadas.map((item) => ({ m: item.medida, l: item.legenda, v: item.valor })),
-    [
-      { label: 'Medida', key: 'm', weight: 0.22 },
-      { label: 'Legenda', key: 'l', weight: 0.48 },
-      { label: 'Valor', key: 'v', weight: 0.3 },
-    ],
+    dados.medidasPlanificacaoFormatadas.map((item) => {
+      const valorEquipamento = item.valor;
+      const valorPlanificacao = Number.isFinite(Number(item.valorNumerico))
+        ? `${formatNumber(Number(item.valorNumerico) / 2)} ${dados.unidade}`
+        : '-';
+      return {
+        m: item.medida,
+        l: item.legenda,
+        v: valorEquipamento,
+        vp: valorPlanificacao,
+      };
+    }),
+    tracagem.tipo === 'curva-gomos'
+      ? [
+        { label: 'Medida', key: 'm', weight: 0.16 },
+        { label: 'Legenda', key: 'l', weight: 0.38 },
+        { label: 'Equip.', key: 'v', weight: 0.23 },
+        { label: 'Plan. (÷2)', key: 'vp', weight: 0.23 },
+      ]
+      : [
+        { label: 'Medida', key: 'm', weight: 0.22 },
+        { label: 'Legenda', key: 'l', weight: 0.48 },
+        { label: 'Valor', key: 'v', weight: 0.3 },
+      ],
   );
 
   drawObservacoes(doc, dados);
