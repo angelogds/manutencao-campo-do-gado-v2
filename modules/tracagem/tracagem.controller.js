@@ -259,36 +259,62 @@ function buildFormattedData(tracagem) {
     });
 
   const medidasPlanificacaoFormatadas = [];
-  const medidasMapeadas = new Map([
-    ['R1', resultado.R1_dev ?? resultado.R1],
-    ['R2', resultado.R2_dev ?? resultado.R2],
-    ['T', resultado.T ?? resultado.B],
-    ['C1', resultado.C1 ?? resultado.C ?? resultado.A],
-    ['Ângulo', resultado.angulo_dev ?? resultado.angulo_setor],
-  ]);
 
-  medidasMapeadas.forEach((value, label) => {
-    if (value === null || value === undefined || value === '') return;
-    const key = label === 'Ângulo' ? 'angulo_dev' : label;
-    medidasPlanificacaoFormatadas.push({
-      medida: label,
-      legenda: PLAN_LEGENDS[key] || label,
-      valor: label === 'Ângulo' ? `${formatNumber(Number(value))}°` : formatValue(value, unidade),
-    });
-  });
+  if (tracagem.tipo === 'curva-gomos') {
+    const planificacao = tracagem.resultado?.planificacao || {};
+    const divisoes = Array.isArray(planificacao.divisoes) ? planificacao.divisoes : [];
+    const comprimentoTotal = planificacao.comprimentoTotal ?? resultado.comprimentoTotal ?? resultado.perimetro;
+    const larguraDivisao = planificacao.larguraDivisao ?? resultado.larguraDivisao ?? resultado.passoDivisao;
+    const numeroDivisoes = planificacao.numeroDivisoes ?? entrada.N ?? divisoes.length;
 
-  Object.entries(labels).forEach(([key, value]) => {
-    if (['pontos', 'linhas', 'divisoes'].includes(key)) return;
-    if (value === null || value === undefined || Number.isNaN(Number(value))) return;
-    const medida = key.toUpperCase().includes('ANGULO') ? 'Ângulo' : key.replace('_dev', '').replace('_setor', '').toUpperCase();
-    if (medidasPlanificacaoFormatadas.some((item) => item.medida === medida)) return;
-    if (!['R1', 'R2', 'T', 'C', 'C1', 'Ângulo'].includes(medida)) return;
-    medidasPlanificacaoFormatadas.push({
-      medida,
-      legenda: PLAN_LEGENDS[key] || PLAN_LEGENDS[medida] || medida,
-      valor: medida === 'Ângulo' ? `${formatNumber(Number(value))}°` : formatValue(value, unidade),
+    medidasPlanificacaoFormatadas.push(
+      { medida: 'P', legenda: 'Comprimento desenvolvido', valor: formatValue(comprimentoTotal, unidade) },
+      { medida: 'A', legenda: 'Largura entre divisões', valor: formatValue(larguraDivisao, unidade) },
+      { medida: 'N', legenda: 'Número de divisões', valor: formatValue(numeroDivisoes) },
+    );
+
+    divisoes.forEach((item, idx) => {
+      const indice = item.indice || idx + 1;
+      const altura = item.altura ?? item.valor;
+      if (!Number.isFinite(Number(altura))) return;
+      medidasPlanificacaoFormatadas.push({
+        medida: String(indice),
+        legenda: `Medida da divisão ${indice} (1/2 da altura)`,
+        valor: formatValue(altura, unidade),
+      });
     });
-  });
+  } else {
+    const medidasMapeadas = new Map([
+      ['R1', resultado.R1_dev ?? resultado.R1],
+      ['R2', resultado.R2_dev ?? resultado.R2],
+      ['T', resultado.T ?? resultado.B],
+      ['C1', resultado.C1 ?? resultado.C ?? resultado.A],
+      ['Ângulo', resultado.angulo_dev ?? resultado.angulo_setor],
+    ]);
+
+    medidasMapeadas.forEach((value, label) => {
+      if (value === null || value === undefined || value === '') return;
+      const key = label === 'Ângulo' ? 'angulo_dev' : label;
+      medidasPlanificacaoFormatadas.push({
+        medida: label,
+        legenda: PLAN_LEGENDS[key] || label,
+        valor: label === 'Ângulo' ? `${formatNumber(Number(value))}°` : formatValue(value, unidade),
+      });
+    });
+
+    Object.entries(labels).forEach(([key, value]) => {
+      if (['pontos', 'linhas', 'divisoes'].includes(key)) return;
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return;
+      const medida = key.toUpperCase().includes('ANGULO') ? 'Ângulo' : key.replace('_dev', '').replace('_setor', '').toUpperCase();
+      if (medidasPlanificacaoFormatadas.some((item) => item.medida === medida)) return;
+      if (!['R1', 'R2', 'T', 'C', 'C1', 'Ângulo'].includes(medida)) return;
+      medidasPlanificacaoFormatadas.push({
+        medida,
+        legenda: PLAN_LEGENDS[key] || PLAN_LEGENDS[medida] || medida,
+        valor: medida === 'Ângulo' ? `${formatNumber(Number(value))}°` : formatValue(value, unidade),
+      });
+    });
+  }
 
   const observacoesFormatadas = Array.isArray(tracagem.resultado?.observacoes)
     ? tracagem.resultado.observacoes.filter((item) => item && String(item).trim() !== '').map((item) => String(item).trim())
@@ -376,6 +402,8 @@ function drawTwoColumnSection(doc, title, leftTitle, rightTitle, leftImage, righ
   const leftX = 36;
   const rightX = 303;
   const colWidth = 273;
+  const rows = rightRows.length ? rightRows : [{ [rightHeaders[0].key]: '-', [rightHeaders[1].key]: '-', [rightHeaders[2].key]: '-' }];
+  const manyRows = rows.length > 8;
   const blockHeight = 144;
 
   doc.fillColor('#ffffff').roundedRect(leftX, startY, colWidth, blockHeight, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
@@ -386,14 +414,25 @@ function drawTwoColumnSection(doc, title, leftTitle, rightTitle, leftImage, righ
     doc.fillColor(PDF_STYLE.muted).fontSize(8).font('Helvetica').text('Imagem não disponível', leftX, startY + 64, { width: colWidth, align: 'center' });
   }
 
-  doc.fillColor('#ffffff').roundedRect(rightX, startY, colWidth, blockHeight, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
-  doc.fillColor(PDF_STYLE.green).fontSize(9).font('Helvetica-Bold').text(rightTitle, rightX, startY + 6, { width: colWidth, align: 'center' });
-  const rows = rightRows.length ? rightRows : [{ [rightHeaders[0].key]: '-', [rightHeaders[1].key]: '-', [rightHeaders[2].key]: '-' }];
-  drawSimpleTable(doc, rightX + 6, startY + 21, colWidth - 12, rows.slice(0, 6), rightHeaders.map((header) => ({ ...header, width: Math.floor((colWidth - 12) * header.weight) })));
+  if (!manyRows) {
+    doc.fillColor('#ffffff').roundedRect(rightX, startY, colWidth, blockHeight, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
+    doc.fillColor(PDF_STYLE.green).fontSize(9).font('Helvetica-Bold').text(rightTitle, rightX, startY + 6, { width: colWidth, align: 'center' });
+    drawSimpleTable(doc, rightX + 6, startY + 21, colWidth - 12, rows, rightHeaders.map((header) => ({ ...header, width: Math.floor((colWidth - 12) * header.weight) })));
+    doc.y = startY + blockHeight + 8;
+  } else {
+    doc.fillColor('#ffffff').roundedRect(rightX, startY, colWidth, blockHeight, 8).fillAndStroke('#ffffff', PDF_STYLE.border);
+    doc.fillColor(PDF_STYLE.green).fontSize(9).font('Helvetica-Bold').text(rightTitle, rightX, startY + 6, { width: colWidth, align: 'center' });
+    doc.fillColor(PDF_STYLE.muted).fontSize(8).font('Helvetica').text('Tabela completa abaixo', rightX, startY + 64, { width: colWidth, align: 'center' });
+
+    const tableY = startY + blockHeight + 10;
+    const tableX = 36;
+    const tableWidth = doc.page.width - 72;
+    const tableBottom = drawSimpleTable(doc, tableX, tableY, tableWidth, rows, rightHeaders.map((header) => ({ ...header, width: Math.floor(tableWidth * header.weight) })));
+    doc.y = tableBottom + 8;
+  }
 
   doc.fillColor(PDF_STYLE.text);
   doc.font('Helvetica');
-  doc.y = startY + blockHeight + 8;
 }
 
 function drawObservacoes(doc, dados) {
