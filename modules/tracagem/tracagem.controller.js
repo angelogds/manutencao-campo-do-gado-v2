@@ -279,7 +279,7 @@ function buildFormattedData(tracagem) {
       if (!Number.isFinite(Number(altura))) return;
       medidasPlanificacaoFormatadas.push({
         medida: String(indice),
-        legenda: `Medida da divisão ${indice} (1/2 da altura)`,
+        legenda: `Medida da divisão ${indice}`,
         valor: formatValue(altura, unidade),
       });
     });

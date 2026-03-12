@@ -235,9 +235,8 @@ function calcCurvaGomos(params) {
     const theta = (2 * Math.PI * (i - 1)) / Math.max(N - 1, 1);
     const y = rc * Math.cos(theta);
     const termo = (R * Math.tan(betaRad / 2)) - (y * Math.sin(betaRad / 2));
-    const alturaTotal = assertFinite('altura_divisao', termo * 2);
-    const alturaMetade = assertFinite('altura_divisao_metade', alturaTotal / 2);
-    divisoes.push({ indice: i, medida: n2((i - 1) * larguraDivisao), altura: n2(alturaMetade), alturaTotal: n2(alturaTotal) });
+    const h = assertFinite('altura_divisao', termo * 2);
+    divisoes.push({ indice: i, medida: n2((i - 1) * larguraDivisao), altura: n2(h) });
   }
 
   for (let i = 0; i <= N; i += 1) {
@@ -253,7 +252,6 @@ function calcCurvaGomos(params) {
     larguraDivisao: n2(larguraDivisao),
     numeroDivisoes: N,
     medidas: divisoes.map((item) => n2(item.altura)),
-    medidasInteiras: divisoes.map((item) => n2(item.alturaTotal)),
     pontos,
     divisoes,
     labels: { D: n2(D), R: n2(R), A: n2(angulo), G, N, P: n2(comprimentoTotal), A_div: n2(larguraDivisao) },
@@ -281,10 +279,7 @@ function calcCurvaGomos(params) {
       A7: medidasA[6]?.valor || 0,
     },
     planificacao,
-    observacoes: [
-      'Para melhor precisão, usar 12 divisões no mínimo. Para acabamento fino, usar 24 divisões.',
-      'As medidas numeradas da planificação já são fornecidas divididas por 2 (valor de marcação para cada lado: superior e inferior).',
-    ],
+    observacoes: ['Para melhor precisão, usar 12 divisões no mínimo. Para acabamento fino, usar 24 divisões.'],
   });
 }
 

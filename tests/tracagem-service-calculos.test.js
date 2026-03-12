@@ -21,8 +21,6 @@ test('curva de gomos: validações e divisões', () => {
   assert.equal(out.planificacao.numeroDivisoes, 12);
   assert.ok(out.planificacao.divisoes[0].altura < out.planificacao.divisoes[5].altura);
   assert.ok(Math.abs(out.planificacao.divisoes[0].altura - out.planificacao.divisoes[11].altura) < 0.25);
-  assert.ok(out.planificacao.divisoes[0].alturaTotal > out.planificacao.divisoes[0].altura);
-  assert.ok(Math.abs((out.planificacao.divisoes[0].alturaTotal / 2) - out.planificacao.divisoes[0].altura) < 0.02);
   assert.throws(() => service.calcCurvaGomos({ D: 100, R: 40, A: 90, G: 3, N: 12 }), /R deve ser maior/);
 });
 
