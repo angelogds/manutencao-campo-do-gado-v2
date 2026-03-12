@@ -17,7 +17,10 @@ test('furação flange: retorna coordenadas e valida N>=3', () => {
 
 test('curva de gomos: validações e divisões', () => {
   const out = service.calcCurvaGomos({ D: 100, R: 120, A: 90, G: 3, N: 12, unidade: 'mm' });
-  assert.equal(out.planificacao.divisoes.length, 13);
+  assert.equal(out.planificacao.divisoes.length, 12);
+  assert.equal(out.planificacao.numeroDivisoes, 12);
+  assert.ok(out.planificacao.divisoes[0].altura < out.planificacao.divisoes[5].altura);
+  assert.ok(Math.abs(out.planificacao.divisoes[0].altura - out.planificacao.divisoes[11].altura) < 0.25);
   assert.throws(() => service.calcCurvaGomos({ D: 100, R: 40, A: 90, G: 3, N: 12 }), /R deve ser maior/);
 });
 

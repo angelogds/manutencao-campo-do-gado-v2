@@ -85,6 +85,33 @@ function buildResult({ entrada, resultado, planificacao, observacoes }) {
   };
 }
 
+function validarPlanificacaoCurvaGomos(divisoes, N) {
+  if (!Array.isArray(divisoes) || divisoes.length !== N) {
+    throw new Error('Falha de consistência: quantidade de medidas diferente do número de divisões.');
+  }
+
+  const alturas = divisoes.map((item) => Number(item.altura));
+  if (alturas.some((item) => !Number.isFinite(item))) {
+    throw new Error('Falha de consistência: medidas da planificação inválidas.');
+  }
+
+  const tolerance = 0.2;
+  for (let i = 0; i < Math.floor(N / 2); i += 1) {
+    const left = alturas[i];
+    const right = alturas[N - i - 1];
+    if (Math.abs(left - right) > tolerance) {
+      throw new Error('Falha de consistência: as medidas da planificação não ficaram simétricas.');
+    }
+  }
+
+  const centro = Math.floor(N / 2);
+  for (let i = 1; i < centro; i += 1) {
+    if (alturas[i] + tolerance < alturas[i - 1]) {
+      throw new Error('Falha de consistência: sequência de medidas não evolui corretamente até o centro.');
+    }
+  }
+}
+
 function calcRoscaHelicoidal(params) {
   const unidade = getUnidade(params);
   const D = normalizarMedida(params.D, unidade);
@@ -188,7 +215,6 @@ function calcCurvaGomos(params) {
   const unidade = getUnidade(params);
   const D = normalizarMedida(params.D ?? params.diametro, unidade);
   const R = normalizarMedida(params.R, unidade);
-  const A = normalizarMedida(params.A ?? params.angulo, 'mm'); // angle numeric, workaround below
   const angulo = Number(params.A ?? params.angulo);
   const E = normalizarEspessura(params.E, unidade);
   const G = toIntMin(params.G ?? params.gomos, 'G', 2);
@@ -198,33 +224,51 @@ function calcCurvaGomos(params) {
 
   const beta = angulo / G;
   const anguloMitra = beta / 2;
-  const perimetro = Math.PI * D;
-  const passoDivisao = perimetro / N;
+  const comprimentoTotal = Math.PI * D;
+  const larguraDivisao = comprimentoTotal / N;
   const pontos = [];
   const divisoes = [];
   const rc = D / 2;
   const betaRad = (beta * Math.PI) / 180;
 
-  for (let i = 0; i <= N; i += 1) {
-    const phi = (2 * Math.PI * i) / N;
-    const y = rc * Math.sin(phi);
+  for (let i = 1; i <= N; i += 1) {
+    const theta = (2 * Math.PI * (i - 1)) / Math.max(N - 1, 1);
+    const y = rc * Math.cos(theta);
     const termo = (R * Math.tan(betaRad / 2)) - (y * Math.sin(betaRad / 2));
     const h = assertFinite('altura_divisao', termo * 2);
-    pontos.push({ indice: i, x: n2(i * passoDivisao), y: n2(h) });
-    divisoes.push({ indice: i, medida: n2(i * passoDivisao), altura: n2(h) });
+    divisoes.push({ indice: i, medida: n2((i - 1) * larguraDivisao), altura: n2(h) });
   }
 
-  const medidasA = divisoes.slice(1, 8).map((p, idx) => ({ indice: idx + 1, valor: n2(p.altura) }));
+  for (let i = 0; i <= N; i += 1) {
+    const item = divisoes[i % N];
+    pontos.push({ indice: i, x: n2(i * larguraDivisao), y: n2(item.altura) });
+  }
+
+  validarPlanificacaoCurvaGomos(divisoes, N);
+
+  const medidasA = divisoes.slice(0, 7).map((p, idx) => ({ indice: idx + 1, valor: n2(p.altura) }));
+  const planificacao = {
+    comprimentoTotal: n2(comprimentoTotal),
+    larguraDivisao: n2(larguraDivisao),
+    numeroDivisoes: N,
+    medidas: divisoes.map((item) => n2(item.altura)),
+    pontos,
+    divisoes,
+    labels: { D: n2(D), R: n2(R), A: n2(angulo), G, N, P: n2(comprimentoTotal), A_div: n2(larguraDivisao) },
+    linhas: [],
+  };
 
   return buildResult({
     entrada: { D: n2(D), R: n2(R), A: n2(angulo), E: n2(E), G, N, unidadeEntrada: unidade, unidadeInterna: 'mm' },
     resultado: {
       anguloPorGomo: n2(beta),
       anguloMitra: n2(anguloMitra),
-      perimetro: n2(perimetro),
-      passe: n2(passoDivisao),
-      passoDivisao: n2(passoDivisao),
-      desenvolvimentoGomo: n2(perimetro / G),
+      perimetro: n2(comprimentoTotal),
+      passe: n2(larguraDivisao),
+      passoDivisao: n2(larguraDivisao),
+      desenvolvimentoGomo: n2(comprimentoTotal / G),
+      comprimentoTotal: n2(comprimentoTotal),
+      larguraDivisao: n2(larguraDivisao),
       medidasA,
       A1: medidasA[0]?.valor || 0,
       A2: medidasA[1]?.valor || 0,
@@ -234,7 +278,7 @@ function calcCurvaGomos(params) {
       A6: medidasA[5]?.valor || 0,
       A7: medidasA[6]?.valor || 0,
     },
-    planificacao: { labels: { D: n2(D), R: n2(R), A: n2(angulo), G, N }, pontos, linhas: [], divisoes },
+    planificacao,
     observacoes: ['Para melhor precisão, usar 12 divisões no mínimo. Para acabamento fino, usar 24 divisões.'],
   });
 }
