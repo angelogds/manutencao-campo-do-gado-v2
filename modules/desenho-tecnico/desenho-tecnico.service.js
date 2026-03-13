@@ -98,6 +98,54 @@ function saveCad(desenhoId, cadData, userId) {
   return { compatible3d, preview3d };
 }
 
+
+function createCadDrawing(payload = {}, userId = null) {
+  const validation = validateCadMetadata(payload || {});
+  if (!validation.valid) {
+    return { ok: false, id: null, desenho: null, error: validation.errors.join(' ') };
+  }
+
+  try {
+    const data = validation.data;
+    const existing = repo.getByCodigo(data.codigo);
+    if (existing) {
+      return {
+        ok: false,
+        id: null,
+        desenho: null,
+        error: `Código ${data.codigo} já está em uso. Informe outro código para o desenho CAD.`,
+      };
+    }
+
+    const cadData = buildDefaultCadData(data);
+    const id = create({
+      ...data,
+      categoria: 'CAD',
+      subtipo: 'DESENHO_MANUAL_2D',
+      tipo_origem: 'cad',
+      modo_cad_ativo: 1,
+      json_cad: JSON.stringify(cadData),
+      criado_por: userId || null,
+      status: 'ATIVO',
+      revisao: 0,
+    });
+    const desenho = getById(id);
+    if (!desenho) throw new Error(`Desenho CAD criado com id ${id}, mas não foi encontrado em seguida.`);
+    return { ok: true, id, desenho, error: null };
+  } catch (error) {
+    const rawMessage = error?.message || String(error);
+    const isDuplicateCode = rawMessage.includes('UNIQUE constraint failed: desenhos_tecnicos.codigo');
+    return {
+      ok: false,
+      id: null,
+      desenho: null,
+      error: isDuplicateCode
+        ? `Código ${validation.data.codigo} já está em uso. Informe outro código para o desenho CAD.`
+        : rawMessage,
+    };
+  }
+}
+
 function normalizeCadMetadata(payload = {}) {
   return {
     codigo: String(payload.codigo || '').trim(),
@@ -329,4 +377,5 @@ module.exports = {
   validateCadMetadata,
   buildDefaultCadData,
   updateCadMetadata,
+  createCadDrawing,
 };

@@ -56,6 +56,11 @@ function getById(id) {
   return row;
 }
 
+
+function getByCodigo(codigo) {
+  return db.prepare('SELECT * FROM desenhos_tecnicos WHERE codigo=? LIMIT 1').get(String(codigo || '').trim());
+}
+
 function create(data) {
   const info = db.prepare(`
     INSERT INTO desenhos_tecnicos
@@ -301,6 +306,7 @@ module.exports = {
   NATIVE_LAYERS,
   list,
   getById,
+  getByCodigo,
   create,
   update,
   updateCadMetadata,

@@ -130,42 +130,46 @@ function novoCad(req, res) {
 }
 
 function createCad(req, res) {
+  const route = 'POST /desenho-tecnico/cad';
   try {
-    logCad('POST /desenho-tecnico/cad', 'dados recebidos no POST', { params: req.params, body: req.body });
-    const validation = service.validateCadMetadata(req.body || {});
-    if (!validation.valid) {
-      req.flash('error', validation.errors.join(' '));
-      return res.redirect('/desenho-tecnico/cad/novo');
+    logCad(route, 'dados recebidos no POST', { params: req.params, body: req.body });
+    const creation = service.createCadDrawing(req.body || {}, req.session?.user?.id || null);
+
+    if (!creation.ok) {
+      req.flash('error', creation.error || 'Não foi possível criar o desenho CAD.');
+      return base(res, 'desenho-tecnico/cad-form', {
+        title: 'Novo Desenho CAD',
+        user: req.user || req.session?.user || null,
+        desenho: { ...(req.body || {}), revisao: 0, status: 'ATIVO', tipo_origem: 'cad' },
+        equipamentos: safeEquipamentos(),
+        mode: 'create',
+        canManage: req.can && req.can('desenho_tecnico_manage'),
+      });
     }
 
-    const { data } = validation;
-    const cadData = service.buildDefaultCadData(data);
-
-    const id = service.create({
-      ...req.body,
-      ...data,
-      categoria: 'CAD',
-      subtipo: 'DESENHO_MANUAL_2D',
-      tipo_origem: 'cad',
-      modo_cad_ativo: 1,
-      json_cad: JSON.stringify(cadData),
-      criado_por: req.session?.user?.id || null,
+    logCad(route, 'resultado do insert', {
+      id: creation.id,
+      body: req.body,
+      extra: {
+        tipo_origem: creation.desenho?.tipo_origem,
+        modo_cad_ativo: creation.desenho?.modo_cad_ativo,
+      },
     });
-    logCad('POST /desenho-tecnico/cad', 'resultado do insert', { id, extra: { tipo_origem: 'cad' } });
-
-    if (!Number.isFinite(Number(id)) || Number(id) <= 0) {
-      throw new Error('Insert CAD não retornou id válido.');
-    }
-
-    const desenho = service.getById(id);
-    if (!desenho) throw new Error(`Desenho CAD criado com id ${id}, mas não foi encontrado em seguida.`);
 
     req.flash('success', 'Desenho CAD criado.');
-    return res.redirect(`/desenho-tecnico/cad/${id}/editor`);
+    return res.redirect(`/desenho-tecnico/cad/${creation.id}/editor`);
   } catch (err) {
-    logCadError('POST /desenho-tecnico/cad', err, req);
-    req.flash('error', 'Falha ao criar desenho CAD. Verifique os dados e tente novamente.');
-    return res.redirect('/desenho-tecnico/cad/novo');
+    logCadError(route, err, req, { body: req.body });
+    const reason = err?.message || 'erro não identificado';
+    req.flash('error', `Falha ao criar desenho CAD. Detalhe: ${reason}`);
+    return base(res, 'desenho-tecnico/cad-form', {
+      title: 'Novo Desenho CAD',
+      user: req.user || req.session?.user || null,
+      desenho: { ...(req.body || {}), revisao: 0, status: 'ATIVO', tipo_origem: 'cad' },
+      equipamentos: safeEquipamentos(),
+      mode: 'create',
+      canManage: req.can && req.can('desenho_tecnico_manage'),
+    });
   }
 }
 
