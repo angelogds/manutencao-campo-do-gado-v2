@@ -169,9 +169,39 @@ function seedEscala2026() {
   console.log("✔ Seed: escala 2026 importada (52 semanas)");
 }
 
+
+function seedDesenhoTecnicoBlocos() {
+  const modelos = [
+    ['Ponta de eixo principal', 'EIXOS', 'PONTA_EIXO_PRINCIPAL', 'Modelo base para eixo principal', { medidaPonta: 90, comprimentoPonta: 120, assento1: 70, comprimentoAssento1: 80, assento2: 50, comprimentoAssento2: 70, encosto: 100, comprimentoTotal: 370, furacoes: 4, espacamento: 40 }],
+    ['Ponta de eixo secundária', 'EIXOS', 'PONTA_EIXO_SECUNDARIA', 'Modelo base para eixo secundário', { medidaPonta: 80, comprimentoPonta: 110, assento1: 55, comprimentoTotal: 280 }],
+    ['Ponta de eixo de emenda', 'EIXOS', 'PONTA_EIXO_EMENDA', 'Modelo para emenda de eixo', { diametro: 75, comprimentoTotal: 250, insercaoTubo: 65 }],
+    ['Flange circular padrão', 'FLANGES', 'FLANGE_CIRCULAR', 'Flange com furação padrão', { diametroExterno: 220, diametroInterno: 120, espessura: 16, numeroFuros: 8, diametroFuros: 16, diametroPrimitivo: 180 }],
+    ['Mão francesa padrão', 'ESTRUTURAS', 'MAO_FRANCESA', 'Mão francesa de reforço', { base: 240, altura: 180, espessura: 10, furacoes: 4 }],
+    ['Chapa base retangular', 'CHAPARIA', 'CHAPA_RETANGULAR', 'Chapa para base', { largura: 300, altura: 200, espessura: 8 }],
+    ['Quadrado para redondo padrão', 'TRANSICOES', 'QUADRADO_REDONDO', 'Transição padrão para duto', { ladoQuadrado: 220, diametro: 180, altura: 250, espessura: 3 }],
+  ];
+
+  const hasTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='desenho_blocos'").get();
+  if (!hasTable) return;
+
+  const stmt = db.prepare(`
+    INSERT INTO desenho_blocos (nome, categoria, subtipo, descricao, definicao_json, ativo, criado_em, atualizado_em)
+    VALUES (?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+  `);
+
+  for (const item of modelos) {
+    const exists = db.prepare('SELECT id FROM desenho_blocos WHERE nome=? LIMIT 1').get(item[0]);
+    if (exists) continue;
+    stmt.run(item[0], item[1], item[2], item[3], JSON.stringify(item[4]));
+  }
+
+  console.log('✔ Seed: modelos iniciais de desenho técnico garantidos');
+}
+
 function runSeeds() {
   ensureAdmin();
   seedEscala2026();
+  seedDesenhoTecnicoBlocos();
 }
 
-module.exports = { runSeeds, ensureAdmin, seedEscala2026 };
+module.exports = { runSeeds, ensureAdmin, seedEscala2026, seedDesenhoTecnicoBlocos };
