@@ -1,67 +1,85 @@
 <% layout("layout") %>
-<section class="card cad-topbar">
-  <h1>Editor CAD 2D • <%= (desenho && desenho.codigo) || 'Sem código' %></h1>
-  <div class="cad-topbar-actions">
-    <a class="btn" href="/desenho-tecnico">Voltar</a>
-    <button class="btn" type="button" id="cadUndoBtn">Desfazer</button>
-    <button class="btn" type="button" id="cadRedoBtn">Refazer</button>
-    <button class="btn btn-green" type="button" id="cadSaveBtn">Salvar</button>
-    <a class="btn" href="/desenho-tecnico/cad/<%= (desenho && desenho.id) || '' %>/pdf">PDF</a>
-  </div>
-</section>
-
-<section class="card cad-main-toolbar">
-  <% ['select','line','rect','circle','arc','polyline','dim','text','erase','pan'].forEach((tool)=>{ %>
-    <button class="btn cad-tool" data-tool="<%= tool %>" type="button"><%= tool %></button>
-  <% }) %>
-  <label><input type="checkbox" id="cadGridToggle" checked> Grade</label>
-  <label><input type="checkbox" id="cadSnapToggle" checked> Snap</label>
-</section>
-
-<section class="cad-workspace">
-  <aside class="card cad-side-left">
-    <h3>Ferramentas</h3>
-    <div class="cad-tool-list">
-      <% ['select','line','rect','circle','arc','polyline','text','centerline','dim_h','dim_v','dim_aligned','dim_diameter','dim_radius','erase'].forEach((tool)=>{ %>
-        <button class="btn cad-tool" data-tool="<%= tool %>" type="button"><%= tool %></button>
-      <% }) %>
+<section class="card cad-shell">
+  <header class="cad-topbar cad-topbar-dark">
+    <div>
+      <h1>Editor CAD 2D • <%= (desenho && desenho.codigo) || 'Sem código' %></h1>
+      <small><%= (desenho && desenho.titulo) || 'Sem título' %></small>
     </div>
-  </aside>
-
-  <article class="card cad-center">
-    <div id="cadStatusBar" class="cad-status">Cursor: (0,0) • Comprimento: 0 • Ângulo: 0°</div>
-    <svg id="cadCanvas" viewBox="0 0 1600 900"></svg>
-  </article>
-
-  <aside class="card cad-right">
-    <h3>Propriedades</h3>
-    <div id="cadProperties">Selecione um objeto para editar propriedades.</div>
-
-    <h3>Camadas</h3>
-    <label>Camada ativa
-      <select id="cadLayerSelect" class="input"></select>
-    </label>
-    <div id="cadLayers"></div>
-
-    <h3>Metadados do desenho</h3>
-    <div id="cadMetaPanel" class="cad-meta-grid">
-      <label>Código <input class="input" id="cadMetaCodigo" value="<%= (desenho && desenho.codigo) || '' %>"></label>
-      <label>Título <input class="input" id="cadMetaTitulo" value="<%= (desenho && desenho.titulo) || '' %>"></label>
-      <label>Material <input class="input" id="cadMetaMaterial" value="<%= (desenho && desenho.material) || '' %>"></label>
-      <label>Equipamento
-        <select class="input" id="cadMetaEquipamento">
-          <option value="">Sem vínculo</option>
-          <% (equipamentos || []).forEach((e)=>{ %>
-            <option value="<%= e.id %>" <%= Number((desenho && desenho.equipamento_id) || 0)===Number(e.id)?'selected':'' %>><%= e.codigo || ('#'+e.id) %> - <%= e.nome %></option>
-          <% }) %>
-        </select>
-      </label>
-      <label style="grid-column:1/-1;">Observações
-        <textarea class="input" id="cadMetaObservacoes"><%= (desenho && desenho.observacoes) || '' %></textarea>
-      </label>
-      <button class="btn" id="cadMetaSaveBtn" type="button">Salvar metadados</button>
+    <div class="cad-topbar-actions">
+      <a class="btn" href="/desenho-tecnico/cad/<%= (desenho && desenho.id) || '' %>">Voltar</a>
+      <button class="btn" type="button" id="cadUndoBtn">Desfazer</button>
+      <button class="btn" type="button" id="cadRedoBtn">Refazer</button>
+      <button class="btn btn-green" type="button" id="cadSaveBtn">Salvar</button>
+      <a class="btn" href="/desenho-tecnico/cad/<%= (desenho && desenho.id) || '' %>/pdf">PDF</a>
     </div>
-  </aside>
+  </header>
+
+  <section class="card cad-main-toolbar cad-main-toolbar-dark">
+    <% const topTools = [
+      ['select','Selecionar'],['line','Linha'],['rect','Retângulo'],['circle','Círculo'],['arc','Arco'],['polyline','Polilinha'],['text','Texto'],['dim_aligned','Cota'],['erase','Apagar']
+    ]; %>
+    <% topTools.forEach(([tool,label])=>{ %>
+      <button class="btn cad-tool" data-tool="<%= tool %>" type="button"><%= label %></button>
+    <% }) %>
+    <label><input type="checkbox" id="cadGridToggle" checked> Grade</label>
+    <label><input type="checkbox" id="cadSnapToggle" checked> Snap grade</label>
+    <label><input type="checkbox" id="cadSnapEndpointToggle" checked> Snap extremidade</label>
+    <label><input type="checkbox" id="cadSnapCenterToggle" checked> Snap centro</label>
+  </section>
+
+  <section class="cad-workspace">
+    <aside class="card cad-side-left cad-panel-dark">
+      <h3>Ferramentas</h3>
+      <div class="cad-tool-list">
+        <% [['select','Seleção'],['line','Linha'],['rect','Retângulo'],['circle','Círculo'],['arc','Arco'],['polyline','Polilinha'],['text','Texto'],['centerline','Linha centro'],['dim_h','Cota H'],['dim_v','Cota V'],['dim_aligned','Cota alinhada'],['dim_diameter','Cota diâmetro'],['dim_radius','Cota raio'],['erase','Apagar']].forEach(([tool,label])=>{ %>
+          <button class="btn cad-tool" data-tool="<%= tool %>" type="button"><%= label %></button>
+        <% }) %>
+      </div>
+    </aside>
+
+    <article class="card cad-center cad-center-dark">
+      <div id="cadStatusBar" class="cad-status">Cursor: (0,0) • Comprimento: 0 mm • Ângulo: 0°</div>
+      <svg id="cadCanvas" viewBox="0 0 1600 900" aria-label="Área de desenho CAD"></svg>
+    </article>
+
+    <aside class="card cad-right cad-panel-dark">
+      <h3>Propriedades</h3>
+      <div id="cadProperties">Selecione um objeto para editar propriedades.</div>
+
+      <h3>Camadas</h3>
+      <label>Camada ativa
+        <select id="cadLayerSelect" class="input"></select>
+      </label>
+      <div id="cadLayers"></div>
+
+      <h3>Metadados</h3>
+      <div id="cadMetaPanel" class="cad-meta-grid">
+        <label>Código <input class="input" id="cadMetaCodigo" value="<%= (desenho && desenho.codigo) || '' %>"></label>
+        <label>Título <input class="input" id="cadMetaTitulo" value="<%= (desenho && desenho.titulo) || '' %>"></label>
+        <label>Material <input class="input" id="cadMetaMaterial" value="<%= (desenho && desenho.material) || '' %>"></label>
+        <label>Equipamento
+          <select class="input" id="cadMetaEquipamento">
+            <option value="">Sem vínculo</option>
+            <% (equipamentos || []).forEach((e)=>{ %>
+              <option value="<%= e.id %>" <%= Number((desenho && desenho.equipamento_id) || 0)===Number(e.id)?'selected':'' %>><%= e.codigo || ('#'+e.id) %> - <%= e.nome %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label style="grid-column:1/-1;">Observações
+          <textarea class="input" id="cadMetaObservacoes"><%= (desenho && desenho.observacoes) || '' %></textarea>
+        </label>
+        <button class="btn" id="cadMetaSaveBtn" type="button">Salvar metadados</button>
+      </div>
+    </aside>
+  </section>
+
+  <footer class="card cad-footer">
+    <span><b>Código:</b> <%= (desenho && desenho.codigo) || '-' %></span>
+    <span><b>Título:</b> <%= (desenho && desenho.titulo) || '-' %></span>
+    <span><b>Material:</b> <%= (desenho && desenho.material) || '-' %></span>
+    <span><b>Equipamento:</b> <%= (desenho && desenho.equipamento_nome) || 'Sem vínculo' %></span>
+    <span><b>Obs:</b> <%= (desenho && desenho.observacoes) || '-' %></span>
+  </footer>
 </section>
 
 <script>
