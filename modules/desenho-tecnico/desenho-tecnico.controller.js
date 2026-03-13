@@ -6,8 +6,41 @@ function base(res, view, payload = {}) {
   return res.render(view, {
     title: payload.title || 'Desenho Técnico',
     activeMenu: 'desenho-tecnico',
+    user: payload.user || null,
+    canManage: Boolean(payload.canManage),
+    desenho: payload.desenho || {},
+    equipamentos: Array.isArray(payload.equipamentos) ? payload.equipamentos : [],
+    categorias: Array.isArray(payload.categorias) ? payload.categorias : [],
+    subtipos: Array.isArray(payload.subtipos) ? payload.subtipos : [],
+    revisoes: Array.isArray(payload.revisoes) ? payload.revisoes : [],
     ...payload,
   });
+}
+
+function logCad(route, message, meta = {}) {
+  console.log('[CAD]', route, message, {
+    params: meta.params || {},
+    body: meta.body || {},
+    id: meta.id || null,
+    view: meta.view || null,
+    extra: meta.extra || null,
+  });
+}
+
+function logCadError(route, err, req, extra = {}) {
+  console.error('[CAD][ERROR]', {
+    route,
+    message: err?.message || String(err),
+    stack: err?.stack || null,
+    params: req?.params || {},
+    body: req?.body || {},
+    extra,
+  });
+}
+
+function safeEquipamentos() {
+  const items = equipamentosService.list();
+  return Array.isArray(items) ? items : [];
 }
 
 function dashboard(req, res) {
@@ -78,38 +111,62 @@ function create(req, res) {
 }
 
 function novoCad(req, res) {
-  return base(res, 'desenho-tecnico/cad-form', {
-    title: 'Novo Desenho CAD',
-    desenho: { revisao: 0, status: 'ATIVO', tipo_origem: 'cad' },
-    equipamentos: equipamentosService.list(),
-    mode: 'create',
-    canManage: req.can && req.can('desenho_tecnico_manage'),
-  });
+  const view = 'desenho-tecnico/cad-form';
+  try {
+    logCad('GET /desenho-tecnico/cad/novo', 'entrada na rota', { params: req.params, body: req.body });
+    return base(res, view, {
+      title: 'Novo Desenho CAD',
+      user: req.user || req.session?.user || null,
+      desenho: { revisao: 0, status: 'ATIVO', tipo_origem: 'cad' },
+      equipamentos: safeEquipamentos(),
+      mode: 'create',
+      canManage: req.can && req.can('desenho_tecnico_manage'),
+    });
+  } catch (err) {
+    logCadError('GET /desenho-tecnico/cad/novo', err, req, { view });
+    req.flash('error', 'Não foi possível abrir o formulário de CAD.');
+    return res.redirect('/desenho-tecnico');
+  }
 }
 
 function createCad(req, res) {
-  const validation = service.validateCadMetadata(req.body);
-  if (!validation.valid) {
-    req.flash('error', validation.errors.join(' '));
+  try {
+    logCad('POST /desenho-tecnico/cad', 'dados recebidos no POST', { params: req.params, body: req.body });
+    const validation = service.validateCadMetadata(req.body || {});
+    if (!validation.valid) {
+      req.flash('error', validation.errors.join(' '));
+      return res.redirect('/desenho-tecnico/cad/novo');
+    }
+
+    const { data } = validation;
+    const cadData = service.buildDefaultCadData(data);
+
+    const id = service.create({
+      ...req.body,
+      ...data,
+      categoria: 'CAD',
+      subtipo: 'DESENHO_MANUAL_2D',
+      tipo_origem: 'cad',
+      modo_cad_ativo: 1,
+      json_cad: JSON.stringify(cadData),
+      criado_por: req.session?.user?.id || null,
+    });
+    logCad('POST /desenho-tecnico/cad', 'resultado do insert', { id, extra: { tipo_origem: 'cad' } });
+
+    if (!Number.isFinite(Number(id)) || Number(id) <= 0) {
+      throw new Error('Insert CAD não retornou id válido.');
+    }
+
+    const desenho = service.getById(id);
+    if (!desenho) throw new Error(`Desenho CAD criado com id ${id}, mas não foi encontrado em seguida.`);
+
+    req.flash('success', 'Desenho CAD criado.');
+    return res.redirect(`/desenho-tecnico/cad/${id}/editor`);
+  } catch (err) {
+    logCadError('POST /desenho-tecnico/cad', err, req);
+    req.flash('error', 'Falha ao criar desenho CAD. Verifique os dados e tente novamente.');
     return res.redirect('/desenho-tecnico/cad/novo');
   }
-
-  const { data } = validation;
-  const cadData = service.buildDefaultCadData(data);
-
-  const id = service.create({
-    ...req.body,
-    ...data,
-    categoria: 'CAD',
-    subtipo: 'DESENHO_MANUAL_2D',
-    tipo_origem: 'cad',
-    modo_cad_ativo: 1,
-    json_cad: JSON.stringify(cadData),
-    criado_por: req.session?.user?.id || null,
-  });
-
-  req.flash('success', 'Desenho CAD criado.');
-  return res.redirect(`/desenho-tecnico/cad/${id}/editor`);
 }
 
 function show(req, res) {
@@ -125,35 +182,67 @@ function show(req, res) {
 }
 
 function showCad(req, res) {
-  const desenho = service.getById(req.params.id);
-  if (!desenho || desenho.tipo_origem !== 'cad') return res.status(404).render('errors/404', { title: 'CAD não encontrado' });
-  return base(res, 'desenho-tecnico/cad-show', {
-    title: `${desenho.codigo} • CAD`,
-    desenho,
-    revisoes: service.listRevisoes(desenho.id),
-    canManage: req.can && req.can('desenho_tecnico_manage'),
-    svgPreview: service.generateSvg(desenho),
-  });
+  const view = 'desenho-tecnico/cad-show';
+  try {
+    const desenho = service.getById(req.params.id);
+    logCad('GET /desenho-tecnico/cad/:id', 'entrada na rota', { params: req.params, id: req.params.id });
+    if (!desenho || desenho.tipo_origem !== 'cad') return res.status(404).render('errors/404', { title: 'CAD não encontrado' });
+    return base(res, view, {
+      title: `${desenho.codigo} • CAD`,
+      user: req.user || req.session?.user || null,
+      desenho,
+      revisoes: service.listRevisoes(desenho.id),
+      canManage: req.can && req.can('desenho_tecnico_manage'),
+      svgPreview: service.generateSvg(desenho),
+    });
+  } catch (err) {
+    logCadError('GET /desenho-tecnico/cad/:id', err, req, { view });
+    req.flash('error', 'Não foi possível abrir o desenho CAD.');
+    return res.redirect('/desenho-tecnico');
+  }
 }
 
 function cadEditor(req, res) {
-  const desenho = service.getById(req.params.id);
-  if (!desenho || desenho.tipo_origem !== 'cad') return res.status(404).render('errors/404', { title: 'CAD não encontrado' });
-  const cadData = desenho.cad_data || service.buildDefaultCadData({
-    codigo: desenho.codigo,
-    titulo: desenho.titulo,
-    material: desenho.material,
-    equipamento_id: desenho.equipamento_id,
-    observacoes: desenho.observacoes,
-  });
-  return base(res, 'desenho-tecnico/cad-editor', {
-    title: `${desenho.codigo} • Editor CAD`,
-    desenho,
-    layers: service.CAD_LAYERS,
-    cadData,
-    equipamentos: equipamentosService.list(),
-    canManage: req.can && req.can('desenho_tecnico_manage'),
-  });
+  const view = 'desenho-tecnico/cad-editor';
+  try {
+    logCad('GET /desenho-tecnico/cad/:id/editor', 'entrada na rota', { params: req.params, id: req.params.id });
+    const desenho = service.getById(req.params.id);
+    if (!desenho || desenho.tipo_origem !== 'cad') return res.status(404).render('errors/404', { title: 'CAD não encontrado' });
+    const cadData = desenho.cad_data || service.buildDefaultCadData({
+      codigo: desenho.codigo,
+      titulo: desenho.titulo,
+      material: desenho.material,
+      equipamento_id: desenho.equipamento_id,
+      observacoes: desenho.observacoes,
+    });
+
+    const payload = {
+      ...cadData,
+      activeTool: cadData.activeTool || 'select',
+      layers: cadData.layers || {},
+      objects: Array.isArray(cadData.objects) ? cadData.objects : [],
+      dimensions: Array.isArray(cadData.dimensions) ? cadData.dimensions : [],
+      history: Array.isArray(cadData.history) ? cadData.history : [],
+    };
+    logCad('GET /desenho-tecnico/cad/:id/editor', 'dados carregados para editor', {
+      id: desenho.id,
+      extra: { totalObjetos: payload.objects.length, hasLayers: Object.keys(payload.layers).length },
+    });
+
+    return base(res, view, {
+      title: `${desenho.codigo} • Editor CAD`,
+      user: req.user || req.session?.user || null,
+      desenho,
+      layers: Array.isArray(service.CAD_LAYERS) ? service.CAD_LAYERS : [],
+      cadData: payload,
+      equipamentos: safeEquipamentos(),
+      canManage: req.can && req.can('desenho_tecnico_manage'),
+    });
+  } catch (err) {
+    logCadError('GET /desenho-tecnico/cad/:id/editor', err, req, { view });
+    req.flash('error', 'Não foi possível abrir o editor CAD.');
+    return res.redirect('/desenho-tecnico');
+  }
 }
 
 function updateCadMetadata(req, res) {

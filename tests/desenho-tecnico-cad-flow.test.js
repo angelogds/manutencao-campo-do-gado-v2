@@ -10,8 +10,21 @@ test('cad routes expose metadata endpoint', () => {
   assert.equal(routesContent.includes("router.post('/cad/:id/metadata'"), true);
 });
 
+test('cad/novo route is declared before generic /:id route', () => {
+  const cadNovoPos = routesContent.indexOf("router.get('/cad/novo'");
+  const genericPos = routesContent.indexOf("router.get('/:id'");
+  assert.notEqual(cadNovoPos, -1);
+  assert.notEqual(genericPos, -1);
+  assert.equal(cadNovoPos < genericPos, true);
+});
+
 test('controller includes CAD metadata update handler', () => {
   assert.equal(controllerContent.includes('function updateCadMetadata'), true);
+});
+
+test('controller includes CAD diagnostic logs', () => {
+  assert.equal(controllerContent.includes('function logCad('), true);
+  assert.equal(controllerContent.includes('function logCadError('), true);
 });
 
 test('service exports CAD minimal flow helpers', () => {

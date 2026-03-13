@@ -63,6 +63,9 @@ function create(data) {
     VALUES (@codigo, @titulo, @categoria, @subtipo, @descricao, @equipamento_id, @status, @revisao, @material, @observacoes, @historico_revisao, @criado_por, @origem_modulo, @origem_referencia, @origem_integracao_em, @tipo_origem, @modo_cad_ativo, @json_cad, @json_3d, datetime('now'), datetime('now'))
   `).run(data);
   const id = Number(info.lastInsertRowid);
+  if (!Number.isFinite(id) || id <= 0) {
+    throw new Error(`Falha ao obter lastInsertRowid na criação do desenho técnico. Valor recebido: ${String(info.lastInsertRowid)}`);
+  }
   seedDefaultLayers(id);
   return id;
 }
