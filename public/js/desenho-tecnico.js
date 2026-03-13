@@ -29,14 +29,22 @@
   const paramFields = document.getElementById('paramFields');
   if (!categoria || !subtipo || !paramFields) return;
 
+  const initial = window.DT_INITIAL || {};
+
   function buildSubtypeOptions(cat, selected) {
     const list = categoryMap[cat] || [];
-    subtipo.innerHTML = '<option value="">Subtipo</option>' + list.map((s) => `<option ${selected===s?'selected':''} value="${s}">${s}</option>`).join('');
+    subtipo.innerHTML = '<option value="">Subtipo</option>' + list.map((s) => `<option ${selected === s ? 'selected' : ''} value="${s}">${s}</option>`).join('');
   }
 
   function renderParamFields(sub) {
     const fields = paramsBySubtype[sub] || [];
-    paramFields.innerHTML = fields.map((name) => `<input class="input dt-param" type="number" step="any" min="0" name="param_${name}" placeholder="${name}">`).join('');
+    paramFields.innerHTML = fields
+      .map((name) => `<input class="input dt-param" type="number" step="any" min="0" name="param_${name}" placeholder="${name}" value="${initial.params?.[name] ?? ''}">`)
+      .join('');
+  }
+
+  function bindInputs() {
+    document.querySelectorAll('.dt-param').forEach((i) => i.addEventListener('input', renderSvgPreview));
   }
 
   function renderSvgPreview() {
@@ -44,7 +52,9 @@
     const summary = document.getElementById('technicalSummary');
     if (!pane || !summary) return;
 
-    const vals = [...document.querySelectorAll('.dt-param')].map((i) => `${i.name.replace('param_','')}: ${i.value || '-'} mm`).join('<br>');
+    const vals = [...document.querySelectorAll('.dt-param')]
+      .map((i) => `${i.name.replace('param_', '')}: ${i.value || '-'} mm`)
+      .join('<br>');
     summary.innerHTML = `<b>Categoria:</b> ${categoria.value || '-'}<br><b>Subtipo:</b> ${subtipo.value || '-'}<br>${vals}`;
 
     pane.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="420">
@@ -58,12 +68,21 @@
     </svg>`;
   }
 
-  categoria.addEventListener('change', () => { buildSubtypeOptions(categoria.value, ''); renderParamFields(''); renderSvgPreview(); });
-  subtipo.addEventListener('change', () => { renderParamFields(subtipo.value); renderSvgPreview(); setTimeout(() => document.querySelectorAll('.dt-param').forEach((i) => i.addEventListener('input', renderSvgPreview)), 0); });
+  categoria.addEventListener('change', () => {
+    buildSubtypeOptions(categoria.value, '');
+    initial.params = {};
+    renderParamFields('');
+    renderSvgPreview();
+  });
 
-  const initial = window.DT_INITIAL || {};
+  subtipo.addEventListener('change', () => {
+    renderParamFields(subtipo.value);
+    bindInputs();
+    renderSvgPreview();
+  });
+
   buildSubtypeOptions(initial.categoria || categoria.value, initial.subtipo || '');
   if (initial.subtipo) renderParamFields(initial.subtipo);
+  bindInputs();
   renderSvgPreview();
-  document.querySelectorAll('.dt-param').forEach((i) => i.addEventListener('input', renderSvgPreview));
 })();
