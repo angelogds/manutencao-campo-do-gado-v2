@@ -87,6 +87,41 @@ function renderTechnicalDrawing(data = {}) {
   </svg>`;
 }
 
+
+function renderCadDrawing(cad = {}) {
+  const objects = Array.isArray(cad.objects) ? cad.objects : [];
+  const layers = cad.layers || {};
+  const byLayer = {};
+  for (const obj of objects) {
+    const layer = obj.layer || 'geometria_principal';
+    byLayer[layer] = byLayer[layer] || [];
+    byLayer[layer].push(obj);
+  }
+
+  const objectSvg = Object.entries(byLayer).map(([layer, layerObjects]) => {
+    const layerCfg = layers[layer] || {};
+    if (layerCfg.visible === false) return '';
+    const color = layerCfg.color || '#0f172a';
+    return `<g data-layer="${layer}" stroke="${color}" fill="none">${layerObjects.map((obj) => {
+      if (obj.type === 'line') return `<line x1="${obj.x}" y1="${obj.y}" x2="${obj.x2}" y2="${obj.y2}" stroke-width="${obj.strokeWidth || 2}" />`;
+      if (obj.type === 'rect') return `<rect x="${obj.x}" y="${obj.y}" width="${obj.width}" height="${obj.height}" transform="rotate(${obj.rotation || 0} ${obj.x || 0} ${obj.y || 0})" stroke-width="${obj.strokeWidth || 2}" />`;
+      if (obj.type === 'circle' || obj.type === 'hole') return `<circle cx="${obj.x}" cy="${obj.y}" r="${obj.radius}" stroke-width="${obj.strokeWidth || 2}" />`;
+      if (obj.type === 'centerline') return `<line x1="${obj.x}" y1="${obj.y}" x2="${obj.x2}" y2="${obj.y2}" stroke-dasharray="8 4" stroke-width="1.5" />`;
+      if (obj.type === 'text' || obj.type === 'note') return `<text x="${obj.x}" y="${obj.y}" fill="${color}" font-size="${obj.fontSize || 12}">${obj.text || ''}</text>`;
+      if (obj.type === 'polyline' && Array.isArray(obj.points)) return `<polyline points="${obj.points.map((pt) => `${pt.x},${pt.y}`).join(' ')}" stroke-width="${obj.strokeWidth || 2}" />`;
+      if (obj.type === 'arc') return `<path d="M ${obj.x} ${obj.y} A ${obj.radius || 20} ${obj.radius || 20} 0 0 1 ${obj.x2 || obj.x} ${obj.y2 || obj.y}" stroke-width="${obj.strokeWidth || 2}" />`;
+      return '';
+    }).join('')}</g>`;
+  }).join('');
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="100%" height="100%">
+    ${generateGrid(1200, 760, cad.gridStep || 25)}
+    ${generateDrawingFrame(1200, 760)}
+    ${objectSvg}
+    ${generateTitleBlock({ codigo: cad.codigo || 'CAD', titulo: cad.titulo || 'Desenho CAD', revisao: cad.revisao || 0 }, 1200, 760)}
+  </svg>`;
+}
+
 module.exports = {
   generateDrawingFrame,
   generateGrid,
@@ -102,4 +137,5 @@ module.exports = {
   generateBracket,
   generateTransitionShape,
   renderTechnicalDrawing,
+  renderCadDrawing,
 };

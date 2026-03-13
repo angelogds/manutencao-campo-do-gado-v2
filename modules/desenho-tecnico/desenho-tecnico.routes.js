@@ -18,6 +18,15 @@ router.get('/novo', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.novo
 router.post('/', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.create));
 router.get('/biblioteca', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.biblioteca));
 
+router.get('/cad/novo', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.novoCad));
+router.post('/cad', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.createCad));
+router.get('/cad/:id', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.showCad));
+router.post('/cad/:id', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.saveCad));
+router.get('/cad/:id/editor', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.cadEditor));
+router.post('/cad/:id/objeto', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.saveCad));
+router.post('/cad/:id/render-3d', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.renderCad3d));
+router.get('/cad/:id/pdf', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.gerarPdf));
+
 router.get('/:id', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.show));
 router.get('/:id/editar', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.edit));
 router.post('/:id', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.update));

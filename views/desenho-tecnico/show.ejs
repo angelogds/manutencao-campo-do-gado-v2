@@ -1,6 +1,6 @@
 <% layout("layout") %>
 <section class="card" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-  <h1><%= desenho.codigo %> - <%= desenho.titulo %></h1>
+  <h1><%= desenho.codigo %> - <%= desenho.titulo %> <span class="badge <%= desenho.tipo_origem==='cad'?'badge-cad':'badge-param' %>"><%= desenho.tipo_origem==='cad'?'CAD':'Paramétrico' %></span></h1>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     <% if (canManage) { %>
       <a class="btn" href="/desenho-tecnico/<%= desenho.id %>/editar">Editar</a>

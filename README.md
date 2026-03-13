@@ -63,3 +63,35 @@ npm run dev
    npm ci && npm run migrate && npm start
    ```
 4. O módulo gera PDFs em `/data/uploads/desenho-tecnico-pdf` automaticamente quando o volume está configurado.
+
+### Novo Desenho CAD (Fase 3)
+
+O módulo **Desenho Técnico** agora possui dois fluxos:
+- **Novo Desenho**: paramétrico (gerado por medidas).
+- **Novo Desenho CAD**: desenho manual 2D em editor SVG com camadas, cotas básicas, grade/snap e prévia 3D simples por extrusão.
+
+#### Rotas CAD
+- `GET /desenho-tecnico/cad/novo`
+- `POST /desenho-tecnico/cad`
+- `GET /desenho-tecnico/cad/:id`
+- `POST /desenho-tecnico/cad/:id`
+- `GET /desenho-tecnico/cad/:id/editor`
+- `POST /desenho-tecnico/cad/:id/objeto`
+- `POST /desenho-tecnico/cad/:id/render-3d`
+- `GET /desenho-tecnico/cad/:id/pdf`
+
+#### Persistência CAD
+- Campos adicionados em `desenhos_tecnicos`: `tipo_origem`, `modo_cad_ativo`, `json_cad`, `json_3d`, `preview_3d_path`.
+- Nova tabela `desenho_cad_objetos` para espelho dos elementos do editor.
+- Nova tabela `desenho_cad_historico` para rastreabilidade e base para undo/redo persistente.
+
+#### PDF + 3D
+- PDF técnico agora indica o **modo** (Paramétrico/CAD).
+- Quando houver extrusão compatível, o PDF inclui resumo da prévia 3D simplificada.
+
+#### Como testar local e Railway
+1. `npm run migrate`
+2. `npm run dev`
+3. Acessar `Desenho Técnico > Novo Desenho CAD`.
+4. Desenhar no editor, salvar e testar renderização 3D.
+5. No Railway, manter `DB_PATH=/data/app.db` e volume em `/data`.
