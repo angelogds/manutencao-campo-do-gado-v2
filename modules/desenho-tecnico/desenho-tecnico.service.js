@@ -107,16 +107,6 @@ function createCadDrawing(payload = {}, userId = null) {
 
   try {
     const data = validation.data;
-    const existing = repo.getByCodigo(data.codigo);
-    if (existing) {
-      return {
-        ok: false,
-        id: null,
-        desenho: null,
-        error: `Código ${data.codigo} já está em uso. Informe outro código para o desenho CAD.`,
-      };
-    }
-
     const cadData = buildDefaultCadData(data);
     const id = create({
       ...data,
@@ -133,16 +123,7 @@ function createCadDrawing(payload = {}, userId = null) {
     if (!desenho) throw new Error(`Desenho CAD criado com id ${id}, mas não foi encontrado em seguida.`);
     return { ok: true, id, desenho, error: null };
   } catch (error) {
-    const rawMessage = error?.message || String(error);
-    const isDuplicateCode = rawMessage.includes('UNIQUE constraint failed: desenhos_tecnicos.codigo');
-    return {
-      ok: false,
-      id: null,
-      desenho: null,
-      error: isDuplicateCode
-        ? `Código ${validation.data.codigo} já está em uso. Informe outro código para o desenho CAD.`
-        : rawMessage,
-    };
+    return { ok: false, id: null, desenho: null, error: error?.message || String(error) };
   }
 }
 
