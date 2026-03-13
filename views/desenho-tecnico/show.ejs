@@ -2,9 +2,11 @@
 <section class="card" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
   <h1><%= desenho.codigo %> - <%= desenho.titulo %></h1>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <a class="btn" href="/desenho-tecnico/<%= desenho.id %>/editar">Editar</a>
-    <form method="POST" action="/desenho-tecnico/<%= desenho.id %>/pdf"><button class="btn btn-green" type="submit">Gerar PDF</button></form>
-    <form method="POST" action="/desenho-tecnico/<%= desenho.id %>/duplicar"><button class="btn" type="submit">Duplicar</button></form>
+    <% if (canManage) { %>
+      <a class="btn" href="/desenho-tecnico/<%= desenho.id %>/editar">Editar</a>
+      <form method="POST" action="/desenho-tecnico/<%= desenho.id %>/pdf"><button class="btn btn-green" type="submit">Gerar PDF</button></form>
+      <form method="POST" action="/desenho-tecnico/<%= desenho.id %>/duplicar"><button class="btn" type="submit">Duplicar</button></form>
+    <% } %>
   </div>
 </section>
 
@@ -21,12 +23,16 @@
   <article class="card dt-col"><h3>Desenho</h3><div class="dt-svg-pane"><%- svgPreview %></div></article>
   <article class="card dt-col">
     <h3>Ações rápidas</h3>
-    <form method="POST" action="/desenho-tecnico/<%= desenho.id %>/vincular" style="display:grid;gap:8px;">
-      <input class="input" name="equipamento_id" placeholder="ID do equipamento" required>
-      <input class="input" name="posicao_aplicacao" placeholder="Posição da aplicação">
-      <textarea class="input" name="observacao" placeholder="Observação"></textarea>
-      <button class="btn" type="submit">Vincular ao equipamento</button>
-    </form>
+    <% if (canManage) { %>
+      <form method="POST" action="/desenho-tecnico/<%= desenho.id %>/vincular" style="display:grid;gap:8px;">
+        <input class="input" name="equipamento_id" placeholder="ID do equipamento" required>
+        <input class="input" name="posicao_aplicacao" placeholder="Posição da aplicação">
+        <textarea class="input" name="observacao" placeholder="Observação"></textarea>
+        <button class="btn" type="submit">Vincular ao equipamento</button>
+      </form>
+    <% } else { %>
+      <p>Perfil com acesso somente leitura.</p>
+    <% } %>
     <a class="btn" style="margin-top:8px;" href="/desenho-tecnico/<%= desenho.id %>/revisoes">Ver revisões</a>
   </article>
 </section>

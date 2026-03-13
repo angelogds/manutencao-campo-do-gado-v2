@@ -23,7 +23,7 @@ router.get('/:id/editar', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctr
 router.post('/:id', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.update));
 router.post('/:id/inativar', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.remove));
 router.post('/:id/duplicar', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.duplicar));
-router.post('/:id/pdf', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.gerarPdf));
+router.post('/:id/pdf', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.gerarPdf));
 router.get('/:id/svg', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.gerarSvg));
 router.post('/:id/vincular', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.vincularEquipamento));
 router.get('/:id/revisoes', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.revisoes));

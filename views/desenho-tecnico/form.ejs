@@ -33,7 +33,7 @@
     <h3>Resumo técnico</h3>
     <div id="technicalSummary">Preencha os parâmetros para visualizar resumo.</div>
     <div style="display:grid;gap:8px;margin-top:10px;">
-      <button formaction="<%= mode==='edit' ? '/desenho-tecnico/' + desenho.id + '/pdf' : '#' %>" class="btn" type="submit" <%= mode==='edit' ? '' : 'disabled' %>>Gerar PDF</button>
+      <button formaction="<%= mode==='edit' ? '/desenho-tecnico/' + desenho.id + '/pdf' : '#' %>" class="btn" type="submit" <%= mode==='edit' && canManage ? '' : 'disabled' %>>Gerar PDF</button>
     </div>
   </section>
 </form>
@@ -41,7 +41,8 @@
 <script>
   window.DT_INITIAL = {
     categoria: '<%= desenho.categoria || '' %>',
-    subtipo: '<%= desenho.subtipo || '' %>'
+    subtipo: '<%= desenho.subtipo || '' %>',
+    params: <%- JSON.stringify((() => { try { return JSON.parse(desenho.props_json || '{}'); } catch(_e){ return {}; } })()) %>
   };
 </script>
 <script src="/js/desenho-tecnico.js"></script>

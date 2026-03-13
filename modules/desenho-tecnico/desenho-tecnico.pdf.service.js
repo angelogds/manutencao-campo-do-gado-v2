@@ -10,7 +10,7 @@ function generateTechnicalPdf(desenho, svgMarkup) {
   const fullPath = path.join(PDF_DIR, filename);
   const relPath = `/uploads/desenho-tecnico-pdf/${filename}`;
 
-  const doc = new PDFDocument({ size: 'A4', margin: 36 });
+  const doc = new PDFDocument({ size: 'A4', margin: 28 });
   const stream = fs.createWriteStream(fullPath);
   doc.pipe(stream);
 
@@ -25,10 +25,25 @@ function generateTechnicalPdf(desenho, svgMarkup) {
   doc.text(`Equipamento vinculado: ${desenho.equipamento_nome || '-'}`);
   doc.text(`Responsável: ${desenho.criado_por_nome || '-'}`);
   doc.text(`Data: ${new Date().toLocaleString('pt-BR')}`);
-  doc.moveDown(0.6);
-  doc.fontSize(9).fillColor('#334155').text('Prévia SVG serializada para rastreabilidade técnica:');
-  doc.fontSize(7).fillColor('#475569').text((svgMarkup || '').slice(0, 5000) || 'Sem SVG');
-  doc.moveDown(0.8);
+  doc.moveDown(0.4);
+
+  const drawWidth = 540;
+  const drawHeight = 240;
+  const drawX = doc.page.margins.left;
+  const drawY = doc.y;
+
+  doc.save();
+  doc.rect(drawX, drawY, drawWidth, drawHeight).lineWidth(1).stroke('#cbd5e1');
+  doc.translate(drawX + 12, drawY + 12);
+  doc.scale(0.62, { origin: [0, 0] });
+  doc.text((svgMarkup || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 1400) || 'Sem SVG', 0, 0, {
+    width: (drawWidth - 24) / 0.62,
+    height: (drawHeight - 24) / 0.62,
+    ellipsis: true,
+  });
+  doc.restore();
+
+  doc.y = drawY + drawHeight + 12;
   doc.fontSize(10).fillColor('#111827').text(`Observações: ${desenho.observacoes || '-'}`);
 
   doc.end();
