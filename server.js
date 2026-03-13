@@ -180,6 +180,7 @@ mount("/inspecao", "./modules/inspecao/inspecao.routes");
 mount("/inspection", "./modules/inspection/inspecao.routes");
 mount("/tracagem", "./modules/tracagem/tracagem.routes");
 mount("/tracagens", "./modules/tracagem/tracagens.routes");
+mount("/desenho-tecnico", "./modules/desenho-tecnico/desenho-tecnico.routes");
 
 try {
   const osService = require("./modules/os/os.service");

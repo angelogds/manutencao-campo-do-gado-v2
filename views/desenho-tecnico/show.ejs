@@ -1,0 +1,41 @@
+<% layout("layout") %>
+<section class="card" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+  <h1><%= desenho.codigo %> - <%= desenho.titulo %></h1>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a class="btn" href="/desenho-tecnico/<%= desenho.id %>/editar">Editar</a>
+    <form method="POST" action="/desenho-tecnico/<%= desenho.id %>/pdf"><button class="btn btn-green" type="submit">Gerar PDF</button></form>
+    <form method="POST" action="/desenho-tecnico/<%= desenho.id %>/duplicar"><button class="btn" type="submit">Duplicar</button></form>
+  </div>
+</section>
+
+<section class="dt-editor">
+  <article class="card dt-col">
+    <h3>Dados gerais</h3>
+    <p><b>Categoria:</b> <%= desenho.categoria %></p>
+    <p><b>Subtipo:</b> <%= desenho.subtipo %></p>
+    <p><b>Revisão:</b> R<%= desenho.revisao %></p>
+    <p><b>Material:</b> <%= desenho.material || '-' %></p>
+    <p><b>Equipamento:</b> <%= desenho.equipamento_nome || '-' %></p>
+    <p><b>Status:</b> <%= desenho.status %></p>
+  </article>
+  <article class="card dt-col"><h3>Desenho</h3><div class="dt-svg-pane"><%- svgPreview %></div></article>
+  <article class="card dt-col">
+    <h3>Ações rápidas</h3>
+    <form method="POST" action="/desenho-tecnico/<%= desenho.id %>/vincular" style="display:grid;gap:8px;">
+      <input class="input" name="equipamento_id" placeholder="ID do equipamento" required>
+      <input class="input" name="posicao_aplicacao" placeholder="Posição da aplicação">
+      <textarea class="input" name="observacao" placeholder="Observação"></textarea>
+      <button class="btn" type="submit">Vincular ao equipamento</button>
+    </form>
+    <a class="btn" style="margin-top:8px;" href="/desenho-tecnico/<%= desenho.id %>/revisoes">Ver revisões</a>
+  </article>
+</section>
+
+<section class="card">
+  <h3>Arquivos de revisão</h3>
+  <ul>
+    <% revisoes.forEach((r)=>{ %>
+      <li><b><%= r.tipo_arquivo %></b> • Revisão <%= r.revisao %> • <%= fmtBR(r.criado_em) %> <% if(r.arquivo_pdf){ %>- <a href="<%= r.arquivo_pdf %>" target="_blank">PDF</a><% } %></li>
+    <% }) %>
+  </ul>
+</section>
