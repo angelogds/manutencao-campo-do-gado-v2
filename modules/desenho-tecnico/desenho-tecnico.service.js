@@ -98,6 +98,35 @@ function saveCad(desenhoId, cadData, userId) {
   return { compatible3d, preview3d };
 }
 
+
+function createCadDrawing(payload = {}, userId = null) {
+  const validation = validateCadMetadata(payload || {});
+  if (!validation.valid) {
+    return { ok: false, id: null, desenho: null, error: validation.errors.join(' ') };
+  }
+
+  try {
+    const data = validation.data;
+    const cadData = buildDefaultCadData(data);
+    const id = create({
+      ...data,
+      categoria: 'CAD',
+      subtipo: 'DESENHO_MANUAL_2D',
+      tipo_origem: 'cad',
+      modo_cad_ativo: 1,
+      json_cad: JSON.stringify(cadData),
+      criado_por: userId || null,
+      status: 'ATIVO',
+      revisao: 0,
+    });
+    const desenho = getById(id);
+    if (!desenho) throw new Error(`Desenho CAD criado com id ${id}, mas não foi encontrado em seguida.`);
+    return { ok: true, id, desenho, error: null };
+  } catch (error) {
+    return { ok: false, id: null, desenho: null, error: error?.message || String(error) };
+  }
+}
+
 function normalizeCadMetadata(payload = {}) {
   return {
     codigo: String(payload.codigo || '').trim(),
@@ -329,4 +358,5 @@ module.exports = {
   validateCadMetadata,
   buildDefaultCadData,
   updateCadMetadata,
+  createCadDrawing,
 };
