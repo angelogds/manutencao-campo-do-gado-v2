@@ -21,8 +21,20 @@ function generateLinearDimension(x1, y1, x2, y2, text) {
   <text x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 - 6}" text-anchor="middle" font-size="12" fill="#14532d">${text}</text>`;
 }
 
+function generateChainDimension(x1, y1, x2, y2, x3, y3, text) {
+  return `${generateLinearDimension(x1, y1, x2, y2, text)}${generateLinearDimension(x2, y2, x3, y3, '')}`;
+}
+function generateBaselineDimension(x1, y1, x2, y2, text) { return generateLinearDimension(x1, y1, x2, y2, `${text} (BL)`); }
+function generateAngularDimension(x1, y1, x2, y2, angle, text) {
+  return `<path d="M ${x1} ${y1} A 35 35 0 0 1 ${x2} ${y2}" fill="none" stroke="#166534"/><text x="${x2 + 8}" y="${y2 - 8}" fill="#166534" font-size="12">${text || `${angle || 0}°`}</text>`;
+}
+function generateRadiusDimension(cx, cy, r, text) { return `<line x1="${cx}" y1="${cy}" x2="${cx + r}" y2="${cy}" stroke="#166534"/><text x="${cx + r + 8}" y="${cy - 4}" fill="#166534" font-size="12">${text || `R${r}`}</text>`; }
+function generateDiameterDimension(cx, cy, d, text) { return `<line x1="${cx - d / 2}" y1="${cy}" x2="${cx + d / 2}" y2="${cy}" stroke="#166534"/><text x="${cx}" y="${cy - 8}" text-anchor="middle" fill="#166534" font-size="12">${text || `Ø${d}`}</text>`; }
+function generateCenterToCenterDimension(x1, y1, x2, y2, text) { return `<circle cx="${x1}" cy="${y1}" r="3" fill="#166534"/><circle cx="${x2}" cy="${y2}" r="3" fill="#166534"/>${generateLinearDimension(x1, y1, x2, y2, text)}`; }
+function generatePatternDimension(x1, y1, x2, y2, count, text) { return `${generateLinearDimension(x1, y1, x2, y2, text || `${count}x`)}<text x="${x2 + 8}" y="${y2 + 10}" fill="#166534" font-size="11">Padrão ${count}x</text>`; }
+
 function generateCenterLine(x1, y1, x2, y2) {
-  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#0284c7" stroke-dasharray="6 4"/>`;
+  return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#0284c7" stroke-dasharray="10 5 2 5"/>`;
 }
 
 function generateTextLabel(x, y, text) {
@@ -64,25 +76,67 @@ function generateTransitionShape(params = {}) {
   ${generateCircle(235, 360, d / 2)}`;
 }
 
+function baseShapeBySubtype(subtipo, params) {
+  if (subtipo.includes('EIXO')) return generateSteppedShaft(params);
+  if (subtipo.includes('FLANGE')) return generateFlange(params);
+  if (subtipo.includes('MAO_FRANCESA') || subtipo.includes('SUPORTE')) return generateBracket(params);
+  if (subtipo.includes('TRANSICAO') || subtipo.includes('QUADRADO_REDONDO') || subtipo.includes('REDUCAO')) return generateTransitionShape(params);
+  return generatePlate(params);
+}
+
+function renderCota(cota = {}) {
+  const label = cota.texto || `${cota.valor || ''}${cota.unidade || 'mm'}`;
+  if (cota.tipo_cota === 'cadeia') return generateChainDimension(cota.x1, cota.y1, cota.x2, cota.y2, cota.x3 || cota.x2 + 40, cota.y3 || cota.y2, label);
+  if (cota.tipo_cota === 'baseline') return generateBaselineDimension(cota.x1, cota.y1, cota.x2, cota.y2, label);
+  if (cota.tipo_cota === 'angular') return generateAngularDimension(cota.x1, cota.y1, cota.x2, cota.y2, cota.angulo_ref, label);
+  if (cota.tipo_cota === 'raio') return generateRadiusDimension(cota.x1, cota.y1, cota.valor || 30, label);
+  if (cota.tipo_cota === 'diametro') return generateDiameterDimension(cota.x1, cota.y1, cota.valor || 40, label);
+  if (cota.tipo_cota === 'entre_centros') return generateCenterToCenterDimension(cota.x1, cota.y1, cota.x2, cota.y2, label);
+  if (cota.tipo_cota === 'padrao_furacao') return generatePatternDimension(cota.x1, cota.y1, cota.x2, cota.y2, cota.valor || 1, label);
+  return generateLinearDimension(cota.x1, cota.y1, cota.x2, cota.y2, label);
+}
+
+function renderBlockInstance(instancia = {}) {
+  const def = JSON.parse(instancia.definicao_json || '{}');
+  const params = { ...(def.params || {}), ...(JSON.parse(instancia.props_override_json || '{}')) };
+  const shape = baseShapeBySubtype(String(instancia.subtipo || ''), params);
+  return `<g transform="translate(${instancia.x || 0} ${instancia.y || 0}) scale(${instancia.escala || 1}) rotate(${instancia.rotacao || 0})" opacity="0.88">${shape}</g>`;
+}
+
 function renderTechnicalDrawing(data = {}) {
   const params = data.params || {};
   const subtipo = String(data.subtipo || '').toUpperCase();
-  let shape = generatePlate(params);
-  if (subtipo.includes('EIXO')) shape = generateSteppedShaft(params);
-  if (subtipo.includes('FLANGE')) shape = generateFlange(params);
-  if (subtipo.includes('MAO_FRANCESA') || subtipo.includes('SUPORTE')) shape = generateBracket(params);
-  if (subtipo.includes('TRANSICAO') || subtipo.includes('QUADRADO_REDONDO') || subtipo.includes('REDUCAO')) shape = generateTransitionShape(params);
+  const layers = (data.camadas || []).filter((l) => Number(l.visivel) !== 0);
+  const order = [...layers].sort((a, b) => Number(a.ordem || 0) - Number(b.ordem || 0));
+  const byLayer = new Map(order.map((l) => [l.slug, []]));
+  byLayer.set('geometria_principal', [baseShapeBySubtype(subtipo, params)]);
+  byLayer.set('linhas_de_centro', [generateCenterLine(60, 280, 740, 280), generateCenterLine(400, 110, 400, 420)]);
+  byLayer.set('textos', [generateTextLabel(60, 60, 'VISTA FRONTAL')]);
 
-  const dims = [
-    generateLinearDimension(140, 340, 420, 340, `L=${params.comprimentoTotal || params.comprimento || params.base || 0}mm`),
-    generateTextLabel(60, 60, 'VISTA FRONTAL'),
-  ].join('');
+  (data.blocos || []).forEach((inst) => {
+    if (!byLayer.has(inst.camada)) byLayer.set(inst.camada, []);
+    byLayer.get(inst.camada).push(renderBlockInstance(inst));
+  });
+
+  (data.cotas || []).forEach((cota) => {
+    if (!byLayer.has(cota.camada || 'cotas')) byLayer.set(cota.camada || 'cotas', []);
+    byLayer.get(cota.camada || 'cotas').push(renderCota(cota));
+  });
+
+  if (!byLayer.get('cotas')?.length) {
+    byLayer.set('cotas', [generateLinearDimension(140, 340, 420, 340, `L=${params.comprimentoTotal || params.comprimento || params.base || 0}mm`)]);
+  }
+
+  const content = [];
+  order.forEach((layer) => {
+    if (!byLayer.has(layer.slug)) return;
+    content.push(`<g data-layer="${layer.slug}">${(byLayer.get(layer.slug) || []).join('')}</g>`);
+  });
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 560" width="100%" height="100%">
     ${generateGrid()}
     ${generateDrawingFrame()}
-    ${shape}
-    ${dims}
+    ${content.join('')}
     ${generateTitleBlock(data)}
   </svg>`;
 }
@@ -127,6 +181,13 @@ module.exports = {
   generateGrid,
   generateTitleBlock,
   generateLinearDimension,
+  generateChainDimension,
+  generateBaselineDimension,
+  generateAngularDimension,
+  generateRadiusDimension,
+  generateDiameterDimension,
+  generateCenterToCenterDimension,
+  generatePatternDimension,
   generateCenterLine,
   generateTextLabel,
   generateCircle,

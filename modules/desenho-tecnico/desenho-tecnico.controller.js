@@ -284,6 +284,66 @@ function revisoes(req, res) {
   });
 }
 
+
+function adicionarCamada(req, res) {
+  try {
+    service.createCamada(req.params.id, String(req.body.nome || '').trim());
+    req.flash('success', 'Camada criada.');
+  } catch (e) {
+    req.flash('error', e.message || 'Falha ao criar camada.');
+  }
+  return res.redirect(`/desenho-tecnico/${req.params.id}`);
+}
+
+function atualizarCamada(req, res) {
+  try {
+    service.toggleCamada(req.params.id, req.params.camadaId, req.body.action);
+    req.flash('success', 'Camada atualizada.');
+  } catch (e) {
+    req.flash('error', e.message || 'Falha ao atualizar camada.');
+  }
+  return res.redirect(`/desenho-tecnico/${req.params.id}`);
+}
+
+function inserirBloco(req, res) {
+  try {
+    service.inserirBloco(req.params.id, req.body);
+    req.flash('success', 'Bloco inserido no desenho.');
+  } catch (e) {
+    req.flash('error', e.message || 'Falha ao inserir bloco.');
+  }
+  return res.redirect(`/desenho-tecnico/${req.params.id}`);
+}
+
+function adicionarCota(req, res) {
+  try {
+    service.salvarCota(req.params.id, req.body);
+    req.flash('success', 'Cota adicionada.');
+  } catch (e) {
+    req.flash('error', e.message || 'Falha ao salvar cota.');
+  }
+  return res.redirect(`/desenho-tecnico/${req.params.id}`);
+}
+
+function duplicarBloco(req, res) {
+  const id = service.duplicateBloco(req.params.blocoId);
+  if (!id) req.flash('error', 'Bloco não encontrado.');
+  else req.flash('success', 'Bloco duplicado.');
+  return res.redirect('/desenho-tecnico/biblioteca');
+}
+
+function integrarTracagem(req, res) {
+  try {
+    const desenho = service.integrarTracagem(req.params.origem, req.params.id, req.session?.user?.id || null);
+    service.saveSvgRevision(desenho);
+    req.flash('success', 'Desenho técnico gerado a partir da Traçagem.');
+    return res.redirect(`/desenho-tecnico/${desenho.id}`);
+  } catch (e) {
+    req.flash('error', e.message || 'Integração com Traçagem falhou.');
+    return res.redirect('/tracagem/lista');
+  }
+}
+
 module.exports = {
   dashboard,
   index,
@@ -305,4 +365,10 @@ module.exports = {
   vincularEquipamento,
   biblioteca,
   revisoes,
+  adicionarCamada,
+  atualizarCamada,
+  inserirBloco,
+  adicionarCota,
+  duplicarBloco,
+  integrarTracagem,
 };

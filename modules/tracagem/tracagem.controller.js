@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const service = require('./tracagem.service');
+const desenhoTecnicoService = require('../desenho-tecnico/desenho-tecnico.service');
 
 
 const PDF_STORAGE_DIR = path.join(process.env.UPLOADS_DIR || (fs.existsSync('/data') ? '/data/uploads' : path.join(process.cwd(), 'uploads')), 'tracagem-pdfs');
@@ -166,10 +167,12 @@ function show(req, res) {
   const tracagem = service.getById(req.params.id);
   if (!tracagem) return res.status(404).render('errors/404', { title: 'Não encontrado' });
 
+  const desenhoVinculado = desenhoTecnicoService.getByOrigem('TRACAGEM', `${tracagem.tipo}:${tracagem.id}`);
   return baseRender(req, res, 'tracagem/show', {
     title: `Traçagem #${tracagem.id}`,
     tracagem,
     labels: LABELS,
+    desenhoVinculado,
   });
 }
 

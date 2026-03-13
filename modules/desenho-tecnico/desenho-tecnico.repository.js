@@ -1,5 +1,27 @@
 const db = require('../../database/db');
 
+const NATIVE_LAYERS = [
+  { nome: 'Geometria principal', slug: 'geometria_principal', cor_ref: '#0f172a', tipo_linha: 'solida', espessura_ref: 2, ordem: 10 },
+  { nome: 'Linhas de centro', slug: 'linhas_de_centro', cor_ref: '#0284c7', tipo_linha: 'centro', espessura_ref: 1, ordem: 20 },
+  { nome: 'Cotas', slug: 'cotas', cor_ref: '#166534', tipo_linha: 'cota', espessura_ref: 1, ordem: 30 },
+  { nome: 'Textos', slug: 'textos', cor_ref: '#334155', tipo_linha: 'texto', espessura_ref: 1, ordem: 40 },
+  { nome: 'Furos', slug: 'furos', cor_ref: '#7c3aed', tipo_linha: 'solida', espessura_ref: 1.5, ordem: 50 },
+  { nome: 'Construção', slug: 'construcao', cor_ref: '#64748b', tipo_linha: 'traco', espessura_ref: 1, ordem: 60 },
+  { nome: 'Solda', slug: 'solda', cor_ref: '#dc2626', tipo_linha: 'traco', espessura_ref: 1.2, ordem: 70 },
+  { nome: 'Observações', slug: 'observacoes', cor_ref: '#92400e', tipo_linha: 'texto', espessura_ref: 1, ordem: 80 },
+  { nome: 'Planificação', slug: 'planificacao', cor_ref: '#0891b2', tipo_linha: 'solida', espessura_ref: 1.4, ordem: 90 },
+];
+
+function seedDefaultLayers(desenhoId) {
+  const stmt = db.prepare(`INSERT OR IGNORE INTO desenho_camadas
+    (desenho_id, nome, slug, cor_ref, tipo_linha, espessura_ref, visivel, bloqueado, ordem, criado_em, atualizado_em)
+    VALUES (@desenho_id, @nome, @slug, @cor_ref, @tipo_linha, @espessura_ref, 1, 0, @ordem, datetime('now'), datetime('now'))`);
+  const run = db.transaction(() => {
+    NATIVE_LAYERS.forEach((layer) => stmt.run({ desenho_id: Number(desenhoId), ...layer }));
+  });
+  run();
+}
+
 function list(filters = {}) {
   const where = ['1=1'];
   const params = {};
@@ -10,7 +32,9 @@ function list(filters = {}) {
 
   return db.prepare(`
     SELECT d.*, e.nome AS equipamento_nome, u.name AS criado_por_nome,
-      (SELECT COUNT(*) FROM desenho_arquivos a WHERE a.desenho_id = d.id AND a.tipo_arquivo='PDF') AS total_pdfs
+      (SELECT COUNT(*) FROM desenho_arquivos a WHERE a.desenho_id = d.id AND a.tipo_arquivo='PDF') AS total_pdfs,
+      (SELECT COUNT(*) FROM desenho_bloco_instancias bi WHERE bi.desenho_id=d.id) AS total_blocos,
+      (SELECT COUNT(*) FROM desenho_cotas c WHERE c.desenho_id=d.id) AS total_cotas
     FROM desenhos_tecnicos d
     LEFT JOIN equipamentos e ON e.id = d.equipamento_id
     LEFT JOIN users u ON u.id = d.criado_por
@@ -20,22 +44,27 @@ function list(filters = {}) {
 }
 
 function getById(id) {
-  return db.prepare(`
+  const row = db.prepare(`
     SELECT d.*, e.nome AS equipamento_nome, u.name AS criado_por_nome
     FROM desenhos_tecnicos d
     LEFT JOIN equipamentos e ON e.id = d.equipamento_id
     LEFT JOIN users u ON u.id = d.criado_por
     WHERE d.id=?
   `).get(Number(id));
+  if (!row) return null;
+  seedDefaultLayers(row.id);
+  return row;
 }
 
 function create(data) {
   const info = db.prepare(`
     INSERT INTO desenhos_tecnicos
-    (codigo, titulo, categoria, subtipo, descricao, equipamento_id, status, revisao, material, observacoes, historico_revisao, criado_por, tipo_origem, modo_cad_ativo, json_cad, json_3d, preview_3d_path, criado_em, atualizado_em)
-    VALUES (@codigo, @titulo, @categoria, @subtipo, @descricao, @equipamento_id, @status, @revisao, @material, @observacoes, @historico_revisao, @criado_por, @tipo_origem, @modo_cad_ativo, @json_cad, @json_3d, @preview_3d_path, datetime('now'), datetime('now'))
+    (codigo, titulo, categoria, subtipo, descricao, equipamento_id, status, revisao, material, observacoes, historico_revisao, criado_por, origem_modulo, origem_referencia, origem_integracao_em, criado_em, atualizado_em)
+    VALUES (@codigo, @titulo, @categoria, @subtipo, @descricao, @equipamento_id, @status, @revisao, @material, @observacoes, @historico_revisao, @criado_por, @origem_modulo, @origem_referencia, @origem_integracao_em, datetime('now'), datetime('now'))
   `).run(data);
-  return Number(info.lastInsertRowid);
+  const id = Number(info.lastInsertRowid);
+  seedDefaultLayers(id);
+  return id;
 }
 
 function update(id, data) {
@@ -43,8 +72,8 @@ function update(id, data) {
     UPDATE desenhos_tecnicos
     SET codigo=@codigo, titulo=@titulo, categoria=@categoria, subtipo=@subtipo, descricao=@descricao,
         equipamento_id=@equipamento_id, status=@status, revisao=@revisao, material=@material,
-        observacoes=@observacoes, historico_revisao=@historico_revisao, tipo_origem=@tipo_origem,
-        modo_cad_ativo=@modo_cad_ativo, json_cad=@json_cad, json_3d=@json_3d, preview_3d_path=@preview_3d_path,
+        observacoes=@observacoes, historico_revisao=@historico_revisao,
+        origem_modulo=@origem_modulo, origem_referencia=@origem_referencia, origem_integracao_em=@origem_integracao_em,
         atualizado_em=datetime('now')
     WHERE id=@id
   `).run({ ...data, id: Number(id) });
@@ -101,7 +130,7 @@ function inactivate(id) { db.prepare(`UPDATE desenhos_tecnicos SET status='INATI
 function duplicate(id, novoCodigo, criadoPor) {
   const row = getById(id);
   if (!row) return null;
-  return create({
+  const newId = create({
     ...row,
     codigo: novoCodigo,
     titulo: `${row.titulo} (cópia)`,
@@ -110,6 +139,13 @@ function duplicate(id, novoCodigo, criadoPor) {
     historico_revisao: 'Duplicado do desenho #' + row.id,
     criado_por: criadoPor || row.criado_por,
   });
+  listBlocoInstancias(id).forEach((inst) => {
+    createBlocoInstancia(newId, { ...inst, id: undefined, desenho_id: undefined });
+  });
+  listCotas(id).forEach((cota) => {
+    saveCota(newId, { ...cota, id: undefined, desenho_id: undefined });
+  });
+  return newId;
 }
 
 function saveArquivo(desenhoId, payload) {
@@ -122,12 +158,101 @@ function listRevisoes(desenhoId) {
 }
 
 function listBiblioteca(filters = {}) {
-  const where = ['ativo = 1'];
+  const where = ['1=1'];
   const params = {};
+  if (!filters.includeInactive) where.push('ativo = 1');
   if (filters.categoria) { where.push('categoria=@categoria'); params.categoria = filters.categoria; }
   if (filters.subtipo) { where.push('subtipo=@subtipo'); params.subtipo = filters.subtipo; }
   if (filters.q) { where.push('(nome LIKE @q OR descricao LIKE @q)'); params.q = `%${filters.q}%`; }
   return db.prepare(`SELECT * FROM desenho_blocos WHERE ${where.join(' AND ')} ORDER BY atualizado_em DESC`).all(params);
+}
+
+function getBlocoById(id) {
+  return db.prepare('SELECT * FROM desenho_blocos WHERE id=?').get(Number(id));
+}
+
+function createBloco(payload) {
+  const info = db.prepare(`INSERT INTO desenho_blocos
+    (nome, categoria, subtipo, descricao, definicao_json, origem_desenho_id, ativo, criado_em, atualizado_em)
+    VALUES (@nome, @categoria, @subtipo, @descricao, @definicao_json, @origem_desenho_id, @ativo, datetime('now'), datetime('now'))`).run(payload);
+  return Number(info.lastInsertRowid);
+}
+
+function updateBloco(id, payload) {
+  db.prepare(`UPDATE desenho_blocos
+    SET nome=@nome, categoria=@categoria, subtipo=@subtipo, descricao=@descricao,
+      definicao_json=@definicao_json, ativo=@ativo, atualizado_em=datetime('now')
+    WHERE id=@id`).run({ ...payload, id: Number(id) });
+}
+
+function duplicateBloco(id) {
+  const row = getBlocoById(id);
+  if (!row) return null;
+  return createBloco({ ...row, nome: `${row.nome} (cópia)`, ativo: 1 });
+}
+
+function listCamadas(desenhoId) {
+  seedDefaultLayers(desenhoId);
+  return db.prepare(`
+    SELECT c.*, (SELECT COUNT(*) FROM desenho_entidades e WHERE e.desenho_id=c.desenho_id AND e.camada=c.slug) AS total_entidades,
+      (SELECT COUNT(*) FROM desenho_bloco_instancias bi WHERE bi.desenho_id=c.desenho_id AND bi.camada=c.slug) AS total_blocos
+    FROM desenho_camadas c
+    WHERE c.desenho_id=?
+    ORDER BY c.ordem, c.id
+  `).all(Number(desenhoId));
+}
+
+function updateCamada(id, payload) {
+  db.prepare(`UPDATE desenho_camadas SET nome=@nome, visivel=@visivel, bloqueado=@bloqueado, ordem=@ordem, atualizado_em=datetime('now') WHERE id=@id`)
+    .run({ ...payload, id: Number(id) });
+}
+
+function createCamada(desenhoId, payload) {
+  const info = db.prepare(`INSERT INTO desenho_camadas
+    (desenho_id, nome, slug, cor_ref, tipo_linha, espessura_ref, visivel, bloqueado, ordem, criado_em, atualizado_em)
+    VALUES (@desenho_id, @nome, @slug, @cor_ref, @tipo_linha, @espessura_ref, @visivel, @bloqueado, @ordem, datetime('now'), datetime('now'))`).run({
+    desenho_id: Number(desenhoId),
+    visivel: 1,
+    bloqueado: 0,
+    ...payload,
+  });
+  return Number(info.lastInsertRowid);
+}
+
+function createBlocoInstancia(desenhoId, payload) {
+  const info = db.prepare(`INSERT INTO desenho_bloco_instancias
+    (desenho_id, bloco_id, nome_instancia, x, y, escala, rotacao, camada, props_override_json, criado_em, atualizado_em)
+    VALUES (@desenho_id, @bloco_id, @nome_instancia, @x, @y, @escala, @rotacao, @camada, @props_override_json, datetime('now'), datetime('now'))`).run({
+    desenho_id: Number(desenhoId),
+    ...payload,
+  });
+  return Number(info.lastInsertRowid);
+}
+
+function listBlocoInstancias(desenhoId) {
+  return db.prepare(`SELECT bi.*, b.nome AS bloco_nome, b.definicao_json, b.subtipo FROM desenho_bloco_instancias bi
+    INNER JOIN desenho_blocos b ON b.id = bi.bloco_id
+    WHERE bi.desenho_id=? ORDER BY bi.id DESC`).all(Number(desenhoId));
+}
+
+function saveCota(desenhoId, payload) {
+  const info = db.prepare(`INSERT INTO desenho_cotas
+    (desenho_id, tipo_cota, entidade_origem_id, camada, x1, y1, x2, y2, x3, y3, valor, texto, unidade, angulo_ref, estilo_json, criado_em)
+    VALUES (@desenho_id, @tipo_cota, @entidade_origem_id, @camada, @x1, @y1, @x2, @y2, @x3, @y3, @valor, @texto, @unidade, @angulo_ref, @estilo_json, datetime('now'))`).run({
+    desenho_id: Number(desenhoId),
+    camada: 'cotas',
+    ...payload,
+  });
+  return Number(info.lastInsertRowid);
+}
+
+function listCotas(desenhoId) {
+  return db.prepare('SELECT * FROM desenho_cotas WHERE desenho_id=? ORDER BY id DESC').all(Number(desenhoId));
+}
+
+
+function getByOrigem(modulo, referencia) {
+  return db.prepare('SELECT * FROM desenhos_tecnicos WHERE origem_modulo=? AND origem_referencia=? ORDER BY id DESC LIMIT 1').get(String(modulo || ''), String(referencia || ''));
 }
 
 function listAplicacoesByEquipamento(equipamentoId) {
@@ -148,6 +273,7 @@ function vincularEquipamento(desenhoId, equipamentoId, posicaoAplicacao, observa
 }
 
 module.exports = {
+  NATIVE_LAYERS,
   list,
   getById,
   create,
@@ -160,6 +286,18 @@ module.exports = {
   saveArquivo,
   listRevisoes,
   listBiblioteca,
+  getBlocoById,
+  createBloco,
+  updateBloco,
+  duplicateBloco,
+  listCamadas,
+  updateCamada,
+  createCamada,
+  createBlocoInstancia,
+  listBlocoInstancias,
+  saveCota,
+  listCotas,
   listAplicacoesByEquipamento,
   vincularEquipamento,
+  getByOrigem,
 };

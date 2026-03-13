@@ -1,6 +1,7 @@
 const repo = require('./desenho-tecnico.repository');
 const svg = require('./desenho-tecnico.svg.service');
 const pdf = require('./desenho-tecnico.pdf.service');
+const integration = require('./desenho-tecnico.integration.service');
 
 const CAD_LAYERS = ['geometria_principal', 'linhas_de_centro', 'cotas', 'textos', 'furos', 'construcao', 'observacoes'];
 
@@ -11,9 +12,8 @@ function parseParams(raw = {}) {
   return raw || {};
 }
 
-function parseJson(raw, fallback) {
-  if (!raw) return fallback;
-  try { return typeof raw === 'string' ? JSON.parse(raw) : raw; } catch (_e) { return fallback; }
+function slugifyLayer(name = '') {
+  return String(name).toLowerCase().trim().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 }
 
 function list(filters) { return repo.list(filters); }
@@ -36,11 +36,9 @@ function create(payload) {
     historico_revisao: payload.historico_revisao || 'Criação inicial',
     status: payload.status || 'ATIVO',
     revisao: Number(payload.revisao || 0),
-    tipo_origem: payload.tipo_origem || 'parametrico',
-    modo_cad_ativo: Number(payload.modo_cad_ativo || 0),
-    json_cad: payload.json_cad || null,
-    json_3d: payload.json_3d || null,
-    preview_3d_path: payload.preview_3d_path || null,
+    origem_modulo: payload.origem_modulo || null,
+    origem_referencia: payload.origem_referencia || null,
+    origem_integracao_em: payload.origem_integracao_em || null,
   });
 }
 
@@ -114,11 +112,18 @@ function duplicate(id, userId) {
   return repo.duplicate(id, code, userId);
 }
 
+function contextForRender(desenho, params) {
+  return {
+    ...desenho,
+    params: parseParams(params || desenho.props_json || {}),
+    camadas: repo.listCamadas(desenho.id),
+    cotas: repo.listCotas(desenho.id),
+    blocos: repo.listBlocoInstancias(desenho.id),
+  };
+}
+
 function generateSvg(desenho, params) {
-  if (desenho.tipo_origem === 'cad') {
-    return svg.renderCadDrawing(parseJson(desenho.json_cad, { objects: [] }));
-  }
-  return svg.renderTechnicalDrawing({ ...desenho, params: parseParams(params || desenho.props_json || {}) });
+  return svg.renderTechnicalDrawing(contextForRender(desenho, params));
 }
 
 async function generatePdf(desenho, params) {
@@ -153,6 +158,76 @@ function listRevisoes(id) { return repo.listRevisoes(id); }
 function listBiblioteca(filters) { return repo.listBiblioteca(filters); }
 function vincularEquipamento(desenhoId, equipamentoId, posicaoAplicacao, observacao) { return repo.vincularEquipamento(desenhoId, equipamentoId, posicaoAplicacao, observacao); }
 function listByEquipamento(equipamentoId) { return repo.listAplicacoesByEquipamento(equipamentoId); }
+function getByOrigem(modulo, referencia) { return repo.getByOrigem(modulo, referencia); }
+function listCamadas(desenhoId) { return repo.listCamadas(desenhoId); }
+
+function createCamada(desenhoId, nome) {
+  const slug = slugifyLayer(nome);
+  const duplicate = repo.listCamadas(desenhoId).find((layer) => layer.slug === slug);
+  if (duplicate) throw new Error('Nome de camada duplicado no mesmo desenho.');
+  return repo.createCamada(desenhoId, {
+    nome,
+    slug,
+    cor_ref: '#334155',
+    tipo_linha: 'solida',
+    espessura_ref: 1,
+    ordem: 100,
+  });
+}
+
+function toggleCamada(desenhoId, camadaId, action) {
+  const camada = repo.listCamadas(desenhoId).find((item) => Number(item.id) === Number(camadaId));
+  if (!camada) throw new Error('Camada não encontrada.');
+  repo.updateCamada(camada.id, {
+    nome: camada.nome,
+    ordem: camada.ordem,
+    visivel: action === 'toggle-visible' ? (camada.visivel ? 0 : 1) : camada.visivel,
+    bloqueado: action === 'toggle-lock' ? (camada.bloqueado ? 0 : 1) : camada.bloqueado,
+  });
+}
+
+function salvarCota(desenhoId, payload = {}) {
+  const escala = Number(payload.escala || 1);
+  const rotacao = Number(payload.rotacao || 0);
+  if (!Number.isFinite(escala) || escala <= 0) throw new Error('Escala inválida.');
+  if (!Number.isFinite(rotacao)) throw new Error('Rotação inválida.');
+  if (!payload.tipo_cota) throw new Error('Cota inválida.');
+  return repo.saveCota(desenhoId, {
+    ...payload,
+    estilo_json: payload.estilo_json ? JSON.stringify(payload.estilo_json) : null,
+  });
+}
+
+function inserirBloco(desenhoId, payload = {}) {
+  const bloco = repo.getBlocoById(payload.bloco_id);
+  if (!bloco || !bloco.ativo) throw new Error('Bloco inexistente ou inativo.');
+  const escala = Number(payload.escala || 1);
+  const rotacao = Number(payload.rotacao || 0);
+  if (!Number.isFinite(escala) || escala <= 0) throw new Error('Escala inválida.');
+  if (!Number.isFinite(rotacao)) throw new Error('Rotação inválida.');
+  if (!Number.isFinite(Number(payload.x)) || !Number.isFinite(Number(payload.y))) throw new Error('Instância de bloco inválida.');
+  return repo.createBlocoInstancia(desenhoId, {
+    bloco_id: Number(payload.bloco_id),
+    nome_instancia: payload.nome_instancia || bloco.nome,
+    x: Number(payload.x),
+    y: Number(payload.y),
+    escala,
+    rotacao,
+    camada: payload.camada || 'geometria_principal',
+    props_override_json: payload.props_override_json ? JSON.stringify(payload.props_override_json) : null,
+  });
+}
+
+function listInstancias(desenhoId) { return repo.listBlocoInstancias(desenhoId); }
+function listCotas(desenhoId) { return repo.listCotas(desenhoId); }
+function duplicateBloco(id) { return repo.duplicateBloco(id); }
+
+function integrarTracagem(origem, id, userId) {
+  const tracagem = integration.loadTracagem(origem, id);
+  const payload = integration.mapTracagemToDesenho(tracagem);
+  const desenhoId = create({ ...payload, criado_por: userId || null, status: 'RASCUNHO' });
+  return getById(desenhoId);
+}
 
 module.exports = {
   CAD_LAYERS,
@@ -172,4 +247,14 @@ module.exports = {
   listBiblioteca,
   vincularEquipamento,
   listByEquipamento,
+  getByOrigem,
+  listCamadas,
+  createCamada,
+  toggleCamada,
+  inserirBloco,
+  listInstancias,
+  salvarCota,
+  listCotas,
+  duplicateBloco,
+  integrarTracagem,
 };

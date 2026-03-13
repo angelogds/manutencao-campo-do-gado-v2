@@ -64,34 +64,33 @@ npm run dev
    ```
 4. O módulo gera PDFs em `/data/uploads/desenho-tecnico-pdf` automaticamente quando o volume está configurado.
 
-### Novo Desenho CAD (Fase 3)
+## Desenho Técnico – Fase 2
 
-O módulo **Desenho Técnico** agora possui dois fluxos:
-- **Novo Desenho**: paramétrico (gerado por medidas).
-- **Novo Desenho CAD**: desenho manual 2D em editor SVG com camadas, cotas básicas, grade/snap e prévia 3D simples por extrusão.
+A Fase 2 do módulo **Desenho Técnico** adiciona uma base de mini CAD industrial com:
 
-#### Rotas CAD
-- `GET /desenho-tecnico/cad/novo`
-- `POST /desenho-tecnico/cad`
-- `GET /desenho-tecnico/cad/:id`
-- `POST /desenho-tecnico/cad/:id`
-- `GET /desenho-tecnico/cad/:id/editor`
-- `POST /desenho-tecnico/cad/:id/objeto`
-- `POST /desenho-tecnico/cad/:id/render-3d`
-- `GET /desenho-tecnico/cad/:id/pdf`
+- Camadas técnicas (`geometria_principal`, `linhas_de_centro`, `cotas`, `textos`, `furos`, `construcao`, `solda`, `observacoes`, `planificacao`).
+- Biblioteca de **Blocos Técnicos** com duplicação e inserção por instância.
+- Cotas avançadas: cadeia, baseline, angular, raio, diâmetro, entre centros e padrão de furação.
+- Integração direta com Traçagem para gerar/abrir desenho técnico automaticamente.
 
-#### Persistência CAD
-- Campos adicionados em `desenhos_tecnicos`: `tipo_origem`, `modo_cad_ativo`, `json_cad`, `json_3d`, `preview_3d_path`.
-- Nova tabela `desenho_cad_objetos` para espelho dos elementos do editor.
-- Nova tabela `desenho_cad_historico` para rastreabilidade e base para undo/redo persistente.
+### Novas rotas
 
-#### PDF + 3D
-- PDF técnico agora indica o **modo** (Paramétrico/CAD).
-- Quando houver extrusão compatível, o PDF inclui resumo da prévia 3D simplificada.
+- `POST /desenho-tecnico/integrar/tracagem`
+- `POST /desenho-tecnico/gerar-a-partir-da-tracagem/:origem/:id`
+- `GET /desenho-tecnico/abrir-de-tracagem/:origem/:id`
+- `POST /desenho-tecnico/:id/camadas`
+- `POST /desenho-tecnico/:id/camadas/:camadaId`
+- `POST /desenho-tecnico/:id/blocos/inserir`
+- `POST /desenho-tecnico/:id/cotas`
 
-#### Como testar local e Railway
-1. `npm run migrate`
-2. `npm run dev`
-3. Acessar `Desenho Técnico > Novo Desenho CAD`.
-4. Desenhar no editor, salvar e testar renderização 3D.
-5. No Railway, manter `DB_PATH=/data/app.db` e volume em `/data`.
+### Teste local rápido
+
+1. Suba a aplicação normalmente (`npm start`).
+2. Crie/abra um desenho e valide os painéis de Camadas, Blocos e Cotas.
+3. Em Traçagem, abra uma peça suportada e use **Gerar desenho técnico**.
+4. Gere PDF técnico e confirme renderização de camadas visíveis e cotas.
+
+### Railway
+
+- Mantida compatibilidade com execução padrão no Railway (Node + SQLite).
+- Migrations incrementais aplicadas automaticamente no boot (`database/migrate.js`).
