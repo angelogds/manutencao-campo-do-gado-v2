@@ -1,12 +1,12 @@
 <% layout("layout") %>
 <section class="card cad-topbar">
-  <h1>Editor CAD 2D • <%= desenho.codigo %></h1>
+  <h1>Editor CAD 2D • <%= (desenho && desenho.codigo) || 'Sem código' %></h1>
   <div class="cad-topbar-actions">
     <a class="btn" href="/desenho-tecnico">Voltar</a>
     <button class="btn" type="button" id="cadUndoBtn">Desfazer</button>
     <button class="btn" type="button" id="cadRedoBtn">Refazer</button>
     <button class="btn btn-green" type="button" id="cadSaveBtn">Salvar</button>
-    <a class="btn" href="/desenho-tecnico/cad/<%= desenho.id %>/pdf">PDF</a>
+    <a class="btn" href="/desenho-tecnico/cad/<%= (desenho && desenho.id) || '' %>/pdf">PDF</a>
   </div>
 </section>
 
@@ -45,19 +45,19 @@
 
     <h3>Metadados do desenho</h3>
     <div id="cadMetaPanel" class="cad-meta-grid">
-      <label>Código <input class="input" id="cadMetaCodigo" value="<%= desenho.codigo %>"></label>
-      <label>Título <input class="input" id="cadMetaTitulo" value="<%= desenho.titulo %>"></label>
-      <label>Material <input class="input" id="cadMetaMaterial" value="<%= desenho.material || '' %>"></label>
+      <label>Código <input class="input" id="cadMetaCodigo" value="<%= (desenho && desenho.codigo) || '' %>"></label>
+      <label>Título <input class="input" id="cadMetaTitulo" value="<%= (desenho && desenho.titulo) || '' %>"></label>
+      <label>Material <input class="input" id="cadMetaMaterial" value="<%= (desenho && desenho.material) || '' %>"></label>
       <label>Equipamento
         <select class="input" id="cadMetaEquipamento">
           <option value="">Sem vínculo</option>
-          <% (equipamentos||[]).forEach((e)=>{ %>
-            <option value="<%=e.id%>" <%= Number(desenho.equipamento_id||0)===Number(e.id)?'selected':'' %>><%=e.codigo || ('#'+e.id)%> - <%=e.nome%></option>
+          <% (equipamentos || []).forEach((e)=>{ %>
+            <option value="<%= e.id %>" <%= Number((desenho && desenho.equipamento_id) || 0)===Number(e.id)?'selected':'' %>><%= e.codigo || ('#'+e.id) %> - <%= e.nome %></option>
           <% }) %>
         </select>
       </label>
       <label style="grid-column:1/-1;">Observações
-        <textarea class="input" id="cadMetaObservacoes"><%= desenho.observacoes || '' %></textarea>
+        <textarea class="input" id="cadMetaObservacoes"><%= (desenho && desenho.observacoes) || '' %></textarea>
       </label>
       <button class="btn" id="cadMetaSaveBtn" type="button">Salvar metadados</button>
     </div>
@@ -66,9 +66,9 @@
 
 <script>
 window.CAD_INITIAL = {
-  desenhoId: <%= desenho.id %>,
+  desenhoId: <%= (desenho && desenho.id) || 0 %>,
   canManage: <%= !!canManage %>,
-  data: <%- JSON.stringify(cadData || {objects:[]}) %>
+  data: <%- JSON.stringify(cadData || { objects: [], layers: {}, activeTool: 'select' }) %>
 };
 </script>
 <script src="/js/desenho-tecnico-cad.js"></script>
