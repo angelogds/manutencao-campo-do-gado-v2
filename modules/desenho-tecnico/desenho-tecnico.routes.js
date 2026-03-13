@@ -17,6 +17,10 @@ router.get('/dashboard', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.d
 router.get('/novo', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.novo));
 router.post('/', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.create));
 router.get('/biblioteca', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.biblioteca));
+router.post('/biblioteca/:blocoId/duplicar', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.duplicarBloco));
+router.post('/gerar-a-partir-da-tracagem/:origem/:id', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.integrarTracagem));
+router.post('/integrar/tracagem', requireLogin, requireRole(MANAGE_ACCESS), withMenu((req, res) => { req.params = { origem: 'tracagem', id: req.body.id }; return ctrl.integrarTracagem(req, res); }));
+router.get('/abrir-de-tracagem/:origem/:id', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.integrarTracagem));
 
 router.get('/:id', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.show));
 router.get('/:id/editar', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.edit));
@@ -26,6 +30,10 @@ router.post('/:id/duplicar', requireLogin, requireRole(MANAGE_ACCESS), withMenu(
 router.post('/:id/pdf', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.gerarPdf));
 router.get('/:id/svg', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.gerarSvg));
 router.post('/:id/vincular', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.vincularEquipamento));
+router.post('/:id/camadas', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.adicionarCamada));
+router.post('/:id/camadas/:camadaId', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.atualizarCamada));
+router.post('/:id/blocos/inserir', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.inserirBloco));
+router.post('/:id/cotas', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.adicionarCota));
 router.get('/:id/revisoes', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.revisoes));
 
 module.exports = router;

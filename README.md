@@ -63,3 +63,34 @@ npm run dev
    npm ci && npm run migrate && npm start
    ```
 4. O módulo gera PDFs em `/data/uploads/desenho-tecnico-pdf` automaticamente quando o volume está configurado.
+
+## Desenho Técnico – Fase 2
+
+A Fase 2 do módulo **Desenho Técnico** adiciona uma base de mini CAD industrial com:
+
+- Camadas técnicas (`geometria_principal`, `linhas_de_centro`, `cotas`, `textos`, `furos`, `construcao`, `solda`, `observacoes`, `planificacao`).
+- Biblioteca de **Blocos Técnicos** com duplicação e inserção por instância.
+- Cotas avançadas: cadeia, baseline, angular, raio, diâmetro, entre centros e padrão de furação.
+- Integração direta com Traçagem para gerar/abrir desenho técnico automaticamente.
+
+### Novas rotas
+
+- `POST /desenho-tecnico/integrar/tracagem`
+- `POST /desenho-tecnico/gerar-a-partir-da-tracagem/:origem/:id`
+- `GET /desenho-tecnico/abrir-de-tracagem/:origem/:id`
+- `POST /desenho-tecnico/:id/camadas`
+- `POST /desenho-tecnico/:id/camadas/:camadaId`
+- `POST /desenho-tecnico/:id/blocos/inserir`
+- `POST /desenho-tecnico/:id/cotas`
+
+### Teste local rápido
+
+1. Suba a aplicação normalmente (`npm start`).
+2. Crie/abra um desenho e valide os painéis de Camadas, Blocos e Cotas.
+3. Em Traçagem, abra uma peça suportada e use **Gerar desenho técnico**.
+4. Gere PDF técnico e confirme renderização de camadas visíveis e cotas.
+
+### Railway
+
+- Mantida compatibilidade com execução padrão no Railway (Node + SQLite).
+- Migrations incrementais aplicadas automaticamente no boot (`database/migrate.js`).
