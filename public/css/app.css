@@ -323,3 +323,16 @@ textarea{ min-height:110px; resize:vertical; }
 .dt-col{display:grid;gap:8px}
 .dt-svg-pane{min-height:420px;border:1px solid #dbe3ec;border-radius:12px;background:#fff;overflow:auto}
 @media (max-width: 1200px){.dt-editor{grid-template-columns:1fr}}
+
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
+.badge-param{background:#dcfce7;color:#166534}
+.badge-cad{background:#dbeafe;color:#1d4ed8}
+.btn-dark{background:#0f172a;color:#fff;border-color:#0f172a}
+.cad-layout{display:grid;grid-template-columns:220px 1fr 320px;gap:12px;align-items:start}
+.cad-tool-list{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cad-tool{font-size:12px;text-transform:uppercase;padding:6px}
+.cad-canvas-wrap{display:grid;gap:8px}
+.cad-canvas-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#cadCanvas{width:100%;height:640px;border:1px solid #dbe3ec;border-radius:10px;background:#fff}
+#cad3dCanvas{border:1px solid #dbe3ec;border-radius:8px;background:#020617;width:100%;height:auto}
+@media (max-width: 1200px){.cad-layout{grid-template-columns:1fr}}

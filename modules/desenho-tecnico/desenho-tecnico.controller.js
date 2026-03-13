@@ -17,6 +17,7 @@ function dashboard(req, res) {
     total: desenhos.length,
     modelos: service.listBiblioteca({}).length,
     pdfs: desenhos.reduce((acc, d) => acc + Number(d.total_pdfs || 0), 0),
+    cad: desenhos.filter((d) => d.tipo_origem === 'cad').length,
   };
   const categoryCards = categorias.map((cat) => ({ nome: cat, total: desenhos.filter((d) => d.categoria === cat).length }));
 
@@ -32,6 +33,7 @@ function index(req, res) {
   const filtros = {
     categoria: String(req.query.categoria || '').toUpperCase(),
     subtipo: String(req.query.subtipo || '').toUpperCase(),
+    tipo_origem: String(req.query.tipo_origem || '').toLowerCase(),
     q: String(req.query.q || '').trim(),
   };
   return base(res, 'desenho-tecnico/index', {
@@ -44,7 +46,7 @@ function index(req, res) {
 function novo(req, res) {
   return base(res, 'desenho-tecnico/form', {
     title: 'Novo Desenho Técnico',
-    desenho: { revisao: 0, status: 'ATIVO' },
+    desenho: { revisao: 0, status: 'ATIVO', tipo_origem: 'parametrico' },
     equipamentos: equipamentosService.list(),
     mode: 'create',
     canManage: req.can && req.can('desenho_tecnico_manage'),
@@ -62,6 +64,7 @@ function create(req, res) {
     ...req.body,
     categoria: String(req.body.categoria || '').toUpperCase(),
     subtipo: String(req.body.subtipo || '').toUpperCase(),
+    tipo_origem: 'parametrico',
     equipamento_id: req.body.equipamento_id || null,
     criado_por: req.session?.user?.id || null,
     props_json: JSON.stringify(validation.params),
@@ -74,6 +77,50 @@ function create(req, res) {
   return res.redirect(`/desenho-tecnico/${id}`);
 }
 
+function novoCad(req, res) {
+  return base(res, 'desenho-tecnico/cad-form', {
+    title: 'Novo Desenho CAD',
+    desenho: { revisao: 0, status: 'ATIVO', tipo_origem: 'cad' },
+    equipamentos: equipamentosService.list(),
+    mode: 'create',
+    canManage: req.can && req.can('desenho_tecnico_manage'),
+  });
+}
+
+function createCad(req, res) {
+  const codigo = String(req.body.codigo || '').trim();
+  const titulo = String(req.body.titulo || '').trim();
+  if (!codigo || !titulo) {
+    req.flash('error', 'Código e título são obrigatórios para desenho CAD.');
+    return res.redirect('/desenho-tecnico/cad/novo');
+  }
+
+  const id = service.create({
+    ...req.body,
+    codigo,
+    titulo,
+    categoria: String(req.body.categoria || 'CHAPARIA').toUpperCase(),
+    subtipo: String(req.body.subtipo || 'BASE_SIMPLES').toUpperCase(),
+    equipamento_id: req.body.equipamento_id || null,
+    tipo_origem: 'cad',
+    modo_cad_ativo: 1,
+    json_cad: JSON.stringify({
+      codigo,
+      titulo,
+      gridStep: 25,
+      snapEnabled: true,
+      activeLayer: 'geometria_principal',
+      layers: service.CAD_LAYERS.reduce((acc, name, idx) => ({ ...acc, [name]: { color: ['#0f172a', '#0ea5e9', '#16a34a', '#7c3aed', '#dc2626', '#64748b', '#ea580c'][idx] || '#0f172a', visible: true, locked: false } }), {}),
+      objects: [],
+      history: [],
+    }),
+    criado_por: req.session?.user?.id || null,
+  });
+
+  req.flash('success', 'Desenho CAD criado.');
+  return res.redirect(`/desenho-tecnico/cad/${id}/editor`);
+}
+
 function show(req, res) {
   const desenho = service.getById(req.params.id);
   if (!desenho) return res.status(404).render('errors/404', { title: 'Não encontrado' });
@@ -84,6 +131,53 @@ function show(req, res) {
     svgPreview: service.generateSvg(desenho),
     canManage: req.can && req.can('desenho_tecnico_manage'),
   });
+}
+
+function showCad(req, res) {
+  const desenho = service.getById(req.params.id);
+  if (!desenho || desenho.tipo_origem !== 'cad') return res.status(404).render('errors/404', { title: 'CAD não encontrado' });
+  return base(res, 'desenho-tecnico/cad-show', {
+    title: `${desenho.codigo} • CAD`,
+    desenho,
+    revisoes: service.listRevisoes(desenho.id),
+    canManage: req.can && req.can('desenho_tecnico_manage'),
+    svgPreview: service.generateSvg(desenho),
+  });
+}
+
+function cadEditor(req, res) {
+  const desenho = service.getById(req.params.id);
+  if (!desenho || desenho.tipo_origem !== 'cad') return res.status(404).render('errors/404', { title: 'CAD não encontrado' });
+  return base(res, 'desenho-tecnico/cad-editor', {
+    title: `${desenho.codigo} • Editor CAD`,
+    desenho,
+    layers: service.CAD_LAYERS,
+    cadData: desenho.cad_data || { objects: [] },
+    canManage: req.can && req.can('desenho_tecnico_manage'),
+  });
+}
+
+function saveCad(req, res) {
+  const desenho = service.getById(req.params.id);
+  if (!desenho || desenho.tipo_origem !== 'cad') return res.status(404).json({ ok: false, error: 'CAD não encontrado' });
+
+  try {
+    const result = service.saveCad(desenho.id, req.body.cad_json || req.body, req.session?.user?.id || null);
+    return res.json({ ok: true, ...result });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e.message || String(e) });
+  }
+}
+
+function renderCad3d(req, res) {
+  const desenho = service.getById(req.params.id);
+  if (!desenho || desenho.tipo_origem !== 'cad') return res.status(404).json({ ok: false, error: 'CAD não encontrado' });
+
+  const cadPayload = desenho.cad_data || {};
+  if (!service.isCad3dCompatible(cadPayload)) {
+    return res.status(422).json({ ok: false, error: 'Desenho CAD sem geometria compatível com extrusão simples.' });
+  }
+  return res.json({ ok: true, preview3d: service.build3dFromCad(cadPayload) });
 }
 
 function edit(req, res) {
@@ -255,7 +349,13 @@ module.exports = {
   index,
   novo,
   create,
+  novoCad,
+  createCad,
   show,
+  showCad,
+  cadEditor,
+  saveCad,
+  renderCad3d,
   edit,
   update,
   remove,

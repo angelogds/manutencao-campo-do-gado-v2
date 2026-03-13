@@ -1,0 +1,17 @@
+<% layout("layout") %>
+<section class="card" style="display:flex;justify-content:space-between;align-items:center;">
+  <h1>Novo Desenho CAD</h1>
+  <a class="btn" href="/desenho-tecnico">Voltar</a>
+</section>
+
+<form class="card" method="POST" action="/desenho-tecnico/cad" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;">
+  <input class="input" name="codigo" placeholder="Código CAD" required>
+  <input class="input" name="titulo" placeholder="Título" required>
+  <input class="input" name="categoria" placeholder="Categoria" value="CHAPARIA">
+  <input class="input" name="subtipo" placeholder="Subtipo" value="BASE_SIMPLES">
+  <input class="input" name="material" placeholder="Material">
+  <input class="input" type="number" min="0" name="revisao" placeholder="Revisão" value="0">
+  <select class="input" name="equipamento_id"><option value="">Equipamento vinculado</option><% (equipamentos||[]).forEach((e)=>{ %><option value="<%=e.id%>"><%=e.codigo || ('#'+e.id)%> - <%=e.nome%></option><% }) %></select>
+  <textarea class="input" name="observacoes" placeholder="Observações CAD"></textarea>
+  <button class="btn btn-green" type="submit">Criar e abrir Editor CAD</button>
+</form>

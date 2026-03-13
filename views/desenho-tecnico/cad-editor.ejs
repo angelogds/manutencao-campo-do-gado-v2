@@ -1,0 +1,53 @@
+<% layout("layout") %>
+<section class="card" style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+  <h1>Editor CAD • <%= desenho.codigo %></h1>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button class="btn btn-green" type="button" id="cadSaveBtn">Salvar</button>
+    <button class="btn" type="button" id="cadUndoBtn">Desfazer</button>
+    <button class="btn" type="button" id="cadRedoBtn">Refazer</button>
+    <a class="btn" href="/desenho-tecnico/cad/<%= desenho.id %>/pdf">PDF</a>
+    <button class="btn" type="button" id="cadRender3dBtn">Alternar 2D/3D</button>
+    <a class="btn" href="/desenho-tecnico/cad/<%= desenho.id %>">Visualizar</a>
+  </div>
+</section>
+
+<section class="cad-layout">
+  <aside class="card cad-tools">
+    <h3>Ferramentas</h3>
+    <div class="cad-tool-list">
+      <% ['select','move','erase','duplicate','line','rect','circle','arc','polyline','text','hole','centerline','dim_h','dim_v','dim_diameter','dim_radius','dim_angle','dim_centers','center_mark','note','pan','zoom'].forEach((tool)=>{ %>
+        <button class="btn cad-tool" data-tool="<%= tool %>" type="button"><%= tool %></button>
+      <% }) %>
+    </div>
+  </aside>
+
+  <article class="card cad-canvas-wrap">
+    <div class="cad-canvas-toolbar">
+      <label><input type="checkbox" id="cadGridToggle" checked> Grade</label>
+      <label><input type="checkbox" id="cadSnapToggle" checked> Snap</label>
+      <label>Camada ativa
+        <select id="cadLayerSelect" class="input"></select>
+      </label>
+    </div>
+    <svg id="cadCanvas" viewBox="0 0 1200 760"></svg>
+  </article>
+
+  <aside class="card cad-right">
+    <h3>Propriedades</h3>
+    <div id="cadProperties">Selecione um objeto para editar propriedades.</div>
+    <h3>Camadas</h3>
+    <div id="cadLayers"></div>
+    <h3>Preview 3D</h3>
+    <canvas id="cad3dCanvas" width="320" height="220"></canvas>
+    <small id="cad3dHint">Prévia 3D disponível apenas para geometrias fechadas simples.</small>
+  </aside>
+</section>
+
+<script>
+window.CAD_INITIAL = {
+  desenhoId: <%= desenho.id %>,
+  canManage: <%= !!canManage %>,
+  data: <%- JSON.stringify(cadData || {objects:[]}) %>
+};
+</script>
+<script src="/js/desenho-tecnico-cad.js"></script>
