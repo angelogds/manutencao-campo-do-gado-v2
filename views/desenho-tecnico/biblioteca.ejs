@@ -1,6 +1,6 @@
 <% layout("layout") %>
 <section class="card" style="display:flex;justify-content:space-between;align-items:center;">
-  <h1>Biblioteca Técnica</h1>
+  <h1>Blocos Técnicos</h1>
   <a class="btn" href="/desenho-tecnico">Voltar</a>
 </section>
 
@@ -20,7 +20,8 @@
       <h3><%= i.nome %></h3>
       <p><%= i.categoria %> / <%= i.subtipo %></p>
       <p><%= i.descricao || '-' %></p>
-      <pre><%= i.definicao_json %></pre>
+      <details><summary>Preview JSON</summary><pre><%= i.definicao_json %></pre></details>
+      <form method="POST" action="/desenho-tecnico/biblioteca/<%= i.id %>/duplicar"><button class="btn" type="submit">Duplicar bloco</button></form>
     </article>
   <% }) %>
 </section>
