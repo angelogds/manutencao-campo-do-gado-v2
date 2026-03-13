@@ -19,13 +19,13 @@
 <section class="card">
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>Código</th><th>Título</th><th>Tipo</th><th>Categoria</th><th>Subtipo</th><th>Status</th><th>Rev.</th><th>Ações</th></tr></thead>
+      <thead><tr><th>Código</th><th>Título</th><th>Tipo</th><th>Material</th><th>Equipamento</th><th>Rev.</th><th>Data</th><th>Ações</th></tr></thead>
       <tbody>
       <% if(!lista.length){ %><tr><td colspan="8">Nenhum desenho encontrado.</td></tr><% } %>
       <% lista.forEach((d)=>{ %>
         <tr>
-          <td><%= d.codigo %></td><td><%= d.titulo %></td><td><span class="badge <%= d.tipo_origem==='cad'?'badge-cad':'badge-param' %>"><%= d.tipo_origem==='cad'?'CAD':'Paramétrico' %></span></td><td><%= d.categoria %></td><td><%= d.subtipo %></td><td><%= d.status %></td><td>R<%= d.revisao %></td>
-          <td><a class="btn" href="<%= d.tipo_origem==='cad' ? ('/desenho-tecnico/cad/'+d.id) : ('/desenho-tecnico/'+d.id) %>">Abrir</a></td>
+          <td><%= d.codigo %></td><td><%= d.titulo %></td><td><span class="badge <%= d.tipo_origem==='cad'?'badge-cad':'badge-param' %>"><%= d.tipo_origem==='cad'?'CAD':'Paramétrico' %></span></td><td><%= d.material || '-' %></td><td><%= d.equipamento_nome || '-' %></td><td>R<%= d.revisao %></td><td><%= (d.atualizado_em || '').slice(0,10) %></td>
+          <td><a class="btn" href="<%= d.tipo_origem==='cad' ? ('/desenho-tecnico/cad/'+d.id+'/editor') : ('/desenho-tecnico/'+d.id) %>"><%= d.tipo_origem==='cad' ? 'Abrir Editor' : 'Abrir' %></a></td>
         </tr>
       <% }) %>
       </tbody>

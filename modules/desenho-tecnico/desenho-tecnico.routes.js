@@ -26,6 +26,7 @@ router.get('/cad/novo', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.
 router.post('/cad', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.createCad));
 router.get('/cad/:id', requireLogin, requireRole(VIEW_ACCESS), withMenu(ctrl.showCad));
 router.post('/cad/:id', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.saveCad));
+router.post('/cad/:id/metadata', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.updateCadMetadata));
 router.get('/cad/:id/editor', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.cadEditor));
 router.post('/cad/:id/objeto', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.saveCad));
 router.post('/cad/:id/render-3d', requireLogin, requireRole(MANAGE_ACCESS), withMenu(ctrl.renderCad3d));

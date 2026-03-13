@@ -88,32 +88,23 @@ function novoCad(req, res) {
 }
 
 function createCad(req, res) {
-  const codigo = String(req.body.codigo || '').trim();
-  const titulo = String(req.body.titulo || '').trim();
-  if (!codigo || !titulo) {
-    req.flash('error', 'Código e título são obrigatórios para desenho CAD.');
+  const validation = service.validateCadMetadata(req.body);
+  if (!validation.valid) {
+    req.flash('error', validation.errors.join(' '));
     return res.redirect('/desenho-tecnico/cad/novo');
   }
 
+  const { data } = validation;
+  const cadData = service.buildDefaultCadData(data);
+
   const id = service.create({
     ...req.body,
-    codigo,
-    titulo,
-    categoria: String(req.body.categoria || 'CHAPARIA').toUpperCase(),
-    subtipo: String(req.body.subtipo || 'BASE_SIMPLES').toUpperCase(),
-    equipamento_id: req.body.equipamento_id || null,
+    ...data,
+    categoria: 'CAD',
+    subtipo: 'DESENHO_MANUAL_2D',
     tipo_origem: 'cad',
     modo_cad_ativo: 1,
-    json_cad: JSON.stringify({
-      codigo,
-      titulo,
-      gridStep: 25,
-      snapEnabled: true,
-      activeLayer: 'geometria_principal',
-      layers: service.CAD_LAYERS.reduce((acc, name, idx) => ({ ...acc, [name]: { color: ['#0f172a', '#0ea5e9', '#16a34a', '#7c3aed', '#dc2626', '#64748b', '#ea580c'][idx] || '#0f172a', visible: true, locked: false } }), {}),
-      objects: [],
-      history: [],
-    }),
+    json_cad: JSON.stringify(cadData),
     criado_por: req.session?.user?.id || null,
   });
 
@@ -148,13 +139,33 @@ function showCad(req, res) {
 function cadEditor(req, res) {
   const desenho = service.getById(req.params.id);
   if (!desenho || desenho.tipo_origem !== 'cad') return res.status(404).render('errors/404', { title: 'CAD não encontrado' });
+  const cadData = desenho.cad_data || service.buildDefaultCadData({
+    codigo: desenho.codigo,
+    titulo: desenho.titulo,
+    material: desenho.material,
+    equipamento_id: desenho.equipamento_id,
+    observacoes: desenho.observacoes,
+  });
   return base(res, 'desenho-tecnico/cad-editor', {
     title: `${desenho.codigo} • Editor CAD`,
     desenho,
     layers: service.CAD_LAYERS,
-    cadData: desenho.cad_data || { objects: [] },
+    cadData,
+    equipamentos: equipamentosService.list(),
     canManage: req.can && req.can('desenho_tecnico_manage'),
   });
+}
+
+function updateCadMetadata(req, res) {
+  const desenho = service.getById(req.params.id);
+  if (!desenho || desenho.tipo_origem !== 'cad') return res.status(404).json({ ok: false, error: 'CAD não encontrado' });
+
+  try {
+    const data = service.updateCadMetadata(desenho.id, req.body || {});
+    return res.json({ ok: true, data });
+  } catch (e) {
+    return res.status(400).json({ ok: false, error: e.message || String(e) });
+  }
 }
 
 function saveCad(req, res) {
@@ -356,6 +367,7 @@ module.exports = {
   cadEditor,
   saveCad,
   renderCad3d,
+  updateCadMetadata,
   edit,
   update,
   remove,

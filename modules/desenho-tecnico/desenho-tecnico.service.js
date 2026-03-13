@@ -5,11 +5,31 @@ const integration = require('./desenho-tecnico.integration.service');
 
 const CAD_LAYERS = ['geometria_principal', 'linhas_de_centro', 'cotas', 'textos', 'furos', 'construcao', 'observacoes'];
 
+const CAD_LAYER_COLORS = {
+  geometria_principal: '#0f172a',
+  linhas_de_centro: '#0284c7',
+  cotas: '#166534',
+  textos: '#7c3aed',
+  furos: '#dc2626',
+  construcao: '#64748b',
+  observacoes: '#92400e',
+};
+
 function parseParams(raw = {}) {
   if (typeof raw === 'string') {
     try { return JSON.parse(raw); } catch (_e) { return {}; }
   }
   return raw || {};
+}
+
+function parseJson(raw, fallback) {
+  if (raw == null || raw === '') return fallback;
+  if (typeof raw === 'object') return raw;
+  try {
+    return JSON.parse(raw);
+  } catch (_e) {
+    return fallback;
+  }
 }
 
 function slugifyLayer(name = '') {
@@ -39,6 +59,10 @@ function create(payload) {
     origem_modulo: payload.origem_modulo || null,
     origem_referencia: payload.origem_referencia || null,
     origem_integracao_em: payload.origem_integracao_em || null,
+    tipo_origem: payload.tipo_origem || 'parametrico',
+    modo_cad_ativo: Number(payload.modo_cad_ativo || 0),
+    json_cad: payload.json_cad || null,
+    json_3d: payload.json_3d || null,
   });
 }
 
@@ -56,8 +80,6 @@ function saveCad(desenhoId, cadData, userId) {
   const payload = typeof cadData === 'string' ? JSON.parse(cadData) : cadData;
   const objetos = Array.isArray(payload.objects) ? payload.objects : [];
 
-  if (!objetos.length) throw new Error('Não é permitido salvar desenho CAD vazio.');
-
   for (const obj of objetos) {
     if (obj.radius != null && Number(obj.radius) <= 0) throw new Error('Raio inválido.');
     if (obj.thickness != null && Number(obj.thickness) < 0) throw new Error('Espessura negativa não permitida.');
@@ -74,6 +96,53 @@ function saveCad(desenhoId, cadData, userId) {
   repo.replaceCadObjects(desenhoId, objetos);
   repo.insertCadHistory(desenhoId, 'save', JSON.stringify({ totalObjetos: objetos.length, compatible3d }), userId);
   return { compatible3d, preview3d };
+}
+
+function normalizeCadMetadata(payload = {}) {
+  return {
+    codigo: String(payload.codigo || '').trim(),
+    titulo: String(payload.titulo || '').trim(),
+    material: String(payload.material || '').trim() || null,
+    equipamento_id: payload.equipamento_id ? Number(payload.equipamento_id) : null,
+    observacoes: String(payload.observacoes || '').trim() || null,
+  };
+}
+
+function validateCadMetadata(payload = {}) {
+  const data = normalizeCadMetadata(payload);
+  const errors = [];
+  if (!data.codigo) errors.push('Código é obrigatório.');
+  if (!data.titulo) errors.push('Título é obrigatório.');
+  return { valid: errors.length === 0, errors, data };
+}
+
+function buildDefaultCadData(meta = {}) {
+  const layers = CAD_LAYERS.reduce((acc, layer) => {
+    acc[layer] = { color: CAD_LAYER_COLORS[layer] || '#0f172a', visible: true, locked: false };
+    return acc;
+  }, {});
+  return {
+    codigo: meta.codigo || '',
+    titulo: meta.titulo || '',
+    material: meta.material || '',
+    equipamento_id: meta.equipamento_id || null,
+    observacoes: meta.observacoes || '',
+    gridStep: 20,
+    snapEnabled: true,
+    showGrid: true,
+    activeLayer: 'geometria_principal',
+    layers,
+    objects: [],
+    dimensions: [],
+    history: [],
+  };
+}
+
+function updateCadMetadata(desenhoId, payload = {}) {
+  const validation = validateCadMetadata(payload);
+  if (!validation.valid) throw new Error(validation.errors.join(' '));
+  repo.updateCadMetadata(desenhoId, validation.data);
+  return validation.data;
 }
 
 function isCad3dCompatible(payload = {}) {
@@ -257,4 +326,7 @@ module.exports = {
   listCotas,
   duplicateBloco,
   integrarTracagem,
+  validateCadMetadata,
+  buildDefaultCadData,
+  updateCadMetadata,
 };
