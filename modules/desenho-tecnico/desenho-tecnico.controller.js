@@ -47,6 +47,7 @@ function novo(req, res) {
     desenho: { revisao: 0, status: 'ATIVO' },
     equipamentos: equipamentosService.list(),
     mode: 'create',
+    canManage: req.can && req.can('desenho_tecnico_manage'),
   });
 }
 
@@ -81,10 +82,7 @@ function show(req, res) {
     desenho,
     revisoes: service.listRevisoes(desenho.id),
     svgPreview: service.generateSvg(desenho),
-    camadas: service.listCamadas(desenho.id),
-    blocosInstancias: service.listInstancias(desenho.id),
-    cotas: service.listCotas(desenho.id),
-    bibliotecaBlocos: service.listBiblioteca({}),
+    canManage: req.can && req.can('desenho_tecnico_manage'),
   });
 }
 
@@ -96,6 +94,7 @@ function edit(req, res) {
     desenho,
     equipamentos: equipamentosService.list(),
     mode: 'edit',
+    canManage: req.can && req.can('desenho_tecnico_manage'),
   });
 }
 
@@ -144,9 +143,8 @@ async function gerarPdf(req, res) {
   const desenho = service.getById(req.params.id);
   if (!desenho) return res.status(404).render('errors/404', { title: 'Não encontrado' });
 
-  const params = desenho.props_json;
   try {
-    const info = await service.generatePdf(desenho, params);
+    const info = await service.generatePdf(desenho, desenho.props_json);
     req.flash('success', 'PDF técnico gerado.');
     return res.redirect(info.relPath);
   } catch (e) {
