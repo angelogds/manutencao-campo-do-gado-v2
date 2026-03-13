@@ -59,8 +59,8 @@ function getById(id) {
 function create(data) {
   const info = db.prepare(`
     INSERT INTO desenhos_tecnicos
-    (codigo, titulo, categoria, subtipo, descricao, equipamento_id, status, revisao, material, observacoes, historico_revisao, criado_por, origem_modulo, origem_referencia, origem_integracao_em, criado_em, atualizado_em)
-    VALUES (@codigo, @titulo, @categoria, @subtipo, @descricao, @equipamento_id, @status, @revisao, @material, @observacoes, @historico_revisao, @criado_por, @origem_modulo, @origem_referencia, @origem_integracao_em, datetime('now'), datetime('now'))
+    (codigo, titulo, categoria, subtipo, descricao, equipamento_id, status, revisao, material, observacoes, historico_revisao, criado_por, origem_modulo, origem_referencia, origem_integracao_em, tipo_origem, modo_cad_ativo, json_cad, json_3d, criado_em, atualizado_em)
+    VALUES (@codigo, @titulo, @categoria, @subtipo, @descricao, @equipamento_id, @status, @revisao, @material, @observacoes, @historico_revisao, @criado_por, @origem_modulo, @origem_referencia, @origem_integracao_em, @tipo_origem, @modo_cad_ativo, @json_cad, @json_3d, datetime('now'), datetime('now'))
   `).run(data);
   const id = Number(info.lastInsertRowid);
   seedDefaultLayers(id);
@@ -73,10 +73,32 @@ function update(id, data) {
     SET codigo=@codigo, titulo=@titulo, categoria=@categoria, subtipo=@subtipo, descricao=@descricao,
         equipamento_id=@equipamento_id, status=@status, revisao=@revisao, material=@material,
         observacoes=@observacoes, historico_revisao=@historico_revisao,
+        tipo_origem=@tipo_origem, modo_cad_ativo=@modo_cad_ativo,
+        json_cad=@json_cad, json_3d=@json_3d,
         origem_modulo=@origem_modulo, origem_referencia=@origem_referencia, origem_integracao_em=@origem_integracao_em,
         atualizado_em=datetime('now')
     WHERE id=@id
   `).run({ ...data, id: Number(id) });
+}
+
+function updateCadMetadata(id, payload = {}) {
+  db.prepare(`
+    UPDATE desenhos_tecnicos
+    SET codigo=@codigo,
+        titulo=@titulo,
+        material=@material,
+        equipamento_id=@equipamento_id,
+        observacoes=@observacoes,
+        atualizado_em=datetime('now')
+    WHERE id=@id
+  `).run({
+    id: Number(id),
+    codigo: payload.codigo,
+    titulo: payload.titulo,
+    material: payload.material || null,
+    equipamento_id: payload.equipamento_id || null,
+    observacoes: payload.observacoes || null,
+  });
 }
 
 function updateCadData(id, payload = {}) {
@@ -278,6 +300,7 @@ module.exports = {
   getById,
   create,
   update,
+  updateCadMetadata,
   updateCadData,
   replaceCadObjects,
   insertCadHistory,
