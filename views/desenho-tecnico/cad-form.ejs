@@ -6,8 +6,9 @@
 
 <form class="card cad-minimal-form" method="POST" action="/desenho-tecnico/cad">
   <div>
-    <label>Código *</label>
-    <input class="input" name="codigo" placeholder="Ex.: CAD-001" value="<%= (desenho && desenho.codigo) || '' %>" required>
+    <label>Código</label>
+    <input class="input" name="codigo" placeholder="Vazio = auto (CAD0001, CAD0002...)" value="<%= (desenho && desenho.codigo) || '' %>">
+    <small>Se informado, deve ser único.</small>
   </div>
   <div>
     <label>Título *</label>

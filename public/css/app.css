@@ -354,3 +354,15 @@ textarea{ min-height:110px; resize:vertical; }
 .cad-meta-grid{display:grid;grid-template-columns:1fr;gap:6px}
 .cad-footer{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px;background:#0b1220;color:#cbd5e1;border:1px solid #1f2937}
 @media (max-width: 1200px){.cad-layout,.cad-workspace{grid-template-columns:1fr}}
+
+
+.cad-shell-real{padding:0;overflow:hidden}
+.cad-toolbar-fixed{position:sticky;top:0;z-index:20;background:#0b1220;border-bottom:1px solid #1f2937;padding:8px;display:grid;gap:8px}
+.cad-toolbar-group{display:flex;gap:6px;flex-wrap:wrap}
+.cad-workspace-real{grid-template-columns:220px 1fr 340px;min-height:70vh;padding:10px}
+.cad-left-tools{display:grid;gap:6px;align-content:start}
+.cad-left-tool{text-align:left}
+.cad-editor-core{padding:0;overflow:hidden}
+#cadCanvas{width:100%;height:100%;min-height:66vh;background:#0a0f1d;border:1px solid #1e293b;cursor:crosshair}
+.cad-statusbar-fixed{background:#0b1220;color:#cbd5e1;border:1px solid #1f2937;border-radius:0;padding:8px 10px;font-size:12px}
+@media (max-width: 1200px){.cad-workspace-real{grid-template-columns:1fr}}
