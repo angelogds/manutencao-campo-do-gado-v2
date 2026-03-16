@@ -2,6 +2,7 @@ const repo = require('./desenho-tecnico.repository');
 const svg = require('./desenho-tecnico.svg.service');
 const pdf = require('./desenho-tecnico.pdf.service');
 const integration = require('./desenho-tecnico.integration.service');
+const cadService = require('./desenho-tecnico.cad.service');
 
 const CAD_LAYERS = ['geometria_principal', 'linhas_de_centro', 'cotas', 'textos', 'furos', 'construcao', 'observacoes'];
 
@@ -14,6 +15,36 @@ const CAD_LAYER_COLORS = {
   construcao: '#64748b',
   observacoes: '#92400e',
 };
+
+const SQLITE_UNIQUE_CONSTRAINT = 'SQLITE_CONSTRAINT_UNIQUE';
+
+function isUniqueCodigoError(error) {
+  if (!error) return false;
+  return String(error.code || '') === SQLITE_UNIQUE_CONSTRAINT
+    || String(error.message || '').toLowerCase().includes('desenhos_tecnicos.codigo');
+}
+
+function parseCadCodeSequence(codigo = '') {
+  const match = String(codigo || '').toUpperCase().match(/^CAD(\d+)$/);
+  if (!match) return null;
+  return Number(match[1]);
+}
+
+function nextCadCodeFromLatest(latestCode = '') {
+  const current = parseCadCodeSequence(latestCode);
+  const next = Number.isFinite(current) ? (current + 1) : 1;
+  return `CAD${String(next).padStart(4, '0')}`;
+}
+
+function generateUniqueCadCode() {
+  const latest = repo.getLastCadCodeLike();
+  let candidate = nextCadCodeFromLatest(latest?.codigo || '');
+  for (let i = 0; i < 1000; i += 1) {
+    if (!repo.getByCodigo(candidate)) return candidate;
+    candidate = nextCadCodeFromLatest(candidate);
+  }
+  throw new Error('Não foi possível gerar um código CAD único automaticamente.');
+}
 
 function parseParams(raw = {}) {
   if (typeof raw === 'string') {
@@ -77,7 +108,8 @@ function update(id, payload) {
 }
 
 function saveCad(desenhoId, cadData, userId) {
-  const payload = typeof cadData === 'string' ? JSON.parse(cadData) : cadData;
+  const payloadRaw = typeof cadData === 'string' ? JSON.parse(cadData) : cadData;
+  const payload = cadService.sanitizeCadData(payloadRaw || {});
   const objetos = Array.isArray(payload.objects) ? payload.objects : [];
 
   for (const obj of objetos) {
@@ -100,31 +132,45 @@ function saveCad(desenhoId, cadData, userId) {
 
 
 function createCadDrawing(payload = {}, userId = null) {
-  const validation = validateCadMetadata(payload || {});
+  const normalized = normalizeCadMetadata(payload || {});
+  const validation = validateCadMetadata(normalized);
   if (!validation.valid) {
     return { ok: false, id: null, desenho: null, error: validation.errors.join(' ') };
   }
 
-  try {
-    const data = validation.data;
-    const cadData = buildDefaultCadData(data);
-    const id = create({
-      ...data,
-      categoria: 'CAD',
-      subtipo: 'DESENHO_MANUAL_2D',
-      tipo_origem: 'cad',
-      modo_cad_ativo: 1,
-      json_cad: JSON.stringify(cadData),
-      criado_por: userId || null,
-      status: 'ATIVO',
-      revisao: 0,
-    });
-    const desenho = getById(id);
-    if (!desenho) throw new Error(`Desenho CAD criado com id ${id}, mas não foi encontrado em seguida.`);
-    return { ok: true, id, desenho, error: null };
-  } catch (error) {
-    return { ok: false, id: null, desenho: null, error: error?.message || String(error) };
+  let codigo = validation.data.codigo || generateUniqueCadCode();
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      const data = { ...validation.data, codigo };
+      const cadData = buildDefaultCadData(data);
+      const id = create({
+        ...data,
+        categoria: 'CAD',
+        subtipo: 'DESENHO_MANUAL_2D',
+        tipo_origem: 'cad',
+        modo_cad_ativo: 1,
+        json_cad: JSON.stringify(cadData),
+        criado_por: userId || null,
+        status: 'ATIVO',
+        revisao: 0,
+      });
+      const desenho = getById(id);
+      if (!desenho) throw new Error(`Desenho CAD criado com id ${id}, mas não foi encontrado em seguida.`);
+      return { ok: true, id, desenho, error: null };
+    } catch (error) {
+      if (isUniqueCodigoError(error) && !validation.data.codigo) {
+        codigo = nextCadCodeFromLatest(codigo);
+        continue;
+      }
+      if (isUniqueCodigoError(error) && validation.data.codigo) {
+        return { ok: false, id: null, desenho: null, error: 'Código já existe. Informe outro código ou deixe em branco para gerar automaticamente.' };
+      }
+      return { ok: false, id: null, desenho: null, error: error?.message || String(error) };
+    }
   }
+
+  return { ok: false, id: null, desenho: null, error: 'Não foi possível criar o desenho CAD com um código único. Tente novamente.' };
 }
 
 function normalizeCadMetadata(payload = {}) {
@@ -137,11 +183,18 @@ function normalizeCadMetadata(payload = {}) {
   };
 }
 
-function validateCadMetadata(payload = {}) {
+function validateCadMetadata(payload = {}, options = {}) {
   const data = normalizeCadMetadata(payload);
   const errors = [];
-  if (!data.codigo) errors.push('Código é obrigatório.');
   if (!data.titulo) errors.push('Título é obrigatório.');
+
+  if (data.codigo) {
+    const duplicate = options.excludeId
+      ? repo.getByCodigoExcludingId(data.codigo, options.excludeId)
+      : repo.getByCodigo(data.codigo);
+    if (duplicate) errors.push('Código já existe. Informe outro código ou deixe em branco para gerar automático.');
+  }
+
   return { valid: errors.length === 0, errors, data };
 }
 
@@ -168,10 +221,13 @@ function buildDefaultCadData(meta = {}) {
 }
 
 function updateCadMetadata(desenhoId, payload = {}) {
-  const validation = validateCadMetadata(payload);
+  const validation = validateCadMetadata(payload, { excludeId: desenhoId });
   if (!validation.valid) throw new Error(validation.errors.join(' '));
-  repo.updateCadMetadata(desenhoId, validation.data);
-  return validation.data;
+
+  const data = { ...validation.data };
+  if (!data.codigo) data.codigo = generateUniqueCadCode();
+  repo.updateCadMetadata(desenhoId, data);
+  return data;
 }
 
 function isCad3dCompatible(payload = {}) {

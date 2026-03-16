@@ -61,6 +61,14 @@ function getByCodigo(codigo) {
   return db.prepare('SELECT * FROM desenhos_tecnicos WHERE codigo=? LIMIT 1').get(String(codigo || '').trim());
 }
 
+function getByCodigoExcludingId(codigo, id) {
+  return db.prepare('SELECT * FROM desenhos_tecnicos WHERE codigo=? AND id<>? LIMIT 1').get(String(codigo || '').trim(), Number(id));
+}
+
+function getLastCadCodeLike() {
+  return db.prepare("SELECT codigo FROM desenhos_tecnicos WHERE codigo LIKE 'CAD%' ORDER BY codigo DESC LIMIT 1").get();
+}
+
 function create(data) {
   const info = db.prepare(`
     INSERT INTO desenhos_tecnicos
@@ -307,6 +315,8 @@ module.exports = {
   list,
   getById,
   getByCodigo,
+  getByCodigoExcludingId,
+  getLastCadCodeLike,
   create,
   update,
   updateCadMetadata,

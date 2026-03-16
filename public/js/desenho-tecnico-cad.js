@@ -3,25 +3,34 @@
   const svg = document.getElementById('cadCanvas');
   if (!svg) return;
 
+  const NS = 'http://www.w3.org/2000/svg';
   const statusBar = document.getElementById('cadStatusBar');
   const layerSelect = document.getElementById('cadLayerSelect');
   const layersBox = document.getElementById('cadLayers');
   const propsBox = document.getElementById('cadProperties');
 
+  const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2, 7)}`;
+  const dist = (a, b) => Math.hypot((b.x || 0) - (a.x || 0), (b.y || 0) - (a.y || 0));
+  const angle = (a, b) => (Math.atan2((b.y || 0) - (a.y || 0), (b.x || 0) - (a.x || 0)) * 180) / Math.PI;
+  const midpoint = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
   const state = {
-    tool: 'select',
+    tool: (initial.data && initial.data.activeTool) || 'select',
     selectedId: null,
-    drawing: null,
+    drawStart: null,
+    previewPoint: null,
     pointer: { x: 0, y: 0 },
-    viewport: { zoom: 1, panX: 0, panY: 0, panning: false, panStart: null },
     history: [],
     future: [],
+    view: { zoom: 1, panX: 0, panY: 0, panning: false, panOrigin: null },
     data: {
       gridStep: 20,
+      showGrid: true,
       snapEnabled: true,
       snapEndpoint: true,
+      snapMidpoint: true,
       snapCenter: true,
-      showGrid: true,
+      orthoEnabled: false,
       activeLayer: 'geometria_principal',
       layers: {},
       objects: [],
@@ -32,278 +41,347 @@
 
   if (!Object.keys(state.data.layers || {}).length) {
     state.data.layers = {
-      geometria_principal: { color: '#d9e3f0', visible: true, locked: false },
+      geometria_principal: { color: '#e2e8f0', visible: true, locked: false },
       linhas_de_centro: { color: '#38bdf8', visible: true, locked: false },
       cotas: { color: '#4ade80', visible: true, locked: false },
       textos: { color: '#a78bfa', visible: true, locked: false },
-      construcao: { color: '#94a3b8', visible: true, locked: false },
+      furos: { color: '#f87171', visible: true, locked: false },
+      construcao: { color: '#64748b', visible: true, locked: false },
       observacoes: { color: '#f59e0b', visible: true, locked: false },
     };
   }
 
-  const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2, 7)}`;
-  const dist = (a, b) => Math.hypot((b.x || 0) - (a.x || 0), (b.y || 0) - (a.y || 0));
-  const angle = (a, b) => (Math.atan2((b.y || 0) - (a.y || 0), (b.x || 0) - (a.x || 0)) * 180) / Math.PI;
-  const objectLength = (o) => (o.type === 'line' || o.type === 'centerline') ? Number(dist({ x: o.x, y: o.y }, { x: o.x2, y: o.y2 }).toFixed(2)) : null;
+  const root = document.createElementNS(NS, 'g');
+  const layerGrid = document.createElementNS(NS, 'g');
+  const layerEntities = document.createElementNS(NS, 'g');
+  const layerPreview = document.createElementNS(NS, 'g');
+  const layerDims = document.createElementNS(NS, 'g');
+  const layerSelection = document.createElementNS(NS, 'g');
+  root.append(layerGrid, layerEntities, layerPreview, layerDims, layerSelection);
+  svg.innerHTML = '';
+  svg.appendChild(root);
+
+  function setTool(tool) {
+    state.tool = tool;
+    state.drawStart = null;
+    state.previewPoint = null;
+    document.querySelectorAll('.cad-tool').forEach((btn) => btn.classList.toggle('btn-green', btn.dataset.tool === tool));
+    render();
+  }
 
   function pushHistory() {
     state.history.push(JSON.stringify(state.data));
-    if (state.history.length > 150) state.history.shift();
+    if (state.history.length > 100) state.history.shift();
     state.future = [];
   }
 
-  function nearestSnap(raw) {
-    const candidates = [];
-    if (state.data.snapEndpoint) {
-      for (const obj of state.data.objects) {
-        if (obj.x != null && obj.y != null) candidates.push({ x: obj.x, y: obj.y });
-        if (obj.x2 != null && obj.y2 != null) candidates.push({ x: obj.x2, y: obj.y2 });
-      }
-    }
-    if (state.data.snapCenter) {
-      for (const obj of state.data.objects) {
-        if (obj.type === 'circle') candidates.push({ x: obj.x, y: obj.y });
-      }
-    }
-    let best = null;
-    for (const c of candidates) {
-      const d = dist(raw, c);
-      if (d <= 12 && (!best || d < best.d)) best = { ...c, d };
-    }
-    return best;
-  }
-
   function getPoint(evt) {
-    const rect = svg.getBoundingClientRect();
-    const xCanvas = ((evt.clientX - rect.left) / rect.width) * 1600;
-    const yCanvas = ((evt.clientY - rect.top) / rect.height) * 900;
-    const xRaw = (xCanvas - state.viewport.panX) / state.viewport.zoom;
-    const yRaw = (yCanvas - state.viewport.panY) / state.viewport.zoom;
+    const pt = svg.createSVGPoint();
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+    const inv = svg.getScreenCTM().inverse();
+    const local = pt.matrixTransform(inv);
+    let x = (local.x - state.view.panX) / state.view.zoom;
+    let y = (local.y - state.view.panY) / state.view.zoom;
 
-    let x = xRaw;
-    let y = yRaw;
     if (state.data.snapEnabled) {
       const step = Number(state.data.gridStep || 20);
       x = Math.round(x / step) * step;
       y = Math.round(y / step) * step;
     }
 
-    const snap = nearestSnap({ x, y });
-    if (snap) {
-      x = snap.x;
-      y = snap.y;
+    const snapped = snapPoint({ x, y });
+    x = snapped.x;
+    y = snapped.y;
+
+    if (state.data.orthoEnabled && state.drawStart && ['line', 'centerline', 'dim_linear'].includes(state.tool)) {
+      const dx = Math.abs(x - state.drawStart.x);
+      const dy = Math.abs(y - state.drawStart.y);
+      if (dx >= dy) y = state.drawStart.y;
+      else x = state.drawStart.x;
     }
 
-    return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)), rawX: xRaw, rawY: yRaw };
+    return { x: Number(x.toFixed(2)), y: Number(y.toFixed(2)) };
+  }
+
+  function snapPoint(raw) {
+    if (!state.data.snapEnabled) return raw;
+    const candidates = [];
+    for (const obj of state.data.objects) {
+      if (state.data.snapEndpoint && obj.x != null && obj.y != null) candidates.push({ x: obj.x, y: obj.y });
+      if (state.data.snapEndpoint && obj.x2 != null && obj.y2 != null) candidates.push({ x: obj.x2, y: obj.y2 });
+      if (state.data.snapMidpoint && obj.x2 != null && obj.y2 != null) candidates.push(midpoint({ x: obj.x, y: obj.y }, { x: obj.x2, y: obj.y2 }));
+      if (state.data.snapCenter && obj.type === 'circle') candidates.push({ x: obj.x, y: obj.y });
+    }
+    let best = raw;
+    let bestD = 12;
+    for (const c of candidates) {
+      const d = dist(raw, c);
+      if (d < bestD) { best = c; bestD = d; }
+    }
+    return best;
   }
 
   function hitTest(point) {
-    let best = null;
-    for (const obj of state.data.objects) {
-      if ((obj.type === 'line' || obj.type === 'centerline') && point.x >= Math.min(obj.x, obj.x2) - 8 && point.x <= Math.max(obj.x, obj.x2) + 8 && point.y >= Math.min(obj.y, obj.y2) - 8 && point.y <= Math.max(obj.y, obj.y2) + 8) best = obj;
-      if (obj.type === 'rect' && point.x >= obj.x && point.x <= obj.x + obj.width && point.y >= obj.y && point.y <= obj.y + obj.height) best = obj;
-      if (obj.type === 'circle' && dist(point, { x: obj.x, y: obj.y }) <= obj.radius + 6) best = obj;
-      if (obj.type === 'text' && Math.abs(point.x - obj.x) <= 28 && Math.abs(point.y - obj.y) <= 16) best = obj;
+    for (let i = state.data.objects.length - 1; i >= 0; i -= 1) {
+      const obj = state.data.objects[i];
+      if (obj.type === 'line' || obj.type === 'centerline') {
+        if (point.x >= Math.min(obj.x, obj.x2) - 6 && point.x <= Math.max(obj.x, obj.x2) + 6 && point.y >= Math.min(obj.y, obj.y2) - 6 && point.y <= Math.max(obj.y, obj.y2) + 6) return obj;
+      }
+      if (obj.type === 'rect' && point.x >= obj.x && point.x <= obj.x + obj.width && point.y >= obj.y && point.y <= obj.y + obj.height) return obj;
+      if (obj.type === 'circle' && dist(point, { x: obj.x, y: obj.y }) <= obj.radius + 8) return obj;
+      if (obj.type === 'text' && Math.abs(point.x - obj.x) <= 40 && Math.abs(point.y - obj.y) <= 16) return obj;
     }
-    return best;
+    return null;
+  }
+
+  function createByDrag(start, end) {
+    const base = { id: uid(), layer: state.data.activeLayer };
+    if (state.tool === 'line' || state.tool === 'centerline') return { ...base, type: state.tool, x: start.x, y: start.y, x2: end.x, y2: end.y };
+    if (state.tool === 'rect') return { ...base, type: 'rect', x: Math.min(start.x, end.x), y: Math.min(start.y, end.y), width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y), rotation: 0 };
+    if (state.tool === 'circle') return { ...base, type: 'circle', x: start.x, y: start.y, radius: Number(dist(start, end).toFixed(2)) };
+    if (state.tool === 'arc') return { ...base, type: 'arc', x: start.x, y: start.y, x2: end.x, y2: end.y, angle: Number(angle(start, end).toFixed(2)) };
+    if (state.tool === 'dim_linear') return null;
+    if (state.tool === 'text') return { ...base, type: 'text', x: end.x, y: end.y, text: 'Texto técnico', size: 14 };
+    return null;
+  }
+
+  function renderGrid() {
+    layerGrid.innerHTML = '';
+    if (!state.data.showGrid) return;
+    const step = Number(state.data.gridStep || 20);
+    for (let x = 0; x <= 2200; x += step) {
+      const line = document.createElementNS(NS, 'line');
+      line.setAttribute('x1', x); line.setAttribute('y1', 0); line.setAttribute('x2', x); line.setAttribute('y2', 1400);
+      line.setAttribute('stroke', x % (step * 5) === 0 ? '#23314f' : '#18233d');
+      line.setAttribute('stroke-width', '1');
+      layerGrid.appendChild(line);
+    }
+    for (let y = 0; y <= 1400; y += step) {
+      const line = document.createElementNS(NS, 'line');
+      line.setAttribute('x1', 0); line.setAttribute('y1', y); line.setAttribute('x2', 2200); line.setAttribute('y2', y);
+      line.setAttribute('stroke', y % (step * 5) === 0 ? '#23314f' : '#18233d');
+      line.setAttribute('stroke-width', '1');
+      layerGrid.appendChild(line);
+    }
+  }
+
+  function drawObject(group, obj, isPreview) {
+    const color = (state.data.layers[obj.layer] && state.data.layers[obj.layer].color) || '#e2e8f0';
+    const stroke = isPreview ? '#facc15' : color;
+    if (obj.type === 'line' || obj.type === 'centerline' || obj.type === 'arc') {
+      const el = document.createElementNS(NS, 'line');
+      el.setAttribute('x1', obj.x); el.setAttribute('y1', obj.y); el.setAttribute('x2', obj.x2); el.setAttribute('y2', obj.y2);
+      el.setAttribute('stroke', stroke); el.setAttribute('stroke-width', obj.type === 'centerline' ? 1 : 2);
+      if (obj.type === 'centerline') el.setAttribute('stroke-dasharray', '10,6');
+      group.appendChild(el);
+      return;
+    }
+    if (obj.type === 'rect') {
+      const el = document.createElementNS(NS, 'rect');
+      el.setAttribute('x', obj.x); el.setAttribute('y', obj.y); el.setAttribute('width', obj.width); el.setAttribute('height', obj.height);
+      el.setAttribute('fill', 'transparent'); el.setAttribute('stroke', stroke); el.setAttribute('stroke-width', '2');
+      group.appendChild(el); return;
+    }
+    if (obj.type === 'circle') {
+      const el = document.createElementNS(NS, 'circle');
+      el.setAttribute('cx', obj.x); el.setAttribute('cy', obj.y); el.setAttribute('r', obj.radius);
+      el.setAttribute('fill', 'transparent'); el.setAttribute('stroke', stroke); el.setAttribute('stroke-width', '2');
+      group.appendChild(el); return;
+    }
+    if (obj.type === 'text') {
+      const el = document.createElementNS(NS, 'text');
+      el.setAttribute('x', obj.x); el.setAttribute('y', obj.y); el.setAttribute('fill', stroke); el.setAttribute('font-size', obj.size || 14);
+      el.textContent = obj.text || 'Texto';
+      group.appendChild(el);
+    }
+  }
+
+  function renderDimensions() {
+    layerDims.innerHTML = '';
+    for (const d of state.data.dimensions || []) {
+      const line = document.createElementNS(NS, 'line');
+      line.setAttribute('x1', d.x1); line.setAttribute('y1', d.y1); line.setAttribute('x2', d.x2); line.setAttribute('y2', d.y2);
+      line.setAttribute('stroke', '#4ade80'); line.setAttribute('stroke-width', '1.5');
+      layerDims.appendChild(line);
+      const text = document.createElementNS(NS, 'text');
+      text.setAttribute('x', (d.x1 + d.x2) / 2 + 6); text.setAttribute('y', (d.y1 + d.y2) / 2 - 6);
+      text.setAttribute('fill', '#86efac'); text.setAttribute('font-size', '12');
+      text.textContent = d.value;
+      layerDims.appendChild(text);
+    }
+  }
+
+  function renderEntities() {
+    layerEntities.innerHTML = '';
+    for (const obj of state.data.objects) {
+      if (state.data.layers[obj.layer] && state.data.layers[obj.layer].visible === false) continue;
+      drawObject(layerEntities, obj, false);
+    }
+  }
+
+  function renderPreview() {
+    layerPreview.innerHTML = '';
+    if (!state.drawStart || !state.previewPoint) return;
+    const obj = createByDrag(state.drawStart, state.previewPoint);
+    if (obj) drawObject(layerPreview, obj, true);
+  }
+
+  function renderSelection() {
+    layerSelection.innerHTML = '';
+    const sel = state.data.objects.find((o) => o.id === state.selectedId);
+    if (!sel) return;
+    if (sel.type === 'line' || sel.type === 'centerline') {
+      const mark = document.createElementNS(NS, 'line');
+      mark.setAttribute('x1', sel.x); mark.setAttribute('y1', sel.y); mark.setAttribute('x2', sel.x2); mark.setAttribute('y2', sel.y2);
+      mark.setAttribute('stroke', '#facc15'); mark.setAttribute('stroke-width', '5'); mark.setAttribute('opacity', '0.25');
+      layerSelection.appendChild(mark);
+    }
   }
 
   function renderLayersPanel() {
     const names = Object.keys(state.data.layers || {});
     layerSelect.innerHTML = names.map((name) => `<option value="${name}" ${state.data.activeLayer === name ? 'selected' : ''}>${name}</option>`).join('');
     layersBox.innerHTML = names.map((name) => {
-      const cfg = state.data.layers[name] || {};
+      const cfg = state.data.layers[name];
       return `<div class="cad-layer-row"><span>${name}</span><label><input type="checkbox" data-layer-visible="${name}" ${cfg.visible !== false ? 'checked' : ''}>visível</label><label><input type="checkbox" data-layer-locked="${name}" ${cfg.locked ? 'checked' : ''}>lock</label></div>`;
     }).join('');
   }
 
-  function renderProperties() {
-    const o = state.data.objects.find((i) => i.id === state.selectedId);
-    if (!o) return (propsBox.innerHTML = 'Selecione um objeto para editar propriedades.');
+  function renderProps() {
+    const o = state.data.objects.find((item) => item.id === state.selectedId);
+    if (!o) { propsBox.innerHTML = 'Selecione um objeto para editar propriedades.'; return; }
+    const len = (o.x2 != null && o.y2 != null) ? dist({ x: o.x, y: o.y }, { x: o.x2, y: o.y2 }).toFixed(2) : '';
+    const ang = (o.x2 != null && o.y2 != null) ? angle({ x: o.x, y: o.y }, { x: o.x2, y: o.y2 }).toFixed(2) : '';
     propsBox.innerHTML = `<div class="cad-prop-grid">
-      <div><b>Tipo:</b> ${o.type}</div>
-      ${objectLength(o) != null ? `<label>Comprimento <input class="input" data-prop="length" value="${objectLength(o)}"></label>` : ''}
-      ${(o.type === 'line' || o.type === 'centerline') ? `<label>Ângulo <input class="input" data-prop="angle" value="${Number(angle({ x: o.x, y: o.y }, { x: o.x2, y: o.y2 }).toFixed(2))}"></label>` : ''}
-      <label>X1 <input class="input" data-prop="x" value="${o.x ?? ''}"></label>
-      <label>Y1 <input class="input" data-prop="y" value="${o.y ?? ''}"></label>
-      ${o.x2 != null ? `<label>X2 <input class="input" data-prop="x2" value="${o.x2}"></label>` : ''}
-      ${o.y2 != null ? `<label>Y2 <input class="input" data-prop="y2" value="${o.y2}"></label>` : ''}
-      ${o.width != null ? `<label>Largura <input class="input" data-prop="width" value="${o.width}"></label>` : ''}
-      ${o.height != null ? `<label>Altura <input class="input" data-prop="height" value="${o.height}"></label>` : ''}
-      ${o.radius != null ? `<label>Raio <input class="input" data-prop="radius" value="${o.radius}"></label>` : ''}
-      ${o.text != null ? `<label>Texto <input class="input" data-prop="text" value="${o.text}"></label>` : ''}
-      <label>Camada <input class="input" data-prop="layer" value="${o.layer || ''}"></label>
-      <label>Espessura <input class="input" data-prop="thickness" value="${o.thickness || 1}"></label>
+      <div><b>tipo:</b> ${o.type}</div>
+      ${o.x != null ? `<label>x1 <input class="input" data-prop="x" value="${o.x}"></label>` : ''}
+      ${o.y != null ? `<label>y1 <input class="input" data-prop="y" value="${o.y}"></label>` : ''}
+      ${o.x2 != null ? `<label>x2 <input class="input" data-prop="x2" value="${o.x2}"></label>` : ''}
+      ${o.y2 != null ? `<label>y2 <input class="input" data-prop="y2" value="${o.y2}"></label>` : ''}
+      ${o.x2 != null ? `<label>comprimento <input class="input" data-prop="length" value="${len}"></label>` : ''}
+      ${o.x2 != null ? `<label>ângulo <input class="input" data-prop="angle" value="${ang}"></label>` : ''}
+      ${o.width != null ? `<label>largura <input class="input" data-prop="width" value="${o.width}"></label>` : ''}
+      ${o.height != null ? `<label>altura <input class="input" data-prop="height" value="${o.height}"></label>` : ''}
+      ${o.radius != null ? `<label>raio <input class="input" data-prop="radius" value="${o.radius}"></label>` : ''}
+      ${o.text != null ? `<label>conteúdo <input class="input" data-prop="text" value="${o.text}"></label>` : ''}
+      <label>camada <input class="input" data-prop="layer" value="${o.layer || ''}"></label>
     </div>`;
   }
 
-  function renderStatus(preview) {
-    const p = preview || state.pointer;
-    let text = `Cursor: X ${p.x.toFixed(1)} / Y ${p.y.toFixed(1)}`;
-    if (state.drawing?.start) {
-      text += ` • Comprimento: ${dist(state.drawing.start, p).toFixed(2)} mm • Ângulo: ${angle(state.drawing.start, p).toFixed(1)}°`;
-    }
-    statusBar.textContent = text;
+  function renderStatus() {
+    const p = state.pointer;
+    const previewLength = (state.drawStart && state.previewPoint) ? dist(state.drawStart, state.previewPoint).toFixed(2) : '0';
+    const previewAngle = (state.drawStart && state.previewPoint) ? angle(state.drawStart, state.previewPoint).toFixed(2) : '0';
+    statusBar.textContent = `Cursor: X ${p.x} / Y ${p.y} • Ferramenta: ${state.tool} • Comprimento: ${previewLength} • Ângulo: ${previewAngle}° • Grid: ${state.data.showGrid ? 'ON' : 'OFF'} • Snap: ${state.data.snapEnabled ? 'ON' : 'OFF'} • Ortho: ${state.data.orthoEnabled ? 'ON' : 'OFF'}`;
   }
 
   function render() {
-    const showGrid = document.getElementById('cadGridToggle')?.checked !== false;
-    const step = Number(state.data.gridStep || 20);
-    const grid = [];
-    if (showGrid) {
-      for (let x = 0; x <= 1600; x += step) grid.push(`<line x1="${x}" y1="0" x2="${x}" y2="900" stroke="#1f2937" stroke-width="0.7"/>`);
-      for (let y = 0; y <= 900; y += step) grid.push(`<line x1="0" y1="${y}" x2="1600" y2="${y}" stroke="#1f2937" stroke-width="0.7"/>`);
-    }
-
-    const shapes = state.data.objects.map((o) => {
-      const layer = state.data.layers[o.layer] || {};
-      if (layer.visible === false) return '';
-      const stroke = o.id === state.selectedId ? '#f59e0b' : (layer.color || '#d9e3f0');
-      if (o.type === 'line' || o.type === 'centerline') return `<g><line x1="${o.x}" y1="${o.y}" x2="${o.x2}" y2="${o.y2}" stroke="${stroke}" stroke-width="${o.thickness || 1.5}" ${o.type === 'centerline' ? 'stroke-dasharray="8 5"' : ''}/><text x="${(o.x + o.x2) / 2 + 6}" y="${(o.y + o.y2) / 2 - 6}" fill="#93c5fd" font-size="12">${objectLength(o)} mm</text></g>`;
-      if (o.type === 'rect') return `<rect x="${o.x}" y="${o.y}" width="${o.width}" height="${o.height}" fill="none" stroke="${stroke}" stroke-width="${o.thickness || 1.5}"/>`;
-      if (o.type === 'circle') return `<circle cx="${o.x}" cy="${o.y}" r="${o.radius}" fill="none" stroke="${stroke}" stroke-width="${o.thickness || 1.5}"/>`;
-      if (o.type === 'arc') return `<path d="M ${o.x} ${o.y} Q ${(o.x + o.x2) / 2} ${o.y - (o.radius || 40)} ${o.x2} ${o.y2}" fill="none" stroke="${stroke}" stroke-width="${o.thickness || 1.5}"/>`;
-      if (o.type === 'text') return `<text x="${o.x}" y="${o.y}" fill="${stroke}" font-size="${o.fontSize || 14}">${o.text || 'Texto'}</text>`;
-      return '';
-    }).join('');
-
-    const dimensions = (state.data.dimensions || []).map((d) => d.type === 'radius'
-      ? `<g><line x1="${d.cx}" y1="${d.cy}" x2="${d.px}" y2="${d.py}" stroke="#4ade80"/><text x="${d.px + 6}" y="${d.py - 6}" fill="#4ade80" font-size="12">R ${d.value}</text></g>`
-      : `<g><line x1="${d.x1}" y1="${d.y1}" x2="${d.x2}" y2="${d.y2}" stroke="#4ade80" stroke-dasharray="6 4"/><text x="${(d.x1 + d.x2) / 2 + 6}" y="${(d.y1 + d.y2) / 2 - 6}" fill="#4ade80" font-size="12">${d.value}</text></g>`).join('');
-
-    const preview = state.drawing ? (() => {
-      const { start, current } = state.drawing;
-      if (!start || !current) return '';
-      if (['line', 'centerline', 'dim_h', 'dim_v', 'dim_aligned'].includes(state.tool)) return `<g><line x1="${start.x}" y1="${start.y}" x2="${current.x}" y2="${current.y}" stroke="#38bdf8" stroke-dasharray="4 4"/><text x="${current.x + 8}" y="${current.y - 8}" fill="#38bdf8" font-size="12">${dist(start, current).toFixed(2)} mm • ${angle(start, current).toFixed(1)}°</text></g>`;
-      if (state.tool === 'rect') return `<rect x="${Math.min(start.x, current.x)}" y="${Math.min(start.y, current.y)}" width="${Math.abs(current.x - start.x)}" height="${Math.abs(current.y - start.y)}" fill="none" stroke="#38bdf8" stroke-dasharray="4 4"/>`;
-      if (['circle', 'dim_radius', 'dim_diameter'].includes(state.tool)) return `<circle cx="${start.x}" cy="${start.y}" r="${Math.max(3, dist(start, current))}" fill="none" stroke="#38bdf8" stroke-dasharray="4 4"/>`;
-      return '';
-    })() : '';
-
-    svg.innerHTML = `<g transform="translate(${state.viewport.panX} ${state.viewport.panY}) scale(${state.viewport.zoom})">${grid.join('')}${shapes}${dimensions}${preview}</g>`;
+    root.setAttribute('transform', `translate(${state.view.panX} ${state.view.panY}) scale(${state.view.zoom})`);
+    renderGrid();
+    renderEntities();
+    renderPreview();
+    renderDimensions();
+    renderSelection();
     renderLayersPanel();
-    renderProperties();
+    renderProps();
     renderStatus();
   }
 
-  function createObjectFromDrag(start, end) {
-    const base = { id: uid(), layer: state.data.activeLayer, thickness: 1.5 };
-    if (['line', 'centerline'].includes(state.tool)) return { ...base, type: state.tool, x: start.x, y: start.y, x2: end.x, y2: end.y };
-    if (state.tool === 'rect') return { ...base, type: 'rect', x: Math.min(start.x, end.x), y: Math.min(start.y, end.y), width: Math.abs(end.x - start.x), height: Math.abs(end.y - start.y) };
-    if (state.tool === 'circle') return { ...base, type: 'circle', x: start.x, y: start.y, radius: Number(dist(start, end).toFixed(2)) };
-    if (state.tool === 'arc') return { ...base, type: 'arc', x: start.x, y: start.y, x2: end.x, y2: end.y, radius: Number(dist(start, end).toFixed(2)) };
-    if (state.tool === 'polyline') return { ...base, type: 'line', x: start.x, y: start.y, x2: end.x, y2: end.y };
-    return null;
-  }
-
   svg.addEventListener('mousedown', (evt) => {
-    if (evt.button === 1 || state.tool === 'pan') {
-      state.viewport.panning = true;
-      state.viewport.panStart = { x: evt.clientX, y: evt.clientY, panX: state.viewport.panX, panY: state.viewport.panY };
+    if (evt.button === 1 || evt.button === 2 || evt.shiftKey) {
+      state.view.panning = true;
+      state.view.panOrigin = { x: evt.clientX, y: evt.clientY, panX: state.view.panX, panY: state.view.panY };
       return;
     }
+
     const p = getPoint(evt);
     state.pointer = p;
+
     if (state.tool === 'select') {
-      state.selectedId = hitTest(p)?.id || null;
-      return render();
+      const hit = hitTest(p);
+      state.selectedId = hit ? hit.id : null;
+      render();
+      return;
     }
+
     if (state.tool === 'erase') {
-      const selected = hitTest(p);
-      if (selected) {
+      const hit = hitTest(p);
+      if (hit) {
         pushHistory();
-        state.data.objects = state.data.objects.filter((o) => o.id !== selected.id);
+        state.data.objects = state.data.objects.filter((o) => o.id !== hit.id);
+        state.selectedId = null;
       }
-      state.selectedId = null;
-      return render();
+      render();
+      return;
     }
-    if (state.tool === 'text') {
-      const text = prompt('Digite o texto técnico:', 'TEXTO') || '';
-      if (!text) return;
+
+    if (!state.drawStart) {
+      state.drawStart = p;
+      state.previewPoint = p;
+    } else {
       pushHistory();
-      state.data.objects.push({ id: uid(), type: 'text', x: p.x, y: p.y, text, fontSize: 14, layer: state.data.activeLayer, thickness: 1 });
-      return render();
+      if (state.tool === 'dim_linear') {
+        state.data.dimensions.push({ id: uid(), type: 'linear', x1: state.drawStart.x, y1: state.drawStart.y, x2: p.x, y2: p.y, value: `${dist(state.drawStart, p).toFixed(2)} mm` });
+      } else {
+        const obj = createByDrag(state.drawStart, p);
+        if (obj) {
+          state.data.objects.push(obj);
+          state.selectedId = obj.id;
+        }
+      }
+      state.drawStart = null;
+      state.previewPoint = null;
     }
-    state.drawing = { start: p, current: p };
+    render();
   });
 
   svg.addEventListener('mousemove', (evt) => {
-    if (state.viewport.panning && state.viewport.panStart) {
-      const dx = evt.clientX - state.viewport.panStart.x;
-      const dy = evt.clientY - state.viewport.panStart.y;
-      state.viewport.panX = state.viewport.panStart.panX + dx;
-      state.viewport.panY = state.viewport.panStart.panY + dy;
-      return render();
-    }
-    const p = getPoint(evt);
-    state.pointer = p;
-    if (state.drawing) {
-      state.drawing.current = p;
+    if (state.view.panning && state.view.panOrigin) {
+      state.view.panX = state.view.panOrigin.panX + (evt.clientX - state.view.panOrigin.x);
+      state.view.panY = state.view.panOrigin.panY + (evt.clientY - state.view.panOrigin.y);
       render();
-    } else {
-      renderStatus(p);
-    }
-  });
-
-  svg.addEventListener('mouseup', (evt) => {
-    if (state.viewport.panning) {
-      state.viewport.panning = false;
-      state.viewport.panStart = null;
       return;
     }
-    if (!state.drawing) return;
-    const end = getPoint(evt);
-    const start = state.drawing.start;
-    pushHistory();
-    if (state.tool.startsWith('dim_')) {
-      if (['dim_radius', 'dim_diameter'].includes(state.tool)) state.data.dimensions.push({ id: uid(), type: 'radius', cx: start.x, cy: start.y, px: end.x, py: end.y, value: Number(dist(start, end).toFixed(2)) });
-      else state.data.dimensions.push({ id: uid(), type: 'linear', x1: start.x, y1: start.y, x2: end.x, y2: end.y, value: `${dist(start, end).toFixed(2)} mm` });
-    } else {
-      const obj = createObjectFromDrag(start, end);
-      if (obj) {
-        state.data.objects.push(obj);
-        state.selectedId = obj.id;
-      }
-    }
-    state.drawing = null;
-    render();
+
+    state.pointer = getPoint(evt);
+    if (state.drawStart) state.previewPoint = state.pointer;
+    renderStatus();
+    renderPreview();
+  });
+
+  window.addEventListener('mouseup', () => {
+    state.view.panning = false;
+    state.view.panOrigin = null;
   });
 
   svg.addEventListener('wheel', (evt) => {
     evt.preventDefault();
     const factor = evt.deltaY < 0 ? 1.1 : 0.9;
-    state.viewport.zoom = Math.max(0.5, Math.min(3.5, state.viewport.zoom * factor));
+    state.view.zoom = Math.max(0.4, Math.min(4, state.view.zoom * factor));
     render();
   }, { passive: false });
 
-  document.querySelectorAll('.cad-tool').forEach((b) => b.addEventListener('click', () => {
-    state.tool = b.dataset.tool;
-    document.querySelectorAll('.cad-tool').forEach((x) => x.classList.remove('btn-green'));
-    b.classList.add('btn-green');
-  }));
-
-  layerSelect?.addEventListener('change', () => { state.data.activeLayer = layerSelect.value; });
-  document.getElementById('cadGridToggle')?.addEventListener('change', () => render());
-  document.getElementById('cadSnapToggle')?.addEventListener('change', (e) => { state.data.snapEnabled = e.target.checked; });
-  document.getElementById('cadSnapEndpointToggle')?.addEventListener('change', (e) => { state.data.snapEndpoint = e.target.checked; });
-  document.getElementById('cadSnapCenterToggle')?.addEventListener('change', (e) => { state.data.snapCenter = e.target.checked; });
-
-  layersBox?.addEventListener('change', (e) => {
-    const visible = e.target.getAttribute('data-layer-visible');
-    const locked = e.target.getAttribute('data-layer-locked');
-    if (visible && state.data.layers[visible]) state.data.layers[visible].visible = e.target.checked;
-    if (locked && state.data.layers[locked]) state.data.layers[locked].locked = e.target.checked;
+  document.querySelectorAll('.cad-tool').forEach((btn) => btn.addEventListener('click', () => setTool(btn.dataset.tool)));
+  layerSelect.addEventListener('change', () => { state.data.activeLayer = layerSelect.value; });
+  layersBox.addEventListener('change', (evt) => {
+    const vis = evt.target.getAttribute('data-layer-visible');
+    const lock = evt.target.getAttribute('data-layer-locked');
+    if (vis) state.data.layers[vis].visible = evt.target.checked;
+    if (lock) state.data.layers[lock].locked = evt.target.checked;
     render();
   });
 
-  propsBox?.addEventListener('change', (e) => {
-    const prop = e.target.getAttribute('data-prop');
+  propsBox.addEventListener('change', (evt) => {
+    const prop = evt.target.getAttribute('data-prop');
+    if (!prop) return;
     const obj = state.data.objects.find((o) => o.id === state.selectedId);
-    if (!prop || !obj) return;
+    if (!obj) return;
     pushHistory();
-    const raw = e.target.value;
+    const raw = evt.target.value;
     const num = Number(raw);
-    if (prop === 'length' && ['line', 'centerline'].includes(obj.type)) {
+
+    if (prop === 'length' && obj.x2 != null) {
       const current = dist({ x: obj.x, y: obj.y }, { x: obj.x2, y: obj.y2 });
       const target = Number(raw);
       if (Number.isFinite(target) && target > 0 && current > 0) {
@@ -311,13 +389,13 @@
         obj.x2 = Number((obj.x + (obj.x2 - obj.x) * ratio).toFixed(2));
         obj.y2 = Number((obj.y + (obj.y2 - obj.y) * ratio).toFixed(2));
       }
-    } else if (prop === 'angle' && ['line', 'centerline'].includes(obj.type) && Number.isFinite(num)) {
+    } else if (prop === 'angle' && obj.x2 != null && Number.isFinite(num)) {
       const current = dist({ x: obj.x, y: obj.y }, { x: obj.x2, y: obj.y2 });
       const rad = (num * Math.PI) / 180;
       obj.x2 = Number((obj.x + Math.cos(rad) * current).toFixed(2));
       obj.y2 = Number((obj.y + Math.sin(rad) * current).toFixed(2));
     } else {
-      obj[prop] = (raw !== '' && Number.isFinite(num) && !['layer', 'text'].includes(prop)) ? num : raw;
+      obj[prop] = Number.isFinite(num) && !['text', 'layer'].includes(prop) ? num : raw;
     }
     render();
   });
@@ -336,11 +414,26 @@
     render();
   });
 
+  document.getElementById('cadGridToggle')?.addEventListener('click', (evt) => {
+    state.data.showGrid = !state.data.showGrid;
+    evt.target.textContent = `Grade ${state.data.showGrid ? 'ON' : 'OFF'}`;
+    render();
+  });
+  document.getElementById('cadSnapToggle')?.addEventListener('click', (evt) => {
+    state.data.snapEnabled = !state.data.snapEnabled;
+    evt.target.textContent = `Snap ${state.data.snapEnabled ? 'ON' : 'OFF'}`;
+    render();
+  });
+  document.getElementById('cadOrthoToggle')?.addEventListener('click', (evt) => {
+    state.data.orthoEnabled = !state.data.orthoEnabled;
+    evt.target.textContent = `Ortho ${state.data.orthoEnabled ? 'ON' : 'OFF'}`;
+    render();
+  });
+
   document.getElementById('cadSaveBtn')?.addEventListener('click', async () => {
+    const payload = { ...state.data, activeTool: state.tool };
     const res = await fetch(`/desenho-tecnico/cad/${initial.desenhoId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(state.data),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     });
     const json = await res.json();
     alert(json.ok ? 'CAD salvo com sucesso.' : `Erro ao salvar: ${json.error}`);
@@ -355,21 +448,12 @@
       observacoes: document.getElementById('cadMetaObservacoes')?.value,
     };
     const res = await fetch(`/desenho-tecnico/cad/${initial.desenhoId}/metadata`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
     });
     const json = await res.json();
-    if (!json.ok) return alert(`Erro ao salvar metadados: ${json.error}`);
-    Object.assign(state.data, {
-      codigo: payload.codigo || '',
-      titulo: payload.titulo || '',
-      material: payload.material || '',
-      equipamento_id: payload.equipamento_id || null,
-      observacoes: payload.observacoes || '',
-    });
-    alert('Metadados salvos.');
+    alert(json.ok ? 'Metadados salvos.' : `Erro ao salvar metadados: ${json.error}`);
   });
 
+  setTool(state.tool);
   render();
 })();

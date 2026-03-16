@@ -1,6 +1,7 @@
 const service = require('./desenho-tecnico.service');
 const { validateDrawingInput } = require('./desenho-tecnico.validators');
 const equipamentosService = require('../equipamentos/equipamentos.service');
+const cadService = require('./desenho-tecnico.cad.service');
 
 function base(res, view, payload = {}) {
   return res.render(view, {
@@ -220,14 +221,14 @@ function cadEditor(req, res) {
       observacoes: desenho.observacoes,
     });
 
-    const payload = {
+    const payload = cadService.sanitizeCadData({
       ...cadData,
       activeTool: cadData.activeTool || 'select',
       layers: cadData.layers || {},
       objects: Array.isArray(cadData.objects) ? cadData.objects : [],
       dimensions: Array.isArray(cadData.dimensions) ? cadData.dimensions : [],
       history: Array.isArray(cadData.history) ? cadData.history : [],
-    };
+    });
     logCad('GET /desenho-tecnico/cad/:id/editor', 'dados carregados para editor', {
       id: desenho.id,
       extra: { totalObjetos: payload.objects.length, hasLayers: Object.keys(payload.layers).length },

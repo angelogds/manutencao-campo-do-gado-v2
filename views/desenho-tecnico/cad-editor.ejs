@@ -1,45 +1,33 @@
 <% layout("layout") %>
-<section class="card cad-shell">
-  <header class="cad-topbar cad-topbar-dark">
-    <div>
-      <h1>Editor CAD 2D • <%= (desenho && desenho.codigo) || 'Sem código' %></h1>
-      <small><%= (desenho && desenho.titulo) || 'Sem título' %></small>
+<section class="card cad-shell cad-shell-real">
+  <header class="cad-toolbar-fixed">
+    <div class="cad-toolbar-group">
+      <a class="btn" href="/desenho-tecnico/cad/<%= (desenho && desenho.id) || '' %>">⬅ Voltar</a>
+      <button class="btn" type="button" id="cadSaveBtn">💾 Salvar</button>
+      <button class="btn" type="button" id="cadUndoBtn">↶ Desfazer</button>
+      <button class="btn" type="button" id="cadRedoBtn">↷ Refazer</button>
     </div>
-    <div class="cad-topbar-actions">
-      <a class="btn" href="/desenho-tecnico/cad/<%= (desenho && desenho.id) || '' %>">Voltar</a>
-      <button class="btn" type="button" id="cadUndoBtn">Desfazer</button>
-      <button class="btn" type="button" id="cadRedoBtn">Refazer</button>
-      <button class="btn btn-green" type="button" id="cadSaveBtn">Salvar</button>
+    <div class="cad-toolbar-group">
+      <% const topTools = [['select','Selecionar'],['line','Linha'],['rect','Retângulo'],['circle','Círculo'],['arc','Arco'],['polyline','Polilinha'],['text','Texto'],['dim_linear','Cota'],['erase','Apagar']]; %>
+      <% topTools.forEach(([tool,label])=>{ %>
+        <button class="btn cad-tool" data-tool="<%= tool %>" type="button"><%= label %></button>
+      <% }) %>
+      <button class="btn" id="cadGridToggle" type="button">Grade ON</button>
+      <button class="btn" id="cadSnapToggle" type="button">Snap ON</button>
+      <button class="btn" id="cadOrthoToggle" type="button">Ortho OFF</button>
       <a class="btn" href="/desenho-tecnico/cad/<%= (desenho && desenho.id) || '' %>/pdf">PDF</a>
     </div>
   </header>
 
-  <section class="card cad-main-toolbar cad-main-toolbar-dark">
-    <% const topTools = [
-      ['select','Selecionar'],['line','Linha'],['rect','Retângulo'],['circle','Círculo'],['arc','Arco'],['polyline','Polilinha'],['text','Texto'],['dim_aligned','Cota'],['erase','Apagar']
-    ]; %>
-    <% topTools.forEach(([tool,label])=>{ %>
-      <button class="btn cad-tool" data-tool="<%= tool %>" type="button"><%= label %></button>
-    <% }) %>
-    <label><input type="checkbox" id="cadGridToggle" checked> Grade</label>
-    <label><input type="checkbox" id="cadSnapToggle" checked> Snap grade</label>
-    <label><input type="checkbox" id="cadSnapEndpointToggle" checked> Snap extremidade</label>
-    <label><input type="checkbox" id="cadSnapCenterToggle" checked> Snap centro</label>
-  </section>
-
-  <section class="cad-workspace">
-    <aside class="card cad-side-left cad-panel-dark">
-      <h3>Ferramentas</h3>
-      <div class="cad-tool-list">
-        <% [['select','Seleção'],['line','Linha'],['rect','Retângulo'],['circle','Círculo'],['arc','Arco'],['polyline','Polilinha'],['text','Texto'],['centerline','Linha centro'],['dim_h','Cota H'],['dim_v','Cota V'],['dim_aligned','Cota alinhada'],['dim_diameter','Cota diâmetro'],['dim_radius','Cota raio'],['erase','Apagar']].forEach(([tool,label])=>{ %>
-          <button class="btn cad-tool" data-tool="<%= tool %>" type="button"><%= label %></button>
-        <% }) %>
-      </div>
+  <section class="cad-workspace cad-workspace-real">
+    <aside class="card cad-side-left cad-panel-dark cad-left-tools">
+      <% [['select','🖱 Selecionar'],['line','／ Linha'],['rect','▭ Retângulo'],['circle','◯ Círculo'],['arc','◜ Arco'],['polyline','⎺ Polilinha'],['text','T Texto'],['centerline','╍ Linha centro'],['dim_linear','↔ Cota linear'],['dim_diameter','⌀ Cota diâmetro'],['erase','⌫ Apagar']].forEach(([tool,label])=>{ %>
+        <button class="btn cad-tool cad-left-tool" data-tool="<%= tool %>" type="button"><%= label %></button>
+      <% }) %>
     </aside>
 
-    <article class="card cad-center cad-center-dark">
-      <div id="cadStatusBar" class="cad-status">Cursor: (0,0) • Comprimento: 0 mm • Ângulo: 0°</div>
-      <svg id="cadCanvas" viewBox="0 0 1600 900" aria-label="Área de desenho CAD"></svg>
+    <article class="card cad-center cad-center-dark cad-editor-core">
+      <svg id="cadCanvas" viewBox="0 0 2200 1400" aria-label="Área de desenho CAD"></svg>
     </article>
 
     <aside class="card cad-right cad-panel-dark">
@@ -73,12 +61,8 @@
     </aside>
   </section>
 
-  <footer class="card cad-footer">
-    <span><b>Código:</b> <%= (desenho && desenho.codigo) || '-' %></span>
-    <span><b>Título:</b> <%= (desenho && desenho.titulo) || '-' %></span>
-    <span><b>Material:</b> <%= (desenho && desenho.material) || '-' %></span>
-    <span><b>Equipamento:</b> <%= (desenho && desenho.equipamento_nome) || 'Sem vínculo' %></span>
-    <span><b>Obs:</b> <%= (desenho && desenho.observacoes) || '-' %></span>
+  <footer id="cadStatusBar" class="card cad-statusbar-fixed">
+    Cursor: X 0 / Y 0 • Ferramenta: select • Comprimento: 0 • Ângulo: 0° • Grid: ON • Snap: ON • Ortho: OFF
   </footer>
 </section>
 
