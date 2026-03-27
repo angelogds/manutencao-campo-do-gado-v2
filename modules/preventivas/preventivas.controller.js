@@ -1,4 +1,33 @@
 const service = require("./preventivas.service");
+const osService = require("../os/os.service");
+
+function getSugestaoResponsavel() {
+  try {
+    const turnoAtual = osService.getTurnoAgora();
+    const colaboradores = osService.getColaboradoresTurnoAtual(turnoAtual);
+    if (!Array.isArray(colaboradores) || !colaboradores.length) {
+      return { turnoAtual, colaboradores: [], responsavelPadrao: "" };
+    }
+
+    const ordenados = [...colaboradores].sort((a, b) => {
+      const funcA = String(a.funcao || "").toUpperCase();
+      const funcB = String(b.funcao || "").toUpperCase();
+      if (funcA === "MECANICO" && funcB !== "MECANICO") return -1;
+      if (funcB === "MECANICO" && funcA !== "MECANICO") return 1;
+      return String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR");
+    });
+
+    const mecanico = ordenados.find((c) => String(c.funcao || "").toUpperCase() === "MECANICO");
+    const apoio = ordenados.find((c) => ["AUXILIAR", "APOIO"].includes(String(c.funcao || "").toUpperCase()));
+    const responsavelPadrao = apoio && mecanico
+      ? `${mecanico.nome} + ${apoio.nome}`
+      : String((mecanico || ordenados[0]).nome || "").trim();
+
+    return { turnoAtual, colaboradores: ordenados, responsavelPadrao };
+  } catch (_err) {
+    return { turnoAtual: "-", colaboradores: [], responsavelPadrao: "" };
+  }
+}
 
 function index(req, res) {
   const lista = service.listPlanos();
@@ -12,11 +41,13 @@ function index(req, res) {
 
 function newForm(req, res) {
   const equipamentos = service.listEquipamentosAtivos();
+  const sugestaoResponsavel = getSugestaoResponsavel();
   return res.render("preventivas/nova", {
     layout: "layout",
     title: "Nova Preventiva",
     activeMenu: "preventivas",
-    equipamentos
+    equipamentos,
+    sugestaoResponsavel
   });
 }
 
@@ -50,24 +81,28 @@ function show(req, res) {
   }
 
   const execucoes = service.listExecucoes(id);
+  const sugestaoResponsavel = getSugestaoResponsavel();
 
   return res.render("preventivas/show", {
     layout: "layout",
     title: `Preventiva #${id}`,
     activeMenu: "preventivas",
     plano,
-    execucoes
+    execucoes,
+    sugestaoResponsavel
   });
 }
 
 function execCreate(req, res) {
   const planoId = Number(req.params.id);
   const { data_prevista, responsavel, observacao } = req.body;
+  const sugestao = getSugestaoResponsavel();
+  const responsavelFinal = String(responsavel || "").trim() || sugestao.responsavelPadrao;
 
   service.createExecucao(planoId, {
     data_prevista: (data_prevista || "").trim(),
     status: "pendente",
-    responsavel: (responsavel || "").trim(),
+    responsavel: responsavelFinal,
     observacao: (observacao || "").trim()
   });
 
