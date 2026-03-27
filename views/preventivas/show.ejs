@@ -109,7 +109,12 @@
   <!-- COLUNA DIREITA -->
   <div class="card">
     <h3 style="margin:0 0 6px;">Adicionar Execução</h3>
-    <p class="muted" style="margin-top:-6px;">Cria uma execução pendente para este plano.</p>
+    <p class="muted" style="margin-top:-6px;">
+      Cria uma execução pendente para este plano.
+      <% if (sugestaoResponsavel?.responsavelPadrao) { %>
+        Sugestão automática (<%= sugestaoResponsavel.turnoAtual %>): <strong><%= sugestaoResponsavel.responsavelPadrao %></strong>.
+      <% } %>
+    </p>
 
     <form method="POST" action="/preventivas/<%= plano.id %>/execucoes">
       <div style="margin-top:10px;">
@@ -119,7 +124,16 @@
 
       <div style="margin-top:10px;">
         <div class="muted" style="font-size:12px;font-weight:900;">Responsável</div>
-        <input name="responsavel" placeholder="Ex: Salviano / Luiz / Equipe C" />
+        <input
+          name="responsavel"
+          list="responsaveis-turno"
+          value="<%= sugestaoResponsavel?.responsavelPadrao || '' %>"
+          placeholder="Ex: Salviano / Luiz / Equipe C" />
+        <datalist id="responsaveis-turno">
+          <% (sugestaoResponsavel?.colaboradores || []).forEach((c) => { %>
+            <option value="<%= c.nome %>"><%= c.nome %> (<%= c.funcao %>)</option>
+          <% }) %>
+        </datalist>
       </div>
 
       <div style="margin-top:10px;">
