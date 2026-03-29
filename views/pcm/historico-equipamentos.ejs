@@ -1,0 +1,82 @@
+<% layout('layout') %>
+<%- include('partials/internal-styles') %>
+
+<div class="page-head">
+  <div>
+    <h1>PCM • Histórico Técnico por Equipamento</h1>
+    <p class="muted">Saúde do ativo com intervenções, executores, custos, recorrências e preventivas.</p>
+  </div>
+</div>
+
+<div class="pcm-shell">
+  <%- include('partials/internal-nav', { activePcmSection: (typeof activePcmSection !== 'undefined' ? activePcmSection : '') }) %>
+
+  <div class="pcm-content">
+    <div class="card">
+      <form class="pcm-toolbar" method="GET" action="/pcm/historico-equipamentos">
+        <select class="input" name="equipamento_id" required>
+          <option value="">Selecione o equipamento</option>
+          <% equipamentos.forEach(function(eq){ %>
+            <option value="<%= eq.id %>" <%= String(filtros?.equipamento_id || historico?.equipamento?.id || '') === String(eq.id) ? 'selected' : '' %>><%= eq.nome %> • <%= eq.setor || 'Sem setor' %></option>
+          <% }) %>
+        </select>
+        <input class="input" type="date" name="periodo_inicio" value="<%= filtros?.periodo_inicio || '' %>">
+        <input class="input" type="date" name="periodo_fim" value="<%= filtros?.periodo_fim || '' %>">
+        <button class="btn" type="submit">Atualizar histórico</button>
+      </form>
+    </div>
+
+    <% if (!historico) { %>
+      <div class="card" style="margin-top:12px;"><div class="muted">Selecione um equipamento para visualizar o histórico técnico.</div></div>
+    <% } else { %>
+      <div class="card" style="margin-top:12px;">
+        <div class="label">Resumo técnico • <%= historico.equipamento.nome %> (<%= historico.equipamento.criticidade || 'N/D' %>)</div>
+        <div class="pcm-kpi-grid" style="margin-top:10px; grid-template-columns:repeat(5,minmax(0,1fr));">
+          <div><div class="muted-xs">Intervenções</div><div style="font-size:22px;font-weight:900;"><%= historico.resumo.total_intervencoes || 0 %></div></div>
+          <div><div class="muted-xs">Custo acumulado</div><div style="font-size:22px;font-weight:900;">R$ <%= Number(historico.resumo.custo_acumulado || 0).toFixed(2) %></div></div>
+          <div><div class="muted-xs">TMR (h)</div><div style="font-size:22px;font-weight:900;"><%= Number(historico.resumo.tempo_medio_reparo || 0).toFixed(1) %></div></div>
+          <div><div class="muted-xs">Reincidência (30d)</div><div style="font-size:22px;font-weight:900;"><%= historico.resumo.reincidencia || 0 %></div></div>
+          <div><div class="muted-xs">Preventivas executadas</div><div style="font-size:22px;font-weight:900;"><%= historico.resumo.preventivas_executadas || 0 %></div></div>
+        </div>
+      </div>
+
+      <div class="pcm-grid-2" style="margin-top:12px;">
+        <div class="card" style="margin:0;">
+          <div class="label">Falhas recorrentes</div>
+          <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 460px;">
+            <thead><tr><th>Falha</th><th>Ocorrências</th></tr></thead>
+            <tbody>
+              <% if (!historico.falhasRecorrentes?.length) { %><tr><td colspan="2" class="muted">Sem recorrências no período.</td></tr><% } %>
+              <% historico.falhasRecorrentes?.forEach(function(item){ %><tr><td><%= item.falha %></td><td><%= item.ocorrencias %></td></tr><% }) %>
+            </tbody>
+          </table></div>
+        </div>
+        <div class="card" style="margin:0;">
+          <div class="label">Materiais aplicados (OS)</div>
+          <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 460px;">
+            <thead><tr><th>Item</th><th>Quantidade</th></tr></thead>
+            <tbody>
+              <% if (!historico.materiais?.length) { %><tr><td colspan="2" class="muted">Sem materiais vinculados nas OS.</td></tr><% } %>
+              <% historico.materiais?.forEach(function(item){ %><tr><td><%= item.item %></td><td><%= Number(item.quantidade_total || 0).toFixed(2) %></td></tr><% }) %>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="label">Últimas intervenções</div>
+        <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 920px;">
+          <thead><tr><th>OS</th><th>Tipo</th><th>Status</th><th>Executor</th><th>Auxiliar</th><th>Abertura</th><th>Fechamento</th><th>Custo</th><th>Descrição</th></tr></thead>
+          <tbody>
+            <% if (!historico.ultimasOs?.length) { %><tr><td colspan="9" class="muted">Sem histórico de OS.</td></tr><% } %>
+            <% historico.ultimasOs?.forEach(function(os){ %>
+              <tr>
+                <td>#<%= os.id %></td><td><%= os.tipo || '-' %></td><td><%= os.status || '-' %></td><td><%= os.executor || '-' %></td><td><%= os.auxiliar || '-' %></td><td><%= os.opened_at || '-' %></td><td><%= os.closed_at || '-' %></td><td>R$ <%= Number(os.custo_total || 0).toFixed(2) %></td><td><%= os.descricao || '-' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table></div>
+      </div>
+    <% } %>
+  </div>
+</div>

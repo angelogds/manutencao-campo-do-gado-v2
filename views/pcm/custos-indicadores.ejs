@@ -1,0 +1,69 @@
+<% layout('layout') %>
+<%- include('partials/internal-styles') %>
+
+<div class="page-head">
+  <div>
+    <h1>PCM • Custos e Indicadores</h1>
+    <p class="muted">Consolidação de custos por equipamento, colaborador e setor com leitura gerencial.</p>
+  </div>
+</div>
+
+<div class="pcm-shell">
+  <%- include('partials/internal-nav', { activePcmSection: (typeof activePcmSection !== 'undefined' ? activePcmSection : '') }) %>
+
+  <div class="pcm-content">
+    <div class="card">
+      <form class="pcm-toolbar" method="GET" action="/pcm/custos-indicadores">
+        <input class="input" type="date" name="periodo_inicio" value="<%= filtros?.periodo_inicio || '' %>">
+        <input class="input" type="date" name="periodo_fim" value="<%= filtros?.periodo_fim || '' %>">
+        <select class="input" name="setor">
+          <option value="">Todos os setores</option>
+          <% (opcoes?.setores || []).forEach(function(s){ %>
+            <option value="<%= s.setor %>" <%= String(filtros?.setor || '') === String(s.setor || '') ? 'selected' : '' %>><%= s.setor || 'Sem setor' %></option>
+          <% }) %>
+        </select>
+        <select class="input" name="tipo_manutencao">
+          <option value="">Todos os tipos</option>
+          <option value="PREVENTIVA" <%= filtros?.tipo_manutencao === 'PREVENTIVA' ? 'selected' : '' %>>Preventiva</option>
+          <option value="CORRETIVA" <%= filtros?.tipo_manutencao === 'CORRETIVA' ? 'selected' : '' %>>Corretiva</option>
+        </select>
+        <button class="btn" type="submit">Aplicar filtros</button>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div class="label">KPIs de custo</div>
+      <div class="pcm-kpi-grid" style="margin-top:10px; grid-template-columns:repeat(4,minmax(0,1fr));">
+        <div><div class="muted-xs">Custo total</div><div style="font-size:22px;font-weight:900;">R$ <%= Number(painel?.resumo?.custo_total || 0).toFixed(2) %></div></div>
+        <div><div class="muted-xs">Custo preventiva</div><div style="font-size:22px;font-weight:900;">R$ <%= Number(painel?.resumo?.custo_preventiva || 0).toFixed(2) %></div></div>
+        <div><div class="muted-xs">Custo corretiva</div><div style="font-size:22px;font-weight:900;">R$ <%= Number(painel?.resumo?.custo_corretiva || 0).toFixed(2) %></div></div>
+        <div><div class="muted-xs">Horas totais</div><div style="font-size:22px;font-weight:900;"><%= Number(painel?.resumo?.horas_total || 0).toFixed(1) %>h</div></div>
+      </div>
+    </div>
+
+    <div class="pcm-grid-2" style="margin-top:12px;">
+      <div class="card" style="margin:0;">
+        <div class="label">Ranking custo por equipamento</div>
+        <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 460px;"><thead><tr><th>Equipamento</th><th>OS</th><th>Custo</th></tr></thead><tbody>
+          <% if (!painel?.custoPorEquipamento?.length) { %><tr><td colspan="3" class="muted">Sem dados.</td></tr><% } %>
+          <% painel?.custoPorEquipamento?.forEach(function(row){ %><tr><td><%= row.equipamento %></td><td><%= row.total_os %></td><td>R$ <%= Number(row.custo_total || 0).toFixed(2) %></td></tr><% }) %>
+        </tbody></table></div>
+      </div>
+      <div class="card" style="margin:0;">
+        <div class="label">Ranking custo por colaborador</div>
+        <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 460px;"><thead><tr><th>Colaborador</th><th>OS</th><th>Custo</th></tr></thead><tbody>
+          <% if (!painel?.custoPorColaborador?.length) { %><tr><td colspan="3" class="muted">Sem dados.</td></tr><% } %>
+          <% painel?.custoPorColaborador?.forEach(function(row){ %><tr><td><%= row.colaborador %></td><td><%= row.total_os %></td><td>R$ <%= Number(row.custo_total || 0).toFixed(2) %></td></tr><% }) %>
+        </tbody></table></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <div class="label">Custo por setor</div>
+      <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 620px;"><thead><tr><th>Setor</th><th>OS</th><th>Custo</th></tr></thead><tbody>
+        <% if (!painel?.custoPorSetor?.length) { %><tr><td colspan="3" class="muted">Sem dados.</td></tr><% } %>
+        <% painel?.custoPorSetor?.forEach(function(row){ %><tr><td><%= row.setor %></td><td><%= row.total_os %></td><td>R$ <%= Number(row.custo_total || 0).toFixed(2) %></td></tr><% }) %>
+      </tbody></table></div>
+    </div>
+  </div>
+</div>

@@ -15,10 +15,19 @@ function index(req, res) {
     tipo_manutencao: req.query.tipo_manutencao || "",
   };
 
+  let resumoGeral = { materiais_top: [], setores_top: [], alertas: { osAbertas: [], preventivasAtrasadas: [], estoqueCritico: [] } };
+  try {
+    resumoGeral = service.getResumoVisaoGeral({
+      periodoInicio: req.query.periodo_inicio || null,
+      periodoFim: req.query.periodo_fim || null,
+    }) || resumoGeral;
+  } catch (_e) {}
+
   return res.render("pcm/index", {
     ...baseView(req),
     activePcmSection: "visao-geral",
     indicadores: service.getIndicadores(),
+    resumoGeral,
     ranking: service.getRankingEquipamentos(5, Number(req.query.meses || 6)),
     planos: service.listPlanos(filtros),
     filtros,
@@ -236,6 +245,61 @@ function perfilTecnicoColaborador(req, res) {
   });
 }
 
+
+function historicoEquipamentos(req, res) {
+  const filtros = {
+    equipamento_id: req.query.equipamento_id || "",
+    periodo_inicio: req.query.periodo_inicio || "",
+    periodo_fim: req.query.periodo_fim || "",
+  };
+
+  const equipamentos = service.getEquipamentos();
+  const equipamentoId = Number(filtros.equipamento_id || equipamentos?.[0]?.id || 0);
+  const historico = equipamentoId
+    ? service.getEquipamentoResumoTecnico(equipamentoId, {
+      periodoInicio: filtros.periodo_inicio || null,
+      periodoFim: filtros.periodo_fim || null,
+    })
+    : null;
+
+  return res.render("pcm/historico-equipamentos", {
+    ...baseView(req),
+    activePcmSection: "historico-equipamentos",
+    filtros,
+    equipamentos,
+    historico,
+  });
+}
+
+function custosIndicadores(req, res) {
+  const filtros = {
+    periodo_inicio: req.query.periodo_inicio || "",
+    periodo_fim: req.query.periodo_fim || "",
+    setor: req.query.setor || "",
+    tipo_manutencao: req.query.tipo_manutencao || "",
+  };
+
+  return res.render("pcm/custos-indicadores", {
+    ...baseView(req),
+    activePcmSection: "custos-indicadores",
+    filtros,
+    painel: service.getPainelCustosIndicadores({
+      periodoInicio: filtros.periodo_inicio || null,
+      periodoFim: filtros.periodo_fim || null,
+      setor: filtros.setor || null,
+      tipoManutencao: filtros.tipo_manutencao || null,
+    }),
+  });
+}
+
+function pendenciasAlertas(req, res) {
+  return res.render("pcm/pendencias-alertas", {
+    ...baseView(req),
+    activePcmSection: "pendencias-alertas",
+    painel: service.getPendenciasAlertas(),
+  });
+}
+
 function createPlano(req, res) {
   try {
     const id = service.createPlano({
@@ -339,6 +403,9 @@ module.exports = {
   rotasInspecao,
   relatoriosAvancados,
   perfilTecnicoColaborador,
+  historicoEquipamentos,
+  custosIndicadores,
+  pendenciasAlertas,
   atualizarIndicadores,
   registrarFalha,
   adicionarComponente,
