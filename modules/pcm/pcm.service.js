@@ -396,6 +396,68 @@ function registrarExecucao(planoId, userId) {
 
 
 
+
+function saveCriticidade({ equipamento_id, nivel_criticidade, impacto_producao, impacto_seguranca, impacto_ambiental, custo_parada, observacoes, updated_by }) {
+  const equipamentoId = Number(equipamento_id);
+  if (!Number.isFinite(equipamentoId) || equipamentoId <= 0) {
+    throw new Error('Selecione um equipamento válido para salvar a criticidade.');
+  }
+
+  const clamp = (v) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return 3;
+    return Math.max(1, Math.min(5, Math.round(n)));
+  };
+
+  const impactoProducao = clamp(impacto_producao);
+  const impactoSeguranca = clamp(impacto_seguranca);
+  const impactoAmbiental = clamp(impacto_ambiental);
+  const custoParada = clamp(custo_parada);
+
+  const nivel = String(nivel_criticidade || '').trim().toUpperCase();
+  const nivelMap = { BAIXA: 2, MEDIA: 3, ALTA: 4, CRITICA: 5 };
+  const nivelPeso = nivelMap[nivel] || 3;
+
+  const indice = Number((((impactoProducao + impactoSeguranca + impactoAmbiental + custoParada + nivelPeso) / 5)).toFixed(2));
+
+  db.prepare(`
+    INSERT INTO pcm_equipamento_criticidade (
+      equipamento_id,
+      nivel_criticidade,
+      impacto_producao,
+      impacto_seguranca,
+      impacto_ambiental,
+      custo_parada,
+      indice_criticidade,
+      observacoes,
+      updated_by,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(equipamento_id) DO UPDATE SET
+      nivel_criticidade=excluded.nivel_criticidade,
+      impacto_producao=excluded.impacto_producao,
+      impacto_seguranca=excluded.impacto_seguranca,
+      impacto_ambiental=excluded.impacto_ambiental,
+      custo_parada=excluded.custo_parada,
+      indice_criticidade=excluded.indice_criticidade,
+      observacoes=excluded.observacoes,
+      updated_by=excluded.updated_by,
+      updated_at=datetime('now')
+  `).run(
+    equipamentoId,
+    nivel || 'MEDIA',
+    impactoProducao,
+    impactoSeguranca,
+    impactoAmbiental,
+    custoParada,
+    indice,
+    String(observacoes || '').trim() || null,
+    updated_by || null
+  );
+
+  return { equipamento_id: equipamentoId, indice_criticidade: indice, nivel_criticidade: nivel || 'MEDIA' };
+}
+
 function safeAll(sql, params) {
   try {
     const stmt = db.prepare(sql);
@@ -416,7 +478,13 @@ function getEquipamentoById(id) {
   try {
     return db.prepare(`
       SELECT e.id, COALESCE(e.tag, e.codigo, '') AS tag, e.nome, COALESCE(e.setor,'') AS setor,
-             COALESCE(c.nivel_criticidade, 'N/D') AS criticidade
+             COALESCE(c.nivel_criticidade, 'N/D') AS criticidade,
+             COALESCE(c.impacto_producao, 3) AS impacto_producao,
+             COALESCE(c.impacto_seguranca, 3) AS impacto_seguranca,
+             COALESCE(c.impacto_ambiental, 3) AS impacto_ambiental,
+             COALESCE(c.custo_parada, 3) AS custo_parada,
+             COALESCE(c.indice_criticidade, 3) AS indice_criticidade,
+             COALESCE(c.observacoes, '') AS observacoes
       FROM equipamentos e
       LEFT JOIN pcm_equipamento_criticidade c ON c.equipamento_id = e.id
       WHERE e.id = ?
@@ -509,14 +577,61 @@ function listBacklogSimples() {
   return osRows.map((r) => ({ ...r, numero: `OS-${r.id}` }));
 }
 
-function listOSFalhasPreview() {
+
+function registrarFalhaOS({ equipamento_id, descricao, prioridade, created_by }) {
+  const equipamentoId = Number(equipamento_id);
+  if (!Number.isFinite(equipamentoId) || equipamentoId <= 0) {
+    throw new Error('Informe um equipamento para registrar a falha.');
+  }
+
+  const equipamento = db.prepare('SELECT id, nome FROM equipamentos WHERE id = ?').get(equipamentoId);
+  if (!equipamento) throw new Error('Equipamento não encontrado.');
+
+  const info = db.prepare(`
+    INSERT INTO os (equipamento, equipamento_id, descricao, tipo, status, prioridade, opened_by, opened_at)
+    VALUES (?, ?, ?, 'CORRETIVA', 'ABERTA', ?, ?, datetime('now'))
+  `).run(
+    equipamento.nome,
+    equipamento.id,
+    String(descricao || 'Falha registrada via PCM').trim(),
+    String(prioridade || 'ALTA').toUpperCase(),
+    created_by || null
+  );
+
+  return Number(info.lastInsertRowid);
+}
+
+function listOSFalhasPreview({ periodo, equipamento, tipo_falha } = {}) {
+  let where = "UPPER(COALESCE(tipo,''))='CORRETIVA'";
+  const params = {};
+
+  if (periodo) {
+    where += " AND strftime('%Y-%m', opened_at) = @periodo";
+    params.periodo = String(periodo);
+  }
+
+  if (equipamento) {
+    where += " AND UPPER(COALESCE(equipamento, equipamento_manual, '')) LIKE UPPER(@equipamento)";
+    params.equipamento = `%${String(equipamento).trim()}%`;
+  }
+
+  if (tipo_falha) {
+    where += " AND UPPER(COALESCE(descricao, '')) LIKE UPPER(@tipo_falha)";
+    params.tipo_falha = `%${String(tipo_falha).trim()}%`;
+  }
+
   return safeAll(`
-    SELECT id, equipamento, tipo, status, opened_at
+    SELECT id,
+           COALESCE(equipamento, equipamento_manual, 'Sem equipamento') AS equipamento,
+           COALESCE(descricao, '-') AS descricao,
+           tipo,
+           status,
+           opened_at
     FROM os
-    WHERE UPPER(COALESCE(tipo,''))='CORRETIVA'
+    WHERE ${where}
     ORDER BY datetime(opened_at) DESC
-    LIMIT 20
-  `);
+    LIMIT 50
+  `, params);
 }
 
 
@@ -816,4 +931,6 @@ module.exports = {
   listPecasCriticas,
   listBacklogSimples,
   listOSFalhasPreview,
+  saveCriticidade,
+  registrarFalhaOS,
 };

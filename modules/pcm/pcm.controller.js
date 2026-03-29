@@ -58,7 +58,8 @@ function falhas(req, res) {
     ...baseView(req),
     activePcmSection: "falhas",
     filtros,
-    falhas: service.listOSFalhasPreview(),
+    equipamentos: service.getEquipamentos(),
+    falhas: service.listOSFalhasPreview(filtros),
   });
 }
 
@@ -87,12 +88,26 @@ function criticidade(req, res) {
     activePcmSection: "criticidade",
     filtros,
     equipamentos: service.getEquipamentos(),
+    equipamentoSelecionado: service.getEquipamentoById(filtros.equipamento_id),
   });
 }
 
 function salvarCriticidade(req, res) {
-  // TODO: plugar persistência real em pcm_equipamento_criticidade
-  req.flash("success", "Configuração de criticidade recebida (integração pendente do endpoint de persistência).");
+  try {
+    const result = service.saveCriticidade({
+      equipamento_id: req.body.equipamento_id,
+      nivel_criticidade: req.body.nivel_criticidade,
+      impacto_producao: req.body.impacto_producao,
+      impacto_seguranca: req.body.impacto_seguranca,
+      impacto_ambiental: req.body.impacto_ambiental,
+      custo_parada: req.body.custo_parada,
+      observacoes: req.body.observacoes,
+      updated_by: req.session?.user?.id || null,
+    });
+    req.flash("success", `Criticidade salva com sucesso (índice ${result.indice_criticidade}).`);
+  } catch (e) {
+    req.flash("error", e.message || "Erro ao salvar criticidade.");
+  }
   return res.redirect(`/pcm/criticidade?equipamento_id=${encodeURIComponent(req.body.equipamento_id || "")}`);
 }
 
@@ -345,9 +360,19 @@ function atualizarIndicadores(_req, res) {
 }
 
 function registrarFalha(req, res) {
-  // TODO: integrar com criação de OS de falha / banco de falhas existente
-  req.flash('success', 'Ação de registro de falha recebida (integração pendente).');
-  return res.redirect('/pcm/falhas');
+  try {
+    const osId = service.registrarFalhaOS({
+      equipamento_id: req.body.equipamento_id,
+      descricao: req.body.descricao,
+      prioridade: req.body.prioridade,
+      created_by: req.session?.user?.id || null,
+    });
+    req.flash('success', `Falha registrada com sucesso. OS corretiva #${osId} aberta.`);
+    return res.redirect(`/os/${osId}`);
+  } catch (e) {
+    req.flash('error', e.message || 'Erro ao registrar falha.');
+    return res.redirect('/pcm/falhas');
+  }
 }
 
 function adicionarComponente(req, res) {
