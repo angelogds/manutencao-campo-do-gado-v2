@@ -1,0 +1,108 @@
+<% layout('layout') %>
+<%- include('partials/internal-styles') %>
+
+<div class="page-head">
+  <div>
+    <h1>PCM • Perfil Técnico do Colaborador</h1>
+    <p class="muted">Visão integrada de execução técnica por colaborador com OS, materiais e produtividade.</p>
+  </div>
+</div>
+
+<div class="pcm-shell">
+  <%- include('partials/internal-nav', { activePcmSection: (typeof activePcmSection !== 'undefined' ? activePcmSection : '') }) %>
+
+  <div class="pcm-content">
+    <div class="card">
+      <form class="pcm-toolbar" method="GET" action="/pcm/perfil-tecnico-colaborador">
+        <select class="input" name="colaborador_id" required>
+          <option value="">Selecione o colaborador</option>
+          <% colaboradores.forEach(function(c){ %>
+            <option value="<%= c.id %>" <%= String(filtros?.colaborador_id || perfil?.colaborador?.id || '') === String(c.id) ? 'selected' : '' %>>
+              <%= c.nome %> • <%= c.funcao %>
+            </option>
+          <% }) %>
+        </select>
+        <input class="input" type="date" name="periodo_inicio" value="<%= filtros?.periodo_inicio || '' %>">
+        <input class="input" type="date" name="periodo_fim" value="<%= filtros?.periodo_fim || '' %>">
+        <button class="btn" type="submit">Atualizar perfil</button>
+      </form>
+    </div>
+
+    <% if (!perfil) { %>
+      <div class="card" style="margin-top:12px;"><div class="muted">Selecione um colaborador para visualizar os indicadores técnicos.</div></div>
+    <% } else { %>
+      <div class="card" style="margin-top:12px;">
+        <div class="label">Resumo técnico • <%= perfil.colaborador.nome %> (<%= perfil.colaborador.funcao %>)</div>
+        <div class="pcm-kpi-grid" style="margin-top:10px; grid-template-columns:repeat(4,minmax(0,1fr));">
+          <div><div class="muted-xs">Total de OS</div><div style="font-size:22px;font-weight:900;"><%= perfil.resumo.total_os || 0 %></div></div>
+          <div><div class="muted-xs">OS concluídas</div><div style="font-size:22px;font-weight:900;"><%= perfil.resumo.os_concluidas || 0 %></div></div>
+          <div><div class="muted-xs">OS em aberto/andamento</div><div style="font-size:22px;font-weight:900;"><%= perfil.resumo.os_abertas || 0 %></div></div>
+          <div><div class="muted-xs">Preventiva x Corretiva</div><div style="font-size:22px;font-weight:900;"><%= perfil.resumo.os_preventivas || 0 %> / <%= perfil.resumo.os_corretivas || 0 %></div></div>
+          <div><div class="muted-xs">Horas totais (estimadas)</div><div style="font-size:22px;font-weight:900;"><%= Number(perfil.resumo.horas_total_estimadas || 0).toFixed(1) %>h</div></div>
+          <div><div class="muted-xs">MTTR médio</div><div style="font-size:22px;font-weight:900;"><%= Number(perfil.resumo.mttr_horas || 0).toFixed(1) %>h</div></div>
+          <div><div class="muted-xs">Custo total de OS</div><div style="font-size:22px;font-weight:900;">R$ <%= Number(perfil.resumo.custo_total_os || 0).toFixed(2) %></div></div>
+          <div><div class="muted-xs">Produtividade (OS/h)</div><div style="font-size:22px;font-weight:900;"><%= Number(perfil.resumo.produtividade_os_hora || 0).toFixed(2) %></div></div>
+        </div>
+      </div>
+
+      <div class="pcm-grid-2" style="margin-top:12px;">
+        <div class="card" style="margin:0;">
+          <div class="label">Equipamentos em que mais atuou</div>
+          <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 520px;">
+            <thead><tr><th>Equipamento</th><th>OS</th><th>Custo</th></tr></thead>
+            <tbody>
+              <% if (!perfil.topEquipamentos?.length) { %><tr><td colspan="3" class="muted">Sem dados para o período.</td></tr><% } %>
+              <% perfil.topEquipamentos?.forEach(function(eq){ %>
+                <tr>
+                  <td><%= eq.equipamento %></td>
+                  <td><%= eq.total_os %></td>
+                  <td>R$ <%= Number(eq.custo_total || 0).toFixed(2) %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table></div>
+        </div>
+
+        <div class="card" style="margin:0;">
+          <div class="label">Materiais retirados no almoxarifado</div>
+          <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 520px;">
+            <thead><tr><th>Item</th><th>Retiradas</th><th>Qtd.</th><th>Custo estimado</th></tr></thead>
+            <tbody>
+              <% if (!perfil.materiais?.length) { %><tr><td colspan="4" class="muted">Sem retiradas registradas para o colaborador no período.</td></tr><% } %>
+              <% perfil.materiais?.forEach(function(mat){ %>
+                <tr>
+                  <td><%= mat.item %></td>
+                  <td><%= mat.retiradas %></td>
+                  <td><%= Number(mat.quantidade_total || 0).toFixed(2) %></td>
+                  <td>R$ <%= Number(mat.custo_estimado || 0).toFixed(2) %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="label">Linha do tempo de serviços (últimas 20 OS)</div>
+        <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 860px;">
+          <thead><tr><th>OS</th><th>Equipamento</th><th>Tipo</th><th>Status</th><th>Abertura</th><th>Fechamento</th><th>Duração (h)</th><th>Custo</th></tr></thead>
+          <tbody>
+            <% if (!perfil.timeline?.length) { %><tr><td colspan="8" class="muted">Sem histórico de OS para o colaborador.</td></tr><% } %>
+            <% perfil.timeline?.forEach(function(row){ %>
+              <tr>
+                <td>#<%= row.id %></td>
+                <td><%= row.equipamento_nome %></td>
+                <td><%= row.tipo || '-' %></td>
+                <td><%= row.status || '-' %></td>
+                <td><%= row.opened_at || '-' %></td>
+                <td><%= row.closed_at || '-' %></td>
+                <td><%= row.duracao_horas != null ? Number(row.duracao_horas).toFixed(2) : '-' %></td>
+                <td>R$ <%= Number(row.custo_total || 0).toFixed(2) %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table></div>
+      </div>
+    <% } %>
+  </div>
+</div>
