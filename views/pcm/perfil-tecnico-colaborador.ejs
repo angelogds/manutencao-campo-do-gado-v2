@@ -41,6 +41,8 @@
           <div><div class="muted-xs">Horas totais (estimadas)</div><div style="font-size:22px;font-weight:900;"><%= Number(perfil.resumo.horas_total_estimadas || 0).toFixed(1) %>h</div></div>
           <div><div class="muted-xs">MTTR médio</div><div style="font-size:22px;font-weight:900;"><%= Number(perfil.resumo.mttr_horas || 0).toFixed(1) %>h</div></div>
           <div><div class="muted-xs">Custo total de OS</div><div style="font-size:22px;font-weight:900;">R$ <%= Number(perfil.resumo.custo_total_os || 0).toFixed(2) %></div></div>
+          <div><div class="muted-xs">Mão de obra estimada</div><div style="font-size:22px;font-weight:900;">R$ <%= Number(perfil.resumo.custo_mao_obra_estimado || 0).toFixed(2) %></div></div>
+          <div><div class="muted-xs">Retrabalho (30 dias)</div><div style="font-size:22px;font-weight:900;"><%= perfil.resumo.retrabalho_qtd || 0 %></div></div>
           <div><div class="muted-xs">Produtividade (OS/h)</div><div style="font-size:22px;font-weight:900;"><%= Number(perfil.resumo.produtividade_os_hora || 0).toFixed(2) %></div></div>
         </div>
       </div>

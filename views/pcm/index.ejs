@@ -23,8 +23,26 @@
 
     <div class="pcm-actions" style="margin-bottom:10px;">
       <a class="btn" href="/pcm/planejamento">Abrir tela de Planejamento</a>
+      <a class="btn btn-outline" href="/pcm/perfil-tecnico-colaborador">Histórico de Colaboradores</a>
+      <a class="btn btn-outline" href="/pcm/historico-equipamentos">Histórico de Equipamentos</a>
       <a class="btn btn-outline" href="/pcm/backlog">Abrir Backlog</a>
-      <form method="POST" action="/pcm/atualizar-indicadores" style="display:inline;"><button class="btn btn-outline" type="submit">Atualizar indicadores</button></form>
+      <a class="btn btn-outline" href="/pcm/custos-indicadores">Custos e Indicadores</a>
+      <a class="btn btn-outline" href="/pcm/pendencias-alertas">Pendências e Alertas</a>
+    </div>
+    <form method="POST" action="/pcm/atualizar-indicadores" style="display:none;"><button class="btn btn-outline" type="submit">Atualizar indicadores</button></form>
+
+    <div class="card" style="margin-bottom:12px;">
+      <div class="label">Visão consolidada do PCM</div>
+      <div class="pcm-kpi-grid" style="margin-top:10px; grid-template-columns:repeat(4,minmax(0,1fr));">
+        <div><div class="muted-xs">OS abertas</div><div style="font-size:22px;font-weight:900;"><%= resumoGeral?.os_abertas || 0 %></div></div>
+        <div><div class="muted-xs">OS em andamento</div><div style="font-size:22px;font-weight:900;"><%= resumoGeral?.os_andamento || 0 %></div></div>
+        <div><div class="muted-xs">OS concluídas</div><div style="font-size:22px;font-weight:900;"><%= resumoGeral?.os_concluidas || 0 %></div></div>
+        <div><div class="muted-xs">Preventivas programadas/atrasadas</div><div style="font-size:22px;font-weight:900;"><%= resumoGeral?.preventivas_programadas || 0 %> / <%= resumoGeral?.preventivas_atrasadas || 0 %></div></div>
+        <div><div class="muted-xs">Preventivas concluídas</div><div style="font-size:22px;font-weight:900;"><%= resumoGeral?.preventivas_concluidas || 0 %></div></div>
+        <div><div class="muted-xs">Custo acumulado</div><div style="font-size:22px;font-weight:900;">R$ <%= Number(resumoGeral?.custo_total || 0).toFixed(2) %></div></div>
+        <div><div class="muted-xs">Horas totais</div><div style="font-size:22px;font-weight:900;"><%= Number(resumoGeral?.horas_total || 0).toFixed(1) %>h</div></div>
+        <div><div class="muted-xs">Alertas ativos</div><div style="font-size:22px;font-weight:900;"><%= (resumoGeral?.alertas?.osAbertas?.length || 0) + (resumoGeral?.alertas?.preventivasAtrasadas?.length || 0) + (resumoGeral?.alertas?.estoqueCritico?.length || 0) %></div></div>
+      </div>
     </div>
 
     <div class="card">
@@ -48,6 +66,27 @@
           <% ranking.forEach(function(item){ %><tr><td><%= item.equipamento %></td><td><%= item.total_os %></td></tr><% }) %>
         </tbody>
       </table></div>
+    </div>
+
+    <div class="pcm-grid-2" style="margin-top:12px;">
+      <div class="card" style="margin:0;">
+        <div class="label">Materiais mais consumidos (almox)</div>
+        <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width:420px;">
+          <thead><tr><th>Item</th><th>Qtd</th></tr></thead><tbody>
+            <% if (!resumoGeral?.materiais_top?.length) { %><tr><td colspan="2" class="muted">Sem dados no período.</td></tr><% } %>
+            <% resumoGeral?.materiais_top?.forEach(function(m){ %><tr><td><%= m.item %></td><td><%= Number(m.quantidade_total || 0).toFixed(2) %></td></tr><% }) %>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="card" style="margin:0;">
+        <div class="label">Ranking setores com maior demanda</div>
+        <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width:420px;">
+          <thead><tr><th>Setor</th><th>OS</th></tr></thead><tbody>
+            <% if (!resumoGeral?.setores_top?.length) { %><tr><td colspan="2" class="muted">Sem dados no período.</td></tr><% } %>
+            <% resumoGeral?.setores_top?.forEach(function(s){ %><tr><td><%= s.setor %></td><td><%= s.total_os %></td></tr><% }) %>
+          </tbody>
+        </table></div>
+      </div>
     </div>
 
     <div class="card" style="margin-top:12px;">

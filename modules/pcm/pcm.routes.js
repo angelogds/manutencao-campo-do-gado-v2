@@ -19,6 +19,9 @@ router.get("/backlog", requireLogin, requireRole(PCM_ACCESS), ctrl.backlog);
 router.get("/rotas-inspecao", requireLogin, requireRole(PCM_ACCESS), ctrl.rotasInspecao);
 router.get("/relatorios-avancados", requireLogin, requireRole(PCM_ACCESS), ctrl.relatoriosAvancados);
 router.get("/perfil-tecnico-colaborador", requireLogin, requireRole(PCM_ACCESS), ctrl.perfilTecnicoColaborador);
+router.get("/historico-equipamentos", requireLogin, requireRole(PCM_ACCESS), ctrl.historicoEquipamentos);
+router.get("/custos-indicadores", requireLogin, requireRole(PCM_ACCESS), ctrl.custosIndicadores);
+router.get("/pendencias-alertas", requireLogin, requireRole(PCM_ACCESS), ctrl.pendenciasAlertas);
 
 
 router.post("/atualizar-indicadores", requireLogin, requireRole(PCM_ACCESS), ctrl.atualizarIndicadores);

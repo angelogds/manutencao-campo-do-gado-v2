@@ -158,7 +158,14 @@ function getColaboradorResumoTecnico(colaboradorId, { periodoInicio, periodoFim 
                  WHEN o.closed_at IS NOT NULL THEN (julianday(o.closed_at) - julianday(o.opened_at)) * 24.0
                  ELSE 0
                END
-             ), 2) AS horas_total_estimadas
+             ), 2) AS horas_total_estimadas,
+             SUM(CASE WHEN UPPER(COALESCE(o.tipo,''))='CORRETIVA' AND EXISTS (
+               SELECT 1 FROM os prev
+               WHERE prev.equipamento_id = o.equipamento_id
+                 AND prev.id < o.id
+                 AND UPPER(COALESCE(prev.tipo,''))='CORRETIVA'
+                 AND julianday(o.opened_at) - julianday(prev.opened_at) <= 30
+             ) THEN 1 ELSE 0 END) AS retrabalho_qtd
       FROM os o
       WHERE (o.executor_colaborador_id = ? OR o.auxiliar_colaborador_id = ?)
         ${dateFilter}
@@ -215,12 +222,14 @@ function getColaboradorResumoTecnico(colaboradorId, { periodoInicio, periodoFim 
   const produtividade = Number(resumo.horas_total_estimadas || 0) > 0
     ? Math.round((Number(resumo.os_concluidas || 0) / Number(resumo.horas_total_estimadas || 1)) * 100) / 100
     : 0;
+  const custoMaoObra = Math.round(Number(resumo.horas_total_estimadas || 0) * 65 * 100) / 100;
 
   return {
     colaborador,
     resumo: {
       ...resumo,
       produtividade_os_hora: produtividade,
+      custo_mao_obra_estimado: custoMaoObra,
     },
     topEquipamentos,
     materiais,
@@ -510,11 +519,291 @@ function listOSFalhasPreview() {
   `);
 }
 
+
+function buildOsDateFilter({ periodoInicio, periodoFim, alias = 'o' } = {}) {
+  let sql = '';
+  const params = [];
+  if (periodoInicio) {
+    sql += ` AND datetime(${alias}.opened_at) >= datetime(?)`;
+    params.push(`${periodoInicio} 00:00:00`);
+  }
+  if (periodoFim) {
+    sql += ` AND datetime(${alias}.opened_at) <= datetime(?)`;
+    params.push(`${periodoFim} 23:59:59`);
+  }
+  return { sql, params };
+}
+
+function getResumoVisaoGeral({ periodoInicio, periodoFim } = {}) {
+  const filter = buildOsDateFilter({ periodoInicio, periodoFim, alias: 'o' });
+  const os = db.prepare(`
+    SELECT
+      SUM(CASE WHEN UPPER(COALESCE(o.status,'')) IN ('ABERTA','ANDAMENTO','PAUSADA') THEN 1 ELSE 0 END) AS os_abertas,
+      SUM(CASE WHEN UPPER(COALESCE(o.status,'')) = 'ANDAMENTO' THEN 1 ELSE 0 END) AS os_andamento,
+      SUM(CASE WHEN UPPER(COALESCE(o.status,'')) IN ('CONCLUIDA','FINALIZADA','FECHADA') THEN 1 ELSE 0 END) AS os_concluidas,
+      ROUND(SUM(COALESCE(o.custo_total,0)),2) AS custo_total,
+      ROUND(SUM(CASE WHEN o.closed_at IS NOT NULL THEN (julianday(o.closed_at)-julianday(o.opened_at))*24.0 ELSE 0 END),2) AS horas_total
+    FROM os o
+    WHERE 1=1
+      ${filter.sql}
+  `).get(...filter.params) || {};
+
+  const preventivas = db.prepare(`
+    SELECT
+      SUM(CASE WHEN UPPER(COALESCE(pe.status,''))='PENDENTE' THEN 1 ELSE 0 END) AS programadas,
+      SUM(CASE WHEN UPPER(COALESCE(pe.status,''))='ATRASADA' OR (pe.data_prevista IS NOT NULL AND date(pe.data_prevista) < date('now') AND UPPER(COALESCE(pe.status,'')) <> 'EXECUTADA') THEN 1 ELSE 0 END) AS atrasadas,
+      SUM(CASE WHEN UPPER(COALESCE(pe.status,''))='EXECUTADA' THEN 1 ELSE 0 END) AS concluidas
+    FROM preventiva_execucoes pe
+    WHERE 1=1
+      ${periodoInicio ? " AND date(COALESCE(pe.data_executada, pe.data_prevista)) >= date(?)" : ''}
+      ${periodoFim ? " AND date(COALESCE(pe.data_executada, pe.data_prevista)) <= date(?)" : ''}
+  `).get(...(periodoInicio ? [periodoInicio] : []), ...(periodoFim ? [periodoFim] : [])) || {};
+
+  const materiais = safeAll(`
+    SELECT COALESCE(i.nome, i.codigo, 'Item sem nome') AS item,
+           ROUND(SUM(COALESCE(ar.quantidade,0)),2) AS quantidade_total
+    FROM almox_retiradas ar
+    JOIN estoque_itens i ON i.id = ar.item_id
+    WHERE 1=1
+      ${periodoInicio ? " AND datetime(ar.created_at) >= datetime(?)" : ''}
+      ${periodoFim ? " AND datetime(ar.created_at) <= datetime(?)" : ''}
+    GROUP BY COALESCE(i.nome, i.codigo, 'Item sem nome')
+    ORDER BY quantidade_total DESC
+    LIMIT 5
+  `, [...(periodoInicio ? [`${periodoInicio} 00:00:00`] : []), ...(periodoFim ? [`${periodoFim} 23:59:59`] : [])]);
+
+  const setores = safeAll(`
+    SELECT COALESCE(e.setor, 'Sem setor') AS setor, COUNT(*) AS total_os
+    FROM os o
+    LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+    WHERE 1=1 ${filter.sql}
+    GROUP BY COALESCE(e.setor, 'Sem setor')
+    ORDER BY total_os DESC, setor ASC
+    LIMIT 5
+  `, filter.params);
+
+  const alertas = getPendenciasAlertas();
+
+  return {
+    os_abertas: toNum(os.os_abertas),
+    os_andamento: toNum(os.os_andamento),
+    os_concluidas: toNum(os.os_concluidas),
+    custo_total: toNum(os.custo_total),
+    horas_total: toNum(os.horas_total),
+    preventivas_programadas: toNum(preventivas.programadas),
+    preventivas_atrasadas: toNum(preventivas.atrasadas),
+    preventivas_concluidas: toNum(preventivas.concluidas),
+    materiais_top: materiais,
+    setores_top: setores,
+    alertas,
+  };
+}
+
+function getEquipamentoResumoTecnico(equipamentoId, { periodoInicio, periodoFim } = {}) {
+  const id = Number(equipamentoId);
+  if (!Number.isFinite(id) || id <= 0) return null;
+
+  const equipamento = getEquipamentoById(id);
+  if (!equipamento) return null;
+
+  const filter = buildOsDateFilter({ periodoInicio, periodoFim, alias: 'o' });
+  const params = [id, ...filter.params];
+
+  const resumo = db.prepare(`
+    SELECT COUNT(*) AS total_intervencoes,
+           ROUND(SUM(COALESCE(o.custo_total,0)),2) AS custo_acumulado,
+           ROUND(AVG(CASE WHEN o.closed_at IS NOT NULL THEN (julianday(o.closed_at)-julianday(o.opened_at))*24.0 END),2) AS tempo_medio_reparo,
+           SUM(CASE WHEN UPPER(COALESCE(o.tipo,''))='PREVENTIVA' THEN 1 ELSE 0 END) AS preventivas_executadas
+    FROM os o
+    WHERE o.equipamento_id = ?
+    ${filter.sql}
+  `).get(...params) || {};
+
+  const ultimasOs = db.prepare(`
+    SELECT o.id, o.tipo, o.status, o.opened_at, o.closed_at, COALESCE(o.custo_total,0) AS custo_total,
+           COALESCE(c1.nome, u1.nome, '-') AS executor,
+           COALESCE(c2.nome, u2.nome, '-') AS auxiliar,
+           COALESCE(o.descricao,'') AS descricao
+    FROM os o
+    LEFT JOIN colaboradores c1 ON c1.id = o.executor_colaborador_id
+    LEFT JOIN users u1 ON u1.id = o.opened_by
+    LEFT JOIN colaboradores c2 ON c2.id = o.auxiliar_colaborador_id
+    LEFT JOIN users u2 ON u2.id = o.closed_by
+    WHERE o.equipamento_id = ?
+    ${filter.sql}
+    ORDER BY datetime(o.opened_at) DESC, o.id DESC
+    LIMIT 12
+  `).all(...params);
+
+  const falhasRecorrentes = db.prepare(`
+    SELECT TRIM(SUBSTR(COALESCE(o.descricao,'Sem descrição'),1,80)) AS falha,
+           COUNT(*) AS ocorrencias
+    FROM os o
+    WHERE o.equipamento_id = ?
+      AND UPPER(COALESCE(o.tipo,''))='CORRETIVA'
+      ${filter.sql}
+    GROUP BY TRIM(SUBSTR(COALESCE(o.descricao,'Sem descrição'),1,80))
+    HAVING COUNT(*) > 0
+    ORDER BY ocorrencias DESC, falha ASC
+    LIMIT 6
+  `).all(...params);
+
+  const materiais = safeAll(`
+    SELECT COALESCE(p.peca_descricao, 'Peça sem descrição') AS item,
+           ROUND(SUM(COALESCE(p.quantidade,0)),2) AS quantidade_total
+    FROM os_pecas_utilizadas p
+    JOIN os o ON o.id = p.os_id
+    WHERE o.equipamento_id = ?
+    ${filter.sql}
+    GROUP BY COALESCE(p.peca_descricao, 'Peça sem descrição')
+    ORDER BY quantidade_total DESC
+    LIMIT 10
+  `, params);
+
+  const reincidencia = db.prepare(`
+    SELECT COUNT(*) AS total_reincidencia
+    FROM os o
+    WHERE o.equipamento_id = ?
+      AND UPPER(COALESCE(o.tipo,''))='CORRETIVA'
+      AND EXISTS (
+        SELECT 1 FROM os prev
+        WHERE prev.equipamento_id = o.equipamento_id
+          AND prev.id < o.id
+          AND UPPER(COALESCE(prev.tipo,''))='CORRETIVA'
+          AND julianday(o.opened_at) - julianday(prev.opened_at) <= 30
+      )
+      ${filter.sql}
+  `).get(...params);
+
+  return {
+    equipamento,
+    resumo: {
+      ...resumo,
+      reincidencia: toNum(reincidencia?.total_reincidencia),
+    },
+    ultimasOs,
+    falhasRecorrentes,
+    materiais,
+  };
+}
+
+function getPainelCustosIndicadores({ periodoInicio, periodoFim, setor, tipoManutencao } = {}) {
+  const filter = buildOsDateFilter({ periodoInicio, periodoFim, alias: 'o' });
+  let extraSql = filter.sql;
+  const params = [...filter.params];
+
+  if (setor) {
+    extraSql += " AND COALESCE(e.setor,'') = ?";
+    params.push(String(setor));
+  }
+  if (tipoManutencao) {
+    extraSql += " AND UPPER(COALESCE(o.tipo,'')) = ?";
+    params.push(String(tipoManutencao).toUpperCase());
+  }
+
+  const resumo = db.prepare(`
+    SELECT ROUND(SUM(COALESCE(o.custo_total,0)),2) AS custo_total,
+           ROUND(SUM(CASE WHEN UPPER(COALESCE(o.tipo,''))='PREVENTIVA' THEN COALESCE(o.custo_total,0) ELSE 0 END),2) AS custo_preventiva,
+           ROUND(SUM(CASE WHEN UPPER(COALESCE(o.tipo,''))='CORRETIVA' THEN COALESCE(o.custo_total,0) ELSE 0 END),2) AS custo_corretiva,
+           ROUND(SUM(CASE WHEN o.closed_at IS NOT NULL THEN (julianday(o.closed_at)-julianday(o.opened_at))*24.0 ELSE 0 END),2) AS horas_total
+    FROM os o
+    LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+    WHERE 1=1
+      ${extraSql}
+  `).get(...params) || {};
+
+  const custoPorEquipamento = safeAll(`
+    SELECT COALESCE(e.nome, o.equipamento, 'Sem equipamento') AS equipamento,
+           ROUND(SUM(COALESCE(o.custo_total,0)),2) AS custo_total,
+           COUNT(*) AS total_os
+    FROM os o
+    LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+    WHERE 1=1 ${extraSql}
+    GROUP BY COALESCE(e.nome, o.equipamento, 'Sem equipamento')
+    ORDER BY custo_total DESC, total_os DESC
+    LIMIT 10
+  `, params);
+
+  const custoPorColaborador = safeAll(`
+    SELECT COALESCE(c.nome, u.nome, 'Sem executor') AS colaborador,
+           ROUND(SUM(COALESCE(o.custo_total,0)),2) AS custo_total,
+           COUNT(*) AS total_os
+    FROM os o
+    LEFT JOIN colaboradores c ON c.id = o.executor_colaborador_id
+    LEFT JOIN users u ON u.id = o.opened_by
+    LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+    WHERE 1=1 ${extraSql}
+    GROUP BY COALESCE(c.nome, u.nome, 'Sem executor')
+    ORDER BY custo_total DESC, total_os DESC
+    LIMIT 10
+  `, params);
+
+  const custoPorSetor = safeAll(`
+    SELECT COALESCE(e.setor, 'Sem setor') AS setor,
+           ROUND(SUM(COALESCE(o.custo_total,0)),2) AS custo_total,
+           COUNT(*) AS total_os
+    FROM os o
+    LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+    WHERE 1=1 ${extraSql}
+    GROUP BY COALESCE(e.setor, 'Sem setor')
+    ORDER BY custo_total DESC, total_os DESC
+    LIMIT 10
+  `, params);
+
+  return { resumo, custoPorEquipamento, custoPorColaborador, custoPorSetor };
+}
+
+function getPendenciasAlertas() {
+  const osAbertas = safeAll(`
+    SELECT o.id, COALESCE(e.nome, o.equipamento, 'Sem equipamento') AS equipamento,
+           UPPER(COALESCE(o.status,'')) AS status,
+           CAST(julianday('now') - julianday(o.opened_at) AS INTEGER) AS atraso_dias,
+           COALESCE(o.prioridade,'MEDIA') AS prioridade
+    FROM os o
+    LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+    WHERE UPPER(COALESCE(o.status,'')) IN ('ABERTA','ANDAMENTO','PAUSADA')
+    ORDER BY atraso_dias DESC, datetime(o.opened_at) ASC
+    LIMIT 20
+  `);
+
+  const preventivasAtrasadas = safeAll(`
+    SELECT pe.id, pp.titulo, pe.data_prevista, pe.status,
+           COALESCE(e.nome, 'Sem equipamento') AS equipamento
+    FROM preventiva_execucoes pe
+    JOIN preventiva_planos pp ON pp.id = pe.plano_id
+    LEFT JOIN equipamentos e ON e.id = pp.equipamento_id
+    WHERE (UPPER(COALESCE(pe.status,''))='ATRASADA'
+      OR (pe.data_prevista IS NOT NULL AND date(pe.data_prevista) < date('now') AND UPPER(COALESCE(pe.status,'')) <> 'EXECUTADA'))
+    ORDER BY date(pe.data_prevista) ASC
+    LIMIT 20
+  `);
+
+  const estoqueCritico = safeAll(`
+    SELECT COALESCE(i.nome, i.codigo, 'Item') AS item,
+           ROUND(COALESCE(i.quantidade_atual,0),2) AS quantidade_atual,
+           ROUND(COALESCE(i.estoque_minimo,0),2) AS estoque_minimo
+    FROM estoque_itens i
+    WHERE COALESCE(i.quantidade_atual,0) < COALESCE(i.estoque_minimo,0)
+    ORDER BY (COALESCE(i.estoque_minimo,0) - COALESCE(i.quantidade_atual,0)) DESC
+    LIMIT 15
+  `);
+
+  return {
+    osAbertas,
+    preventivasAtrasadas,
+    estoqueCritico,
+  };
+}
+
 module.exports = {
   getIndicadores,
   listColaboradoresTecnicos,
   getColaboradorResumoTecnico,
   getRankingEquipamentos,
+  getResumoVisaoGeral,
+  getEquipamentoResumoTecnico,
+  getPainelCustosIndicadores,
+  getPendenciasAlertas,
   listPlanos,
   listFiltros,
   createPlano,

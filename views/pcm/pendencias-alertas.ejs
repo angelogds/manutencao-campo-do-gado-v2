@@ -1,0 +1,40 @@
+<% layout('layout') %>
+<%- include('partials/internal-styles') %>
+
+<div class="page-head">
+  <div>
+    <h1>PCM • Pendências e Alertas</h1>
+    <p class="muted">Backlog operacional do PCM com OS abertas, preventivas atrasadas e estoque crítico.</p>
+  </div>
+</div>
+
+<div class="pcm-shell">
+  <%- include('partials/internal-nav', { activePcmSection: (typeof activePcmSection !== 'undefined' ? activePcmSection : '') }) %>
+
+  <div class="pcm-content">
+    <div class="card">
+      <div class="label">OS pendentes</div>
+      <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 880px;"><thead><tr><th>OS</th><th>Equipamento</th><th>Status</th><th>Prioridade</th><th>Atraso (dias)</th></tr></thead><tbody>
+        <% if (!painel?.osAbertas?.length) { %><tr><td colspan="5" class="muted">Sem OS pendentes.</td></tr><% } %>
+        <% painel?.osAbertas?.forEach(function(row){ %><tr><td>#<%= row.id %></td><td><%= row.equipamento %></td><td><%= row.status %></td><td><%= row.prioridade %></td><td><%= row.atraso_dias %></td></tr><% }) %>
+      </tbody></table></div>
+    </div>
+
+    <div class="pcm-grid-2" style="margin-top:12px;">
+      <div class="card" style="margin:0;">
+        <div class="label">Preventivas atrasadas</div>
+        <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 460px;"><thead><tr><th>Plano</th><th>Equipamento</th><th>Data prevista</th><th>Status</th></tr></thead><tbody>
+          <% if (!painel?.preventivasAtrasadas?.length) { %><tr><td colspan="4" class="muted">Sem preventivas atrasadas.</td></tr><% } %>
+          <% painel?.preventivasAtrasadas?.forEach(function(row){ %><tr><td><%= row.titulo %></td><td><%= row.equipamento %></td><td><%= row.data_prevista || '-' %></td><td><%= row.status %></td></tr><% }) %>
+        </tbody></table></div>
+      </div>
+      <div class="card" style="margin:0;">
+        <div class="label">Materiais abaixo do mínimo</div>
+        <div class="table-wrap"><table class="table compact" style="margin-top:8px; min-width: 460px;"><thead><tr><th>Item</th><th>Qtd atual</th><th>Mínimo</th></tr></thead><tbody>
+          <% if (!painel?.estoqueCritico?.length) { %><tr><td colspan="3" class="muted">Sem itens críticos.</td></tr><% } %>
+          <% painel?.estoqueCritico?.forEach(function(row){ %><tr><td><%= row.item %></td><td><%= Number(row.quantidade_atual || 0).toFixed(2) %></td><td><%= Number(row.estoque_minimo || 0).toFixed(2) %></td></tr><% }) %>
+        </tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
