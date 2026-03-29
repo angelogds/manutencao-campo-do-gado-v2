@@ -211,6 +211,31 @@ function relatoriosAvancados(req, res) {
   });
 }
 
+function perfilTecnicoColaborador(req, res) {
+  const filtros = {
+    colaborador_id: req.query.colaborador_id || "",
+    periodo_inicio: req.query.periodo_inicio || "",
+    periodo_fim: req.query.periodo_fim || "",
+  };
+
+  const colaboradores = service.listColaboradoresTecnicos();
+  const colaboradorId = Number(filtros.colaborador_id || colaboradores?.[0]?.id || 0);
+  const perfil = colaboradorId
+    ? service.getColaboradorResumoTecnico(colaboradorId, {
+      periodoInicio: filtros.periodo_inicio || null,
+      periodoFim: filtros.periodo_fim || null,
+    })
+    : null;
+
+  return res.render("pcm/perfil-tecnico-colaborador", {
+    ...baseView(req),
+    activePcmSection: "perfil-tecnico-colaborador",
+    filtros,
+    colaboradores,
+    perfil,
+  });
+}
+
 function createPlano(req, res) {
   try {
     const id = service.createPlano({
@@ -313,6 +338,7 @@ module.exports = {
   backlog,
   rotasInspecao,
   relatoriosAvancados,
+  perfilTecnicoColaborador,
   atualizarIndicadores,
   registrarFalha,
   adicionarComponente,

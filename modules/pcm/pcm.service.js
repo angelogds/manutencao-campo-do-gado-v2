@@ -72,6 +72,162 @@ function getIndicadores() {
   };
 }
 
+function listColaboradoresTecnicos() {
+  return db
+    .prepare(`
+      SELECT c.id,
+             c.nome,
+             UPPER(COALESCE(NULLIF(c.funcao, ''), 'AUXILIAR')) AS funcao,
+             c.user_id,
+             COALESCE(u.role, '') AS role,
+             COALESCE(c.ativo, 1) AS ativo
+      FROM colaboradores c
+      LEFT JOIN users u ON u.id = c.user_id
+      WHERE COALESCE(c.ativo, 1) = 1
+      ORDER BY c.nome ASC
+    `)
+    .all();
+}
+
+function getColaboradorResumoTecnico(colaboradorId, { periodoInicio, periodoFim } = {}) {
+  const id = Number(colaboradorId);
+  if (!Number.isFinite(id) || id <= 0) return null;
+
+  const colaborador = db
+    .prepare(`
+      SELECT c.id,
+             c.nome,
+             UPPER(COALESCE(NULLIF(c.funcao, ''), 'AUXILIAR')) AS funcao,
+             c.user_id,
+             COALESCE(u.role, '') AS role
+      FROM colaboradores c
+      LEFT JOIN users u ON u.id = c.user_id
+      WHERE c.id = ?
+      LIMIT 1
+    `)
+    .get(id);
+
+  if (!colaborador) return null;
+
+  const params = [id];
+  let dateFilter = "";
+  if (periodoInicio) {
+    dateFilter += " AND datetime(o.opened_at) >= datetime(?)";
+    params.push(`${periodoInicio} 00:00:00`);
+  }
+  if (periodoFim) {
+    dateFilter += " AND datetime(o.opened_at) <= datetime(?)";
+    params.push(`${periodoFim} 23:59:59`);
+  }
+
+  const baseEquipeSql = `
+    SELECT o.id,
+           o.equipamento_id,
+           COALESCE(e.nome, o.equipamento, o.equipamento_manual, 'Sem equipamento') AS equipamento_nome,
+           UPPER(COALESCE(o.status, '')) AS status,
+           UPPER(COALESCE(o.tipo, '')) AS tipo,
+           o.opened_at,
+           o.closed_at,
+           COALESCE(o.custo_total, 0) AS custo_total
+    FROM os o
+    LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+    WHERE (o.executor_colaborador_id = ? OR o.auxiliar_colaborador_id = ?)
+      ${dateFilter}
+  `;
+
+  const osRows = db
+    .prepare(`${baseEquipeSql} ORDER BY datetime(o.opened_at) DESC`)
+    .all(id, id, ...params.slice(1));
+
+  const resumo = db
+    .prepare(`
+      SELECT COUNT(*) AS total_os,
+             SUM(CASE WHEN UPPER(o.status) IN ('CONCLUIDA','FINALIZADA','FECHADA') THEN 1 ELSE 0 END) AS os_concluidas,
+             SUM(CASE WHEN UPPER(o.status) IN ('ABERTA','ANDAMENTO','PAUSADA') THEN 1 ELSE 0 END) AS os_abertas,
+             SUM(CASE WHEN UPPER(o.tipo) = 'PREVENTIVA' THEN 1 ELSE 0 END) AS os_preventivas,
+             SUM(CASE WHEN UPPER(o.tipo) = 'CORRETIVA' THEN 1 ELSE 0 END) AS os_corretivas,
+             ROUND(SUM(COALESCE(o.custo_total, 0)), 2) AS custo_total_os,
+             ROUND(AVG(
+               CASE
+                 WHEN o.closed_at IS NOT NULL THEN (julianday(o.closed_at) - julianday(o.opened_at)) * 24.0
+                 ELSE NULL
+               END
+             ), 2) AS mttr_horas,
+             ROUND(SUM(
+               CASE
+                 WHEN o.closed_at IS NOT NULL THEN (julianday(o.closed_at) - julianday(o.opened_at)) * 24.0
+                 ELSE 0
+               END
+             ), 2) AS horas_total_estimadas
+      FROM os o
+      WHERE (o.executor_colaborador_id = ? OR o.auxiliar_colaborador_id = ?)
+        ${dateFilter}
+    `)
+    .get(id, id, ...params.slice(1)) || {};
+
+  const topEquipamentos = db
+    .prepare(`
+      SELECT COALESCE(e.nome, o.equipamento, o.equipamento_manual, 'Sem equipamento') AS equipamento,
+             COUNT(*) AS total_os,
+             ROUND(SUM(COALESCE(o.custo_total, 0)), 2) AS custo_total
+      FROM os o
+      LEFT JOIN equipamentos e ON e.id = o.equipamento_id
+      WHERE (o.executor_colaborador_id = ? OR o.auxiliar_colaborador_id = ?)
+        ${dateFilter}
+      GROUP BY COALESCE(e.nome, o.equipamento, o.equipamento_manual, 'Sem equipamento')
+      ORDER BY total_os DESC, custo_total DESC, equipamento ASC
+      LIMIT 8
+    `)
+    .all(id, id, ...params.slice(1));
+
+  let materiais = [];
+  if (colaborador.user_id) {
+    materiais = db
+      .prepare(`
+        SELECT COALESCE(i.nome, i.codigo, 'Item sem nome') AS item,
+               COUNT(*) AS retiradas,
+               ROUND(SUM(COALESCE(ar.quantidade, 0)), 2) AS quantidade_total,
+               ROUND(SUM(COALESCE(ar.quantidade, 0) * COALESCE(i.custo_medio, 0)), 2) AS custo_estimado
+        FROM almox_retiradas ar
+        JOIN estoque_itens i ON i.id = ar.item_id
+        WHERE ar.created_by = ?
+          ${periodoInicio ? " AND datetime(ar.created_at) >= datetime(?)" : ""}
+          ${periodoFim ? " AND datetime(ar.created_at) <= datetime(?)" : ""}
+        GROUP BY COALESCE(i.nome, i.codigo, 'Item sem nome')
+        ORDER BY quantidade_total DESC, custo_estimado DESC
+        LIMIT 10
+      `)
+      .all(
+        Number(colaborador.user_id),
+        ...(periodoInicio ? [`${periodoInicio} 00:00:00`] : []),
+        ...(periodoFim ? [`${periodoFim} 23:59:59`] : [])
+      );
+  }
+
+  const timeline = osRows.slice(0, 20).map((item) => ({
+    ...item,
+    duracao_horas:
+      item.closed_at && item.opened_at
+        ? Math.round((new Date(item.closed_at) - new Date(item.opened_at)) / 36e5 * 100) / 100
+        : null,
+  }));
+
+  const produtividade = Number(resumo.horas_total_estimadas || 0) > 0
+    ? Math.round((Number(resumo.os_concluidas || 0) / Number(resumo.horas_total_estimadas || 1)) * 100) / 100
+    : 0;
+
+  return {
+    colaborador,
+    resumo: {
+      ...resumo,
+      produtividade_os_hora: produtividade,
+    },
+    topEquipamentos,
+    materiais,
+    timeline,
+  };
+}
+
 function getRankingEquipamentos(limit = 5, meses = 6) {
   return db
     .prepare(`
@@ -356,6 +512,8 @@ function listOSFalhasPreview() {
 
 module.exports = {
   getIndicadores,
+  listColaboradoresTecnicos,
+  getColaboradorResumoTecnico,
   getRankingEquipamentos,
   listPlanos,
   listFiltros,
