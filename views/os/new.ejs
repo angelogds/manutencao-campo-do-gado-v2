@@ -46,6 +46,9 @@
       <div style="grid-column:1 / -1;">
         <label class="label">Descrição do problema / Não conformidade (Solicitante)</label>
         <textarea name="descricao" class="input" required placeholder="Descreva o problema identificado"></textarea>
+        <div style="margin-top:12px;">
+          <button type="button" id="btn-analisar-ia" class="btn btn-blue">🤖 Analisar com IA</button>
+        </div>
       </div>
 
       <div style="grid-column:1 / -1;">
@@ -63,6 +66,49 @@
 </div>
 
 <script>
+  const btnAnalisarIA = document.getElementById('btn-analisar-ia');
+
+  if (btnAnalisarIA) {
+    btnAnalisarIA.addEventListener('click', async () => {
+      const equipamento = (document.querySelector('[name="equipamento_id"]') || {}).value || '';
+      const descricaoEl = document.querySelector('[name="descricao"]');
+      const descricao = (descricaoEl ? descricaoEl.value : '').trim();
+
+      if (!descricao) {
+        alert('Preencha a descrição do problema antes de analisar.');
+        return;
+      }
+
+      const textoOriginal = btnAnalisarIA.textContent;
+      btnAnalisarIA.disabled = true;
+      btnAnalisarIA.textContent = 'Analisando...';
+
+      try {
+        const res = await fetch('/ai/os/analisar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            equipamento_id: equipamento || null,
+            descricao
+          })
+        });
+
+        const data = await res.json();
+
+        if (data && data.ok) {
+          alert('✅ Análise da IA concluída!');
+        } else {
+          alert('Erro: ' + ((data && data.error) || 'Não foi possível analisar'));
+        }
+      } catch (e) {
+        alert('Erro de conexão com a IA');
+      } finally {
+        btnAnalisarIA.disabled = false;
+        btnAnalisarIA.textContent = textoOriginal;
+      }
+    });
+  }
+
   document.getElementById('os-form').addEventListener('submit', function(e){
     const id = document.getElementById('equipamento_id').value.trim();
     const manual = document.getElementById('equipamento_manual').value.trim();
