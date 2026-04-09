@@ -6,143 +6,290 @@
   <title>Login • Campo do Gado</title>
   <style>
     :root {
-      /* parâmetros fáceis para próximo ajuste */
-      --bg-overlay: rgba(15, 23, 42, 0.32);
-      --card-bg: rgba(255, 255, 255, 0.62);
+      --overlay-dark: rgba(7, 12, 18, 0.72);
+      --overlay-soft: rgba(7, 12, 18, 0.38);
+      --card-bg: rgba(255, 255, 255, 0.08);
+      --card-border: rgba(255, 255, 255, 0.16);
       --card-radius: 22px;
-      --card-width: 410px;
-      --card-padding: 24px;
-      --title-size: 42px;
-      --subtitle-size: 16px;
-      --input-size: 16px;
-      --button-size: 18px;
-
-      --txt-strong: #0f172a;
-      --txt-soft: #475569;
-      --brand-green: #16a34a;
-      --brand-green-dark: #15803d;
+      --card-width: 350px;
+      --card-padding: 20px;
+      --txt-strong: #f8fafc;
+      --txt-soft: rgba(241, 245, 249, 0.75);
+      --brand-green: #2f8d57;
+      --brand-green-dark: #1f6a40;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
-      margin: 0;
       min-height: 100vh;
-      font-family: Arial, Helvetica, sans-serif;
-      background:
-        linear-gradient(var(--bg-overlay), var(--bg-overlay)),
-        url('/IMG/campo-do-bg-gado-login.svg.jpeg') center/cover no-repeat fixed;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      background: #0a0a0a;
+      color: var(--txt-strong);
+    }
+
+    .hero-container {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+    }
+
+    .scene {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transform: scale(1.1);
+      transition: opacity 1.8s ease, transform 1.8s ease;
+      overflow: hidden;
+    }
+
+    .scene.active {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .scene img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: brightness(0.72) contrast(1.08) saturate(0.94);
+    }
+
+    .scene.active img {
+      animation: slowZoom 18s ease-in-out infinite alternate;
+    }
+
+    @keyframes slowZoom {
+      0% { transform: scale(1) translate(0, 0); }
+      100% { transform: scale(1.06) translate(-1%, -1%); }
+    }
+
+    .industrial-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        140deg,
+        var(--overlay-dark) 0%,
+        rgba(10, 22, 34, 0.55) 45%,
+        var(--overlay-soft) 70%,
+        rgba(5, 10, 15, 0.82) 100%
+      );
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .vignette {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.5) 100%);
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .tech-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(74, 139, 95, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(74, 139, 95, 0.05) 1px, transparent 1px);
+      background-size: 55px 55px;
+      z-index: 5;
+      pointer-events: none;
     }
 
     .login-screen {
+      position: relative;
       min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 28px 8vw;
+      z-index: 20;
     }
 
     .login-card {
       width: min(var(--card-width), 100%);
       background: var(--card-bg);
-      border: 1px solid rgba(255, 255, 255, 0.55);
+      border: 1px solid var(--card-border);
       border-radius: var(--card-radius);
-      box-shadow: 0 18px 42px rgba(2, 6, 23, 0.28);
+      box-shadow: 0 20px 40px rgba(2, 6, 23, 0.44);
       padding: var(--card-padding);
-      backdrop-filter: blur(8px);
+      backdrop-filter: blur(14px);
     }
 
     .login-logo-wrap {
       display: flex;
-      justify-content: center;
-      margin-bottom: 10px;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 14px;
     }
 
     .login-logo {
-      width: min(250px, 100%);
+      width: min(170px, 82%);
       height: auto;
       object-fit: contain;
       display: block;
     }
 
-    .login-subtitle {
-      margin: 0 0 18px;
-      color: var(--txt-soft);
-      font-size: var(--subtitle-size);
-      font-weight: 600;
-      text-align: center;
+    .company-name {
+      color: #fff;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
     }
 
-    .login-form { display: grid; gap: 12px; }
-    .field { display: grid; gap: 6px; }
+    .login-subtitle {
+      margin: 0 0 14px;
+      color: var(--txt-soft);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .login-form { display: grid; gap: 10px; }
+    .field { display: grid; gap: 5px; }
 
     .field label {
-      color: var(--txt-strong);
-      font-size: 14px;
+      color: #f1f5f9;
+      font-size: 12px;
       font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .field input {
       width: 100%;
-      border: 1px solid #cbd5e1;
-      border-radius: 12px;
-      padding: 11px 12px;
-      font-size: var(--input-size);
-      color: var(--txt-strong);
-      background: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: #fff;
+      background: rgba(15, 23, 42, 0.4);
     }
+
+    .field input::placeholder { color: rgba(255, 255, 255, 0.48); }
 
     .field input:focus {
       outline: none;
-      border-color: var(--brand-green);
-      box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+      border-color: #6ab88a;
+      box-shadow: 0 0 0 3px rgba(74, 139, 95, 0.2);
     }
 
     .btn-login {
-      margin-top: 4px;
+      margin-top: 6px;
       width: 100%;
       border: none;
-      border-radius: 12px;
+      border-radius: 10px;
       padding: 12px;
-      background: var(--brand-green);
+      background: linear-gradient(135deg, var(--brand-green-dark) 0%, var(--brand-green) 100%);
       color: #fff;
-      font-size: var(--button-size);
+      font-size: 14px;
       font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
       cursor: pointer;
-      transition: background .2s ease;
+      transition: transform .2s ease, box-shadow .2s ease;
     }
 
-    .btn-login:hover { background: var(--brand-green-dark); }
+    .btn-login:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px rgba(45, 90, 61, 0.4);
+    }
 
     .alert {
       margin: 0 0 10px;
-      padding: 10px 12px;
+      padding: 9px 11px;
       border-radius: 10px;
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 12px;
+      font-weight: 700;
     }
 
-    .alert-error { background: #fee2e2; color: #991b1b; }
-    .alert-success { background: #dcfce7; color: #166534; }
-    .alert-info { background: #e0f2fe; color: #075985; }
+    .alert-error { background: rgba(127, 29, 29, 0.72); color: #fee2e2; }
+    .alert-success { background: rgba(22, 101, 52, 0.7); color: #dcfce7; }
+    .alert-info { background: rgba(7, 89, 133, 0.7); color: #e0f2fe; }
+
+    .animation-status {
+      position: fixed;
+      left: 28px;
+      bottom: 22px;
+      z-index: 12;
+      color: rgba(255, 255, 255, 0.74);
+      font-size: 11px;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+    }
+
+    .stage-indicator {
+      color: #6ab88a;
+      font-weight: 700;
+    }
+
+    @media (max-width: 900px) {
+      :root {
+        --card-width: 330px;
+        --card-padding: 18px;
+      }
+
+      .login-screen {
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .animation-status {
+        left: 16px;
+        bottom: 14px;
+      }
+    }
 
     @media (max-width: 640px) {
       :root {
-        --card-padding: 22px;
-        --title-size: 34px;
-        --subtitle-size: 15px;
-        --input-size: 15px;
-        --button-size: 16px;
+        --card-width: 92vw;
+      }
+
+      .company-name {
+        font-size: 20px;
+      }
+
+      .animation-status {
+        display: none;
       }
     }
   </style>
 </head>
 <body>
+  <div class="hero-container">
+    <div class="scene active"><img src="https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=1920&q=80" alt="Equipe de manutenção industrial" /></div>
+    <div class="scene"><img src="https://images.unsplash.com/photo-1565433576798-00fd4b7d18a9?auto=format&fit=crop&w=1920&q=80" alt="Torno de usinagem em operação" /></div>
+    <div class="scene"><img src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?auto=format&fit=crop&w=1920&q=80" alt="Serviço industrial em campo" /></div>
+    <div class="scene"><img src="https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&w=1920&q=80" alt="Equipamento industrial pesado" /></div>
+    <div class="scene"><img src="https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1920&q=80" alt="Fabricação e solda" /></div>
+    <div class="scene"><img src="https://images.unsplash.com/photo-1581092795442-7d4f40f4f90b?auto=format&fit=crop&w=1920&q=80" alt="Estruturas metálicas" /></div>
+
+    <div class="industrial-overlay"></div>
+    <div class="vignette"></div>
+    <div class="tech-grid"></div>
+  </div>
+
+  <div class="animation-status">
+    Fase: <span class="stage-indicator" id="stageText">Montagem</span>
+  </div>
+
   <section class="login-screen">
     <div class="login-card">
       <div class="login-logo-wrap">
-        <img class="login-logo" src="/IMG/login_campo_do_gado.png.png.png" alt="Logo manutenção" />
+        <img class="login-logo" src="/IMG/login_campo_do_gado.png.png.png" alt="Logo manutenção Campo do Gado" />
+        <h1 class="company-name">Campo do Gado</h1>
       </div>
-      <p class="login-subtitle">Acesse o Sistema de Manutenção Industrial</p>
+      <p class="login-subtitle">Sistema de Manutenção Industrial</p>
 
       <% if (flash && flash.error && flash.error.length) { %>
         <div class="alert alert-error"><%= flash.error[0] %></div>
@@ -196,5 +343,31 @@
       </form>
     </div>
   </section>
+
+  <script>
+    const scenes = document.querySelectorAll('.scene');
+    const stageText = document.getElementById('stageText');
+    const stageNames = ['Montagem', 'Usinagem', 'Campo', 'Equipamentos', 'Soldagem', 'Operação'];
+    const stageDuration = 5000;
+    let currentStage = 0;
+
+    function updateStage(index) {
+      scenes.forEach((scene) => scene.classList.remove('active'));
+      scenes[index].classList.add('active');
+      stageText.style.opacity = 0;
+      setTimeout(() => {
+        stageText.textContent = stageNames[index];
+        stageText.style.opacity = 1;
+      }, 120);
+    }
+
+    function nextStage() {
+      currentStage = (currentStage + 1) % scenes.length;
+      updateStage(currentStage);
+    }
+
+    stageText.style.transition = 'opacity 0.4s ease';
+    setInterval(nextStage, stageDuration);
+  </script>
 </body>
 </html>
