@@ -205,7 +205,7 @@ async function osClose(req, res) {
       dataFim: req.body.data_fim,
     });
 
-    await pushService.sendPushToAll({
+    pushService.sendPushToAll({
       title: "OS finalizada",
       body: `OS #${id} foi finalizada.`,
       url: `/os/${id}`,
@@ -217,6 +217,10 @@ async function osClose(req, res) {
     console.error("[OS_CLOSE][ERROR]", err);
     req.flash("error", err.message || "Não foi possível concluir a OS.");
   }
+
+  const role = normalizeRole(req.session?.user?.role || "");
+  const isMecanicoOuAdmin = ["MECANICO", "ADMIN"].includes(role);
+  if (!isMecanicoOuAdmin) return res.redirect("/os/novo");
   return res.redirect(`/os/${id}`);
 }
 
