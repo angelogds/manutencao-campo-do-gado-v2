@@ -266,8 +266,14 @@
   </style>
 </head>
 <body>
-  <div class="hero-container" id="heroContainer">
-    <div class="scene active"><img src="/IMG/campo-do-bg-gado-login.svg.jpeg" alt="Equipe Campo do Gado em manutenção" /></div>
+  <div class="hero-container">
+    <div class="scene active"><img src="https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=1920&q=80" alt="Equipe de manutenção industrial" /></div>
+    <div class="scene"><img src="https://images.unsplash.com/photo-1565433576798-00fd4b7d18a9?auto=format&fit=crop&w=1920&q=80" alt="Torno de usinagem em operação" /></div>
+    <div class="scene"><img src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?auto=format&fit=crop&w=1920&q=80" alt="Serviço industrial em campo" /></div>
+    <div class="scene"><img src="https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&w=1920&q=80" alt="Equipamento industrial pesado" /></div>
+    <div class="scene"><img src="https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1920&q=80" alt="Fabricação e solda" /></div>
+    <div class="scene"><img src="https://images.unsplash.com/photo-1581092795442-7d4f40f4f90b?auto=format&fit=crop&w=1920&q=80" alt="Estruturas metálicas" /></div>
+
     <div class="industrial-overlay"></div>
     <div class="vignette"></div>
     <div class="tech-grid"></div>
@@ -339,88 +345,29 @@
   </section>
 
   <script>
-    const heroContainer = document.getElementById('heroContainer');
+    const scenes = document.querySelectorAll('.scene');
     const stageText = document.getElementById('stageText');
-    const stageNames = ['Montagem', 'Usinagem', 'Campo', 'Logística', 'Caldeiraria', 'Operação'];
+    const stageNames = ['Montagem', 'Usinagem', 'Campo', 'Equipamentos', 'Soldagem', 'Operação'];
     const stageDuration = 5000;
+    let currentStage = 0;
 
-    // Pasta padrão para você enviar os binários no ChatHub:
-    // public/img/slideshow-login/
-    // Padrões aceitos: slide-01.jpg, slide-02.jpeg, slide-03.png, ...
-    const SLIDE_BASE_DIR = '/img/slideshow-login';
-    const candidateFiles = [];
-    for (let i = 1; i <= 30; i += 1) {
-      const index = String(i).padStart(2, '0');
-      candidateFiles.push(`${SLIDE_BASE_DIR}/slide-${index}.jpg`);
-      candidateFiles.push(`${SLIDE_BASE_DIR}/slide-${index}.jpeg`);
-      candidateFiles.push(`${SLIDE_BASE_DIR}/slide-${index}.png`);
-      candidateFiles.push(`${SLIDE_BASE_DIR}/slide-${index}.webp`);
+    function updateStage(index) {
+      scenes.forEach((scene) => scene.classList.remove('active'));
+      scenes[index].classList.add('active');
+      stageText.style.opacity = 0;
+      setTimeout(() => {
+        stageText.textContent = stageNames[index];
+        stageText.style.opacity = 1;
+      }, 120);
     }
 
-    function imageExists(src) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => resolve(src);
-        img.onerror = () => resolve(null);
-        img.src = src;
-      });
+    function nextStage() {
+      currentStage = (currentStage + 1) % scenes.length;
+      updateStage(currentStage);
     }
 
-    function createScene(src, isActive = false) {
-      const scene = document.createElement('div');
-      scene.className = `scene${isActive ? ' active' : ''}`;
-      const img = document.createElement('img');
-      img.src = src;
-      img.alt = 'Imagem real de manutenção Campo do Gado';
-      scene.appendChild(img);
-      return scene;
-    }
-
-    async function discoverSlides() {
-      const result = await Promise.all(candidateFiles.map((file) => imageExists(file)));
-      const loaded = result.filter(Boolean);
-      return [...new Set(loaded)];
-    }
-
-    function mountSlides(slides) {
-      const overlays = heroContainer.querySelectorAll('.industrial-overlay, .vignette, .tech-grid');
-      heroContainer.querySelectorAll('.scene').forEach((node) => node.remove());
-
-      const sources = slides.length ? slides : ['/IMG/campo-do-bg-gado-login.svg.jpeg'];
-      sources.forEach((src, index) => {
-        heroContainer.insertBefore(createScene(src, index === 0), overlays[0]);
-      });
-
-      return heroContainer.querySelectorAll('.scene');
-    }
-
-    function startAnimation(scenes) {
-      let currentStage = 0;
-
-      function updateStage(index) {
-        scenes.forEach((scene) => scene.classList.remove('active'));
-        scenes[index].classList.add('active');
-        stageText.style.opacity = 0;
-        setTimeout(() => {
-          stageText.textContent = stageNames[index % stageNames.length];
-          stageText.style.opacity = 1;
-        }, 120);
-      }
-
-      function nextStage() {
-        currentStage = (currentStage + 1) % scenes.length;
-        updateStage(currentStage);
-      }
-
-      stageText.style.transition = 'opacity 0.4s ease';
-      setInterval(nextStage, stageDuration);
-    }
-
-    (async () => {
-      const slides = await discoverSlides();
-      const scenes = mountSlides(slides);
-      startAnimation(scenes);
-    })();
+    stageText.style.transition = 'opacity 0.4s ease';
+    setInterval(nextStage, stageDuration);
   </script>
 </body>
 </html>
