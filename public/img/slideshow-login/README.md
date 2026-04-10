@@ -3,19 +3,22 @@
 Coloque aqui as fotos reais da empresa para o hero animado da tela de login.
 
 ## Convenção de nome
-Use o padrão abaixo (qualquer uma das extensões listadas):
+Agora pode usar **qualquer nome de arquivo** (inclusive com espaço), desde que seja imagem.
 
-- `slide-01.jpg` (ou `.jpeg`, `.png`, `.webp`)
-- `slide-02.jpg`
-- `slide-03.jpg`
-- ... até `slide-30.*`
+Extensões aceitas:
+- `.jpg`
+- `.jpeg`
+- `.png`
+- `.webp`
+- `.gif`
+- `.avif`
 
 ## Exemplo
-`public/img/slideshow-login/slide-01.jpg`
-`public/img/slideshow-login/slide-02.jpg`
-`public/img/slideshow-login/slide-03.jpg`
+`public/img/slideshow-login/WhatsApp Image 2026-04-09 at 16.47.44.jpeg`
+`public/img/slideshow-login/WhatsApp Image 2026-04-09 at 16.50.34.jpeg`
+`public/img/slideshow-login/login_campo_do_gado.png.png.png`
 
 ## Observações
 - Não precisa editar o `views/auth/login.ejs` para cada imagem nova.
-- O front detecta automaticamente quais `slide-XX` existem na pasta.
+- O backend detecta automaticamente todas as imagens válidas da pasta.
 - Se não houver imagens na pasta, o sistema cai no fundo padrão `/IMG/campo-do-bg-gado-login.svg.jpeg`.

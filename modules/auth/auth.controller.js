@@ -1,9 +1,32 @@
 // modules/auth/auth.controller.js
+const fs = require("fs");
+const path = require("path");
 const bcrypt = require("bcryptjs");
 const authService = require("./auth.service");
 
+function getLoginSlideshowImages() {
+  const slideshowDir = path.join(process.cwd(), "public", "img", "slideshow-login");
+  const allowedExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"]);
+
+  try {
+    const files = fs.readdirSync(slideshowDir, { withFileTypes: true });
+    const imageUrls = files
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .filter((fileName) => allowedExtensions.has(path.extname(fileName).toLowerCase()))
+      .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true, sensitivity: "base" }))
+      .map((fileName) => `/img/slideshow-login/${encodeURIComponent(fileName)}`);
+
+    return imageUrls;
+  } catch (error) {
+    console.warn("⚠️ Não foi possível ler /public/img/slideshow-login:", error.message);
+    return [];
+  }
+}
+
 exports.showLogin = (req, res) => {
   if (req.session?.user) return res.redirect("/dashboard");
+  const slideshowImages = getLoginSlideshowImages();
 
   // mantém esses campos pra sua view atualizada
   return res.render("auth/login", {
@@ -13,6 +36,7 @@ exports.showLogin = (req, res) => {
     attemptsLeft: null,
     rememberedEmail: "",
     next: String(req.query?.next || "").trim(),
+    slideshowImages,
   });
 };
 

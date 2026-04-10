@@ -267,12 +267,14 @@
 </head>
 <body>
   <div class="hero-container">
-    <div class="scene active"><img src="https://images.unsplash.com/photo-1581094288338-2314dddb7ece?auto=format&fit=crop&w=1920&q=80" alt="Equipe de manutenção industrial" /></div>
-    <div class="scene"><img src="https://images.unsplash.com/photo-1565433576798-00fd4b7d18a9?auto=format&fit=crop&w=1920&q=80" alt="Torno de usinagem em operação" /></div>
-    <div class="scene"><img src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?auto=format&fit=crop&w=1920&q=80" alt="Serviço industrial em campo" /></div>
-    <div class="scene"><img src="https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&w=1920&q=80" alt="Equipamento industrial pesado" /></div>
-    <div class="scene"><img src="https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=1920&q=80" alt="Fabricação e solda" /></div>
-    <div class="scene"><img src="https://images.unsplash.com/photo-1581092795442-7d4f40f4f90b?auto=format&fit=crop&w=1920&q=80" alt="Estruturas metálicas" /></div>
+    <% const bgImages = (slideshowImages && slideshowImages.length)
+      ? slideshowImages
+      : ['/IMG/campo-do-bg-gado-login.svg.jpeg']; %>
+    <% bgImages.forEach((src, index) => { %>
+      <div class="scene <%= index === 0 ? 'active' : '' %>">
+        <img src="<%= src %>" alt="Foto operacional Campo do Gado <%= index + 1 %>" />
+      </div>
+    <% }) %>
 
     <div class="industrial-overlay"></div>
     <div class="vignette"></div>
@@ -347,7 +349,7 @@
   <script>
     const scenes = document.querySelectorAll('.scene');
     const stageText = document.getElementById('stageText');
-    const stageNames = ['Montagem', 'Usinagem', 'Campo', 'Equipamentos', 'Soldagem', 'Operação'];
+    const stageNames = ['Manutenção', 'Inspeção', 'Operação', 'Campo', 'Equipe', 'Produção'];
     const stageDuration = 5000;
     let currentStage = 0;
 
@@ -366,8 +368,15 @@
       updateStage(currentStage);
     }
 
-    stageText.style.transition = 'opacity 0.4s ease';
-    setInterval(nextStage, stageDuration);
+    if (stageText) {
+      stageText.style.transition = 'opacity 0.4s ease';
+    }
+
+    if (scenes.length > 1) {
+      setInterval(nextStage, stageDuration);
+    } else if (stageText) {
+      stageText.textContent = stageNames[0];
+    }
   </script>
 </body>
 </html>
