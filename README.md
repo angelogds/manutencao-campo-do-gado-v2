@@ -38,6 +38,18 @@ npm run seed
 npm run dev
 ```
 
+### Pré-check de deploy no Railway
+
+Antes de subir no Railway, rode:
+
+```bash
+npm run preflight:railway
+```
+
+O comando valida variáveis obrigatórias, versão do Node, paths de persistência e script de start.
+
+Guia completo: `docs/railway-deploy.md`.
+
 ## Novo módulo: Desenho Técnico
 
 ### Rotas principais
