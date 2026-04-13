@@ -116,4 +116,65 @@ try {
   } catch (_e) {}
 }
 
+
+function normalizeParamsAndCb(params, cb) {
+  if (typeof params === "function") return { params: [], cb: params };
+  return { params: params ?? [], cb };
+}
+
+function toArrayParams(params) {
+  if (Array.isArray(params)) return params;
+  return [params];
+}
+
+if (typeof db.get !== "function") {
+  db.get = function getCompat(sql, params, cb) {
+    const norm = normalizeParamsAndCb(params, cb);
+    let row;
+    try {
+      row = db.prepare(sql).get(...toArrayParams(norm.params));
+    } catch (err) {
+      if (typeof norm.cb === "function") return norm.cb(err);
+      throw err;
+    }
+    if (typeof norm.cb === "function") return norm.cb(null, row);
+    return row;
+  };
+}
+
+if (typeof db.all !== "function") {
+  db.all = function allCompat(sql, params, cb) {
+    const norm = normalizeParamsAndCb(params, cb);
+    let rows;
+    try {
+      rows = db.prepare(sql).all(...toArrayParams(norm.params));
+    } catch (err) {
+      if (typeof norm.cb === "function") return norm.cb(err);
+      throw err;
+    }
+    if (typeof norm.cb === "function") return norm.cb(null, rows);
+    return rows;
+  };
+}
+
+if (typeof db.run !== "function") {
+  db.run = function runCompat(sql, params, cb) {
+    const norm = normalizeParamsAndCb(params, cb);
+    let info;
+    try {
+      info = db.prepare(sql).run(...toArrayParams(norm.params));
+    } catch (err) {
+      if (typeof norm.cb === "function") return norm.cb(err);
+      throw err;
+    }
+    if (typeof norm.cb === "function") {
+      const ctx = { lastID: Number(info.lastInsertRowid || 0), changes: Number(info.changes || 0) };
+      return norm.cb.call(ctx, null);
+    }
+    return info;
+  };
+}
+
 module.exports = db;
+module.exports.db = db;
+module.exports.default = db;
