@@ -123,6 +123,67 @@
     border-color: rgba(22,163,74,.45);
     background:#ecfdf5;
   }
+
+  .preventiva-list{
+    display:none;
+    gap:12px;
+  }
+  .preventiva-card{
+    border:1px solid #e5e7eb;
+    border-radius:14px;
+    padding:14px;
+    background:#fff;
+  }
+  .preventiva-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:8px;
+  }
+  .preventiva-id{
+    font-size:26px;
+    font-weight:800;
+    line-height:1;
+    text-decoration:none;
+    color:#0f172a;
+  }
+  .preventiva-title{
+    font-size:20px;
+    line-height:1.25;
+    margin:4px 0 8px;
+  }
+  .preventiva-equip{
+    color:#6b7280;
+    font-size:15px;
+    margin-bottom:10px;
+  }
+  .preventiva-meta{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    padding-top:10px;
+    border-top:1px solid #eef2f7;
+  }
+
+  @media (max-width: 900px){
+    .table-wrap{ display:none; }
+    .preventiva-list{ display:grid; }
+    .card{ padding:12px; }
+    .page-head{
+      flex-wrap:wrap;
+      align-items:flex-start;
+    }
+    .actions{
+      width:100%;
+    }
+    .btn-primary{
+      width:100%;
+      justify-content:center;
+    }
+    .preventiva-title{ font-size:18px; }
+    .preventiva-id{ font-size:24px; }
+  }
 </style>
 
 <div class="page-head">
@@ -199,5 +260,41 @@
         <% }) %>
       </tbody>
     </table>
+  </div>
+
+  <div class="preventiva-list">
+    <% if (!lista || !lista.length) { %>
+      <div class="preventiva-card" style="text-align:center; color:#6b7280;">
+        Nenhuma preventiva cadastrada.
+      </div>
+    <% } %>
+
+    <% (lista || []).forEach(p => { %>
+      <article class="preventiva-card">
+        <div class="preventiva-head">
+          <a class="preventiva-id" href="/preventivas/<%= p.id %>">#<%= p.id %></a>
+          <% if (Number(p.ativo) === 1 || p.ativo === true) { %>
+            <span class="pill pill-green">ATIVA</span>
+          <% } else { %>
+            <span class="pill pill-gray">INATIVA</span>
+          <% } %>
+        </div>
+
+        <h3 class="preventiva-title"><%= p.titulo || "-" %></h3>
+        <div class="preventiva-equip">
+          <%= p.equipamento_nome
+                ? (p.equipamento_codigo
+                    ? (p.equipamento_codigo + " • " + p.equipamento_nome)
+                    : p.equipamento_nome)
+                : "-" %>
+        </div>
+
+        <div class="preventiva-meta">
+          <span class="pill pill-blue"><%= (p.frequencia_tipo || "-").toUpperCase() %></span>
+          <span class="pill pill-gray">x<%= p.frequencia_valor || 1 %></span>
+          <a class="btn-sm" href="/preventivas/<%= p.id %>">Abrir</a>
+        </div>
+      </article>
+    <% }) %>
   </div>
 </div>
