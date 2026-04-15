@@ -39,45 +39,6 @@
   }
   .btn-primary:hover{ background:#15803d; }
 
-  .table-wrap{ overflow:auto; }
-  table{
-    width:100%;
-    border-collapse:separate;
-    border-spacing:0;
-    min-width:980px;
-  }
-
-  /* ✅ Cabeçalho mais claro (igual Equipamentos) */
-  thead th{
-    text-align:left;
-    font-size:12px;
-    color:#64748b;
-    font-weight:700;
-    letter-spacing:.02em;
-    padding:12px 12px;
-    border-bottom:1px solid #e5e7eb;
-    background:#fff;
-    position:sticky;
-    top:0;
-    z-index:1;
-  }
-
-  tbody td{
-    padding:12px 12px;
-    border-bottom:1px solid #f1f5f9;
-    vertical-align:top;
-    font-size:14px;
-    color:#0f172a;
-  }
-  tbody tr:hover td{ background:#f8fafc; }
-
-  .link{
-    font-weight:800;
-    text-decoration:none;
-    color:#0f172a;
-  }
-  .link:hover{ text-decoration:underline; }
-
   /* Pílulas (mais leves e bonitas) */
   .pill{
     display:inline-flex;
@@ -95,14 +56,6 @@
   .pill-green{ background:#ecfdf5; border-color:#bbf7d0; color:#14532d; }
   .pill-gray{  background:#f1f5f9; border-color:#e2e8f0; color:#334155; }
   .pill-blue{  background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
-
-  .freq{
-    display:inline-flex;
-    align-items:center;
-    gap:8px;
-    white-space:nowrap;
-  }
-  .freq .muted-inline{ color:#6b7280; font-size:13px; }
 
   /* Botão pequeno (Ações) igual Equipamentos */
   .btn-sm{
@@ -198,68 +151,55 @@
 </div>
 
 <div class="card">
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th style="width:80px;">ID</th>
-          <th>Título</th>
-          <th>Equipamento</th>
-          <th style="width:200px;">Frequência</th>
-          <th style="width:140px;">Status</th>
-          <th style="width:140px; text-align:right;">Ações</th>
-        </tr>
-      </thead>
+  <div class="preventiva-list">
+    <% if (!lista || !lista.length) { %>
+      <div class="preventiva-card" style="text-align:center; color:#6b7280;">
+        Nenhuma preventiva cadastrada.
+      </div>
+    <% } %>
 
-      <tbody>
-        <% if (!lista || !lista.length) { %>
-          <tr>
-            <td colspan="6" style="padding:18px; color:#6b7280; text-align:center;">
-              Nenhuma preventiva cadastrada.
-            </td>
-          </tr>
-        <% } %>
+    <% (lista || []).forEach(p => { %>
+      <% const statusExec = String(p.execucao_status || "").toLowerCase(); %>
+      <% const statusAberta = !statusExec || statusExec === "pendente" || statusExec === "atrasada"; %>
+      <% const statusLabel = statusAberta ? "ABERTA" : "FECHADA"; %>
+      <% const statusClass = statusAberta ? "pill-open" : "pill-closed"; %>
+      <% const equipamentoLabel = p.equipamento_nome
+            ? (p.equipamento_codigo
+                ? (p.equipamento_codigo + " • " + p.equipamento_nome)
+                : p.equipamento_nome)
+            : "-"; %>
+      <% const abertura = p.execucao_data_prevista || p.created_at || "-"; %>
+      <% const fechamento = p.execucao_data_executada || "-"; %>
+      <article class="preventiva-card">
+        <div class="preventiva-top">
+          <div>
+            <div class="preventiva-code">PREV #<%= p.id %></div>
+            <a class="preventiva-id" href="/preventivas/<%= p.id %>">#<%= p.id %></a>
+          </div>
+          <span class="pill pill-big <%= statusClass %>"><%= statusLabel %></span>
+        </div>
 
-        <% (lista || []).forEach(p => { %>
-          <tr>
-            <td>
-              <a class="link" href="/preventivas/<%= p.id %>">#<%= p.id %></a>
-            </td>
+        <h3 class="preventiva-title"><%= p.titulo || "-" %></h3>
+        <div class="preventiva-equip"><%= equipamentoLabel %></div>
+        <div class="preventiva-exec">
+          <strong>Executores:</strong> <%= p.execucao_responsavel || "-" %>
+        </div>
+        <div class="preventiva-dates">
+          Abertura: <%= abertura %> • Fechamento: <%= fechamento %>
+        </div>
 
-            <td>
-              <%= p.titulo || "-" %>
-            </td>
-
-            <td class="muted">
-              <%= p.equipamento_nome
-                    ? (p.equipamento_codigo
-                        ? (p.equipamento_codigo + " • " + p.equipamento_nome)
-                        : p.equipamento_nome)
-                    : "-" %>
-            </td>
-
-            <td>
-              <div class="freq">
-                <span class="pill pill-blue"><%= (p.frequencia_tipo || "-").toUpperCase() %></span>
-                <span class="muted-inline">x<%= p.frequencia_valor || 1 %></span>
-              </div>
-            </td>
-
-            <td>
-              <% if (Number(p.ativo) === 1 || p.ativo === true) { %>
-                <span class="pill pill-green">ATIVA</span>
-              <% } else { %>
-                <span class="pill pill-gray">INATIVA</span>
-              <% } %>
-            </td>
-
-            <td style="text-align:right;">
-              <a class="btn-sm" href="/preventivas/<%= p.id %>">Abrir</a>
-            </td>
-          </tr>
-        <% }) %>
-      </tbody>
-    </table>
+        <div class="preventiva-meta">
+          <span class="pill pill-big pill-info">PREVENTIVA</span>
+          <span class="pill pill-big pill-gray"><%= (p.frequencia_tipo || "-").toUpperCase() %> x<%= p.frequencia_valor || 1 %></span>
+          <% if (Number(p.ativo) === 1 || p.ativo === true) { %>
+            <span class="pill pill-big pill-green">PLANO ATIVO</span>
+          <% } else { %>
+            <span class="pill pill-big pill-gray">PLANO INATIVO</span>
+          <% } %>
+          <a class="btn-sm" href="/preventivas/<%= p.id %>">Abrir</a>
+        </div>
+      </article>
+    <% }) %>
   </div>
 
   <div class="preventiva-list">
