@@ -4,9 +4,32 @@ function listPlanos() {
   return db.prepare(`
     SELECT p.*,
            e.nome AS equipamento_nome,
-           e.codigo AS equipamento_codigo
+           e.codigo AS equipamento_codigo,
+           ex.id AS execucao_id,
+           ex.status AS execucao_status,
+           ex.responsavel AS execucao_responsavel,
+           ex.data_prevista AS execucao_data_prevista,
+           ex.data_executada AS execucao_data_executada,
+           ex.observacao AS execucao_observacao,
+           ex.created_at AS execucao_created_at
     FROM preventiva_planos p
     LEFT JOIN equipamentos e ON e.id = p.equipamento_id
+    LEFT JOIN preventiva_execucoes ex ON ex.id = (
+      SELECT pe2.id
+      FROM preventiva_execucoes pe2
+      WHERE pe2.plano_id = p.id
+      ORDER BY
+        CASE pe2.status
+          WHEN 'atrasada' THEN 1
+          WHEN 'pendente' THEN 2
+          WHEN 'executada' THEN 3
+          WHEN 'cancelada' THEN 4
+          ELSE 9
+        END,
+        COALESCE(pe2.data_prevista, '9999-12-31') ASC,
+        pe2.id DESC
+      LIMIT 1
+    )
     ORDER BY p.ativo DESC, p.id DESC
   `).all();
 }
