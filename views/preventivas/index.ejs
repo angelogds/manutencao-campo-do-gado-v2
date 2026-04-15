@@ -78,7 +78,7 @@
   }
 
   .preventiva-list{
-    display:grid;
+    display:none;
     gap:12px;
   }
   .preventiva-card{
@@ -87,18 +87,12 @@
     padding:14px;
     background:#fff;
   }
-  .preventiva-top{
+  .preventiva-head{
     display:flex;
-    align-items:flex-start;
+    align-items:center;
     justify-content:space-between;
     gap:10px;
-    margin-bottom:10px;
-  }
-  .preventiva-code{
-    color:#64748b;
-    font-size:18px;
-    line-height:1.1;
-    font-weight:800;
+    margin-bottom:8px;
   }
   .preventiva-id{
     font-size:26px;
@@ -106,51 +100,29 @@
     line-height:1;
     text-decoration:none;
     color:#0f172a;
-    display:inline-block;
-    margin-top:2px;
   }
   .preventiva-title{
-    font-size:24px;
+    font-size:20px;
     line-height:1.25;
-    margin:2px 0 8px;
-    font-weight:800;
-    overflow-wrap:anywhere;
+    margin:4px 0 8px;
   }
   .preventiva-equip{
-    color:#0f172a;
-    font-size:18px;
-    margin-bottom:8px;
-    font-weight:700;
-  }
-  .preventiva-exec{
-    color:#111827;
-    font-size:16px;
-    margin-bottom:10px;
-  }
-  .preventiva-dates{
     color:#6b7280;
-    font-size:14px;
-    margin:10px 0;
-    border-top:1px solid #eef2f7;
-    padding-top:10px;
+    font-size:15px;
+    margin-bottom:10px;
   }
   .preventiva-meta{
     display:flex;
     flex-wrap:wrap;
     gap:8px;
+    padding-top:10px;
+    border-top:1px solid #eef2f7;
   }
-  .preventiva-meta .btn-sm{ margin-left:auto; }
-  .pill-big{
-    font-size:13px;
-    padding:6px 14px;
-    font-weight:800;
-  }
-  .pill-open{ background:#fff7ed; border-color:#fed7aa; color:#9a3412; }
-  .pill-closed{ background:#ecfdf5; border-color:#bbf7d0; color:#14532d; }
-  .pill-info{ background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
 
   @media (max-width: 900px){
-    .card{ padding:10px; }
+    .table-wrap{ display:none; }
+    .preventiva-list{ display:grid; }
+    .card{ padding:12px; }
     .page-head{
       flex-wrap:wrap;
       align-items:flex-start;
@@ -162,14 +134,8 @@
       width:100%;
       justify-content:center;
     }
-    .preventiva-code{ font-size:14px; }
-    .preventiva-id{ font-size:30px; }
-    .preventiva-title{ font-size:24px; }
-    .preventiva-equip{ font-size:18px; }
-    .preventiva-exec{ font-size:16px; }
-    .preventiva-dates{ font-size:14px; }
-    .pill-big{ font-size:14px; }
-    .btn-sm{ padding:7px 10px; }
+    .preventiva-title{ font-size:18px; }
+    .preventiva-id{ font-size:24px; }
   }
 </style>
 
@@ -230,6 +196,42 @@
           <% } else { %>
             <span class="pill pill-big pill-gray">PLANO INATIVO</span>
           <% } %>
+          <a class="btn-sm" href="/preventivas/<%= p.id %>">Abrir</a>
+        </div>
+      </article>
+    <% }) %>
+  </div>
+
+  <div class="preventiva-list">
+    <% if (!lista || !lista.length) { %>
+      <div class="preventiva-card" style="text-align:center; color:#6b7280;">
+        Nenhuma preventiva cadastrada.
+      </div>
+    <% } %>
+
+    <% (lista || []).forEach(p => { %>
+      <article class="preventiva-card">
+        <div class="preventiva-head">
+          <a class="preventiva-id" href="/preventivas/<%= p.id %>">#<%= p.id %></a>
+          <% if (Number(p.ativo) === 1 || p.ativo === true) { %>
+            <span class="pill pill-green">ATIVA</span>
+          <% } else { %>
+            <span class="pill pill-gray">INATIVA</span>
+          <% } %>
+        </div>
+
+        <h3 class="preventiva-title"><%= p.titulo || "-" %></h3>
+        <div class="preventiva-equip">
+          <%= p.equipamento_nome
+                ? (p.equipamento_codigo
+                    ? (p.equipamento_codigo + " • " + p.equipamento_nome)
+                    : p.equipamento_nome)
+                : "-" %>
+        </div>
+
+        <div class="preventiva-meta">
+          <span class="pill pill-blue"><%= (p.frequencia_tipo || "-").toUpperCase() %></span>
+          <span class="pill pill-gray">x<%= p.frequencia_valor || 1 %></span>
           <a class="btn-sm" href="/preventivas/<%= p.id %>">Abrir</a>
         </div>
       </article>
