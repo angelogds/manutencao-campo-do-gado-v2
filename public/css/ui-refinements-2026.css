@@ -1,0 +1,217 @@
+/* Ajustes visuais incrementais — Agosto/2026
+   Escopo: topbar compacta, ações de OS mobile-first e limpeza do cabeçalho do painel.
+   Mantém a identidade visual e não altera regras de negócio, rotas ou permissões. */
+
+/* ===============================
+   TOPBAR — PADRÃO COMPACTO
+=================================*/
+.topbar{
+  min-height:58px;
+  padding:9px 16px;
+  gap:10px;
+  background:rgba(255,255,255,.92);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+}
+
+.topbar-left,
+.topbar-right{
+  gap:8px;
+}
+
+.sidebar-toggle{
+  width:36px;
+  height:36px;
+  border-radius:11px;
+  flex:0 0 auto;
+}
+
+.topbar-title{
+  font-size:16px;
+  line-height:1.15;
+}
+
+.topbar-sub{
+  font-size:11px;
+  line-height:1.15;
+}
+
+.topbar-logos{
+  gap:7px;
+  margin-left:8px;
+  flex-wrap:nowrap;
+}
+
+.topbar-logos img{
+  height:25px;
+  max-width:48px;
+}
+
+.topbar .pill{
+  gap:7px;
+  padding:6px 8px;
+}
+
+.topbar .pill-name{
+  font-size:13px;
+}
+
+.topbar .pill-role{
+  font-size:10px;
+  padding:3px 7px;
+}
+
+.topbar .btn{
+  padding:7px 10px;
+  border-radius:11px;
+  font-size:12px;
+}
+
+/* ===============================
+   AÇÕES — OS / DASHBOARD
+=================================*/
+.os-page-actions,
+.page-head .actions,
+.dashboard-actions,
+.dashboard-toolbar-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.os-primary-action{
+  order:1 !important;
+}
+
+.os-operational-action{
+  order:2 !important;
+}
+
+.os-pdf-action{
+  order:3 !important;
+}
+
+.ui-compact-action{
+  min-height:34px !important;
+  padding:7px 10px !important;
+  border-radius:9px !important;
+  font-size:12px !important;
+  line-height:1.1 !important;
+}
+
+/* Elementos que o JS identifica como filtros redundantes do topo. */
+.ui-dashboard-filter-hidden{
+  display:none !important;
+}
+
+/* Ícones decorativos dos cards de resumo identificados pelo JS. */
+.ui-kpi-decorative-hidden{
+  display:none !important;
+}
+
+/* Mantém cards limpos mesmo após a retirada dos ícones decorativos. */
+.ui-kpi-clean{
+  padding-right:12px !important;
+}
+
+@media (max-width: 900px){
+  .topbar{
+    min-height:54px;
+    padding:8px 12px;
+  }
+
+  .topbar-logos{
+    gap:5px;
+    margin-left:5px;
+  }
+
+  .topbar-logos img{
+    height:22px;
+    max-width:38px;
+  }
+
+  .topbar .pill-name{
+    max-width:120px;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+  }
+
+  .page-head{
+    align-items:flex-start;
+  }
+}
+
+@media (max-width: 640px){
+  .topbar{
+    min-height:50px;
+    padding:7px 9px;
+  }
+
+  .sidebar-toggle{
+    width:34px;
+    height:34px;
+  }
+
+  .topbar-title{
+    font-size:14px;
+  }
+
+  .topbar-sub{
+    display:none;
+  }
+
+  .topbar-logos{
+    margin-left:3px;
+  }
+
+  .topbar-logos img{
+    height:19px;
+    max-width:31px;
+  }
+
+  .topbar .pill{
+    padding:5px 7px;
+  }
+
+  .topbar .pill-name{
+    display:none;
+  }
+
+  .topbar .pill-role{
+    font-size:9px;
+  }
+
+  .topbar .btn{
+    padding:6px 8px;
+    font-size:11px;
+  }
+
+  .page-head{
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+  }
+
+  .page-head .actions,
+  .os-page-actions,
+  .dashboard-actions,
+  .dashboard-toolbar-actions{
+    width:100%;
+    justify-content:flex-start;
+  }
+
+  .page-head .actions > *,
+  .os-page-actions > *,
+  .dashboard-actions > *,
+  .dashboard-toolbar-actions > *{
+    flex:0 0 auto;
+  }
+
+  /* Nova OS sempre vem primeiro no mobile. */
+  .os-primary-action{
+    order:-10 !important;
+  }
+}
