@@ -31,7 +31,7 @@
     candidates.forEach((el) => {
       const text = visibleText(el);
 
-      if (!primary && (text === '+ nova os' || text === 'nova os' || text.includes('nova os'))) {
+      if (!primary && text.includes('nova os')) {
         primary = el;
         el.classList.add('os-primary-action');
       }
@@ -128,18 +128,20 @@
     if (path !== '/dashboard' && path !== '/') return;
 
     Array.from(document.querySelectorAll('.content select')).forEach((select) => {
-      const selectedText = normalizeText(
-        select.options?.[select.selectedIndex]?.text || select.getAttribute('aria-label') || ''
-      );
+      const optionTexts = Array.from(select.options || []).map((option) => normalizeText(option.text));
+      const ariaText = normalizeText(select.getAttribute('aria-label') || '');
 
-      if (selectedText === 'ultimos 30 dias' || selectedText === 'todos os setores') {
+      const isPeriodFilter = optionTexts.includes('ultimos 30 dias') || ariaText.includes('periodo');
+      const isSectorFilter = optionTexts.includes('todos os setores') || ariaText.includes('setor');
+
+      if (isPeriodFilter || isSectorFilter) {
         hideFilterSelect(select);
       }
     });
 
     Array.from(document.querySelectorAll('.content a, .content button')).forEach((el) => {
       const text = visibleText(el);
-      if (text === 'atualizar' || text === 'modo tv' || text.includes('modo tv')) {
+      if (text.includes('atualizar') || text.includes('modo tv')) {
         el.classList.add('ui-compact-action');
       }
     });
