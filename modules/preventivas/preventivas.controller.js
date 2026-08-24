@@ -29,6 +29,26 @@ function getSugestaoResponsavel() {
   }
 }
 
+function getColaboradoresDisponiveis() {
+  try {
+    const turnoAtual = osService.getTurnoAgora();
+    const escalados = osService.getColaboradoresTurnoAtual(turnoAtual);
+    if (Array.isArray(escalados) && escalados.length) {
+      return escalados.map((c) => ({
+        id: Number(c.colaborador_id || c.id),
+        nome: c.nome,
+        funcao: c.funcao || "mecanico",
+      }));
+    }
+  } catch (_e) {}
+
+  return service.listColaboradoresAtivos().map((c) => ({
+    id: Number(c.id),
+    nome: c.nome,
+    funcao: c.funcao || "mecanico",
+  }));
+}
+
 function index(req, res) {
   const lista = service.listPlanos();
   return res.render("preventivas/index", {
@@ -93,11 +113,68 @@ function show(req, res) {
   });
 }
 
+function responsaveisForm(req, res) {
+  const configuracao = service.getResponsaveisPadrao();
+  const colaboradores = getColaboradoresDisponiveis();
+
+  return res.render("preventivas/responsaveis", {
+    layout: "layout",
+    title: "Eleger Mecânico da Preventiva",
+    activeMenu: "preventivas",
+    configuracao,
+    colaboradores
+  });
+}
+
+function pickResponsavelId(body, keys) {
+  for (const key of keys) {
+    if (body?.[key]) return Number(body[key]);
+  }
+  return null;
+}
+
+function responsaveisSave(req, res) {
+  try {
+    const mecanico1Id = pickResponsavelId(req.body, [
+      "mecanico_1_colaborador_id",
+      "mecanico1_id",
+      "mecanico_1",
+      "responsavel_1",
+      "executor_colaborador_id",
+    ]);
+    const mecanico2Id = pickResponsavelId(req.body, [
+      "mecanico_2_colaborador_id",
+      "mecanico2_id",
+      "mecanico_2",
+      "responsavel_2",
+      "auxiliar_colaborador_id",
+    ]);
+
+    const result = service.saveResponsaveisPadrao({
+      mecanico1Id,
+      mecanico2Id,
+      updatedBy: req.session?.user?.id || null,
+    });
+
+    req.flash(
+      "success",
+      `Responsáveis atualizados para ${result.responsavel_label}. ${result.osAtualizadas} OS preventiva(s) aberta(s) e ${result.execucoesAtualizadas} execução(ões) pendente(s) sincronizadas.`
+    );
+  } catch (err) {
+    req.flash("error", err.message || "Não foi possível atualizar os responsáveis das preventivas.");
+  }
+
+  return res.redirect("/preventivas/eleger-mecanico");
+}
+
 function execCreate(req, res) {
   const planoId = Number(req.params.id);
   const { data_prevista, responsavel, observacao } = req.body;
   const sugestao = getSugestaoResponsavel();
-  const responsavelFinal = String(responsavel || "").trim() || sugestao.responsavelPadrao;
+  const configuracao = service.getResponsaveisPadrao();
+  const responsavelFinal = String(responsavel || "").trim()
+    || configuracao?.responsavel_label
+    || sugestao.responsavelPadrao;
 
   service.createExecucao(planoId, {
     data_prevista: (data_prevista || "").trim(),
@@ -126,4 +203,13 @@ function execUpdateStatus(req, res) {
   return res.redirect(`/preventivas/${planoId}`);
 }
 
-module.exports = { index, newForm, create, show, execCreate, execUpdateStatus };
+module.exports = {
+  index,
+  newForm,
+  create,
+  show,
+  responsaveisForm,
+  responsaveisSave,
+  execCreate,
+  execUpdateStatus
+};

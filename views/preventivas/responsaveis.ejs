@@ -1,0 +1,80 @@
+<% layout('layout') %>
+
+<style>
+  .prev-team-page{ max-width:1180px; }
+  .prev-team-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; margin-bottom:18px; }
+  .prev-team-head h1{ margin:0; font-size:36px; line-height:1.1; }
+  .prev-team-sub{ color:#64748b; margin-top:8px; }
+  .prev-team-card{ background:#fff; border:1px solid #e2e8f0; border-radius:20px; padding:18px; box-shadow:0 8px 24px rgba(15,23,42,.04); }
+  .prev-team-alert{ border:1px solid #e2e8f0; border-radius:16px; padding:15px 18px; font-weight:700; color:#1e293b; margin-bottom:18px; }
+  .prev-team-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .prev-team-field label{ display:block; margin-bottom:8px; color:#64748b; font-weight:800; text-transform:uppercase; font-size:13px; letter-spacing:.03em; }
+  .prev-team-field select{ width:100%; min-height:48px; border:1px solid #cbd5e1; border-radius:14px; background:#fff; padding:0 14px; font-size:15px; }
+  .prev-team-current{ margin:16px 0 18px; color:#334155; }
+  .prev-team-actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .prev-team-btn{ border-radius:12px; min-height:44px; padding:0 16px; font-weight:800; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+  .prev-team-save{ border:0; background:#16a34a; color:#fff; }
+  .prev-team-cancel{ border:1px solid #bbf7d0; background:#fff; color:#15803d; }
+  @media(max-width:760px){
+    .prev-team-head{ flex-direction:column; }
+    .prev-team-head h1{ font-size:28px; }
+    .prev-team-grid{ grid-template-columns:1fr; }
+  }
+</style>
+
+<div class="prev-team-page">
+  <div class="prev-team-head">
+    <div>
+      <h1>Eleger Mecânico da Preventiva</h1>
+      <div class="prev-team-sub">Defina os responsáveis padrão das preventivas. Ao salvar, as OS preventivas abertas e ainda não iniciadas serão atualizadas automaticamente.</div>
+    </div>
+    <a class="prev-team-btn prev-team-cancel" href="/preventivas">Voltar</a>
+  </div>
+
+  <div class="prev-team-card">
+    <div class="prev-team-alert">
+      Somente colaboradores disponíveis na escala atual devem ser selecionados. A troca não altera OS em andamento ou concluídas.
+    </div>
+
+    <form method="post" action="/preventivas/eleger-mecanico">
+      <div class="prev-team-grid">
+        <div class="prev-team-field">
+          <label for="mecanico_1_colaborador_id">Mecânico 1</label>
+          <select id="mecanico_1_colaborador_id" name="mecanico_1_colaborador_id" required>
+            <option value="">Selecione</option>
+            <% (colaboradores || []).forEach(c => { %>
+              <option value="<%= c.id %>" <%= Number(configuracao?.mecanico_1_colaborador_id) === Number(c.id) ? 'selected' : '' %>>
+                <%= c.nome %> • <%= String(c.funcao || 'mecanico').toLowerCase() %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="prev-team-field">
+          <label for="mecanico_2_colaborador_id">Mecânico 2</label>
+          <select id="mecanico_2_colaborador_id" name="mecanico_2_colaborador_id" required>
+            <option value="">Selecione</option>
+            <% (colaboradores || []).forEach(c => { %>
+              <option value="<%= c.id %>" <%= Number(configuracao?.mecanico_2_colaborador_id) === Number(c.id) ? 'selected' : '' %>>
+                <%= c.nome %> • <%= String(c.funcao || 'mecanico').toLowerCase() %>
+              </option>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+
+      <div class="prev-team-current">
+        Configuração atual:
+        <strong><%= configuracao?.responsavel_label || 'não definida' %></strong>
+        <% if (configuracao?.updated_at) { %>
+          • atualizada em <%= configuracao.updated_at %>
+        <% } %>
+      </div>
+
+      <div class="prev-team-actions">
+        <button class="prev-team-btn prev-team-save" type="submit">Salvar responsáveis</button>
+        <a class="prev-team-btn prev-team-cancel" href="/preventivas">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
