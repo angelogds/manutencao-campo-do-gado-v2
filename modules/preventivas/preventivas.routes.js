@@ -5,7 +5,6 @@ const router = express.Router();
 const { requireLogin, requireRole } = require("../auth/auth.middleware");
 const { ACCESS } = require("../../config/rbac");
 
-// controller
 let ctrl = {};
 try {
   ctrl = require("./preventivas.controller");
@@ -29,15 +28,8 @@ const safe = (fn, name) =>
         return res.status(500).send(`Erro interno: handler ${name} indefinido.`);
       };
 
-// Quem pode ver preventivas (ajuste se quiser)
 const PREV_ACCESS = ACCESS.preventivas_view;
 
-// =====================================================
-// ✅ ROTAS (prefixo já é /preventivas no server.js)
-// Então aqui é: /, /nova, /:id...
-// =====================================================
-
-// GET  /preventivas
 router.get(
   "/",
   requireLogin,
@@ -45,7 +37,6 @@ router.get(
   safe(ctrl.index, "index")
 );
 
-// GET  /preventivas/nova
 router.get(
   "/nova",
   requireLogin,
@@ -53,7 +44,6 @@ router.get(
   safe(ctrl.newForm, "newForm")
 );
 
-// POST /preventivas
 router.post(
   "/",
   requireLogin,
@@ -61,7 +51,22 @@ router.post(
   safe(ctrl.create, "create")
 );
 
-// GET  /preventivas/:id
+// Tela exibida no menu como "Eleger Mecânico".
+// Mantemos aliases para compatibilidade com versões já implantadas.
+router.get(
+  ["/eleger-mecanico", "/responsaveis", "/equipe"],
+  requireLogin,
+  requireRole(ACCESS.preventivas_manage),
+  safe(ctrl.responsaveisForm, "responsaveisForm")
+);
+
+router.post(
+  ["/eleger-mecanico", "/responsaveis", "/equipe"],
+  requireLogin,
+  requireRole(ACCESS.preventivas_manage),
+  safe(ctrl.responsaveisSave, "responsaveisSave")
+);
+
 router.get(
   "/:id",
   requireLogin,
@@ -69,7 +74,6 @@ router.get(
   safe(ctrl.show, "show")
 );
 
-// POST /preventivas/:id/execucoes
 router.post(
   "/:id/execucoes",
   requireLogin,
@@ -77,7 +81,6 @@ router.post(
   safe(ctrl.execCreate, "execCreate")
 );
 
-// POST /preventivas/:id/execucoes/:execId/status
 router.post(
   "/:id/execucoes/:execId/status",
   requireLogin,
