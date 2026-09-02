@@ -26,6 +26,9 @@ function lista(req, res) {
   };
 
   const lista = service.listSolicitacoesPorStatus(filters);
+  const demandasPlanejamento = service.listSolicitacoesPorStatus({})
+    .filter((s) => String(s.tipo_origem || '').toUpperCase().startsWith('DEMANDA') && !['FECHADA','RECEBIDA_TOTAL'].includes(String(s.status || '').toUpperCase()))
+    .slice(0, 20);
 
   if (req.query.export === 'excel') {
     const escapeCsv = (value) => `"${String(value == null ? '' : value).replace(/"/g, '""')}"`;
@@ -49,20 +52,17 @@ function lista(req, res) {
   }
 
   return res.render('compras/solicitacoes/index', {
-    title: 'Compras',
-    activeMenu: 'compras',
-    lista,
-    filters,
+    title: 'Compras', activeMenu: 'compras', lista, filters,
     statusList: service.STATUS_COMPRAS,
     resumo: service.getResumoSolicitacoes(),
+    demandasPlanejamento,
   });
 }
 
 function detalhe(req, res) {
   const id = Number(req.params.id);
-  try {
-    return tryRenderDetalhe(id, res);
-  } catch (e) {
+  try { return tryRenderDetalhe(id, res); }
+  catch (e) {
     if (isSchemaError(e)) {
       try {
         console.warn('⚠️ Schema de compras incompleto. Tentando aplicar migrations automaticamente...');
@@ -72,7 +72,6 @@ function detalhe(req, res) {
         console.error('❌ Falha ao aplicar migrations automaticamente:', migrationError && migrationError.stack ? migrationError.stack : migrationError);
       }
     }
-
     console.error('❌ Erro detalhe compras:', e && e.stack ? e.stack : e);
     req.flash('error', 'Falha ao abrir detalhes da solicitação. Verifique se as migrations do V3 já foram aplicadas.');
     return res.redirect('/compras/solicitacoes');
@@ -84,87 +83,49 @@ function pdf(req, res) {
     const id = Number(req.params.id);
     const sol = service.getSolicitacaoDetalhe(id);
     if (!sol) return res.status(404).send('Solicitação não encontrada');
-
     service.iniciarCotacaoViaPdf(id, req.session?.user?.id || null);
     return service.gerarPdf(sol, res);
-  } catch (error) {
-    return res.status(500).send(error.message || 'Falha ao gerar PDF.');
-  }
+  } catch (error) { return res.status(500).send(error.message || 'Falha ao gerar PDF.'); }
 }
 
 function criarCotacao(req, res) {
-  try {
-    service.createCotacao(Number(req.params.id), req.body);
-    req.flash('success', 'Cotação registrada com sucesso.');
-  } catch (error) {
-    req.flash('error', error.message || 'Não foi possível registrar cotação.');
-  }
+  try { service.createCotacao(Number(req.params.id), req.body); req.flash('success', 'Cotação registrada com sucesso.'); }
+  catch (error) { req.flash('error', error.message || 'Não foi possível registrar cotação.'); }
   return res.redirect(`/compras/solicitacoes/${req.params.id}`);
 }
-
 function selecionarCotacao(req, res) {
-  try {
-    service.selecionarCotacao(Number(req.params.id), Number(req.params.cotacaoId));
-    req.flash('success', 'Cotação selecionada com sucesso.');
-  } catch (error) {
-    req.flash('error', error.message || 'Não foi possível selecionar cotação.');
-  }
+  try { service.selecionarCotacao(Number(req.params.id), Number(req.params.cotacaoId)); req.flash('success', 'Cotação selecionada com sucesso.'); }
+  catch (error) { req.flash('error', error.message || 'Não foi possível selecionar cotação.'); }
   return res.redirect(`/compras/solicitacoes/${req.params.id}`);
 }
-
 function atualizarDados(req, res) {
-  try {
-    service.atualizarDados(Number(req.params.id), req.body);
-    req.flash('success', 'Dados de compras atualizados.');
-  } catch (error) {
-    req.flash('error', error.message || 'Não foi possível atualizar dados.');
-  }
+  try { service.atualizarDados(Number(req.params.id), req.body); req.flash('success', 'Dados de compras atualizados.'); }
+  catch (error) { req.flash('error', error.message || 'Não foi possível atualizar dados.'); }
   return res.redirect(`/compras/solicitacoes/${req.params.id}`);
 }
-
 function marcarComprada(req, res) {
-  try {
-    service.marcarComprada(Number(req.params.id), req.session.user.id, req.body);
-    req.flash('success', 'Solicitação marcada como COMPRADA.');
-  } catch (error) {
-    req.flash('error', error.message || 'Não foi possível marcar como comprada.');
-  }
+  try { service.marcarComprada(Number(req.params.id), req.session.user.id, req.body); req.flash('success', 'Solicitação marcada como COMPRADA.'); }
+  catch (error) { req.flash('error', error.message || 'Não foi possível marcar como comprada.'); }
   return res.redirect(`/compras/solicitacoes/${req.params.id}`);
 }
-
 function uploadAnexo(req, res) {
   try {
     if (!req.file) throw new Error('Nenhum arquivo foi enviado.');
-    service.salvarAnexo({
-      solicitacaoId: Number(req.params.id),
-      file: req.file,
-      tipo: req.body.tipo || 'COTACAO',
-      uploadedBy: req.session?.user?.id || null,
-    });
+    service.salvarAnexo({ solicitacaoId:Number(req.params.id), file:req.file, tipo:req.body.tipo || 'COTACAO', uploadedBy:req.session?.user?.id || null });
     req.flash('success', 'Anexo enviado com sucesso.');
-  } catch (error) {
-    req.flash('error', error.message || 'Falha ao enviar anexo.');
-  }
+  } catch (error) { req.flash('error', error.message || 'Falha ao enviar anexo.'); }
   return res.redirect(`/compras/solicitacoes/${req.params.id}`);
 }
-
 function downloadAnexo(req, res) {
   const anexo = service.getAnexoById(Number(req.params.anexoId));
   if (!anexo) return res.status(404).send('Anexo não encontrado');
-
   const fullPath = path.join(UPLOADS_DIR, anexo.filename);
   if (!fs.existsSync(fullPath)) return res.status(404).send('Arquivo não encontrado no disco');
-
   return res.download(fullPath, anexo.original_name || anexo.filename);
 }
-
 function deleteAnexo(req, res) {
   const anexo = service.getAnexoById(Number(req.params.anexoId));
-  if (!anexo) {
-    req.flash('error', 'Anexo não encontrado.');
-    return res.redirect('/compras/solicitacoes');
-  }
-
+  if (!anexo) { req.flash('error', 'Anexo não encontrado.'); return res.redirect('/compras/solicitacoes'); }
   const fullPath = path.join(UPLOADS_DIR, anexo.filename);
   if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
   service.deleteAnexo(anexo.id);
@@ -172,15 +133,4 @@ function deleteAnexo(req, res) {
   return res.redirect(`/compras/solicitacoes/${anexo.referencia_id}`);
 }
 
-module.exports = {
-  lista,
-  detalhe,
-  pdf,
-  criarCotacao,
-  selecionarCotacao,
-  atualizarDados,
-  marcarComprada,
-  uploadAnexo,
-  downloadAnexo,
-  deleteAnexo,
-};
+module.exports = { lista, detalhe, pdf, criarCotacao, selecionarCotacao, atualizarDados, marcarComprada, uploadAnexo, downloadAnexo, deleteAnexo };
