@@ -11,6 +11,7 @@ const statusConfig = {
   EM_COTACAO: { label: 'Em cotação', className: 'is-quote', icon: '💬' },
   COMPRADA: { label: 'Comprada', className: 'is-bought', icon: '✅' },
 };
+const fmtOrigem = (v) => String(v || 'OS').replaceAll('_',' ');
 %>
 
 <div class="page-head">
@@ -19,6 +20,32 @@ const statusConfig = {
     <p class="muted">Acompanhe cotações, anexos e evolução das solicitações.</p>
   </div>
 </div>
+
+<% if ((demandasPlanejamento || []).length) { %>
+<div class="card" style="margin-bottom:12px;border:1px solid #9fd9ba;background:#f6fffa;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+    <div><strong>Pré-cotações de Demandas</strong><div class="muted">Materiais preparados antes da OS. Compras pode cotar antecipadamente; a compra depende da priorização/autorização da demanda.</div></div>
+    <span class="pill-tag pill-green"><%= demandasPlanejamento.length %> em planejamento</span>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Solicitação</th><th>Demanda</th><th>Status</th><th>Solicitante</th><th>Criada em</th><th></th></tr></thead>
+      <tbody>
+        <% (demandasPlanejamento || []).forEach((s) => { %>
+          <tr>
+            <td><strong><%= s.numero || ('#' + s.id) %></strong><div class="muted"><%= s.titulo || '-' %></div></td>
+            <td><a href="/demandas/<%= s.demanda_id %>">#<%= s.demanda_id %></a><div class="muted"><%= fmtOrigem(s.tipo_origem) %></div></td>
+            <td><span class="sol-status <%= (statusConfig[s.status] || {}).className || 'is-open' %>"><%= (statusConfig[s.status] || {}).label || s.status %></span></td>
+            <td><%= s.solicitante_nome || '-' %></td>
+            <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
+            <td><a class="btn btn-sm btn-green" href="/compras/solicitacoes/<%= s.id %>">Cotar</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<% } %>
 
 <div class="card" style="margin-bottom:12px;">
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -60,6 +87,7 @@ const statusConfig = {
         <tr>
           <th>Número</th>
           <th>Título</th>
+          <th>Origem</th>
           <th>Status</th>
           <th>Fornecedor</th>
           <th>Criada em</th>
@@ -68,12 +96,13 @@ const statusConfig = {
       </thead>
       <tbody>
         <% if (!lista?.length) { %>
-          <tr><td colspan="6" class="muted" style="text-align:center;">Nenhuma solicitação encontrada.</td></tr>
+          <tr><td colspan="7" class="muted" style="text-align:center;">Nenhuma solicitação encontrada.</td></tr>
         <% } %>
         <% (lista || []).forEach((s) => { const conf = statusConfig[s.status] || { label: s.status || '-', className: 'is-bought', icon: '📌' }; %>
           <tr>
             <td><strong><%= s.numero || ('#' + s.id) %></strong></td>
             <td><%= s.titulo || '-' %></td>
+            <td><%= fmtOrigem(s.tipo_origem) %><% if (s.demanda_id) { %><div class="muted"><a href="/demandas/<%= s.demanda_id %>">Demanda #<%= s.demanda_id %></a></div><% } %></td>
             <td><span class="sol-status <%= conf.className %>"><span><%= conf.icon %></span> <%= conf.label %></span></td>
             <td><%= s.fornecedor_nome || s.fornecedor || '-' %></td>
             <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
