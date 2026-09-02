@@ -22,6 +22,7 @@ const ITEM_HAS_QTD_SOLICITADA = hasColumn("solicitacao_itens", "qtd_solicitada")
 const ITEM_HAS_ITEM_ID = hasColumn("solicitacao_itens", "item_id");
 const ITEM_HAS_DESCRICAO = hasColumn("solicitacao_itens", "descricao");
 const ITEM_HAS_QUANTIDADE = hasColumn("solicitacao_itens", "quantidade");
+const SOL_HAS_TIPO_ORIGEM = hasColumn("solicitacoes", "tipo_origem");
 
 function getFallbackItemId() {
   const row = db.prepare("SELECT id FROM estoque_itens ORDER BY id LIMIT 1").get();
@@ -33,7 +34,6 @@ function getFallbackItemId() {
   const info = db.prepare(`INSERT INTO estoque_itens (${useCols.join(",")}) VALUES (${placeholders})`).run(...useCols.map((c) => payload[c]));
   return Number(info.lastInsertRowid);
 }
-
 
 function canManageByRole(role) {
   const r = normalizeRole(role);
@@ -65,13 +65,11 @@ function validateEstoqueItemId(value) {
   return exists ? id : null;
 }
 
-function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao, equipamento_id, preventiva_id, os_id, demanda_id, itens }) {
+function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao, equipamento_id, preventiva_id, os_id, demanda_id, tipo_origem, itens }) {
   const fallbackItemId = ITEM_HAS_ITEM_ID ? getFallbackItemId() : null;
-  const insertSol = db.prepare(`
-    INSERT INTO solicitacoes (
-      numero, solicitante_user_id, setor_origem, prioridade, titulo, descricao, equipamento_id, preventiva_id, os_id, demanda_id, status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  const solColumns = ["numero", "solicitante_user_id", "setor_origem", "prioridade", "titulo", "descricao", "equipamento_id", "preventiva_id", "os_id", "demanda_id", "status"];
+  if (SOL_HAS_TIPO_ORIGEM) solColumns.push("tipo_origem");
+  const insertSol = db.prepare(`INSERT INTO solicitacoes (${solColumns.join(",")}) VALUES (${solColumns.map(() => "?").join(",")})`);
 
   const itemColumns = ["solicitacao_id"];
   if (ITEM_HAS_ITEM_NOME) itemColumns.push("item_nome");
@@ -86,7 +84,7 @@ function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao
 
   return db.transaction(() => {
     const numero = nextNumero();
-    const info = insertSol.run(
+    const solValues = [
       numero,
       userId,
       setor_origem || "Manutenção",
@@ -97,11 +95,12 @@ function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao
       sanitizePositiveId(preventiva_id),
       sanitizePositiveId(os_id),
       sanitizePositiveId(demanda_id),
-      STATUS.ABERTA
-    );
+      STATUS.ABERTA,
+    ];
+    if (SOL_HAS_TIPO_ORIGEM) solValues.push(String(tipo_origem || (demanda_id ? "DEMANDA" : "OS")).toUpperCase());
+    const info = insertSol.run(...solValues);
 
     const solicitacaoId = Number(info.lastInsertRowid);
-
     for (const item of itens || []) {
       const row = [solicitacaoId];
       if (ITEM_HAS_ITEM_NOME) row.push(item.item_nome);
@@ -115,7 +114,6 @@ function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao
       if (ITEM_HAS_QUANTIDADE) row.push(Number(item.qtd_solicitada || 0));
       insertItem.run(...row);
     }
-
     return solicitacaoId;
   })();
 }
@@ -123,30 +121,18 @@ function createSolicitacao({ userId, setor_origem, prioridade, titulo, descricao
 function listMinhasSolicitacoes(userId, filters = {}) {
   const where = ["s.solicitante_user_id = ?"];
   const params = [userId];
-
-  if (Object.values(STATUS).includes(filters.status)) {
-    where.push("s.status = ?");
-    params.push(filters.status);
-  }
-
+  if (Object.values(STATUS).includes(filters.status)) { where.push("s.status = ?"); params.push(filters.status); }
   if (filters.query) {
     where.push("(LOWER(s.numero) LIKE ? OR LOWER(s.titulo) LIKE ?)");
     const q = `%${String(filters.query).trim().toLowerCase()}%`;
     params.push(q, q);
   }
-
-  if (filters.date) {
-    where.push("date(s.created_at) = date(?)");
-    params.push(filters.date);
-  }
-
+  if (filters.date) { where.push("date(s.created_at) = date(?)"); params.push(filters.date); }
   return db.prepare(`
     SELECT s.*, u.name AS solicitante_nome,
       (SELECT COUNT(*) FROM solicitacao_itens i WHERE i.solicitacao_id = s.id) AS itens_count
-    FROM solicitacoes s
-    JOIN users u ON u.id = s.solicitante_user_id
-    WHERE ${where.join(" AND ")}
-    ORDER BY s.id DESC
+    FROM solicitacoes s JOIN users u ON u.id = s.solicitante_user_id
+    WHERE ${where.join(" AND ")} ORDER BY s.id DESC
   `).all(...params);
 }
 
@@ -173,12 +159,7 @@ function getSolicitacaoById(id) {
   return { ...sol, itens };
 }
 
-function listEquipamentos() {
-  return db.prepare("SELECT id, nome FROM equipamentos ORDER BY nome").all();
-}
-
-function listEstoqueItens() {
-  return db.prepare("SELECT id, codigo, nome, unidade FROM estoque_itens WHERE ativo = 1 ORDER BY nome").all();
-}
+function listEquipamentos() { return db.prepare("SELECT id, nome FROM equipamentos ORDER BY nome").all(); }
+function listEstoqueItens() { return db.prepare("SELECT id, codigo, nome, unidade FROM estoque_itens WHERE ativo = 1 ORDER BY nome").all(); }
 
 module.exports = { STATUS, canManageByRole, createSolicitacao, listMinhasSolicitacoes, getCountersForUser, getSolicitacaoById, listEquipamentos, listEstoqueItens };
