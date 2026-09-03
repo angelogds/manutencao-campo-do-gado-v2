@@ -1,57 +1,41 @@
 <% layout('layout') %>
-<%
-const fmtStatus = (s) => String(s || '-').replaceAll('_',' ');
-const ativos = (lista || []).filter((d) => !['CONCLUIDA','CANCELADA'].includes(d.status));
-%>
 <div class="page-head">
   <div>
     <h1>Demandas</h1>
-    <p class="muted">Banco de serviços da fábrica para planejamento, materiais, pré-cotação, aprovação e execução.</p>
+    <p class="muted">Demandas da Direção para acompanhamento e execução.</p>
   </div>
-  <% if (typeof can === 'function' && can('demandas_open')) { %><a class="btn btn-green" href="/demandas/new">+ Nova demanda</a><% } %>
-</div>
-
-<div class="grid-3" style="grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:12px;">
-  <div class="card"><div class="label">Demandas ativas</div><div style="font-size:26px;font-weight:800;color:#178347;"><%= counters?.ativas || 0 %></div><div class="muted">Fila operacional</div></div>
-  <div class="card"><div class="label">Novas</div><div style="font-size:26px;font-weight:800;"><%= counters?.novas || 0 %></div><div class="muted">Aguardando análise</div></div>
-  <div class="card"><div class="label">Em análise</div><div style="font-size:26px;font-weight:800;"><%= counters?.em_analise || 0 %></div><div class="muted">Em avaliação</div></div>
-  <div class="card"><div class="label">Planejamento / execução</div><div style="font-size:26px;font-weight:800;"><%= counters?.em_andamento || 0 %></div><div class="muted">Preparação ativa</div></div>
-  <div class="card"><div class="label">Paradas</div><div style="font-size:26px;font-weight:800;color:#c62828;"><%= counters?.paradas || 0 %></div><div class="muted">Atenção necessária</div></div>
-  <div class="card"><div class="label">Críticas e altas</div><div style="font-size:26px;font-weight:800;color:#d97706;"><%= counters?.criticas_altas || 0 %></div><div class="muted">Prioridade elevada</div></div>
-</div>
-
-<% if ((counters?.criticas_altas || 0) > 0) { %>
-<div class="card" style="margin-bottom:12px;border:1px solid #f4c77a;background:#fffaf0;display:flex;justify-content:space-between;align-items:center;gap:10px;">
-  <div><strong>Atenção à fila operacional</strong><div class="muted"><%= counters.criticas_altas %> demanda(s) de prioridade alta/urgente.</div></div>
-  <a class="btn btn-ghost" href="/demandas?prioridade=ALTA">Ver demandas</a>
-</div>
-<% } %>
-
-<div class="card" style="margin-bottom:12px;">
-  <form method="GET" action="/demandas" class="grid-3" style="grid-template-columns:2fr 1fr 1fr 1fr auto;align-items:end;">
-    <div><div class="label">Buscar</div><input class="input" name="q" value="<%= filters?.query || '' %>" placeholder="Número, título, descrição" /></div>
-    <div><div class="label">Status</div><select class="input" name="status"><option value="">Todos</option><% (statusList || []).forEach((s) => { %><option value="<%= s %>" <%= filters?.status===s?'selected':'' %>><%= fmtStatus(s) %></option><% }) %></select></div>
-    <div><div class="label">Prioridade</div><select class="input" name="prioridade"><option value="">Todas</option><% ['URGENTE','ALTA','NORMAL','MEDIA','BAIXA'].forEach((p) => { %><option value="<%= p %>" <%= filters?.prioridade===p?'selected':'' %>><%= p %></option><% }) %></select></div>
-    <div><div class="label">Responsável</div><select class="input" name="responsavel_user_id"><option value="">Todos</option><% (responsaveis || []).forEach((u) => { %><option value="<%= u.id %>" <%= String(filters?.responsavel_user_id||'')===String(u.id)?'selected':'' %>><%= u.name %></option><% }) %></select></div>
-    <div style="display:flex;gap:6px;"><button class="btn btn-green">Aplicar</button><a class="btn btn-ghost" href="/demandas">Limpar</a></div>
-  </form>
+  <% if (String(user?.role || '').toUpperCase() === 'DIRECAO' || String(user?.role || '').toUpperCase() === 'DIRETORIA') { %>
+    <a class="btn btn-green" href="/demandas/new">+ Nova Demanda</a>
+  <% } %>
 </div>
 
 <div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;"><div><strong>Demandas</strong><div class="muted"><%= (lista || []).length %> registro(s) conforme filtros.</div></div><span class="pill-tag pill-green"><%= ativos.length %> ativa(s)</span></div>
+  <form method="GET" action="/demandas" style="display:flex; gap:10px; align-items:end; margin-bottom:12px;">
+    <div>
+      <div class="label">Filtrar status</div>
+      <select class="input" name="status">
+        <option value="">Todos</option>
+        <% ['NOVA','EM_ANALISE','EM_ANDAMENTO','PARADA','CONCLUIDA','CANCELADA'].forEach(st => { %>
+          <option value="<%= st %>" <%= status===st ? 'selected' : '' %>><%= st %></option>
+        <% }) %>
+      </select>
+    </div>
+    <button class="btn" type="submit">Aplicar</button>
+  </form>
+
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>Demanda</th><th>Status / prioridade</th><th>Planejamento</th><th>Responsável</th><th>Última movimentação</th><th>Ação</th></tr></thead>
+      <thead><tr><th>#</th><th>Título</th><th>Prioridade</th><th>Status</th><th>Criado por</th><th></th></tr></thead>
       <tbody>
-      <% if (!(lista || []).length) { %><tr><td colspan="6" class="muted" style="text-align:center;">Nenhuma demanda encontrada.</td></tr><% } %>
-      <% (lista || []).forEach((d) => { %>
+      <% if (!lista?.length) { %><tr><td colspan="6" style="text-align:center;color:#6b7280;">Sem demandas.</td></tr><% } %>
+      <% (lista||[]).forEach(d => { %>
         <tr>
-          <td><strong>#<%= d.id %> · <%= d.titulo %></strong><div class="muted"><%= d.equipamento_nome || d.setor_origem || d.categoria || '-' %><%= d.demanda_pai_id ? ' · Subdemanda de #' + d.demanda_pai_id : '' %></div></td>
-          <td><span class="pill-tag pill-blue"><%= fmtStatus(d.status) %></span> <span class="pill-tag <%= ['URGENTE','ALTA'].includes(d.prioridade) ? 'pill-amber' : 'pill-green' %>"><%= d.prioridade %></span></td>
-          <td><div><strong><%= d.subdemandas_count || 0 %></strong> subdemanda(s)</div><div class="muted"><%= d.solicitacoes_count || 0 %> solicitação(ões) · <%= d.os_count || 0 %> OS</div></td>
-          <td><%= d.responsavel_nome || '-' %><div class="muted">Criada por <%= d.created_by_nome || '-' %></div></td>
-          <td><%= fmtBR(d.updated_at || d.created_at) %><div class="muted"><%= d.ultima_atualizacao || 'Sem atualização registrada' %></div></td>
-          <td><a class="btn btn-sm btn-ghost" href="/demandas/<%= d.id %>">Abrir demanda</a></td>
+          <td><%= d.id %></td>
+          <td><strong><%= d.titulo %></strong></td>
+          <td><span class="pill-tag pill-amber"><%= d.prioridade %></span></td>
+          <td><span class="pill-tag pill-blue"><%= d.status %></span></td>
+          <td><%= d.created_by_nome || '-' %></td>
+          <td><a class="btn btn-sm" href="/demandas/<%= d.id %>">Abrir</a></td>
         </tr>
       <% }) %>
       </tbody>

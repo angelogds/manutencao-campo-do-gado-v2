@@ -10,8 +10,6 @@ router.post('/', requireLogin, requireRole(ACCESS.demandas_open), ctrl.create);
 router.get('/:id', requireLogin, requireRole(ACCESS.demandas_view), ctrl.show);
 router.post('/:id/status', requireLogin, requireRole(ACCESS.demandas_manage), ctrl.updateStatus);
 router.post('/:id/update', requireLogin, requireRole(ACCESS.demandas_manage), ctrl.addUpdate);
-router.post('/:id/subdemandas', requireLogin, requireRole(ACCESS.demandas_manage), ctrl.createSubdemanda);
-router.post('/:id/materiais', requireLogin, requireRole(ACCESS.demandas_materials), ctrl.createMaterials);
 router.post('/:id/convert-to-os', requireLogin, requireRole(ACCESS.demandas_manage), ctrl.convertToOS);
 
 module.exports = router;

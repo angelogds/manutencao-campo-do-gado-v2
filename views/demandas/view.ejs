@@ -1,110 +1,44 @@
 <% layout('layout') %>
-<%
-const fmtStatus = (s) => String(s || '-').replaceAll('_',' ');
-const money = (v) => Number(v || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-%>
-<div class="page-head">
-  <div>
-    <h1>Demanda #<%= demanda.id %> · <%= demanda.titulo %></h1>
-    <p class="muted">Planejamento integrado antes e durante a execução.</p>
-  </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;"><a class="btn btn-ghost" href="/demandas">Voltar</a><% if (canManage) { %><form method="POST" action="/demandas/<%= demanda.id %>/convert-to-os" onsubmit="return confirm('Converter esta demanda em OS e vincular as solicitações de materiais existentes?');"><button class="btn btn-green">Transformar em OS</button></form><% } %></div>
-</div>
-
-<div class="grid-3" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:12px;">
-  <div class="card"><div class="label">Status</div><strong><%= fmtStatus(demanda.status) %></strong><div class="muted">Aprovação: <%= fmtStatus(demanda.aprovacao_status) %></div></div>
-  <div class="card"><div class="label">Prioridade</div><strong><%= demanda.prioridade %></strong><div class="muted"><%= demanda.categoria %><%= demanda.nr_referencia ? ' · ' + demanda.nr_referencia : '' %></div></div>
-  <div class="card"><div class="label">Equipamento / setor</div><strong><%= demanda.equipamento_nome || demanda.setor_origem || '-' %></strong><div class="muted"><%= demanda.responsavel_nome || 'Responsável não definido' %></div></div>
-  <div class="card"><div class="label">Custo estimado</div><strong><%= money(demanda.custos?.total_estimado) %></strong><div class="muted">Cotado ref.: <%= money(demanda.custos?.total_cotado_referencia) %></div></div>
-</div>
+<div class="page-head"><div><h1>Demanda #<%= demanda.id %></h1><p class="muted"><%= demanda.titulo %></p></div></div>
 
 <div class="card" style="margin-bottom:12px;">
   <div class="grid-3">
-    <div style="grid-column:span 2;"><div class="label">Descrição / escopo</div><div><%= demanda.descricao || '-' %></div></div>
-    <div><div class="label">Prazo previsto</div><div><%= demanda.prazo_previsto ? fmtBR(demanda.prazo_previsto) : '-' %></div><div class="label" style="margin-top:8px;">Demanda principal</div><div><%= demanda.demanda_pai_id ? '#' + demanda.demanda_pai_id + ' · ' + (demanda.demanda_pai_titulo || '') : 'Demanda principal' %></div></div>
+    <div><div class="label">Status</div><strong><%= demanda.status %></strong></div>
+    <div><div class="label">Prioridade</div><strong><%= demanda.prioridade %></strong></div>
+    <div><div class="label">Responsável</div><strong><%= demanda.responsavel_nome || '-' %></strong></div>
   </div>
+  <div style="margin-top:10px;"><div class="label">Descrição</div><div><%= demanda.descricao || '-' %></div></div>
 </div>
 
-<% if (canManage) { %>
-<div class="card" style="margin-bottom:12px;">
-  <strong>Controle da demanda</strong>
-  <form method="POST" action="/demandas/<%= demanda.id %>/status" class="grid-3" style="margin-top:10px;align-items:end;">
-    <div><div class="label">Status</div><select class="input" name="status"><% (statusList||[]).forEach((st)=>{ %><option value="<%= st %>" <%= demanda.status===st?'selected':'' %>><%= fmtStatus(st) %></option><% }) %></select></div>
-    <div><div class="label">Responsável</div><select class="input" name="responsavel_user_id"><option value="">Não definido</option><% (responsaveis||[]).forEach((u)=>{ %><option value="<%= u.id %>" <%= Number(demanda.responsavel_user_id||0)===Number(u.id)?'selected':'' %>><%= u.name %></option><% }) %></select></div>
-    <div><div class="label">Aprovação</div><select class="input" name="aprovacao_status"><% (aprovacaoList||[]).forEach((st)=>{ %><option value="<%= st %>" <%= demanda.aprovacao_status===st?'selected':'' %>><%= fmtStatus(st) %></option><% }) %></select></div>
-    <div style="grid-column:1/-1;text-align:right;"><button class="btn btn-green">Atualizar situação</button></div>
-  </form>
-</div>
+<% if (String(user?.role || '').toUpperCase() === 'ADMIN') { %>
+  <div class="card" style="margin-bottom:12px;">
+    <div class="label">Ações do Admin</div>
+    <form method="POST" action="/demandas/<%= demanda.id %>/status" style="display:flex; gap:10px; align-items:end; flex-wrap:wrap; margin-top:10px;">
+      <div><div class="label">Status</div><select class="input" name="status"><% ['NOVA','EM_ANALISE','EM_ANDAMENTO','PARADA','CONCLUIDA','CANCELADA'].forEach(st => { %><option value="<%= st %>" <%= demanda.status===st?'selected':'' %>><%= st %></option><% }) %></select></div>
+      <div><div class="label">Responsável</div><select class="input" name="responsavel_user_id"><option value="">--</option><% (responsaveis||[]).forEach(u=>{ %><option value="<%= u.id %>" <%= Number(demanda.responsavel_user_id||0)===u.id?'selected':'' %>><%= u.name %></option><% }) %></select></div>
+      <button class="btn btn-green">Atualizar status</button>
+    </form>
+
+    <form method="POST" action="/demandas/<%= demanda.id %>/update" style="margin-top:10px;">
+      <div class="label">Nova atualização</div>
+      <textarea class="input" name="texto" required></textarea>
+      <div style="margin-top:8px;"><button class="btn">Salvar atualização</button></div>
+    </form>
+
+    <form method="POST" action="/demandas/<%= demanda.id %>/convert-to-os" style="margin-top:10px;">
+      <button class="btn btn-green" type="submit">Converter em OS</button>
+    </form>
+  </div>
 <% } %>
 
-<div class="grid-3" style="grid-template-columns:1fr 1fr;margin-bottom:12px;align-items:start;">
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;"><div><strong>Subdemandas</strong><div class="muted">Serviços menores vinculados a esta demanda.</div></div><span class="pill-tag pill-green"><%= demanda.subdemandas?.length || 0 %></span></div>
-    <div class="table-wrap" style="margin-top:10px;"><table class="table"><thead><tr><th>Serviço</th><th>Status</th><th></th></tr></thead><tbody>
-      <% if (!(demanda.subdemandas||[]).length) { %><tr><td colspan="3" class="muted">Nenhuma subdemanda.</td></tr><% } %>
-      <% (demanda.subdemandas||[]).forEach((d)=>{ %><tr><td><strong>#<%= d.id %> · <%= d.titulo %></strong><div class="muted"><%= d.prioridade %> · <%= d.responsavel_nome || '-' %></div></td><td><%= fmtStatus(d.status) %></td><td><a class="btn btn-sm btn-ghost" href="/demandas/<%= d.id %>">Abrir</a></td></tr><% }) %>
-    </tbody></table></div>
-    <% if (canManage) { %>
-    <details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:700;">+ Adicionar subdemanda</summary>
-      <form method="POST" action="/demandas/<%= demanda.id %>/subdemandas" class="grid-3" style="margin-top:10px;">
-        <div style="grid-column:span 2;"><div class="label">Título</div><input class="input" name="titulo" required /></div>
-        <div><div class="label">Prioridade</div><select class="input" name="prioridade"><option>NORMAL</option><option>ALTA</option><option>URGENTE</option><option>BAIXA</option></select></div>
-        <div><div class="label">Categoria</div><select class="input" name="categoria"><% (categorias||[]).forEach((c)=>{ %><option value="<%= c %>" <%= demanda.categoria===c?'selected':'' %>><%= c %></option><% }) %></select></div>
-        <div><div class="label">Equipamento</div><select class="input" name="equipamento_id"><option value="">Herdar / sem específico</option><% (equipamentos||[]).forEach((e)=>{ %><option value="<%= e.id %>"><%= e.nome %></option><% }) %></select></div>
-        <div><div class="label">Prazo</div><input class="input" type="date" name="prazo_previsto" /></div>
-        <div style="grid-column:1/-1;"><div class="label">Descrição</div><textarea class="input" name="descricao" rows="3"></textarea></div>
-        <div style="grid-column:1/-1;text-align:right;"><button class="btn btn-green">Adicionar subdemanda</button></div>
-      </form>
-    </details>
-    <% } %>
-  </div>
-
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;"><div><strong>Ordens de Serviço vinculadas</strong><div class="muted">A demanda pode originar uma ou mais OS.</div></div><span class="pill-tag pill-blue"><%= demanda.ordens?.length || 0 %></span></div>
-    <div class="table-wrap" style="margin-top:10px;"><table class="table"><thead><tr><th>OS</th><th>Status</th><th></th></tr></thead><tbody>
-      <% if (!(demanda.ordens||[]).length) { %><tr><td colspan="3" class="muted">Ainda não existe OS vinculada.</td></tr><% } %>
-      <% (demanda.ordens||[]).forEach((o)=>{ %><tr><td><strong>#<%= o.id %> · <%= o.equipamento %></strong><div class="muted"><%= o.opened_at ? fmtBR(o.opened_at) : '-' %></div></td><td><%= fmtStatus(o.status) %></td><td><a class="btn btn-sm btn-ghost" href="/os/<%= o.id %>">Abrir OS</a></td></tr><% }) %>
-    </tbody></table></div>
+<div class="card">
+  <div class="label">Histórico</div>
+  <div class="table-wrap" style="margin-top:10px;">
+    <table class="table"><thead><tr><th>Data</th><th>Usuário</th><th>Atualização</th></tr></thead><tbody>
+      <% if (!demanda.logs?.length) { %><tr><td colspan="3" style="text-align:center;color:#6b7280;">Sem atualizações.</td></tr><% } %>
+      <% (demanda.logs||[]).forEach(l => { %>
+        <tr><td><%= fmtBR(l.created_at) %></td><td><%= l.user_nome || '-' %></td><td><%= l.texto %></td></tr>
+      <% }) %>
+    </tbody></table>
   </div>
 </div>
-
-<div class="card" style="margin-bottom:12px;">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;"><div><strong>Materiais e pré-cotações</strong><div class="muted">A manutenção prepara os materiais antes da OS; Compras pode cotar antecipadamente sem autorizar a compra.</div></div><span class="pill-tag pill-green"><%= demanda.solicitacoes?.length || 0 %> solicitação(ões)</span></div>
-  <div class="table-wrap" style="margin-top:10px;"><table class="table"><thead><tr><th>Solicitação</th><th>Itens</th><th>Status</th><th>Cotações</th><th>Referência</th><th></th></tr></thead><tbody>
-    <% if (!(demanda.solicitacoes||[]).length) { %><tr><td colspan="6" class="muted">Nenhum material planejado para esta demanda.</td></tr><% } %>
-    <% (demanda.solicitacoes||[]).forEach((s)=>{ %><tr><td><strong><%= s.numero || '#' + s.id %></strong><div class="muted"><%= s.titulo || '-' %></div></td><td><%= s.itens_count || 0 %></td><td><%= fmtStatus(s.status) %></td><td><%= s.cotacoes_count || 0 %></td><td><%= money(s.menor_cotacao || 0) %></td><td><a class="btn btn-sm btn-ghost" href="<%= isCompras ? '/compras/solicitacoes/' + s.id : '/solicitacoes/' + s.id %>">Abrir</a></td></tr><% }) %>
-  </tbody></table></div>
-
-  <% if (canMaterials) { %>
-  <details style="margin-top:12px;"><summary style="cursor:pointer;font-weight:700;">+ Planejar materiais para esta demanda</summary>
-    <form method="POST" action="/demandas/<%= demanda.id %>/materiais" style="margin-top:10px;">
-      <div class="grid-3">
-        <div style="grid-column:span 2;"><div class="label">Título da solicitação</div><input class="input" name="titulo" placeholder="Materiais - <%= demanda.titulo %>" /></div>
-        <div><div class="label">Prioridade</div><select class="input" name="prioridade"><option value="MEDIA">Média</option><option value="ALTA">Alta</option><option value="URGENTE">Urgente</option><option value="BAIXA">Baixa</option></select></div>
-        <div style="grid-column:1/-1;"><div class="label">Observação para Compras</div><textarea class="input" name="descricao" rows="2" placeholder="Pré-cotação para demanda ainda não convertida em OS."></textarea></div>
-      </div>
-      <div class="table-wrap" style="margin-top:10px;"><table class="table" id="materiais-table"><thead><tr><th>Material</th><th>Especificação</th><th>Un.</th><th>Qtd.</th><th>Estoque</th><th></th></tr></thead><tbody id="materiais-body">
-        <tr class="material-row"><td><input class="input" name="itens_nome[]" required /></td><td><input class="input" name="itens_especificacao[]" /></td><td><input class="input" name="itens_un[]" value="UN" style="min-width:70px;" /></td><td><input class="input" type="number" step="0.01" min="0.01" name="itens_qtd[]" required style="min-width:90px;" /></td><td><select class="input" name="itens_item_id[]"><option value="">Novo / não cadastrado</option><% (estoqueItens||[]).forEach((i)=>{ %><option value="<%= i.id %>"><%= i.codigo || '' %> <%= i.nome %></option><% }) %></select></td><td><button type="button" class="btn btn-sm btn-ghost js-remove-material">×</button></td></tr>
-      </tbody></table></div>
-      <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px;"><button type="button" class="btn btn-ghost" id="add-material">+ Adicionar item</button><button class="btn btn-green">Enviar para pré-cotação</button></div>
-    </form>
-  </details>
-  <% } %>
-</div>
-
-<div class="grid-3" style="grid-template-columns:1fr 2fr;align-items:start;">
-  <div class="card">
-    <strong>Registrar atualização</strong>
-    <% if (canManage) { %><form method="POST" action="/demandas/<%= demanda.id %>/update" style="margin-top:10px;"><textarea class="input" name="texto" rows="5" required placeholder="Andamento, decisão, impedimento, informação técnica..."></textarea><div style="margin-top:8px;text-align:right;"><button class="btn btn-green">Salvar atualização</button></div></form><% } else { %><div class="muted" style="margin-top:8px;">Seu perfil possui acesso de consulta.</div><% } %>
-  </div>
-  <div class="card"><strong>Histórico</strong><div class="table-wrap" style="margin-top:10px;"><table class="table"><thead><tr><th>Data</th><th>Usuário</th><th>Atualização</th></tr></thead><tbody><% if (!(demanda.logs||[]).length) { %><tr><td colspan="3" class="muted">Sem atualizações.</td></tr><% } %><% (demanda.logs||[]).forEach((l)=>{ %><tr><td><%= fmtBR(l.created_at) %></td><td><%= l.user_nome || '-' %></td><td><%= l.texto %></td></tr><% }) %></tbody></table></div></div>
-</div>
-
-<script>
-(function(){
-  const body=document.getElementById('materiais-body'); const add=document.getElementById('add-material');
-  if(!body||!add) return;
-  add.addEventListener('click',()=>{ const row=body.querySelector('.material-row'); if(!row) return; const clone=row.cloneNode(true); clone.querySelectorAll('input').forEach((el)=>{ if(el.name==='itens_un[]') el.value='UN'; else el.value=''; }); clone.querySelectorAll('select').forEach((el)=>el.selectedIndex=0); body.appendChild(clone); });
-  body.addEventListener('click',(e)=>{ if(!e.target.classList.contains('js-remove-material')) return; const rows=body.querySelectorAll('.material-row'); if(rows.length>1) e.target.closest('tr').remove(); else e.target.closest('tr').querySelectorAll('input').forEach((el)=>{ if(el.name!=='itens_un[]') el.value=''; }); });
-})();
-</script>
