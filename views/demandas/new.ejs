@@ -1,74 +1,10 @@
 <% layout('layout') %>
-<div class="page-head">
-  <div>
-    <h1>Nova Demanda</h1>
-    <p class="muted">Cadastre uma necessidade da fábrica para planejamento, orçamento e futura execução.</p>
-  </div>
-  <a class="btn btn-ghost" href="/demandas">Voltar</a>
-</div>
-
+<div class="page-head"><div><h1>Nova Demanda</h1><p class="muted">Cadastro de demanda pela Direção.</p></div></div>
 <div class="card">
-  <form method="POST" action="/demandas" class="grid-3">
-    <div style="grid-column:span 2;">
-      <div class="label">Título</div>
-      <input class="input" name="titulo" placeholder="Ex.: Reforma da Caldeira nº 1" required />
-    </div>
-    <div>
-      <div class="label">Prioridade</div>
-      <select class="input" name="prioridade">
-        <option value="BAIXA">Baixa</option>
-        <option value="NORMAL" selected>Normal</option>
-        <option value="ALTA">Alta</option>
-        <option value="URGENTE">Urgente</option>
-      </select>
-    </div>
-
-    <div>
-      <div class="label">Categoria</div>
-      <select class="input" name="categoria">
-        <% (categorias || []).forEach((c) => { %><option value="<%= c %>"><%= c.replaceAll('_',' ') %></option><% }) %>
-      </select>
-    </div>
-    <div>
-      <div class="label">Setor de origem</div>
-      <input class="input" name="setor_origem" placeholder="Manutenção, Produção, RH..." />
-    </div>
-    <div>
-      <div class="label">Equipamento</div>
-      <select class="input" name="equipamento_id">
-        <option value="">Sem equipamento específico</option>
-        <% (equipamentos || []).forEach((e) => { %><option value="<%= e.id %>"><%= e.nome %></option><% }) %>
-      </select>
-    </div>
-
-    <div>
-      <div class="label">Demanda principal</div>
-      <select class="input" name="demanda_pai_id">
-        <option value="">Demanda independente</option>
-        <% (demandasPai || []).forEach((d) => { %><option value="<%= d.id %>">#<%= d.id %> - <%= d.titulo %></option><% }) %>
-      </select>
-    </div>
-    <div>
-      <div class="label">NR relacionada</div>
-      <input class="input" name="nr_referencia" placeholder="Ex.: NR-13, NR-12" />
-    </div>
-    <div>
-      <div class="label">Prazo previsto</div>
-      <input class="input" type="date" name="prazo_previsto" />
-    </div>
-
-    <div>
-      <div class="label">Serviços externos estimados (R$)</div>
-      <input class="input" type="number" name="custo_servicos_estimado" min="0" step="0.01" value="0" />
-    </div>
-    <div style="grid-column:1/-1;">
-      <div class="label">Descrição / escopo inicial</div>
-      <textarea class="input" name="descricao" rows="6" placeholder="Descreva o serviço, necessidade, condição encontrada e objetivo da demanda."></textarea>
-    </div>
-
-    <div style="grid-column:1/-1;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
-      <a class="btn btn-ghost" href="/demandas">Cancelar</a>
-      <button class="btn btn-green" type="submit">Criar demanda</button>
-    </div>
+  <form method="POST" action="/demandas">
+    <div><div class="label">Título</div><input class="input" name="titulo" required /></div>
+    <div style="margin-top:10px;"><div class="label">Prioridade</div><select class="input" name="prioridade"><option>BAIXA</option><option selected>NORMAL</option><option>ALTA</option><option>URGENTE</option></select></div>
+    <div style="margin-top:10px;"><div class="label">Descrição</div><textarea class="input" name="descricao" rows="5"></textarea></div>
+    <div style="margin-top:14px;"><button class="btn btn-green">Criar demanda</button></div>
   </form>
 </div>
