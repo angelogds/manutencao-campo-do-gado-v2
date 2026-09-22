@@ -69,6 +69,25 @@
   .os-row-medio { background:#fffbeb; border-left:4px solid #f59e0b; }
   .os-row-leve { background:#f8fafc; }
 
+  /* Mascote institucional no Modo TV: presença visual sem competir com dados/alertas. */
+  .tv-page-head { align-items:stretch; gap:18px; }
+  .tv-page-head__copy { flex:1; min-width:0; }
+  .tv-page-head__aside { width:min(34vw, 360px); min-width:280px; display:flex; flex-direction:column; gap:8px; }
+  .tv-mascot-shell { position:relative; overflow:hidden; aspect-ratio:16/9; border:1px solid #dbe2ea; border-radius:14px; background:#eef1f4; box-shadow:0 8px 24px rgba(15,23,42,.08); }
+  .tv-mascot-video { width:100%; height:100%; display:block; object-fit:cover; object-position:center; background:#eef1f4; }
+  .tv-mascot-overlay { position:absolute; left:10px; bottom:9px; display:inline-flex; align-items:center; gap:7px; max-width:calc(100% - 20px); padding:6px 9px; border-radius:999px; background:rgba(15,23,42,.76); color:#fff; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; backdrop-filter:blur(4px); }
+  .tv-mascot-dot { width:7px; height:7px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.18); flex:0 0 auto; }
+  .tv-alerta-ativo .tv-mascot-shell { opacity:.35; filter:grayscale(.35); transition:opacity .2s ease, filter .2s ease; }
+
+  @media (max-width: 900px) {
+    .tv-page-head { flex-direction:column; }
+    .tv-page-head__aside { width:100%; min-width:0; max-width:420px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tv-mascot-video { animation:none !important; }
+  }
+
   @media (max-width: 1200px) {
     .tv-grid { grid-template-columns: 1fr; grid-template-areas: "os" "andamento" "preventivas" "escala" "mural" "quick" "demandas"; }
     .alerta-tv__title { font-size:22px; }
@@ -100,13 +119,19 @@
   var alertaInicial = alertaAtivo || null;
 %>
 
-<div class="page-head">
-  <div>
+<div class="page-head tv-page-head">
+  <div class="tv-page-head__copy">
     <h1>Painel Operacional Reciclagem</h1>
     <p class="muted">TV da manutenção • OS, mural, preventivas, escala e demandas em tempo real</p>
     <p class="muted-xs" style="margin-top:6px; max-width:720px;">No iPhone (Safari, Edge e Chrome), os alertas push funcionam pelo app instalado na Tela de Início (abra no Safari → Compartilhar → Adicionar à Tela de Início).</p>
   </div>
-  <button id="btn-ativar-push" class="btn-outline" type="button" onclick="enablePush()">Ativar alertas de OS neste dispositivo</button>
+  <div class="tv-page-head__aside">
+    <div class="tv-mascot-shell" aria-label="Mascote da Manutenção Campo do Gado">
+      <video id="tv-mascot-video" class="tv-mascot-video" autoplay muted playsinline preload="metadata" aria-hidden="true" src="/media/mascote/mascote-tv-01.mp4"></video>
+      <div class="tv-mascot-overlay"><span class="tv-mascot-dot"></span>Manutenção Campo do Gado</div>
+    </div>
+    <button id="btn-ativar-push" class="btn-outline" type="button" onclick="enablePush()">Ativar alertas de OS neste dispositivo</button>
+  </div>
 </div>
 
 <section id="alerta-tv" class="alerta-tv <%= alertaInicial ? 'piscar' : 'hidden' %>">
@@ -318,5 +343,54 @@
       setTimeout(function(){ window.location.reload(); }, 500);
     }).catch(function(){});
   });
+})();
+</script>
+
+<script>
+(function(){
+  var video = document.getElementById('tv-mascot-video');
+  if (!video) return;
+
+  var videos = [
+    '/media/mascote/mascote-tv-01.mp4',
+    '/media/mascote/mascote-tv-02.mp4'
+  ];
+  var index = 0;
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  video.muted = true;
+  video.defaultMuted = true;
+
+  function playCurrent(){
+    video.src = videos[index];
+    video.load();
+    if (reduceMotion) {
+      video.pause();
+      return;
+    }
+    var attempt = video.play();
+    if (attempt && typeof attempt.catch === 'function') attempt.catch(function(){});
+  }
+
+  function nextVideo(){
+    index = (index + 1) % videos.length;
+    playCurrent();
+  }
+
+  video.addEventListener('ended', nextVideo);
+  video.addEventListener('error', function(){
+    if (videos.length > 1) nextVideo();
+  });
+
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden || reduceMotion) {
+      video.pause();
+    } else {
+      var attempt = video.play();
+      if (attempt && typeof attempt.catch === 'function') attempt.catch(function(){});
+    }
+  });
+
+  if (reduceMotion) video.pause();
 })();
 </script>
