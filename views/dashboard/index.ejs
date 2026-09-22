@@ -72,7 +72,7 @@
   /* Mascote institucional no Modo TV: presença visual sem competir com dados/alertas. */
   .tv-page-head { align-items:stretch; gap:18px; }
   .tv-page-head__copy { flex:1; min-width:0; }
-  .tv-page-head__aside { width:min(34vw, 360px); min-width:280px; display:flex; flex-direction:column; gap:8px; }
+  .tv-page-head__aside { width:min(26vw, 280px); min-width:240px; display:flex; flex-direction:column; gap:8px; }
   .tv-mascot-shell { position:relative; overflow:hidden; aspect-ratio:16/9; border:1px solid #dbe2ea; border-radius:14px; background:#eef1f4; box-shadow:0 8px 24px rgba(15,23,42,.08); }
   .tv-mascot-video { width:100%; height:100%; display:block; object-fit:cover; object-position:center; background:#eef1f4; }
   .tv-mascot-overlay { position:absolute; left:10px; bottom:9px; display:inline-flex; align-items:center; gap:7px; max-width:calc(100% - 20px); padding:6px 9px; border-radius:999px; background:rgba(15,23,42,.76); color:#fff; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; backdrop-filter:blur(4px); }
@@ -289,14 +289,20 @@
   var btnReconhecer = document.getElementById('btn-reconhecer-alerta');
   var alertaAtual = <%- JSON.stringify(alertaInicial || null) %>;
 
+  if (alertaAtual && (alertaAtual.id_os || alertaAtual.os_id)) {
+    document.body.classList.add('tv-alerta-ativo');
+  }
+
   function renderAlerta(payload){
     if (!payload || !payload.id_os) {
+      document.body.classList.remove('tv-alerta-ativo');
       box.classList.add('hidden');
       box.classList.remove('piscar');
       meta.textContent = 'Nenhum alerta crítico no momento.';
       return;
     }
     alertaAtual = payload;
+    document.body.classList.add('tv-alerta-ativo');
     box.classList.remove('hidden');
     box.classList.add('piscar');
     meta.textContent = 'Equipamento: ' + (payload.equipamento || '-') + ' • Setor: ' + (payload.setor || '-') + ' • Grau: ' + (payload.grau || payload.prioridade || '-') + ' • OS #' + payload.id_os;
@@ -338,6 +344,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ os_id: alertaAtual.id_os })
     }).then(function(){
+      document.body.classList.remove('tv-alerta-ativo');
       box.classList.remove('piscar');
       box.classList.add('hidden');
       setTimeout(function(){ window.location.reload(); }, 500);
@@ -356,6 +363,7 @@
     '/media/mascote/mascote-tv-02.mp4'
   ];
   var index = 0;
+  var consecutiveErrors = 0;
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   video.muted = true;
@@ -377,9 +385,21 @@
     playCurrent();
   }
 
-  video.addEventListener('ended', nextVideo);
+  video.addEventListener('ended', function(){
+    consecutiveErrors = 0;
+    nextVideo();
+  });
+  video.addEventListener('loadeddata', function(){
+    consecutiveErrors = 0;
+  });
   video.addEventListener('error', function(){
-    if (videos.length > 1) nextVideo();
+    consecutiveErrors += 1;
+    if (consecutiveErrors < videos.length) {
+      nextVideo();
+      return;
+    }
+    var shell = video.closest('.tv-mascot-shell');
+    if (shell) shell.style.display = 'none';
   });
 
   document.addEventListener('visibilitychange', function(){
