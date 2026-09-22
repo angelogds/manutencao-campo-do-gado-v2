@@ -69,23 +69,169 @@
   .os-row-medio { background:#fffbeb; border-left:4px solid #f59e0b; }
   .os-row-leve { background:#f8fafc; }
 
-  /* Mascote institucional no Modo TV: presença visual sem competir com dados/alertas. */
-  .tv-page-head { align-items:stretch; gap:18px; }
+  /* Modo TV: apresentação em tela cheia sem reescrever os cards operacionais. */
+  .tv-page-head { align-items:center; gap:18px; }
   .tv-page-head__copy { flex:1; min-width:0; }
-  .tv-page-head__aside { width:min(26vw, 280px); min-width:240px; display:flex; flex-direction:column; gap:8px; }
-  .tv-mascot-shell { position:relative; overflow:hidden; aspect-ratio:16/9; border:1px solid #dbe2ea; border-radius:14px; background:#eef1f4; box-shadow:0 8px 24px rgba(15,23,42,.08); }
-  .tv-mascot-video { width:100%; height:100%; display:block; object-fit:cover; object-position:center; background:#eef1f4; }
-  .tv-mascot-overlay { position:absolute; left:10px; bottom:9px; display:inline-flex; align-items:center; gap:7px; max-width:calc(100% - 20px); padding:6px 9px; border-radius:999px; background:rgba(15,23,42,.76); color:#fff; font-size:10px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; backdrop-filter:blur(4px); }
-  .tv-mascot-dot { width:7px; height:7px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 3px rgba(34,197,94,.18); flex:0 0 auto; }
-  .tv-alerta-ativo .tv-mascot-shell { opacity:.35; filter:grayscale(.35); transition:opacity .2s ease, filter .2s ease; }
+  .tv-page-head__aside { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+  .btn-tv-mode { background:#0f172a; color:#fff; border-color:#0f172a; }
+  .btn-tv-mode:hover { background:#1e293b; }
+
+  .modo-tv-stage {
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:99999;
+    background:
+      radial-gradient(circle at 18% 18%, rgba(220,38,38,.18), transparent 30%),
+      radial-gradient(circle at 82% 82%, rgba(30,41,59,.55), transparent 38%),
+      #070b12;
+    color:#fff;
+    overflow:hidden;
+  }
+  .modo-tv-stage.is-active { display:flex; align-items:center; justify-content:center; }
+  body.tv-alerta-ativo .modo-tv-stage.is-active { display:none; }
+
+  .modo-tv-close {
+    position:absolute;
+    top:18px;
+    right:20px;
+    z-index:4;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:10px;
+    padding:8px 12px;
+    background:rgba(15,23,42,.78);
+    color:#fff;
+    font-weight:800;
+    cursor:pointer;
+  }
+
+  .modo-tv-brand {
+    position:absolute;
+    left:30px;
+    top:24px;
+    z-index:3;
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    pointer-events:none;
+  }
+  .modo-tv-brand strong { font-size:22px; letter-spacing:.04em; }
+  .modo-tv-brand span { color:#cbd5e1; font-size:13px; letter-spacing:.08em; text-transform:uppercase; }
+
+  .modo-tv-progress {
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    height:5px;
+    background:rgba(255,255,255,.08);
+    overflow:hidden;
+    z-index:4;
+  }
+  .modo-tv-progress > span {
+    display:block;
+    width:0;
+    height:100%;
+    background:#dc2626;
+  }
+
+  .modo-tv-panel {
+    display:none;
+    width:100%;
+    height:100%;
+    align-items:center;
+    justify-content:center;
+    padding:76px 3vw 34px;
+    box-sizing:border-box;
+  }
+  .modo-tv-panel.is-visible { display:flex; }
+
+  .modo-tv-video-card {
+    position:relative;
+    width:min(88vw, 1380px);
+    max-height:78vh;
+    aspect-ratio:16/9;
+    border-radius:24px;
+    overflow:hidden;
+    background:#111827;
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 28px 80px rgba(0,0,0,.48);
+  }
+  .modo-tv-video-card video {
+    width:100%;
+    height:100%;
+    display:block;
+    object-fit:cover;
+    background:#111827;
+  }
+  .modo-tv-video-copy {
+    position:absolute;
+    left:0;
+    right:0;
+    bottom:0;
+    padding:34px 38px 30px;
+    background:linear-gradient(transparent, rgba(3,7,18,.88));
+    color:#fff;
+    pointer-events:none;
+  }
+  .modo-tv-video-copy strong { display:block; font-size:clamp(28px,3vw,48px); letter-spacing:.03em; }
+  .modo-tv-video-copy span { display:block; margin-top:7px; color:#e2e8f0; font-size:clamp(14px,1.25vw,21px); }
+
+  .modo-tv-screen {
+    width:min(95vw, 1680px);
+    height:calc(100vh - 112px);
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    min-height:0;
+  }
+  .modo-tv-screen-head {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:18px;
+    flex:0 0 auto;
+  }
+  .modo-tv-screen-title {
+    font-size:clamp(22px,2.1vw,34px);
+    font-weight:900;
+    letter-spacing:.02em;
+  }
+  .modo-tv-screen-meta {
+    color:#cbd5e1;
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  .modo-tv-screen-mount {
+    flex:1;
+    min-height:0;
+    overflow:hidden;
+    background:#f8fafc;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:20px;
+    padding:18px;
+    box-shadow:0 28px 80px rgba(0,0,0,.38);
+    color:#0f172a;
+  }
+  .modo-tv-screen-mount > .dash-col {
+    width:100%;
+    transform-origin:top left;
+    pointer-events:none;
+  }
+  .modo-tv-screen-mount a { color:inherit; text-decoration:none; }
+  .modo-tv-screen-mount form,
+  .modo-tv-screen-mount button { display:none !important; }
+  .modo-tv-screen-mount .dashboard-card { box-shadow:none; }
+  .modo-tv-screen-mount .table-wrap { overflow:hidden; }
 
   @media (max-width: 900px) {
-    .tv-page-head { flex-direction:column; }
-    .tv-page-head__aside { width:100%; min-width:0; max-width:420px; }
+    .tv-page-head { flex-direction:column; align-items:stretch; }
+    .tv-page-head__aside { justify-content:flex-start; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .tv-mascot-video { animation:none !important; }
+    .modo-tv-progress > span { transition:none !important; }
   }
 
   @media (max-width: 1200px) {
@@ -126,12 +272,41 @@
     <p class="muted-xs" style="margin-top:6px; max-width:720px;">No iPhone (Safari, Edge e Chrome), os alertas push funcionam pelo app instalado na Tela de Início (abra no Safari → Compartilhar → Adicionar à Tela de Início).</p>
   </div>
   <div class="tv-page-head__aside">
-    <div class="tv-mascot-shell" aria-label="Mascote da Manutenção Campo do Gado">
-      <video id="tv-mascot-video" class="tv-mascot-video" autoplay muted playsinline preload="metadata" aria-hidden="true" src="/media/mascote/mascote-tv-01.mp4"></video>
-      <div class="tv-mascot-overlay"><span class="tv-mascot-dot"></span>Manutenção Campo do Gado</div>
-    </div>
+    <button id="btn-modo-tv" class="btn-outline btn-tv-mode" type="button">Modo TV</button>
     <button id="btn-ativar-push" class="btn-outline" type="button" onclick="enablePush()">Ativar alertas de OS neste dispositivo</button>
   </div>
+</div>
+
+<div id="modo-tv-stage" class="modo-tv-stage" aria-hidden="true">
+  <div class="modo-tv-brand">
+    <strong>MANUTENÇÃO CAMPO DO GADO</strong>
+    <span>Sistema Industrial • Modo TV</span>
+  </div>
+  <button id="btn-sair-modo-tv" class="modo-tv-close" type="button">Sair do Modo TV</button>
+
+  <section id="modo-tv-video-panel" class="modo-tv-panel">
+    <div class="modo-tv-video-card">
+      <video id="modo-tv-video" muted playsinline preload="auto"></video>
+      <div class="modo-tv-video-copy">
+        <strong id="modo-tv-video-title">Manutenção Campo do Gado</strong>
+        <span id="modo-tv-video-subtitle">Segurança, confiabilidade e disponibilidade para a operação.</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="modo-tv-screen-panel" class="modo-tv-panel">
+    <div class="modo-tv-screen">
+      <div class="modo-tv-screen-head">
+        <div>
+          <div id="modo-tv-screen-title" class="modo-tv-screen-title">Painel Operacional</div>
+          <div id="modo-tv-screen-meta" class="modo-tv-screen-meta">Dados em tempo real</div>
+        </div>
+      </div>
+      <div id="modo-tv-screen-mount" class="modo-tv-screen-mount"></div>
+    </div>
+  </section>
+
+  <div class="modo-tv-progress"><span id="modo-tv-progress-bar"></span></div>
 </div>
 
 <section id="alerta-tv" class="alerta-tv <%= alertaInicial ? 'piscar' : 'hidden' %>">
@@ -355,62 +530,229 @@
 
 <script>
 (function(){
-  var video = document.getElementById('tv-mascot-video');
-  if (!video) return;
+  var stage = document.getElementById('modo-tv-stage');
+  var btnStart = document.getElementById('btn-modo-tv');
+  var btnExit = document.getElementById('btn-sair-modo-tv');
+  var videoPanel = document.getElementById('modo-tv-video-panel');
+  var screenPanel = document.getElementById('modo-tv-screen-panel');
+  var video = document.getElementById('modo-tv-video');
+  var videoTitle = document.getElementById('modo-tv-video-title');
+  var videoSubtitle = document.getElementById('modo-tv-video-subtitle');
+  var screenTitle = document.getElementById('modo-tv-screen-title');
+  var screenMeta = document.getElementById('modo-tv-screen-meta');
+  var screenMount = document.getElementById('modo-tv-screen-mount');
+  var progressBar = document.getElementById('modo-tv-progress-bar');
 
-  var videos = [
-    '/media/mascote/mascote-tv-01.mp4',
-    '/media/mascote/mascote-tv-02.mp4'
-  ];
-  var index = 0;
-  var consecutiveErrors = 0;
-  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!stage || !btnStart || !video || !screenMount) return;
 
-  video.muted = true;
-  video.defaultMuted = true;
+  var dashboardColumns = Array.from(document.querySelectorAll('.dash-grid > .dash-col'));
+  var screenDurationMs = 18000;
+  var fallbackVideoMs = 10000;
+  var running = false;
+  var stepIndex = 0;
+  var timer = null;
+  var fallbackTimer = null;
 
-  function playCurrent(){
-    video.src = videos[index];
-    video.load();
-    if (reduceMotion) {
-      video.pause();
-      return;
+  var sequence = [
+    {
+      type:'video',
+      src:'/media/mascote/mascote-tv-01.mp4',
+      title:'Manutenção Campo do Gado',
+      subtitle:'Gestão industrial com segurança, organização e resposta rápida.'
+    },
+    {
+      type:'screen',
+      column:0,
+      title:'Tela 1 • Operação e Planejamento',
+      meta:'Ordens de Serviço • Preventivas • Demandas'
+    },
+    {
+      type:'screen',
+      column:1,
+      title:'Tela 2 • Equipe e Disponibilidade',
+      meta:'OS em andamento • Escala • Motores'
+    },
+    {
+      type:'video',
+      src:'/media/mascote/mascote-tv-02.mp4',
+      title:'Manutenção Campo do Gado',
+      subtitle:'Cuidando dos ativos para manter a fábrica disponível.'
     }
-    var attempt = video.play();
-    if (attempt && typeof attempt.catch === 'function') attempt.catch(function(){});
+  ];
+
+  function clearTimers(){
+    if (timer) window.clearTimeout(timer);
+    if (fallbackTimer) window.clearTimeout(fallbackTimer);
+    timer = null;
+    fallbackTimer = null;
   }
 
-  function nextVideo(){
-    index = (index + 1) % videos.length;
-    playCurrent();
+  function setProgress(duration){
+    progressBar.style.transition = 'none';
+    progressBar.style.width = '0%';
+    window.requestAnimationFrame(function(){
+      window.requestAnimationFrame(function(){
+        progressBar.style.transition = 'width ' + duration + 'ms linear';
+        progressBar.style.width = '100%';
+      });
+    });
+  }
+
+  function sanitizeClone(node){
+    var clone = node.cloneNode(true);
+    clone.querySelectorAll('[id]').forEach(function(el){ el.removeAttribute('id'); });
+    clone.querySelectorAll('a').forEach(function(el){ el.removeAttribute('href'); });
+    clone.querySelectorAll('form, button, input, select, textarea').forEach(function(el){
+      el.setAttribute('tabindex','-1');
+    });
+    clone.classList.add('modo-tv-screen-clone');
+    return clone;
+  }
+
+  function fitCurrentScreen(){
+    var clone = screenMount.firstElementChild;
+    if (!clone) return;
+    clone.style.transform = '';
+    clone.style.width = '100%';
+
+    window.requestAnimationFrame(function(){
+      var availableH = screenMount.clientHeight - 4;
+      var availableW = screenMount.clientWidth - 4;
+      var neededH = clone.scrollHeight || availableH;
+      var neededW = clone.scrollWidth || availableW;
+      var scale = Math.min(1, availableH / neededH, availableW / neededW);
+      if (Number.isFinite(scale) && scale > 0 && scale < 1) {
+        clone.style.width = (100 / scale) + '%';
+        clone.style.transform = 'scale(' + scale + ')';
+      }
+    });
+  }
+
+  function showVideo(step){
+    screenPanel.classList.remove('is-visible');
+    videoPanel.classList.add('is-visible');
+    screenMount.innerHTML = '';
+
+    videoTitle.textContent = step.title;
+    videoSubtitle.textContent = step.subtitle;
+    video.src = step.src;
+    video.muted = true;
+    video.defaultMuted = true;
+    video.load();
+
+    setProgress(fallbackVideoMs);
+    fallbackTimer = window.setTimeout(nextStep, fallbackVideoMs);
+
+    var attempt = video.play();
+    if (attempt && typeof attempt.catch === 'function') {
+      attempt.catch(function(){
+        /* fallbackTimer mantém a sequência mesmo se autoplay for bloqueado */
+      });
+    }
+  }
+
+  function showScreen(step){
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+    videoPanel.classList.remove('is-visible');
+    screenPanel.classList.add('is-visible');
+
+    screenTitle.textContent = step.title;
+    screenMeta.textContent = step.meta;
+    screenMount.innerHTML = '';
+
+    var source = dashboardColumns[step.column];
+    if (source) {
+      screenMount.appendChild(sanitizeClone(source));
+      fitCurrentScreen();
+    }
+
+    setProgress(screenDurationMs);
+    timer = window.setTimeout(nextStep, screenDurationMs);
+  }
+
+  function renderStep(){
+    if (!running) return;
+    clearTimers();
+    var step = sequence[stepIndex];
+    if (!step) {
+      stepIndex = 0;
+      step = sequence[0];
+    }
+
+    if (step.type === 'video') showVideo(step);
+    else showScreen(step);
+  }
+
+  function nextStep(){
+    if (!running) return;
+    clearTimers();
+    stepIndex = (stepIndex + 1) % sequence.length;
+    renderStep();
+  }
+
+  function startModoTv(){
+    if (running) return;
+    running = true;
+    stepIndex = 0;
+    stage.classList.add('is-active');
+    stage.setAttribute('aria-hidden','false');
+    document.body.classList.add('modo-tv-ativo');
+
+    var url = new URL(window.location.href);
+    url.searchParams.set('modo','tv');
+    window.history.replaceState({},'',url.toString());
+
+    if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+      var full = document.documentElement.requestFullscreen();
+      if (full && typeof full.catch === 'function') full.catch(function(){});
+    }
+
+    renderStep();
+  }
+
+  function stopModoTv(){
+    if (!running) return;
+    running = false;
+    clearTimers();
+    video.pause();
+    stage.classList.remove('is-active');
+    stage.setAttribute('aria-hidden','true');
+    document.body.classList.remove('modo-tv-ativo');
+    screenMount.innerHTML = '';
+    progressBar.style.transition = 'none';
+    progressBar.style.width = '0%';
+
+    var url = new URL(window.location.href);
+    url.searchParams.delete('modo');
+    window.history.replaceState({},'',url.pathname + url.search + url.hash);
+
+    if (document.fullscreenElement && document.exitFullscreen) {
+      var exit = document.exitFullscreen();
+      if (exit && typeof exit.catch === 'function') exit.catch(function(){});
+    }
   }
 
   video.addEventListener('ended', function(){
-    consecutiveErrors = 0;
-    nextVideo();
-  });
-  video.addEventListener('loadeddata', function(){
-    consecutiveErrors = 0;
+    if (running && sequence[stepIndex] && sequence[stepIndex].type === 'video') nextStep();
   });
   video.addEventListener('error', function(){
-    consecutiveErrors += 1;
-    if (consecutiveErrors < videos.length) {
-      nextVideo();
-      return;
-    }
-    var shell = video.closest('.tv-mascot-shell');
-    if (shell) shell.style.display = 'none';
-  });
-
-  document.addEventListener('visibilitychange', function(){
-    if (document.hidden || reduceMotion) {
-      video.pause();
-    } else {
-      var attempt = video.play();
-      if (attempt && typeof attempt.catch === 'function') attempt.catch(function(){});
+    if (running && sequence[stepIndex] && sequence[stepIndex].type === 'video') {
+      clearTimers();
+      timer = window.setTimeout(nextStep, 1200);
     }
   });
 
-  if (reduceMotion) video.pause();
+  btnStart.addEventListener('click', startModoTv);
+  btnExit.addEventListener('click', stopModoTv);
+  window.addEventListener('resize', fitCurrentScreen);
+  document.addEventListener('keydown', function(event){
+    if (event.key === 'Escape' && running) stopModoTv();
+  });
+
+  if (new URL(window.location.href).searchParams.get('modo') === 'tv') {
+    startModoTv();
+  }
 })();
 </script>
