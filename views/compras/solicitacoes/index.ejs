@@ -24,11 +24,11 @@ const fmtOrigem = (v) => String(v || 'OS').replaceAll('_',' ');
 <% if ((naoVisualizadas || 0) > 0) { %>
 <div class="card compras-sinal-card">
   <div>
-    <strong>Novas solicitações aguardando visualização</strong>
+    <strong>Solicitações abertas aguardando visualização</strong>
     <div class="muted">Cada solicitação deixa de sinalizar somente para o operador que a abrir.</div>
   </div>
   <a class="btn btn-green" href="/compras/solicitacoes?novas=1">
-    Ver novas <span class="compras-sinal-count"><%= naoVisualizadas %></span>
+    Ver pendentes <span class="compras-sinal-count"><%= naoVisualizadas %></span>
   </a>
 </div>
 <% } %>
@@ -62,7 +62,7 @@ const fmtOrigem = (v) => String(v || 'OS').replaceAll('_',' ');
 <div class="card" style="margin-bottom:12px;">
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     <a class="btn <%= filters?.unreadOnly ? 'btn-green' : 'btn-ghost' %>" href="/compras/solicitacoes?novas=1">
-      Novas não abertas (<%= naoVisualizadas || 0 %>)
+      Abertas não visualizadas (<%= naoVisualizadas || 0 %>)
     </a>
     <% tabs.forEach((tab) => { %>
       <a class="btn <%= activeStatus === tab.key ? 'btn-green' : 'btn-ghost' %>" href="/compras/solicitacoes?status=<%= tab.key %>">
@@ -118,7 +118,7 @@ const fmtOrigem = (v) => String(v || 'OS').replaceAll('_',' ');
           <tr class="<%= s.nao_visualizada ? 'compras-unread-row' : '' %>">
             <td>
               <strong><%= s.numero || ('#' + s.id) %></strong>
-              <% if (s.nao_visualizada) { %><span class="compras-new-badge">NOVA</span><% } %>
+              <% if (s.nao_visualizada) { %><span class="compras-new-badge">NÃO VISTA</span><% } %>
             </td>
             <td><%= s.titulo || '-' %></td>
             <td><%= fmtOrigem(s.tipo_origem) %><% if (s.demanda_id) { %><div class="muted"><a href="/demandas/<%= s.demanda_id %>">Demanda #<%= s.demanda_id %></a></div><% } %></td>
