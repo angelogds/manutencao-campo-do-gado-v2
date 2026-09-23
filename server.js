@@ -123,6 +123,17 @@ app.use((req, res, next) => {
   // ✅ alias "incluir" também disponível no res.locals (alguns layouts chamam direto)
   res.locals.incluir = app.locals.incluir;
 
+  // Sinalização de novas solicitações de Compras por usuário.
+  res.locals.comprasNaoVisualizadas = 0;
+  if (res.locals.user && canAccessModule(res.locals.user.role, "compras")) {
+    try {
+      const comprasService = require("./modules/compras/compras.service");
+      res.locals.comprasNaoVisualizadas = comprasService.getNaoVisualizadasCount(res.locals.user.id);
+    } catch (e) {
+      console.warn("⚠️ [compras] falha ao calcular sinalização:", e.message || e);
+    }
+  }
+
   // evita crash no layout
   res.locals.activeMenu = res.locals.activeMenu || "";
   res.locals.activePcmSection = res.locals.activePcmSection || "";
