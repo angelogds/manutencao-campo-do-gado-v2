@@ -366,3 +366,14 @@ textarea{ min-height:110px; resize:vertical; }
 #cadCanvas{width:100%;height:100%;min-height:66vh;background:#0a0f1d;border:1px solid #1e293b;cursor:crosshair}
 .cad-statusbar-fixed{background:#0b1220;color:#cbd5e1;border:1px solid #1f2937;border-radius:0;padding:8px 10px;font-size:12px}
 @media (max-width: 1200px){.cad-workspace-real{grid-template-columns:1fr}}
+
+
+/* COMPRAS — sinalização de novas solicitações */
+.nav-item-with-badge{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.nav-alert-badge{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;border-radius:999px;background:#fee2e2;color:#991b1b;border:1px solid #fecaca;font-size:12px;font-weight:900;box-shadow:0 0 0 3px rgba(254,226,226,.16)}
+.compras-sinal-card{margin-bottom:12px;border:1px solid #86efac;background:#f0fdf4;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.compras-sinal-count{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#fff;color:#166534;font-size:12px;font-weight:900}
+.compras-unread-row td{background:#f0fdf4}
+.compras-unread-row:hover td{background:#dcfce7!important}
+.compras-new-badge{display:inline-flex;align-items:center;margin-left:7px;padding:2px 7px;border-radius:999px;background:#dc2626;color:#fff;font-size:10px;font-weight:900;letter-spacing:.05em;vertical-align:middle}
+@media (max-width:980px){.compras-sinal-card{align-items:flex-start}.compras-sinal-card .btn{width:100%}}

@@ -1,6 +1,6 @@
 <% layout('layout') %>
 <%
-const activeStatus = filters?.status || 'ABERTA';
+const activeStatus = filters?.unreadOnly ? '' : (filters?.status || 'ABERTA');
 const tabs = [
   { key: 'ABERTA', label: 'Abertas' },
   { key: 'EM_COTACAO', label: 'Em Cotação' },
@@ -20,6 +20,18 @@ const fmtOrigem = (v) => String(v || 'OS').replaceAll('_',' ');
     <p class="muted">Acompanhe cotações, anexos e evolução das solicitações.</p>
   </div>
 </div>
+
+<% if ((naoVisualizadas || 0) > 0) { %>
+<div class="card compras-sinal-card">
+  <div>
+    <strong>Novas solicitações aguardando visualização</strong>
+    <div class="muted">Cada solicitação deixa de sinalizar somente para o operador que a abrir.</div>
+  </div>
+  <a class="btn btn-green" href="/compras/solicitacoes?novas=1">
+    Ver novas <span class="compras-sinal-count"><%= naoVisualizadas %></span>
+  </a>
+</div>
+<% } %>
 
 <% if ((demandasPlanejamento || []).length) { %>
 <div class="card" style="margin-bottom:12px;border:1px solid #9fd9ba;background:#f6fffa;">
@@ -49,6 +61,9 @@ const fmtOrigem = (v) => String(v || 'OS').replaceAll('_',' ');
 
 <div class="card" style="margin-bottom:12px;">
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <a class="btn <%= filters?.unreadOnly ? 'btn-green' : 'btn-ghost' %>" href="/compras/solicitacoes?novas=1">
+      Novas não abertas (<%= naoVisualizadas || 0 %>)
+    </a>
     <% tabs.forEach((tab) => { %>
       <a class="btn <%= activeStatus === tab.key ? 'btn-green' : 'btn-ghost' %>" href="/compras/solicitacoes?status=<%= tab.key %>">
         <%= tab.label %> (<%= resumo?.[tab.key] || 0 %>)
@@ -60,6 +75,7 @@ const fmtOrigem = (v) => String(v || 'OS').replaceAll('_',' ');
 <div class="card">
   <form method="GET" action="/compras/solicitacoes" class="grid-3">
     <input type="hidden" name="status" value="<%= activeStatus %>" />
+    <% if (filters?.unreadOnly) { %><input type="hidden" name="novas" value="1" /><% } %>
     <div>
       <label class="label">Pesquisar</label>
       <input class="input" type="text" name="q" placeholder="Número, título ou fornecedor" value="<%= filters?.query || '' %>" />
@@ -74,8 +90,8 @@ const fmtOrigem = (v) => String(v || 'OS').replaceAll('_',' ');
     </div>
     <div style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn" type="submit">Filtrar</button>
-      <a class="btn btn-ghost" href="/compras/solicitacoes?status=<%= activeStatus %>">Limpar</a>
-      <a class="btn btn-ghost" href="/compras/solicitacoes?status=<%= activeStatus %>&q=<%= encodeURIComponent(filters?.query || '') %>&startDate=<%= encodeURIComponent(filters?.startDate || '') %>&endDate=<%= encodeURIComponent(filters?.endDate || '') %>&export=excel">Excel</a>
+      <a class="btn btn-ghost" href="/compras/solicitacoes?<%= filters?.unreadOnly ? 'novas=1' : ('status=' + encodeURIComponent(activeStatus)) %>">Limpar</a>
+      <a class="btn btn-ghost" href="/compras/solicitacoes?<%= filters?.unreadOnly ? 'novas=1&' : ('status=' + encodeURIComponent(activeStatus) + '&') %>q=<%= encodeURIComponent(filters?.query || '') %>&startDate=<%= encodeURIComponent(filters?.startDate || '') %>&endDate=<%= encodeURIComponent(filters?.endDate || '') %>&export=excel">Excel</a>
     </div>
   </form>
 </div>
@@ -99,14 +115,17 @@ const fmtOrigem = (v) => String(v || 'OS').replaceAll('_',' ');
           <tr><td colspan="7" class="muted" style="text-align:center;">Nenhuma solicitação encontrada.</td></tr>
         <% } %>
         <% (lista || []).forEach((s) => { const conf = statusConfig[s.status] || { label: s.status || '-', className: 'is-bought', icon: '📌' }; %>
-          <tr>
-            <td><strong><%= s.numero || ('#' + s.id) %></strong></td>
+          <tr class="<%= s.nao_visualizada ? 'compras-unread-row' : '' %>">
+            <td>
+              <strong><%= s.numero || ('#' + s.id) %></strong>
+              <% if (s.nao_visualizada) { %><span class="compras-new-badge">NOVA</span><% } %>
+            </td>
             <td><%= s.titulo || '-' %></td>
             <td><%= fmtOrigem(s.tipo_origem) %><% if (s.demanda_id) { %><div class="muted"><a href="/demandas/<%= s.demanda_id %>">Demanda #<%= s.demanda_id %></a></div><% } %></td>
             <td><span class="sol-status <%= conf.className %>"><span><%= conf.icon %></span> <%= conf.label %></span></td>
             <td><%= s.fornecedor_nome || s.fornecedor || '-' %></td>
             <td><%= s.created_at ? fmtBR(s.created_at) : '-' %></td>
-            <td><a class="btn btn-sm btn-ghost" href="/compras/solicitacoes/<%= s.id %>">Detalhes</a></td>
+            <td><a class="btn btn-sm <%= s.nao_visualizada ? 'btn-green' : 'btn-ghost' %>" href="/compras/solicitacoes/<%= s.id %>"><%= s.nao_visualizada ? 'Abrir' : 'Detalhes' %></a></td>
           </tr>
         <% }) %>
       </tbody>

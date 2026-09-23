@@ -39,6 +39,28 @@ function ensureComprasAnexosTable() {
 }
 ensureComprasAnexosTable();
 
+function ensureComprasSinalizacaoTables() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS compras_solicitacao_visualizacoes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      solicitacao_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      visualizado_em TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (solicitacao_id, user_id),
+      FOREIGN KEY (solicitacao_id) REFERENCES solicitacoes(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_compras_visualizacoes_user
+      ON compras_solicitacao_visualizacoes(user_id, solicitacao_id);
+    CREATE TABLE IF NOT EXISTS compras_sinalizacao_meta (
+      chave TEXT PRIMARY KEY,
+      valor TEXT NOT NULL
+    );
+    INSERT OR IGNORE INTO compras_sinalizacao_meta (chave, valor)
+    VALUES ('ativado_em', datetime('now'));
+  `);
+}
+ensureComprasSinalizacaoTables();
+
 function getPDFKit() {
   try { return require('pdfkit'); } catch { return null; }
 }
@@ -93,7 +115,8 @@ function buildSolicitacaoItensSelect() {
   };
 }
 
-function listSolicitacoesPorStatus(filters = {}) {
+function listSolicitacoesPorStatus(filters = {}, userId = null) {
+  ensureComprasSinalizacaoTables();
   const usersRef = resolveUsersTable();
   const hasFornecedorCol = columnExists('solicitacoes', 'fornecedor');
   const hasFornecedorIdCol = columnExists('solicitacoes', 'fornecedor_id');
@@ -111,14 +134,66 @@ function listSolicitacoesPorStatus(filters = {}) {
   if (filters.startDate) { where.push('date(s.created_at) >= date(?)'); params.push(filters.startDate); }
   if (filters.endDate) { where.push('date(s.created_at) <= date(?)'); params.push(filters.endDate); }
 
+  const uid = Number(userId || 0);
+  const visualizacaoJoin = uid > 0
+    ? 'LEFT JOIN compras_solicitacao_visualizacoes cv ON cv.solicitacao_id = s.id AND cv.user_id = ?'
+    : '';
+  const novaExpr = uid > 0
+    ? `CASE
+         WHEN cv.solicitacao_id IS NULL
+          AND s.status NOT IN ('FECHADA','RECEBIDA_TOTAL')
+          AND datetime(s.created_at) >= datetime(COALESCE((SELECT valor FROM compras_sinalizacao_meta WHERE chave='ativado_em'), s.created_at))
+         THEN 1 ELSE 0
+       END`
+    : '0';
+
+  if (filters.unreadOnly && uid > 0) {
+    where.push("cv.solicitacao_id IS NULL");
+    where.push("datetime(s.created_at) >= datetime(COALESCE((SELECT valor FROM compras_sinalizacao_meta WHERE chave='ativado_em'), s.created_at))");
+    where.push("s.status NOT IN ('FECHADA','RECEBIDA_TOTAL')");
+  }
+
+  const bindParams = uid > 0 ? [uid, ...params] : params;
   return db.prepare(`
-    SELECT s.*, u.${usersRef.nameCol} AS solicitante_nome, ${hasFornecedorIdCol && hasFornecedoresTable ? 'f.nome' : 'NULL'} AS fornecedor_nome
+    SELECT s.*, u.${usersRef.nameCol} AS solicitante_nome,
+           ${hasFornecedorIdCol && hasFornecedoresTable ? 'f.nome' : 'NULL'} AS fornecedor_nome,
+           ${novaExpr} AS nao_visualizada
     FROM solicitacoes s
     JOIN ${usersRef.table} u ON u.id = s.solicitante_user_id
     ${hasFornecedorIdCol && hasFornecedoresTable ? 'LEFT JOIN fornecedores f ON f.id = s.fornecedor_id' : ''}
+    ${visualizacaoJoin}
     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
     ORDER BY s.id DESC
-  `).all(...params);
+  `).all(...bindParams);
+}
+
+function getNaoVisualizadasCount(userId) {
+  ensureComprasSinalizacaoTables();
+  const uid = Number(userId || 0);
+  if (!uid) return 0;
+  const row = db.prepare(`
+    SELECT COUNT(*) AS total
+    FROM solicitacoes s
+    LEFT JOIN compras_solicitacao_visualizacoes cv
+      ON cv.solicitacao_id = s.id AND cv.user_id = ?
+    WHERE cv.solicitacao_id IS NULL
+      AND datetime(s.created_at) >= datetime(COALESCE((SELECT valor FROM compras_sinalizacao_meta WHERE chave='ativado_em'), s.created_at))
+      AND s.status NOT IN ('FECHADA','RECEBIDA_TOTAL')
+  `).get(uid);
+  return Number(row?.total || 0);
+}
+
+function marcarVisualizada(solicitacaoId, userId) {
+  ensureComprasSinalizacaoTables();
+  const sid = Number(solicitacaoId || 0);
+  const uid = Number(userId || 0);
+  if (!sid || !uid) return false;
+  db.prepare(`
+    INSERT OR IGNORE INTO compras_solicitacao_visualizacoes
+      (solicitacao_id, user_id, visualizado_em)
+    VALUES (?, ?, datetime('now'))
+  `).run(sid, uid);
+  return true;
 }
 
 function getResumoSolicitacoes() {
@@ -392,6 +467,8 @@ module.exports = {
   STATUS,
   STATUS_COMPRAS,
   listSolicitacoesPorStatus,
+  getNaoVisualizadasCount,
+  marcarVisualizada,
   getResumoSolicitacoes,
   getSolicitacaoDetalhe,
   listFornecedoresAtivos,
