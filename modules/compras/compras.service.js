@@ -138,19 +138,19 @@ function listSolicitacoesPorStatus(filters = {}, userId = null) {
   const visualizacaoJoin = uid > 0
     ? 'LEFT JOIN compras_solicitacao_visualizacoes cv ON cv.solicitacao_id = s.id AND cv.user_id = ?'
     : '';
+  // Regra de sinalização: toda solicitação ABERTA e ainda não visualizada
+  // por este usuário deve ser destacada, independentemente da data de criação.
   const novaExpr = uid > 0
     ? `CASE
          WHEN cv.solicitacao_id IS NULL
-          AND s.status NOT IN ('FECHADA','RECEBIDA_TOTAL')
-          AND datetime(s.created_at) >= datetime(COALESCE((SELECT valor FROM compras_sinalizacao_meta WHERE chave='ativado_em'), s.created_at))
+          AND s.status = 'ABERTA'
          THEN 1 ELSE 0
        END`
     : '0';
 
   if (filters.unreadOnly && uid > 0) {
     where.push("cv.solicitacao_id IS NULL");
-    where.push("datetime(s.created_at) >= datetime(COALESCE((SELECT valor FROM compras_sinalizacao_meta WHERE chave='ativado_em'), s.created_at))");
-    where.push("s.status NOT IN ('FECHADA','RECEBIDA_TOTAL')");
+    where.push("s.status = 'ABERTA'");
   }
 
   const bindParams = uid > 0 ? [uid, ...params] : params;
@@ -177,8 +177,7 @@ function getNaoVisualizadasCount(userId) {
     LEFT JOIN compras_solicitacao_visualizacoes cv
       ON cv.solicitacao_id = s.id AND cv.user_id = ?
     WHERE cv.solicitacao_id IS NULL
-      AND datetime(s.created_at) >= datetime(COALESCE((SELECT valor FROM compras_sinalizacao_meta WHERE chave='ativado_em'), s.created_at))
-      AND s.status NOT IN ('FECHADA','RECEBIDA_TOTAL')
+      AND s.status = 'ABERTA'
   `).get(uid);
   return Number(row?.total || 0);
 }
