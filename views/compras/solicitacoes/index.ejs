@@ -75,6 +75,7 @@ const fmtOrigem = (v) => String(v || 'OS').replaceAll('_',' ');
 <div class="card">
   <form method="GET" action="/compras/solicitacoes" class="grid-3">
     <input type="hidden" name="status" value="<%= activeStatus %>" />
+    <% if (filters?.unreadOnly) { %><input type="hidden" name="novas" value="1" /><% } %>
     <div>
       <label class="label">Pesquisar</label>
       <input class="input" type="text" name="q" placeholder="Número, título ou fornecedor" value="<%= filters?.query || '' %>" />
@@ -89,8 +90,8 @@ const fmtOrigem = (v) => String(v || 'OS').replaceAll('_',' ');
     </div>
     <div style="grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;">
       <button class="btn" type="submit">Filtrar</button>
-      <a class="btn btn-ghost" href="/compras/solicitacoes?status=<%= activeStatus %>">Limpar</a>
-      <a class="btn btn-ghost" href="/compras/solicitacoes?status=<%= activeStatus %>&q=<%= encodeURIComponent(filters?.query || '') %>&startDate=<%= encodeURIComponent(filters?.startDate || '') %>&endDate=<%= encodeURIComponent(filters?.endDate || '') %>&export=excel">Excel</a>
+      <a class="btn btn-ghost" href="/compras/solicitacoes?<%= filters?.unreadOnly ? 'novas=1' : ('status=' + encodeURIComponent(activeStatus)) %>">Limpar</a>
+      <a class="btn btn-ghost" href="/compras/solicitacoes?<%= filters?.unreadOnly ? 'novas=1&' : ('status=' + encodeURIComponent(activeStatus) + '&') %>q=<%= encodeURIComponent(filters?.query || '') %>&startDate=<%= encodeURIComponent(filters?.startDate || '') %>&endDate=<%= encodeURIComponent(filters?.endDate || '') %>&export=excel">Excel</a>
     </div>
   </form>
 </div>
