@@ -13,7 +13,10 @@ function isSchemaError(error) {
 function tryRenderDetalhe(id, res, userId = null) {
   const sol = service.getSolicitacaoDetalhe(id);
   if (!sol) return res.status(404).send('Solicitação não encontrada');
-  if (userId) service.marcarVisualizada(id, userId);
+  if (userId) {
+    service.marcarVisualizada(id, userId);
+    res.locals.comprasNaoVisualizadas = service.getNaoVisualizadasCount(userId);
+  }
   const fornecedores = service.listFornecedoresAtivos();
   return res.render('compras/solicitacoes/show', { title: `Compras ${sol.numero}`, activeMenu: 'compras', sol, fornecedores });
 }
