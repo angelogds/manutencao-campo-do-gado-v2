@@ -10,9 +10,10 @@ function isSchemaError(error) {
   return msg.includes('no such table') || msg.includes('no such column') || msg.includes('sqlite_error');
 }
 
-function tryRenderDetalhe(id, res) {
+function tryRenderDetalhe(id, res, userId = null) {
   const sol = service.getSolicitacaoDetalhe(id);
   if (!sol) return res.status(404).send('Solicitação não encontrada');
+  if (userId) service.marcarVisualizada(id, userId);
   const fornecedores = service.listFornecedoresAtivos();
   return res.render('compras/solicitacoes/show', { title: `Compras ${sol.numero}`, activeMenu: 'compras', sol, fornecedores });
 }
@@ -23,9 +24,11 @@ function lista(req, res) {
     status: service.STATUS_COMPRAS.includes(req.query.status) ? req.query.status : '',
     startDate: req.query.startDate || '',
     endDate: req.query.endDate || '',
+    unreadOnly: req.query.novas === '1',
   };
 
-  const lista = service.listSolicitacoesPorStatus(filters);
+  const userId = req.session?.user?.id || null;
+  const lista = service.listSolicitacoesPorStatus(filters, userId);
   const demandasPlanejamento = service.listSolicitacoesPorStatus({})
     .filter((s) => String(s.tipo_origem || '').toUpperCase().startsWith('DEMANDA') && !['FECHADA','RECEBIDA_TOTAL'].includes(String(s.status || '').toUpperCase()))
     .slice(0, 20);
@@ -55,19 +58,20 @@ function lista(req, res) {
     title: 'Compras', activeMenu: 'compras', lista, filters,
     statusList: service.STATUS_COMPRAS,
     resumo: service.getResumoSolicitacoes(),
+    naoVisualizadas: service.getNaoVisualizadasCount(userId),
     demandasPlanejamento,
   });
 }
 
 function detalhe(req, res) {
   const id = Number(req.params.id);
-  try { return tryRenderDetalhe(id, res); }
+  try { return tryRenderDetalhe(id, res, req.session?.user?.id || null); }
   catch (e) {
     if (isSchemaError(e)) {
       try {
         console.warn('⚠️ Schema de compras incompleto. Tentando aplicar migrations automaticamente...');
         applyMigrations();
-        return tryRenderDetalhe(id, res);
+        return tryRenderDetalhe(id, res, req.session?.user?.id || null);
       } catch (migrationError) {
         console.error('❌ Falha ao aplicar migrations automaticamente:', migrationError && migrationError.stack ? migrationError.stack : migrationError);
       }
