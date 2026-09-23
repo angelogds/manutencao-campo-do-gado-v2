@@ -26,3 +26,17 @@ test('Painel e menu exibem sinalização de novas solicitações', () => {
   assert.match(view, /compras-new-badge/);
   assert.match(sidebar, /comprasNaoVisualizadas/);
 });
+
+
+test('Modo não visualizadas permanece ativo em filtros e exportação', () => {
+  const view = read('views/compras/solicitacoes/index.ejs');
+  assert.match(view, /name="novas" value="1"/);
+  assert.match(view, /filters\?\.unreadOnly \? 'novas=1&'/);
+});
+
+test('Solicitações concluídas não recebem selo NOVA e contador atualiza no detalhe', () => {
+  const service = read('modules/compras/compras.service.js');
+  const controller = read('modules/compras/compras.controller.js');
+  assert.match(service, /s\.status NOT IN \('FECHADA','RECEBIDA_TOTAL'\)/);
+  assert.match(controller, /res\.locals\.comprasNaoVisualizadas = service\.getNaoVisualizadasCount\(userId\)/);
+});
