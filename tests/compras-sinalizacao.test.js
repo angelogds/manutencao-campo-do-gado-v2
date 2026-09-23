@@ -34,9 +34,17 @@ test('Modo não visualizadas permanece ativo em filtros e exportação', () => {
   assert.match(view, /filters\?\.unreadOnly \? 'novas=1&'/);
 });
 
-test('Solicitações concluídas não recebem selo NOVA e contador atualiza no detalhe', () => {
+test('Sinalização considera toda solicitação ABERTA não visualizada, sem corte por data', () => {
   const service = read('modules/compras/compras.service.js');
   const controller = read('modules/compras/compras.controller.js');
-  assert.match(service, /s\.status NOT IN \('FECHADA','RECEBIDA_TOTAL'\)/);
+  assert.match(service, /cv\.solicitacao_id IS NULL[\s\S]{0,120}s\.status = 'ABERTA'/);
+  assert.doesNotMatch(service, /WHERE cv\.solicitacao_id IS NULL[\s\S]{0,180}ativado_em/);
   assert.match(controller, /res\.locals\.comprasNaoVisualizadas = service\.getNaoVisualizadasCount\(userId\)/);
+});
+
+test('Interface identifica pendências antigas como não vistas, não como novas', () => {
+  const view = read('views/compras/solicitacoes/index.ejs');
+  assert.match(view, /Solicitações abertas aguardando visualização/);
+  assert.match(view, /Abertas não visualizadas/);
+  assert.match(view, /NÃO VISTA/);
 });
