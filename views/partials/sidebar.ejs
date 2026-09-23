@@ -60,7 +60,12 @@
     <% } %>
 
     <% if (canCompras) { %>
-      <a class="nav-item <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras/solicitacoes">Compras</a>
+      <a class="nav-item nav-item-with-badge <%= activeMenu === 'compras' ? 'active' : '' %>" href="/compras/solicitacoes">
+        <span>Compras</span>
+        <% if ((typeof comprasNaoVisualizadas !== 'undefined' ? comprasNaoVisualizadas : 0) > 0) { %>
+          <span class="nav-alert-badge"><%= comprasNaoVisualizadas %></span>
+        <% } %>
+      </a>
     <% } %>
 
     <% if (canFornecedores) { %>
