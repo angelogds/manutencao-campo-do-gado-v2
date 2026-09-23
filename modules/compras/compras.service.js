@@ -141,6 +141,7 @@ function listSolicitacoesPorStatus(filters = {}, userId = null) {
   const novaExpr = uid > 0
     ? `CASE
          WHEN cv.solicitacao_id IS NULL
+          AND s.status NOT IN ('FECHADA','RECEBIDA_TOTAL')
           AND datetime(s.created_at) >= datetime(COALESCE((SELECT valor FROM compras_sinalizacao_meta WHERE chave='ativado_em'), s.created_at))
          THEN 1 ELSE 0
        END`
